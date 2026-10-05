@@ -3,6 +3,7 @@ name: Build Pomocnik Alfa 1.7.6
 on:
   push:
   workflow_dispatch:
+  pull_request:
   issues:
     types: [opened]
 
