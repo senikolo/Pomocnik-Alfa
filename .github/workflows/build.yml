@@ -11,7 +11,7 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Checkout build repo
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Java 17
@@ -20,49 +20,52 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK packages
+      - name: Download Pomocnik Alfa 1.7.6 source
         run: |
+          curl -fL --retry 3 --retry-delay 2             "https://f366ae4b-1478-4dc8-b5e5-0c4f287fe888.sandbox.floot.app/_cdn/static/fd5b8279-7d4e-46b8-bd1b-07a1c43275dd-Pomocnik-Alfa-1.7.6-kod.tar.xz"             -o source.tar.xz
+          tar -xJf source.tar.xz
+
+      - name: Restore bundled Ispina Lokalnie APK
+        run: |
+          curl -fL --retry 3 --retry-delay 2             "https://f366ae4b-1478-4dc8-b5e5-0c4f287fe888.sandbox.floot.app/_cdn/static/f986c4e3-be4d-4544-9495-9871b4b6caf6-Ispina-Lokalnie-1.82.35.apk.xz"             -o ispina.apk.xz
+          mkdir -p app/src/main/res/raw
+          xz -dc ispina.apk.xz > app/src/main/res/raw/ispina_lokalnie_1_82_35.apk
+
+      - name: Restore original storm recording
+        run: |
+          mkdir -p app/src/main/assets/audio
+          curl -fL --retry 3 --retry-delay 2             "https://f366ae4b-1478-4dc8-b5e5-0c4f287fe888.sandbox.floot.app/_cdn/static/92fcd483-2598-48eb-af2c-02c83fd88b7b-storm.pcm"             -o app/src/main/assets/audio/storm.pcm
+
+      - name: Verify version and restored assets
+        run: |
+          grep -n "versionCode 10706" app/build.gradle
+          grep -n "versionName '1.7.6'" app/build.gradle
+          test -s app/src/main/res/raw/ispina_lokalnie_1_82_35.apk
+          test -s app/src/main/assets/audio/storm.pcm
+          ls -lh app/src/main/res/raw/ispina_lokalnie_1_82_35.apk app/src/main/assets/audio/storm.pcm
+
+      - name: Prepare Android SDK
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          sdkmanager --version
           yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Download Pomocnik Alfa 1.7.6 sources
-        run: |
-          curl -fL --retry 3 --retry-delay 2             "https://f366ae4b-1478-4dc8-b5e5-0c4f287fe888.sandbox.floot.app/_cdn/static/fddf9422-499e-474c-9250-8f5906c0985e-Pomocnik-Alfa-1.7.6-build-source.tar.xz"             -o source.tar.xz
-          mkdir src
-          tar -xJf source.tar.xz -C src
-
-      - name: Set version 1.7.6
-        working-directory: src
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("app/build.gradle")
-          s = p.read_text()
-          s2 = s.replace("versionCode 10705", "versionCode 10706").replace("versionName '1.7.5'", "versionName '1.7.6'")
-          if s2 == s:
-              raise SystemExit("Version markers were not updated")
-          p.write_text(s2)
-          print("Version set to 1.7.6 / 10706")
-          PY
-
-      - name: Build release APK
-        working-directory: src
+      - name: Build debug APK
         run: |
           chmod +x gradlew
-          ./gradlew :app:assembleRelease --no-daemon --stacktrace
+          ./gradlew --no-daemon clean assembleDebug --stacktrace
 
-      - name: Zipalign unsigned release
+      - name: Rename APK
         run: |
-          ZIPALIGN="$ANDROID_HOME/build-tools/35.0.0/zipalign"
-          "$ZIPALIGN" -f -p 4             src/app/build/outputs/apk/release/app-release-unsigned.apk             Pomocnik-Alfa-1.7.6-ALFA-TUBE-ERGONOMIA-aligned-unsigned.apk
-          sha256sum Pomocnik-Alfa-1.7.6-ALFA-TUBE-ERGONOMIA-aligned-unsigned.apk
+          cp app/build/outputs/apk/debug/app-debug.apk Pomocnik-Alfa-1.7.6-ALFA-TUBE-ERGONOMIA.apk
+          sha256sum Pomocnik-Alfa-1.7.6-ALFA-TUBE-ERGONOMIA.apk
+          ls -lh Pomocnik-Alfa-1.7.6-ALFA-TUBE-ERGONOMIA.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Pomocnik-Alfa-1.7.6-unsigned
-          path: Pomocnik-Alfa-1.7.6-ALFA-TUBE-ERGONOMIA-aligned-unsigned.apk
+          name: Pomocnik-Alfa-1.7.6-ALFA-TUBE-ERGONOMIA
+          path: Pomocnik-Alfa-1.7.6-ALFA-TUBE-ERGONOMIA.apk
           if-no-files-found: error
+          retention-days: 7
