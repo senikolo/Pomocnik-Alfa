@@ -3,6 +3,8 @@ name: Build Pomocnik Alfa 1.7.6
 on:
   push:
   workflow_dispatch:
+  issues:
+    types: [opened]
 
 permissions:
   contents: write
@@ -10,6 +12,7 @@ permissions:
 
 jobs:
   build:
+    if: github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.6 BUILD'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
