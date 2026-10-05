@@ -1,0 +1,68 @@
+name: Build Pomocnik Alfa 1.7.6
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout build repo
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Download Pomocnik Alfa 1.7.6 sources
+        run: |
+          curl -fL --retry 3 --retry-delay 2             "https://f366ae4b-1478-4dc8-b5e5-0c4f287fe888.sandbox.floot.app/_cdn/static/fddf9422-499e-474c-9250-8f5906c0985e-Pomocnik-Alfa-1.7.6-build-source.tar.xz"             -o source.tar.xz
+          mkdir src
+          tar -xJf source.tar.xz -C src
+
+      - name: Set version 1.7.6
+        working-directory: src
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("app/build.gradle")
+          s = p.read_text()
+          s2 = s.replace("versionCode 10705", "versionCode 10706").replace("versionName '1.7.5'", "versionName '1.7.6'")
+          if s2 == s:
+              raise SystemExit("Version markers were not updated")
+          p.write_text(s2)
+          print("Version set to 1.7.6 / 10706")
+          PY
+
+      - name: Build release APK
+        working-directory: src
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Zipalign unsigned release
+        run: |
+          ZIPALIGN="$ANDROID_HOME/build-tools/35.0.0/zipalign"
+          "$ZIPALIGN" -f -p 4             src/app/build/outputs/apk/release/app-release-unsigned.apk             Pomocnik-Alfa-1.7.6-ALFA-TUBE-ERGONOMIA-aligned-unsigned.apk
+          sha256sum Pomocnik-Alfa-1.7.6-ALFA-TUBE-ERGONOMIA-aligned-unsigned.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.6-unsigned
+          path: Pomocnik-Alfa-1.7.6-ALFA-TUBE-ERGONOMIA-aligned-unsigned.apk
+          if-no-files-found: error
