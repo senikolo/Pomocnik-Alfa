@@ -1,0 +1,57 @@
+name: Build Pomocnik Alfa 1.7.6
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Download sources
+        run: |
+          curl -fL --retry 3 --retry-delay 2 \
+            "https://f366ae4b-1478-4dc8-b5e5-0c4f287fe888.sandbox.floot.app/_cdn/static/4931b832-f4f3-4bce-8407-e4ec8c9a7ae6-Pomocnik-Alfa-1.7.6-build-source.tar.xz" \
+            -o /tmp/pomocnik.tar.xz
+          mkdir -p source
+          tar -xJf /tmp/pomocnik.tar.xz -C source
+
+      - name: Set version 1.7.6
+        run: |
+          sed -i 's/versionCode 10705/versionCode 10706/' source/app/build.gradle
+          sed -i "s/versionName '1.7.5'/versionName '1.7.6'/" source/app/build.gradle
+          grep -E 'versionCode|versionName' source/app/build.gradle
+
+      - name: Build APK
+        working-directory: source
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon clean assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk Pomocnik-Alfa-1.7.6-ALFA-TUBE-ERGONOMIA.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.6-ALFA-TUBE-ERGONOMIA
+          path: source/Pomocnik-Alfa-1.7.6-ALFA-TUBE-ERGONOMIA.apk
+          if-no-files-found: error
+          retention-days: 7
