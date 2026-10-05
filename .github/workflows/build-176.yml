@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 jobs:
   build:
@@ -63,3 +64,17 @@ jobs:
             "project/app/build/outputs/apk/debug/app-debug.apk#Pomocnik-Alfa-1.7.6-PLACEHOLDER.apk" \
             --title "Pomocnik Alfa 1.7.6 temporary build" \
             --notes "Automatyczny build 1.7.6 z lekkimi placeholderami ciężkich zasobów. Plik jest etapem pośrednim do finalnego scalenia i podpisania."
+
+      - name: Report workflow result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_STATUS: ${{ job.status }}
+        run: |
+          gh issue create \
+            --title "PA 1.7.6 BUILD ${BUILD_STATUS} ${GITHUB_RUN_ID}" \
+            --body "Status: ${BUILD_STATUS}
+
+Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+
+Commit: ${GITHUB_SHA}"
