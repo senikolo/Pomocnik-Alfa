@@ -27,14 +27,41 @@ jobs:
       - name: Download 1.7.6 source package
         run: |
           set -euxo pipefail
+          BASE="https://f366ae4b-1478-4dc8-b5e5-0c4f287fe888.sandbox.floot.app"
           curl -fL --retry 4 --retry-delay 3 \
-            "https://f366ae4b-1478-4dc8-b5e5-0c4f287fe888.sandbox.floot.app/_cdn/static/8c9b84bd-d903-41e1-b51b-6f52ccf67725-pa176-compile-micro.tar.xz" \
+            "$BASE/_cdn/static/8c9b84bd-d903-41e1-b51b-6f52ccf67725-pa176-compile-micro.tar.xz" \
             -o source.tar.xz
           mkdir project
           tar -xJf source.tar.xz -C project
           test -f project/app/build.gradle
           grep -n "versionName '1.7.6'" project/app/build.gradle
           grep -n "versionCode 10706" project/app/build.gradle
+
+      - name: Restore full original resources
+        run: |
+          set -euxo pipefail
+          BASE="https://f366ae4b-1478-4dc8-b5e5-0c4f287fe888.sandbox.floot.app"
+
+          curl -fL --retry 4 "$BASE/_cdn/static/2b1aea97-103f-4ccf-ad01-567096dad8b1-pa176-storm.pcm.xz" -o storm.pcm.xz
+          xz -dc storm.pcm.xz > project/app/src/main/assets/audio/storm.pcm
+
+          curl -fL --retry 4 "$BASE/_cdn/static/192b7d3a-f2e7-4d7e-a7ed-bd1428363a2b-pa176-purr.pcm.xz" -o purr.pcm.xz
+          xz -dc purr.pcm.xz > project/app/src/main/assets/audio/purr.pcm
+
+          curl -fL --retry 4 "$BASE/_cdn/static/5c6fbef5-a7fd-4d6e-a55d-8973e9640f78-pa176-ispina_lokalnie_1_82_35.apk.xz" -o ispina.apk.xz
+          xz -dc ispina.apk.xz > project/app/src/main/res/raw/ispina_lokalnie_1_82_35.apk
+
+          curl -fL --retry 4 "$BASE/_cdn/static/d0c25682-3c57-4d98-add2-526bcccad42f-pa176-icon-legacy.png" \
+            -o project/app/src/main/res/drawable-nodpi/ic_launcher_cat_legacy.png
+
+          curl -fL --retry 4 "$BASE/_cdn/static/1862bb41-c1a2-43fa-a9f5-3465625490e8-pa176-icon-foreground.png" \
+            -o project/app/src/main/res/drawable-nodpi/ic_launcher_cat_foreground.png
+
+          echo "a51442994c6d8b1add65e86bf7955fd8ad9da12785a36ad59dcabfafba8d1b68  project/app/src/main/assets/audio/storm.pcm" | sha256sum -c -
+          echo "0d8336d945050f0456557187358359560d7303116547ceb1ecd6e8c9f251d527  project/app/src/main/assets/audio/purr.pcm" | sha256sum -c -
+          echo "0a69fc101091796ad7b2f08e385b5267dd04824ae63df5e31b48f1486de38842  project/app/src/main/res/raw/ispina_lokalnie_1_82_35.apk" | sha256sum -c -
+          echo "35a9f2bd3fc783b221ccf3ec672fd6f2aed8480caf42c10618d12ba988866d62  project/app/src/main/res/drawable-nodpi/ic_launcher_cat_legacy.png" | sha256sum -c -
+          echo "7b8b3afd8bf51d8aae89c23ce052d438320f3b07933f6370c2040e126d28d6ec  project/app/src/main/res/drawable-nodpi/ic_launcher_cat_foreground.png" | sha256sum -c -
 
       - name: Prepare Android SDK 35
         run: |
@@ -53,9 +80,16 @@ jobs:
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Pomocnik-Alfa-1.7.6-placeholder
+          name: Pomocnik-Alfa-1.7.6
           path: project/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      - name: Upload debug signing key artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.6-debug-key
+          path: ~/.android/debug.keystore
+          if-no-files-found: warn
 
       - name: Publish temporary build release
         env:
@@ -64,9 +98,9 @@ jobs:
           gh release delete build-1.7.6 -y || true
           git push --delete origin build-1.7.6 || true
           gh release create build-1.7.6 \
-            "project/app/build/outputs/apk/debug/app-debug.apk#Pomocnik-Alfa-1.7.6-PLACEHOLDER.apk" \
-            --title "Pomocnik Alfa 1.7.6 temporary build" \
-            --notes "Automatyczny build 1.7.6 z lekkimi placeholderami ciężkich zasobów. Plik jest etapem pośrednim do finalnego scalenia i podpisania."
+            "project/app/build/outputs/apk/debug/app-debug.apk#Pomocnik-Alfa-1.7.6.apk" \
+            --title "Pomocnik Alfa 1.7.6 build" \
+            --notes "Automatyczny kompletny build Pomocnik Alfa 1.7.6. Ciężkie zasoby zostały odtworzone przed kompilacją i zweryfikowane SHA-256."
 
       - name: Report workflow result
         if: always()
