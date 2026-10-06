@@ -35,6 +35,8 @@ jobs:
           mv /tmp/alfa6/AlfaLauncher6-ci-min project
           grep -n "minSdk 23" project/app/build.gradle
           grep -n "applicationId 'pl.alfalauncher.six'" project/app/build.gradle
+          sed -i '2i import pl.alfalauncher.MainActivity;' project/app/src/main/java/pl/alfalauncher/legacy/ReminderReceiver.java
+          grep -n "import pl.alfalauncher.MainActivity" project/app/src/main/java/pl/alfalauncher/legacy/ReminderReceiver.java
 
       - name: Restore Pomocnik Alfa icon
         env:
