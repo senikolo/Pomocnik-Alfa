@@ -1,0 +1,131 @@
+name: Build Pomocnik Alfa 1.7.30 TOK FM Fix
+
+on:
+  push:
+    paths:
+      - 'triggers/build-radio-1730.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Verify TOK FM live schedule source
+        run: |
+          set -euxo pipefail
+          UA='Mozilla/5.0 (Android; Pomocnik Alfa RadioInfo+)'
+          curl -L -A "$UA" -H 'Accept: text/html,application/xhtml+xml' -H 'Accept-Language: pl,en;q=0.8,de;q=0.7' --max-time 20 -sS 'https://audycje.tokfm.pl/ramowka?v=2' -o /tmp/tok.html
+          python - <<'PY'
+          import re,html,datetime,zoneinfo,subprocess
+          s=open('/tmp/tok.html',encoding='utf-8',errors='ignore').read()
+          m=re.search(r"/_server-islands/ScheduleListIsland\?[^\"']+",s)
+          assert m, 'Brak TOK FM ScheduleListIsland'
+          u='https://audycje.tokfm.pl'+html.unescape(m.group(0))
+          print('TOK_ISLAND='+u)
+          subprocess.run(['curl','-L','-A','Mozilla/5.0 (Android; Pomocnik Alfa RadioInfo+)','--max-time','20','-sS',u,'-o','/tmp/island.html'],check=True)
+          island=open('/tmp/island.html',encoding='utf-8',errors='ignore').read()
+          now=datetime.datetime.now(zoneinfo.ZoneInfo('Europe/Warsaw'))
+          day=now.weekday()
+          dm=re.search(rf'(?is)<ul[^>]*data-day=["\']?{day}["\']?[^>]*>(.*?)</ul>',island)
+          assert dm, f'Brak dzisiejszego data-day={day}'
+          block=dm.group(1)
+          nowm=now.hour*60+now.minute
+          best=(-1,'')
+          for im in re.finditer(r'(?is)<li[^>]*data-time=["\']([0-2]?\d:[0-5]\d)["\'][^>]*>(.*?)</li>',block):
+              hh,mm=map(int,im.group(1).split(':')); mins=hh*60+mm
+              if mins>nowm or mins<best[0]: continue
+              body=im.group(2)
+              am=re.search(r'(?is)<h3[^>]*tok-schedule__program--name[^>]*>\s*<a[^>]*href=["\']/audycja/[^"\']*["\'][^>]*>(.*?)</a>',body)
+              if not am:
+                  am=re.search(r'(?is)<h3[^>]*tok-schedule__program--name[^>]*>(.*?)</h3>',body)
+              if am:
+                  name=html.unescape(re.sub(r'(?s)<[^>]+>',' ',am.group(1)))
+                  name=' '.join(name.split())
+                  if name: best=(mins,name)
+          assert best[1], 'Nie udało się ustalić bieżącej audycji TOK FM'
+          print('TOK_CURRENT='+best[1])
+          PY
+
+      - name: Restore verified 1.7.29 source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          mkdir artifact project
+          gh run download 37485148842 -R senikolo/Pomocnik-Alfa -n Pomocnik-Alfa-1.7.29-SOURCE -D artifact
+          tar -xJf artifact/Pomocnik-Alfa-1.7.29-SOURCE.tar.xz -C project
+          grep -n "versionCode 10729" project/app/build.gradle
+
+      - name: Apply TOK FM server island fix
+        run: |
+          set -euxo pipefail
+          base64 -d patches/tokfm-server-island-1730.patch.gz.b64 | gzip -dc > /tmp/pa1730.patch
+          cd project
+          patch -p0 < /tmp/pa1730.patch
+          grep -n "versionCode 10730" app/build.gradle
+          grep -n "fetchTokFmSchedule" app/src/main/java/com/ispina/lokalnie/radio/RadioInfoPlus.java
+          grep -n "ScheduleListIsland" app/src/main/java/com/ispina/lokalnie/radio/RadioInfoPlus.java
+          tar -cJf ../Pomocnik-Alfa-1.7.30-SOURCE.tar.xz .
+
+      - name: Make side-by-side test package
+        run: |
+          set -euxo pipefail
+          sed -i "s/applicationId 'com.senikolo.pomocniknowy'/applicationId 'com.senikolo.pomocniknowy.radio1730'/" project/app/build.gradle
+          sed -i 's/android:label="Pomocnik Alfa"/android:label="Pomocnik Alfa TOK FM 1.7.30"/' project/app/src/main/AndroidManifest.xml
+
+      - name: Prepare Android SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: project
+        run: |
+          set -euxo pipefail
+          chmod +x gradlew
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8
+          org.gradle.workers.max=2
+          org.gradle.parallel=false
+          android.useAndroidX=true
+          EOF
+          ./gradlew --no-daemon assembleDebug -x lint --stacktrace
+          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | head -1)"
+          test -n "$APK"
+          cp "$APK" ../Pomocnik-Alfa-1.7.30-TOK-FM-FIX.apk
+
+      - name: Verify APK
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          test -s Pomocnik-Alfa-1.7.30-TOK-FM-FIX.apk
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.30-TOK-FM-FIX.apk | head -3
+          "$BT/apksigner" verify --verbose --print-certs Pomocnik-Alfa-1.7.30-TOK-FM-FIX.apk
+          sha256sum Pomocnik-Alfa-1.7.30-TOK-FM-FIX.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.30-TOK-FM-FIX
+          path: Pomocnik-Alfa-1.7.30-TOK-FM-FIX.apk
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.30-SOURCE
+          path: Pomocnik-Alfa-1.7.30-SOURCE.tar.xz
+          retention-days: 3
