@@ -18,10 +18,11 @@ jobs:
           SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" "build-tools;35.0.0"
-          mkdir -p out/lib
+          mkdir -p out/lib out/lib64
           cp "$ANDROID_HOME/build-tools/35.0.0/apksigner" out/
           cp "$ANDROID_HOME/build-tools/35.0.0/zipalign" out/
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" out/lib/
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib64/libc++.so" out/lib64/
           chmod +x out/apksigner out/zipalign
           ./out/apksigner --version
           ./out/zipalign -h >/dev/null 2>&1 || true
