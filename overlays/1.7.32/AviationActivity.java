@@ -21,6 +21,7 @@ public class AviationActivity extends ThemedActivity {
     private Button playButton;
     private boolean engineReady = false;
     private boolean autoStartPending = true;
+    private int playRetryCount = 0;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -157,6 +158,7 @@ public class AviationActivity extends ThemedActivity {
         if(engine==null)return;
         engineReady=false;
         autoStartPending=true;
+        playRetryCount=0;
 
         String html="<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>"+
                 "<style>html,body{margin:0;width:1px;height:1px;overflow:hidden;background:transparent;pointer-events:none}.mytuner-widget{width:1px;height:1px;overflow:hidden}.main-play-button{width:1px;height:1px}.volume-controls,#paEpkkWidgetdow-container,#paEpkkWidgetsong-history{display:none}</style></head><body>"+
@@ -188,6 +190,7 @@ public class AviationActivity extends ThemedActivity {
             loadEngine();
             return;
         }
+        playRetryCount=0;
         clickHiddenPlay(true);
     }
 
@@ -207,8 +210,13 @@ public class AviationActivity extends ThemedActivity {
                 status.setText("🔴 Nasłuch EPKK włączony");
                 if(playButton!=null)playButton.setText("▶ Nasłuch działa");
             }else if(r.contains("loading")){
-                status.setText("Łączenie ze strumieniem EPKK…");
-                engine.postDelayed(() -> clickHiddenPlay(true),1200);
+                playRetryCount++;
+                if(playRetryCount<=6){
+                    status.setText("Łączenie ze strumieniem EPKK…");
+                    engine.postDelayed(() -> clickHiddenPlay(true),1200);
+                }else{
+                    status.setText("Silnik EPKK nie odpowiedział. Dotknij „Włącz nasłuch EPKK”, aby spróbować ponownie.");
+                }
             }else{
                 status.setText("Nie udało się uruchomić dźwięku. Dotknij przycisku jeszcze raz.");
             }
