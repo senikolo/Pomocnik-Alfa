@@ -1,0 +1,128 @@
+name: Build Pomocnik Alfa 1.7.23 Full
+
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+jobs:
+  build:
+    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.23 FULL' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Restore verified 1.7.22 source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          mkdir artifact project
+          gh run download 37448472005 -R senikolo/Pomocnik-Alfa -n Pomocnik-Alfa-1.7.22-SOURCE -D artifact
+          tar -xJf artifact/Pomocnik-Alfa-1.7.22-SOURCE.tar.xz -C project
+          grep -n "versionCode 10722" project/app/build.gradle
+          grep -n "RADIO_NOTIFICATION_ID=1722" project/app/src/main/java/com/ispina/lokalnie/radio/RadioService.java
+          grep -n "PLAYBACK_NOTIFICATION_ID=1721" project/app/src/main/java/com/ispina/lokalnie/tube/TubeService.java
+
+      - name: Apply full 1.7.23 integration patch
+        run: |
+          set -euxo pipefail
+          base64 -d patches/full-1723.patch.gz.b64 > /tmp/pa1723.patch.gz
+          gzip -dc /tmp/pa1723.patch.gz > /tmp/pa1723.patch
+          cd project
+          patch -p1 < /tmp/pa1723.patch
+          grep -n "versionCode 10723" app/build.gradle
+          grep -n "versionName '1.7.23'" app/build.gradle
+          grep -n "POMOCNIK ALFA 1.7.23" app/src/main/java/com/ispina/lokalnie/MainActivity.java
+          grep -n "Radio gra również po wyjściu" app/src/main/java/com/ispina/lokalnie/RadioActivity.java
+          grep -n "częścią pełnej wersji aplikacji" app/src/main/java/com/ispina/lokalnie/TubeActivity.java
+          tar -cJf ../Pomocnik-Alfa-1.7.23-SOURCE.tar.xz .
+
+      - name: Prepare Android SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Build normal Pomocnik Alfa APK
+        working-directory: project
+        run: |
+          set -euxo pipefail
+          chmod +x gradlew
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8
+          org.gradle.workers.max=2
+          org.gradle.parallel=false
+          android.useAndroidX=true
+          EOF
+          ./gradlew --no-daemon assembleDebug -x lint --stacktrace
+          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | head -1)"
+          test -n "$APK"
+          cp "$APK" ../Pomocnik-Alfa-1.7.23.apk
+
+      - name: Prepare safe side-by-side Full Test
+        run: |
+          set -euxo pipefail
+          cp -a project project-fulltest
+          sed -i "s/applicationId 'com.senikolo.pomocniknowy'/applicationId 'com.senikolo.pomocniknowy.fulltest1723'/" project-fulltest/app/build.gradle
+          sed -i 's/android:label="Pomocnik Alfa"/android:label="Pomocnik Alfa 1.7.23 FULL TEST"/' project-fulltest/app/src/main/AndroidManifest.xml
+          grep -n "com.senikolo.pomocniknowy.fulltest1723" project-fulltest/app/build.gradle
+          grep -n 'Pomocnik Alfa 1.7.23 FULL TEST' project-fulltest/app/src/main/AndroidManifest.xml
+
+      - name: Build side-by-side Full Test APK
+        working-directory: project-fulltest
+        run: |
+          set -euxo pipefail
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug -x lint --stacktrace
+          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | head -1)"
+          test -n "$APK"
+          cp "$APK" ../Pomocnik-Alfa-1.7.23-FULL-TEST.apk
+
+      - name: Verify APKs
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          for APK in Pomocnik-Alfa-1.7.23.apk Pomocnik-Alfa-1.7.23-FULL-TEST.apk; do
+            test -s "$APK"
+            "$BT/aapt" dump badging "$APK" | head -3
+            "$BT/apksigner" verify --verbose --print-certs "$APK"
+            sha256sum "$APK"
+          done
+
+      - name: Upload normal APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.23
+          path: Pomocnik-Alfa-1.7.23.apk
+          retention-days: 7
+
+      - name: Upload safe Full Test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.23-FULL-TEST
+          path: Pomocnik-Alfa-1.7.23-FULL-TEST.apk
+          retention-days: 7
+
+      - name: Upload source
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.23-SOURCE
+          path: Pomocnik-Alfa-1.7.23-SOURCE.tar.xz
+          retention-days: 3
