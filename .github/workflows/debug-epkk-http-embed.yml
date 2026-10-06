@@ -1,0 +1,28 @@
+name: Debug EPKK HTTP embed
+
+on:
+  push:
+    paths:
+      - 'triggers/debug-epkk-http-embed.txt'
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect HTTP embed
+        run: |
+          set -euxo pipefail
+          UA='Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36'
+          curl -L -A "$UA" --connect-timeout 10 --max-time 30 -sS -D /tmp/hdr             'http://e.mytuner-radio.com/embed/krakow-airport-atc-pl-519787' -o /tmp/embed.html
+          echo "BYTES=$(wc -c </tmp/embed.html)"
+          head -30 /tmp/hdr
+          grep -Ein '519787|play-button|audio|player|stream|register-widget|get-station-streams|mytuner' /tmp/embed.html | head -200 || true
+          cp /tmp/embed.html epkk-http-embed.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: epkk-http-embed-debug
+          path: epkk-http-embed.html
+          retention-days: 1
