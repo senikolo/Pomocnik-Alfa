@@ -1,0 +1,77 @@
+name: Build Alfa Browser Legacy 1.0
+
+on:
+  push:
+    paths:
+      - 'alfa-browser-build/trigger.txt'
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Reconstruct Alfa Browser source
+        run: |
+          set -euxo pipefail
+          base64 -d alfa-browser-build/Alfa-Browser-Legacy-1.0-source.zip.b64 > /tmp/browser.zip
+          unzip -q /tmp/browser.zip -d /tmp/browser
+          mv /tmp/browser/alfa_browser_legacy project
+          grep -n "minSdk 17" project/app/build.gradle
+          grep -n "applicationId 'pl.alfabrowser.legacy'" project/app/build.gradle
+          grep -n "versionName '1.0-legacy'" project/app/build.gradle
+
+      - name: Prepare Android SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: project
+        run: |
+          set -euxo pipefail
+          gradle --no-daemon :app:assembleDebug -x lint --stacktrace
+          APK="$(find app/build/outputs/apk/debug -type f -name '*.apk' | head -1)"
+          test -n "$APK"
+          cp "$APK" ../Alfa-Browser-Legacy-1.0-Android-4.2.apk
+
+      - name: Verify APK
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          "$BT/aapt" dump badging Alfa-Browser-Legacy-1.0-Android-4.2.apk | tee badging.txt
+          grep "sdkVersion:'17'" badging.txt
+          grep "package: name='pl.alfabrowser.legacy'" badging.txt
+          "$BT/apksigner" verify --verbose --print-certs Alfa-Browser-Legacy-1.0-Android-4.2.apk
+          sha256sum Alfa-Browser-Legacy-1.0-Android-4.2.apk | tee sha256.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Alfa-Browser-Legacy-1.0-Android-4.2
+          path: Alfa-Browser-Legacy-1.0-Android-4.2.apk
+          retention-days: 7
+
+      - name: Report run id
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 66 -R senikolo/Pomocnik-Alfa --body "ALFA_BROWSER_LEGACY_RUN_ID=${{ github.run_id }} STATUS=${{ job.status }}"
