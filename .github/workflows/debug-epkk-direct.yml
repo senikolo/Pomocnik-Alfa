@@ -36,6 +36,12 @@ jobs:
           cp /tmp/page.html epkk-page.html
           cp /tmp/player.js epkk-player.js
           cp /tmp/widget.js epkk-widget.js
+          echo '--- EMBED ---'
+          curl -L -A "$UA" --max-time 30 -sS -D /tmp/embed.headers 'https://e.mytuner-radio.com/embed/krakow-airport-atc-pl-519787' -o /tmp/embed.html || true
+          echo "EMBED_BYTES=$(wc -c </tmp/embed.html 2>/dev/null || echo 0)"
+          head -20 /tmp/embed.headers || true
+          grep -Ein '519787|register-widget|get-station-streams|play-button|mytuner-widget|audio|player-v1' /tmp/embed.html | head -120 || true
+          cp /tmp/embed.html epkk-embed.html
       - uses: actions/upload-artifact@v4
         with:
           name: epkk-direct-debug
@@ -43,4 +49,5 @@ jobs:
             epkk-page.html
             epkk-player.js
             epkk-widget.js
+            epkk-embed.html
           retention-days: 1
