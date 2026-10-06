@@ -1,0 +1,110 @@
+name: Build Pomocnik Alfa 1.7.31 Radio Info++ Aviation
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'triggers/build-1731-info-aviation.txt'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Verify EPKK embedded player source
+        run: |
+          set -euxo pipefail
+          UA='Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36'
+          curl -L -A "$UA" --retry 2 --retry-all-errors --connect-timeout 10 --max-time 30 -fsS             'https://mytuner-radio.com/radio/krakow-airport-atc-pl-519787/' -o /tmp/epkk.html
+          grep -qi 'Krakow Airport EPKK ATC PL' /tmp/epkk.html
+          curl -L -A "$UA" --retry 2 --retry-all-errors --connect-timeout 10 --max-time 30 -fsS             'https://mytuner-radio.com/static/js/widgets/player-v1.js' -o /tmp/player-v1.js
+          curl -L -A "$UA" --retry 2 --retry-all-errors --connect-timeout 10 --max-time 30 -fsS             'https://mytuner-radio.com/static/js/widgets/widget-player-v1.js' -o /tmp/widget-player-v1.js
+          test "$(wc -c </tmp/player-v1.js)" -gt 1000
+          test "$(wc -c </tmp/widget-player-v1.js)" -gt 500
+          echo "EPKK embedded player source OK"
+
+      - name: Restore verified 1.7.30 source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          mkdir artifact project
+          gh run download 37489833932 -R senikolo/Pomocnik-Alfa -n Pomocnik-Alfa-1.7.30-SOURCE -D artifact
+          tar -xJf artifact/Pomocnik-Alfa-1.7.30-SOURCE.tar.xz -C project
+          grep -n "versionCode 10730" project/app/build.gradle
+          grep -n "fetchTokFmSchedule" project/app/src/main/java/com/ispina/lokalnie/radio/RadioInfoPlus.java
+
+      - name: Apply Radio Info++ and aviation player
+        run: |
+          set -euxo pipefail
+          cp overlays/1.7.31/AviationActivity.java project/app/src/main/java/com/ispina/lokalnie/AviationActivity.java
+          cd project
+          python ../overlays/1.7.31/apply_1731.py
+          grep -n "versionCode 10731" app/build.gradle
+          grep -n "RadioInfo++" app/src/main/java/com/ispina/lokalnie/radio/RadioInfoPlus.java
+          grep -n "isStationPromoOrJunk" app/src/main/java/com/ispina/lokalnie/radio/RadioService.java
+          grep -n "data-target='519787'" app/src/main/java/com/ispina/lokalnie/AviationActivity.java
+          grep -n "Jeden kafelek uruchamia nasłuch w aplikacji" app/src/main/java/com/ispina/lokalnie/MainActivity.java
+          tar -cJf ../Pomocnik-Alfa-1.7.31-SOURCE.tar.xz .
+
+      - name: Make side-by-side test package
+        run: |
+          set -euxo pipefail
+          sed -i "s/applicationId 'com.senikolo.pomocniknowy'/applicationId 'com.senikolo.pomocniknowy.infoaviation1731'/" project/app/build.gradle
+          sed -i 's/android:label="Pomocnik Alfa"/android:label="Pomocnik Alfa INFO++ 1.7.31"/' project/app/src/main/AndroidManifest.xml
+
+      - name: Prepare Android SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: project
+        run: |
+          set -euxo pipefail
+          chmod +x gradlew
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8
+          org.gradle.workers.max=2
+          org.gradle.parallel=false
+          android.useAndroidX=true
+          EOF
+          ./gradlew --no-daemon assembleDebug -x lint --stacktrace
+          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | head -1)"
+          test -n "$APK"
+          cp "$APK" ../Pomocnik-Alfa-1.7.31-RADIO-INFO-PLUS-AVIATION.apk
+
+      - name: Verify APK
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          test -s Pomocnik-Alfa-1.7.31-RADIO-INFO-PLUS-AVIATION.apk
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.31-RADIO-INFO-PLUS-AVIATION.apk | head -3
+          "$BT/apksigner" verify --verbose --print-certs Pomocnik-Alfa-1.7.31-RADIO-INFO-PLUS-AVIATION.apk
+          sha256sum Pomocnik-Alfa-1.7.31-RADIO-INFO-PLUS-AVIATION.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.31-RADIO-INFO-PLUS-AVIATION
+          path: Pomocnik-Alfa-1.7.31-RADIO-INFO-PLUS-AVIATION.apk
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.31-SOURCE
+          path: Pomocnik-Alfa-1.7.31-SOURCE.tar.xz
+          retention-days: 3
