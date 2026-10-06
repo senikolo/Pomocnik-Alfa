@@ -26,7 +26,7 @@ jobs:
         run: |
           set -euxo pipefail
           UA='Mozilla/5.0 (Android; Pomocnik Alfa RadioInfo+)'
-          curl -L -A "$UA" -H 'Accept: text/html,application/xhtml+xml' -H 'Accept-Language: pl,en;q=0.8,de;q=0.7' --max-time 20 -sS 'https://audycje.tokfm.pl/ramowka?v=2' -o /tmp/tok.html
+          curl -L -A "$UA" -H 'Accept: text/html,application/xhtml+xml' -H 'Accept-Language: pl,en;q=0.8,de;q=0.7' --retry 3 --retry-all-errors --connect-timeout 12 --max-time 60 -sS 'https://audycje.tokfm.pl/ramowka?v=2' -o /tmp/tok.html
           python - <<'PY'
           import re,html,datetime,zoneinfo,subprocess
           s=open('/tmp/tok.html',encoding='utf-8',errors='ignore').read()
@@ -34,7 +34,7 @@ jobs:
           assert m, 'Brak TOK FM ScheduleListIsland'
           u='https://audycje.tokfm.pl'+html.unescape(m.group(0))
           print('TOK_ISLAND='+u)
-          subprocess.run(['curl','-L','-A','Mozilla/5.0 (Android; Pomocnik Alfa RadioInfo+)','--max-time','20','-sS',u,'-o','/tmp/island.html'],check=True)
+          subprocess.run(['curl','-L','-A','Mozilla/5.0 (Android; Pomocnik Alfa RadioInfo+)','--retry','3','--retry-all-errors','--connect-timeout','12','--max-time','60','-sS',u,'-o','/tmp/island.html'],check=True)
           island=open('/tmp/island.html',encoding='utf-8',errors='ignore').read()
           now=datetime.datetime.now(zoneinfo.ZoneInfo('Europe/Warsaw'))
           day=now.weekday()
