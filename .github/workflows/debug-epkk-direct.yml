@@ -24,7 +24,7 @@ jobs:
               s=pathlib.Path(path).read_text(errors='ignore')
               print('\n###',path)
               urls=[]
-              for u in re.findall(r'https?://[^"\\'<>\\s]+',s):
+              for u in re.findall(r"https?://[^\\\"'<>\\s]+",s):
                   if u not in urls: urls.append(u)
               print('URLS')
               for u in urls[:300]: print(u)
