@@ -266,6 +266,19 @@ jobs:
           grep -n "openingVideo" project/app/src/main/java/com/ispina/lokalnie/TubeActivity.java
           grep -n "setAllowCrossProtocolRedirects(true)" project/app/src/main/java/com/ispina/lokalnie/tube/TubeService.java
 
+      - name: Pack prepared 1.7.10 audit source
+        run: |
+          set -euxo pipefail
+          tar -cJf Pomocnik-Alfa-1.7.10-AUDIT-SOURCE.tar.xz -C project .
+
+      - name: Upload prepared 1.7.10 audit source
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.10-AUDIT-SOURCE
+          path: Pomocnik-Alfa-1.7.10-AUDIT-SOURCE.tar.xz
+          if-no-files-found: error
+          retention-days: 3
+
       - name: Prepare Android SDK 35
         run: |
           set -euxo pipefail
