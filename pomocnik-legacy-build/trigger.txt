@@ -1,1 +1,1 @@
-build Pomocnik Legacy 2.0 - 2026-10-06
+build Pomocnik Legacy 2.0 - retry after workflow fix
