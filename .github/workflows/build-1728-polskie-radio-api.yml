@@ -23,6 +23,35 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Audit all 24 radio streams
+        run: |
+          cat > /tmp/audit.py <<'PY'
+          import urllib.request,re
+          stations=[
+          ("PR1","https://stream11.polskieradio.pl/pr1/pr1.sdp/playlist.m3u8"),("PR3","https://stream13.polskieradio.pl/pr3/pr3.sdp/playlist.m3u8"),("TOK FM","https://radiostream.pl/tuba10-1.mp3"),("ESKA Bochnia","https://ic1.smcdn.pl/2330-1.mp3"),("RMF FM","https://rs103-krk-cyfronet.rmfstream.pl/RMFFM48"),("Radio ZET","https://zt02.cdn.eurozet.pl/zet-old.mp3"),("VOX FM","https://ic2.smcdn.pl/3990-1.mp3"),("RMF Classic","https://rs9-krk2.rmfstream.pl/rmf_classic"),("RMF MAXX","https://rs9-krk2-cyfronet.rmfstream.pl/RMFMAXXX48"),("Złote Przeboje","https://radiostream.pl/tuba8904-1.mp3"),("Radio Pogoda","https://hub.radiostream.pl/stream.pls?radio=38&type=none&app=none&coding=mp3&redirect=true"),("Eska2","https://waw.ic.smcdn.pl/6040-1.aac"),("Eska ROCK","https://n07-eu.rcs.revma.com/1nnezw8qz7zuv"),("1.FM Birds","https://strm112.1.fm/brazilianbirds_mobile_mp3"),("Arabella","https://edge21.stream.radioarabella.de/radioarabella-muenchen/stream/mp3"),("Antenne Bayern","https://stream.antenne.de/antenne/stream/mp3"),("Bayern 2","https://dispatcher.rndfnk.com/br/br2/live/mp3/mid"),("Bayern 3","https://dispatcher.rndfnk.com/br/br3/live/mp3/mid"),("Deutschlandfunk","https://st01.sslstream.dlf.de/dlf/01/low/aac/stream.aac?aggregator=web"),("ROCK ANTENNE","https://stream.rockantenne.de/rockantenne/stream/mp3"),("BR24","https://dispatcher.rndfnk.com/br/br24/live/mp3/mid"),("BR-KLASSIK","https://dispatcher.rndfnk.com/br/brklassik/live/mp3/mid"),("BR Heimat","https://dispatcher.rndfnk.com/br/brheimat/live/mp3/mid"),("DLF Kultur","https://st02.sslstream.dlf.de/dlf/02/low/aac/stream.aac?aggregator=web")]
+          def probe(n,u):
+            if '.m3u8' in u:return ('HLS','')
+            try:
+              q=urllib.request.Request(u,headers={'User-Agent':'Mozilla/5.0','Icy-MetaData':'1'})
+              with urllib.request.urlopen(q,timeout=7) as r:
+                h={k.lower():v for k,v in r.headers.items()}; mi=int(h.get('icy-metaint','0') or 0)
+                if not mi:return ('NO-ICY',h.get('icy-name',''))
+                left=mi
+                while left:
+                  b=r.read(min(left,32768))
+                  if not b:break
+                  left-=len(b)
+                z=r.read(1)
+                if not z:return ('ICY','no-block')
+                raw=r.read(z[0]*16).decode('latin1','ignore').replace(chr(0),'')
+                m=re.search(r"StreamTitle=['\"]([^'\"]*)",raw,re.I)
+                return ('ICY',(m.group(1).strip() if m else raw.strip())[:140])
+            except Exception as e:return ('ERR',str(e)[:100])
+          for n,u in stations:
+            a,b=probe(n,u); print('AUDIT|%s|%s|%s'%(n,a,b.replace('|','/')))
+          PY
+          python /tmp/audit.py
+
       - name: Verify Polskie Radio API
         run: |
           set -euxo pipefail
