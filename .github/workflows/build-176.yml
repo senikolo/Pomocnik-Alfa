@@ -405,8 +405,8 @@ jobs:
 
           anchor=' private Button button(LinearLayout target,String label,Runnable r){'
           overlay=''' private void showLoadingOverlay(){hideLoadingOverlay();android.widget.FrameLayout host=findViewById(android.R.id.content);if(host==null)return;android.widget.FrameLayout overlay=new android.widget.FrameLayout(this);overlay.setClickable(true);overlay.setFocusable(true);overlay.setContentDescription("Ładowanie filmu");overlay.setBackgroundColor(0x24000000);LinearLayout bubble=new LinearLayout(this);bubble.setGravity(Gravity.CENTER);bubble.setPadding(dp(16),dp(16),dp(16),dp(16));bubble.setBackground(NativeUi.rounded(0xF7FFFFFF,28,this));bubble.setElevation(dp(8));ProgressBar spinner=new ProgressBar(this);spinner.setIndeterminate(true);spinner.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(NativeUi.green(this)));bubble.addView(spinner,new LinearLayout.LayoutParams(dp(42),dp(42)));android.widget.FrameLayout.LayoutParams bubbleLp=new android.widget.FrameLayout.LayoutParams(dp(74),dp(74),Gravity.CENTER);overlay.addView(bubble,bubbleLp);host.addView(overlay,new android.widget.FrameLayout.LayoutParams(-1,-1));loadingOverlay=overlay;overlay.setAlpha(0f);overlay.animate().alpha(1f).setDuration(140).start();}
- private void hideLoadingOverlay(){if(loadingOverlay==null)return;final View overlay=loadingOverlay;loadingOverlay=null;overlay.animate().cancel();overlay.animate().alpha(0f).setDuration(100).withEndAction(()->{android.view.ViewParent parent=overlay.getParent();if(parent instanceof android.view.ViewGroup)((android.view.ViewGroup)parent).removeView(overlay);}).start();}
-'''
+           private void hideLoadingOverlay(){if(loadingOverlay==null)return;final View overlay=loadingOverlay;loadingOverlay=null;overlay.animate().cancel();overlay.animate().alpha(0f).setDuration(100).withEndAction(()->{android.view.ViewParent parent=overlay.getParent();if(parent instanceof android.view.ViewGroup)((android.view.ViewGroup)parent).removeView(overlay);}).start();}
+          '''
           if anchor not in s:
               raise SystemExit("button anchor not found")
           s=s.replace(anchor,overlay+anchor)
