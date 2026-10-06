@@ -32,7 +32,7 @@ jobs:
           cp -R alfa-browser-project project
           grep -n "minSdk 17" project/app/build.gradle
           grep -n "applicationId 'pl.alfabrowser.legacy'" project/app/build.gradle
-          grep -n "versionName '1.0-legacy'" project/app/build.gradle
+          grep -n "versionName '1.1-adblock'" project/app/build.gradle
 
       - name: Restore Pomocnik Alfa icon
         env:
