@@ -1,0 +1,130 @@
+name: Build Pomocnik Alfa 1.7.35 Android 7 Compat
+
+on:
+  push:
+    paths:
+      - 'triggers/build-1735-android7.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Restore verified 1.7.33 source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          mkdir artifact project
+          gh run download 37507518318 -R senikolo/Pomocnik-Alfa -n Pomocnik-Alfa-1.7.33-SOURCE -D artifact
+          tar -xJf artifact/Pomocnik-Alfa-1.7.33-SOURCE.tar.xz -C project
+          grep -n "versionCode 10733" project/app/build.gradle
+
+      - name: Reapply 1.7.34 EPKK Direct changes
+        run: |
+          set -euxo pipefail
+          cp overlays/1.7.34/AviationActivity.java project/app/src/main/java/com/ispina/lokalnie/AviationActivity.java
+          grep -n "d.liveatc.net/epkk_app" project/app/src/main/java/com/ispina/lokalnie/AviationActivity.java
+
+      - name: Add Android 7 TLS compatibility
+        run: |
+          set -euxo pipefail
+          mkdir -p project/app/src/main/res/raw project/app/src/main/res/xml
+          curl -fL --retry 4 'https://letsencrypt.org/certs/isrgrootx1.pem.txt' -o project/app/src/main/res/raw/isrg_root_x1.pem
+          cat > project/app/src/main/res/xml/tube_network.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <network-security-config>
+              <base-config cleartextTrafficPermitted="false">
+                  <trust-anchors>
+                      <certificates src="system" />
+                      <certificates src="@raw/isrg_root_x1" />
+                  </trust-anchors>
+              </base-config>
+              <domain-config cleartextTrafficPermitted="true">
+                  <domain includeSubdomains="false">127.0.0.1</domain>
+                  <domain includeSubdomains="false">localhost</domain>
+              </domain-config>
+          </network-security-config>
+          EOF
+          openssl x509 -in project/app/src/main/res/raw/isrg_root_x1.pem -noout -subject -issuer -dates -fingerprint -sha256
+          grep -n "@raw/isrg_root_x1" project/app/src/main/res/xml/tube_network.xml
+
+      - name: Set Android 7 compatibility version
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('project/app/build.gradle')
+          s=p.read_text()
+          assert 'versionCode 10733' in s
+          assert "versionName '1.7.33'" in s
+          s=s.replace('versionCode 10733','versionCode 10735')
+          s=s.replace("versionName '1.7.33'","versionName '1.7.35'")
+          p.write_text(s)
+          PY
+          sed -i "s/applicationId 'com.senikolo.pomocniknowy'/applicationId 'com.senikolo.pomocniknowy.android7compat'/" project/app/build.gradle
+          sed -i 's/android:label="Pomocnik Alfa"/android:label="Pomocnik Alfa Android 7"/' project/app/src/main/AndroidManifest.xml
+          grep -n "minSdk 23" project/app/build.gradle
+          grep -n "versionCode 10735" project/app/build.gradle
+          grep -n "versionName '1.7.35'" project/app/build.gradle
+          grep -n "android7compat" project/app/build.gradle
+          cd project
+          tar -cJf ../Pomocnik-Alfa-1.7.35-ANDROID7-SOURCE.tar.xz .
+
+      - name: Prepare Android SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: project
+        run: |
+          set -euxo pipefail
+          chmod +x gradlew
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8
+          org.gradle.workers.max=2
+          org.gradle.parallel=false
+          android.useAndroidX=true
+          EOF
+          ./gradlew --no-daemon assembleDebug -x lint --stacktrace
+          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | head -1)"
+          test -n "$APK"
+          cp "$APK" ../Pomocnik-Alfa-1.7.35-ANDROID7-COMPAT.apk
+
+      - name: Verify APK
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          test -s Pomocnik-Alfa-1.7.35-ANDROID7-COMPAT.apk
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.35-ANDROID7-COMPAT.apk | head -5
+          "$BT/apksigner" verify --verbose --print-certs Pomocnik-Alfa-1.7.35-ANDROID7-COMPAT.apk
+          unzip -l Pomocnik-Alfa-1.7.35-ANDROID7-COMPAT.apk | grep -E 'res/raw/isrg_root_x1|resources.arsc'
+          sha256sum Pomocnik-Alfa-1.7.35-ANDROID7-COMPAT.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.35-ANDROID7-COMPAT
+          path: Pomocnik-Alfa-1.7.35-ANDROID7-COMPAT.apk
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.35-ANDROID7-SOURCE
+          path: Pomocnik-Alfa-1.7.35-ANDROID7-SOURCE.tar.xz
+          retention-days: 3
