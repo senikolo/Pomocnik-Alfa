@@ -10,6 +10,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.webkit.*;
 import android.widget.*;
 import java.net.URLEncoder;
+import java.io.ByteArrayInputStream;
 import java.util.*;
 
 public class MainActivity extends Activity {
@@ -17,11 +18,22 @@ public class MainActivity extends Activity {
     private EditText address;
     private TextView status;
     private boolean saver=false, desktop=false, js=true, fullscreen=false;
+    private boolean adBlock=true;
+    private int blockedOnPage=0;
+    private final String[] BLOCKED_HOSTS={
+        "doubleclick.net","googlesyndication.com","googleadservices.com","adservice.google.com",
+        "googletagservices.com","2mdn.net","amazon-adsystem.com","adform.net","adsrvr.org",
+        "criteo.com","criteo.net","taboola.com","outbrain.com","scorecardresearch.com",
+        "pubmatic.com","rubiconproject.com","openx.net","adnxs.com","casalemedia.com",
+        "serving-sys.com","smartadserver.com","advertising.com","yieldmo.com",
+        "quantserve.com","demdex.net","mathtag.com","contextweb.com"
+    };
     private final String PREFS="alfa_browser";
     private final String HOME="file:///android_asset/start.html";
 
     @Override public void onCreate(Bundle b){
         super.onCreate(b);
+        adBlock=getSharedPreferences(PREFS,0).getBoolean("adblock",true);
         buildUi();
         configureWebView();
         Intent i=getIntent();
@@ -98,11 +110,24 @@ public class MainActivity extends Activity {
 
         web.setWebViewClient(new WebViewClient(){
             @Override public boolean shouldOverrideUrlLoading(WebView view,String url){return handleExternal(url);}
+            @Override public WebResourceResponse shouldInterceptRequest(WebView view,String url){
+                if(adBlock && shouldBlock(url)){
+                    blockedOnPage++;
+                    final int n=blockedOnPage;
+                    runOnUiThread(new Runnable(){public void run(){status.setText("Bloker reklam • "+n+" zablok.");}});
+                    return new WebResourceResponse("text/plain","UTF-8",new ByteArrayInputStream(new byte[0]));
+                }
+                return super.shouldInterceptRequest(view,url);
+            }
             @Override public void onPageStarted(WebView view,String url,android.graphics.Bitmap icon){
+                blockedOnPage=0;
                 address.setText(url.startsWith("file:///android_asset/")?"Start":url); status.setText("Ładowanie…");
             }
             @Override public void onPageFinished(WebView view,String url){
-                status.setText(saver?"Saver • obrazy wyłączone":"Gotowy"); saveHistory(view.getTitle(),url);
+                String s=saver?"Saver • obrazy wyłączone":"Gotowy";
+                if(adBlock)s+=" • reklamy "+blockedOnPage;
+                status.setText(s);
+                saveHistory(view.getTitle(),url);
             }
             @Override public void onReceivedError(WebView view,int errorCode,String description,String failingUrl){
                 status.setText("Błąd: "+description);
@@ -112,6 +137,19 @@ public class MainActivity extends Activity {
         web.setWebChromeClient(new WebChromeClient(){
             @Override public void onProgressChanged(WebView v,int p){if(p<100)status.setText("Ładowanie "+p+"%");}
         });
+    }
+
+    private boolean shouldBlock(String url){
+        if(url==null)return false;
+        try{
+            String host=Uri.parse(url).getHost();
+            if(host==null)return false;
+            host=host.toLowerCase(Locale.US);
+            for(String d:BLOCKED_HOSTS){
+                if(host.equals(d)||host.endsWith("."+d))return true;
+            }
+        }catch(Exception ignored){}
+        return false;
     }
 
     private boolean handleExternal(String url){
@@ -140,22 +178,24 @@ public class MainActivity extends Activity {
         PopupMenu p=new PopupMenu(this,anchor);
         p.getMenu().add(1,1,0,"Zakładki");
         p.getMenu().add(1,2,1,"Historia");
-        p.getMenu().add(1,3,2,saver?"Saver: włącz obrazy":"Saver: wyłącz obrazy");
-        p.getMenu().add(1,4,3,desktop?"Wersja mobilna":"Wersja komputerowa");
-        p.getMenu().add(1,5,4,js?"JavaScript: wyłącz":"JavaScript: włącz");
-        p.getMenu().add(1,6,5,fullscreen?"Wyjdź z pełnego ekranu":"Pełny ekran");
-        p.getMenu().add(1,7,6,"Wyczyść dane przeglądania");
-        p.getMenu().add(1,8,7,"O aplikacji");
+        p.getMenu().add(1,3,2,adBlock?"Blokowanie reklam: włączone":"Blokowanie reklam: wyłączone");
+        p.getMenu().add(1,4,3,saver?"Saver: włącz obrazy":"Saver: wyłącz obrazy");
+        p.getMenu().add(1,5,4,desktop?"Wersja mobilna":"Wersja komputerowa");
+        p.getMenu().add(1,6,5,js?"JavaScript: wyłącz":"JavaScript: włącz");
+        p.getMenu().add(1,7,6,fullscreen?"Wyjdź z pełnego ekranu":"Pełny ekran");
+        p.getMenu().add(1,8,7,"Wyczyść dane przeglądania");
+        p.getMenu().add(1,9,8,"O aplikacji");
         p.setOnMenuItemClickListener(i->{
             switch(i.getItemId()){
                 case 1:showBookmarks();return true;
                 case 2:showHistory();return true;
-                case 3:toggleSaver();return true;
-                case 4:toggleDesktop();return true;
-                case 5:toggleJs();return true;
-                case 6:toggleFullscreen();return true;
-                case 7:clearBrowsing();return true;
-                case 8:about();return true;
+                case 3:toggleAdBlock();return true;
+                case 4:toggleSaver();return true;
+                case 5:toggleDesktop();return true;
+                case 6:toggleJs();return true;
+                case 7:toggleFullscreen();return true;
+                case 8:clearBrowsing();return true;
+                case 9:about();return true;
             }
             return false;
         });
@@ -202,6 +242,14 @@ public class MainActivity extends Activity {
         }).setNegativeButton("Zamknij",null).show();
     }
 
+    private void toggleAdBlock(){
+        adBlock=!adBlock;
+        getSharedPreferences(PREFS,0).edit().putBoolean("adblock",adBlock).apply();
+        blockedOnPage=0;
+        Toast.makeText(this,"Blokowanie reklam "+(adBlock?"włączone":"wyłączone"),Toast.LENGTH_SHORT).show();
+        web.reload();
+    }
+
     private void toggleSaver(){
         saver=!saver;
         WebSettings s=web.getSettings();
@@ -237,8 +285,8 @@ public class MainActivity extends Activity {
     }
 
     private void about(){
-        new AlertDialog.Builder(this).setTitle("Alfa Browser Legacy 1.0")
-        .setMessage("Lekka przeglądarka dla Androida 4.2.2.\n\nNie ignoruje błędów certyfikatów. Do bankowości i płatności używaj nowszego urządzenia.")
+        new AlertDialog.Builder(this).setTitle("Alfa Browser Legacy 1.1")
+        .setMessage("Lekka przeglądarka dla Androida 4.2.2.\n\nWbudowany lekki bloker reklam i trackerów działa domyślnie. Nie ignoruje błędów certyfikatów. Do bankowości i płatności używaj nowszego urządzenia.")
         .setPositiveButton("OK",null).show();
     }
 
