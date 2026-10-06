@@ -71,12 +71,125 @@ jobs:
       - name: Apply TOK FM server island fix
         run: |
           set -euxo pipefail
-          base64 -d patches/tokfm-server-island-1730.patch.gz.b64 | gzip -dc > /tmp/pa1730.patch
+          python - <<'PY'
+          from pathlib import Path
+
+          b=Path('project/app/build.gradle')
+          t=b.read_text()
+          t=t.replace('versionCode 10729','versionCode 10730').replace("versionName '1.7.29'","versionName '1.7.30'")
+          b.write_text(t)
+
+          p=Path('project/app/src/main/java/com/ispina/lokalnie/radio/RadioInfoPlus.java')
+          s=p.read_text()
+          old='''        if(eq(station,"TOK FM")){
+              Result r=parseTokFm(toLines(download("https://audycje.tokfm.pl/ramowka?v=2")));
+              if(r.hasAnything())r.source="TOK FM • ramówka";
+              return r;
+          }
+          '''
+          new='''        if(eq(station,"TOK FM")){
+              Result r=fetchTokFmSchedule();
+              if(r.hasAnything())r.source="TOK FM • ramówka live";
+              return r;
+          }
+          '''
+          assert old in s, 'Nie znaleziono starego bloku TOK FM'
+          s=s.replace(old,new)
+
+          anchor='''    private static String download(String url) throws Exception{
+          '''
+          insert=r'''    private static Result fetchTokFmSchedule() throws Exception{
+              Result out=new Result();
+              String shell=downloadTokFm("https://audycje.tokfm.pl/ramowka?v=2");
+              if(shell.isEmpty())return out;
+              Matcher m=Pattern.compile("/_server-islands/ScheduleListIsland\\?[^\\\"']+").matcher(shell);
+              if(!m.find())return out;
+              String path=m.group().replace("&amp;","&");
+              String island=downloadTokFm("https://audycje.tokfm.pl"+path);
+              if(island.isEmpty())return out;
+              return parseTokFmIsland(island);
+          }
+
+          private static Result parseTokFmIsland(String html){
+              Result r=new Result();
+              Calendar cal=Calendar.getInstance(TimeZone.getTimeZone("Europe/Warsaw"));
+              int day=(cal.get(Calendar.DAY_OF_WEEK)+5)%7;
+              int now=cal.get(Calendar.HOUR_OF_DAY)*60+cal.get(Calendar.MINUTE);
+              Pattern dayPattern=Pattern.compile("(?is)<ul[^>]*data-day=[\\\"']?"+day+"[\\\"']?[^>]*>(.*?)</ul>");
+              Matcher dm=dayPattern.matcher(html);
+              if(!dm.find())return r;
+              String block=dm.group(1);
+              Pattern itemPattern=Pattern.compile("(?is)<li[^>]*data-time=[\\\"']([0-2]?\\d:[0-5]\\d)[\\\"'][^>]*>(.*?)</li>");
+              Matcher im=itemPattern.matcher(block);
+              int best=-1;
+              String bestProgram="";
+              while(im.find()){
+                  int mins=minutesFromLine(im.group(1));
+                  if(mins<0||mins>now||mins<best)continue;
+                  String program=extractTokProgram(im.group(2));
+                  if(program.isEmpty())continue;
+                  best=mins;
+                  bestProgram=program;
+              }
+              if(!bestProgram.isEmpty())r.program=bestProgram;
+              return r;
+          }
+
+          private static String extractTokProgram(String item){
+              Matcher a=Pattern.compile("(?is)<h3[^>]*tok-schedule__program--name[^>]*>\\s*<a[^>]*href=[\\\"']/audycja/[^\\\"']*[\\\"'][^>]*>(.*?)</a>").matcher(item);
+              if(a.find())return htmlText(a.group(1));
+              Matcher h=Pattern.compile("(?is)<h3[^>]*tok-schedule__program--name[^>]*>(.*?)</h3>").matcher(item);
+              if(h.find())return htmlText(h.group(1));
+              return "";
+          }
+
+          private static String htmlText(String value){
+              if(value==null)return "";
+              String x=value.replaceAll("(?s)<[^>]+>"," ");
+              try{x=Html.fromHtml(x,Html.FROM_HTML_MODE_LEGACY).toString();}catch(Throwable ignored){}
+              return clean(x);
+          }
+
+          private static String downloadTokFm(String url) throws Exception{
+              Exception last=null;
+              for(int attempt=0;attempt<3;attempt++){
+                  HttpURLConnection c=null;
+                  try{
+                      c=(HttpURLConnection)new URL(url).openConnection();
+                      c.setInstanceFollowRedirects(true);
+                      c.setConnectTimeout(12000);
+                      c.setReadTimeout(20000);
+                      c.setRequestProperty("User-Agent","Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36");
+                      c.setRequestProperty("Accept","text/html,application/xhtml+xml,*/*;q=0.8");
+                      c.setRequestProperty("Accept-Language","pl-PL,pl;q=0.9,en;q=0.6");
+                      c.setRequestProperty("Cache-Control","no-cache");
+                      c.setRequestProperty("Pragma","no-cache");
+                      c.setRequestProperty("Referer","https://audycje.tokfm.pl/ramowka?v=2");
+                      int code=c.getResponseCode();
+                      if(code<200||code>=400)throw new java.io.IOException("TOK FM HTTP "+code);
+                      BufferedReader br=new BufferedReader(new InputStreamReader(c.getInputStream(),StandardCharsets.UTF_8));
+                      StringBuilder sb=new StringBuilder();
+                      char[] buf=new char[8192];
+                      int n,total=0;
+                      while((n=br.read(buf))>0&&total<1600000){sb.append(buf,0,n);total+=n;}
+                      if(sb.length()>0)return sb.toString();
+                  }catch(Exception e){last=e;}
+                  finally{if(c!=null)c.disconnect();}
+                  try{Thread.sleep(350L*(attempt+1));}catch(InterruptedException ie){Thread.currentThread().interrupt();break;}
+              }
+              if(last!=null)throw last;
+              return "";
+          }
+
+          '''
+          assert anchor in s, 'Nie znaleziono miejsca na helpery TOK FM'
+          s=s.replace(anchor,insert+anchor)
+          p.write_text(s)
+          PY
+          grep -n "versionCode 10730" project/app/build.gradle
+          grep -n "fetchTokFmSchedule" project/app/src/main/java/com/ispina/lokalnie/radio/RadioInfoPlus.java
+          grep -n "ScheduleListIsland" project/app/src/main/java/com/ispina/lokalnie/radio/RadioInfoPlus.java
           cd project
-          patch -p0 < /tmp/pa1730.patch
-          grep -n "versionCode 10730" app/build.gradle
-          grep -n "fetchTokFmSchedule" app/src/main/java/com/ispina/lokalnie/radio/RadioInfoPlus.java
-          grep -n "ScheduleListIsland" app/src/main/java/com/ispina/lokalnie/radio/RadioInfoPlus.java
           tar -cJf ../Pomocnik-Alfa-1.7.30-SOURCE.tar.xz .
 
       - name: Make side-by-side test package
