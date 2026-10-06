@@ -465,80 +465,48 @@ jobs:
           p=Path("project/app/src/main/java/com/ispina/lokalnie/TubeActivity.java")
           s=p.read_text()
 
-          old='private LinearLayout bottomNav;private String currentTab="discover";private LinearLayout searchResults;private final List<Video> loadedResults=new ArrayList<>();private int durationFilter;private final List<Button> filterButtons=new ArrayList<>();private Button timerButton;private android.widget.FrameLayout playerFrame;private View gestureSurface;private Button unlockButton;private boolean controlsLocked;private GestureDetector playerGestures;'
-          new='private LinearLayout bottomNav;private String currentTab="discover";private LinearLayout searchResults;private final List<Video> loadedResults=new ArrayList<>();private int durationFilter;private final List<Button> filterButtons=new ArrayList<>();private Button timerButton;private android.widget.FrameLayout playerFrame,videoLoadingOverlay;private View gestureSurface;private Button unlockButton;private boolean controlsLocked;private GestureDetector playerGestures;private int pendingPlayerScrollY=-1;'
+          old='private boolean openingVideo;private Button retryPlaybackButton;private View loadingOverlay;'
+          new='private boolean openingVideo;private Button retryPlaybackButton;private View loadingOverlay;private int pendingPlayerScrollY=-1;'
           if old not in s:
-              raise SystemExit("player fields not found")
+              raise SystemExit("loading overlay fields not found")
           s=s.replace(old,new)
 
-          s=s.replace(
-              'status=null;retryPlaybackButton=null;timerButton=null;playerFrame=null;gestureSurface=null;',
-              'status=null;retryPlaybackButton=null;timerButton=null;videoLoadingOverlay=null;playerFrame=null;gestureSurface=null;'
-          )
-
-          marker=' private Button button(LinearLayout target,String label,Runnable r)'
-          helper=''' private boolean switchingInsidePlayer(){return view!=null&&playerFrame!=null&&scroll!=null;}
-           private void showVideoLoadingOverlay(){if(playerFrame==null)return;hideVideoLoadingOverlay();FrameLayout overlay=new FrameLayout(this);overlay.setClickable(true);overlay.setFocusable(true);overlay.setContentDescription("Ładowanie nowego filmu");overlay.setBackground(NativeUi.rounded(0x66000000,22,this));LinearLayout bubble=new LinearLayout(this);bubble.setGravity(Gravity.CENTER);bubble.setBackground(NativeUi.rounded(0xF2FFFFFF,22,this));bubble.setElevation(dp(8));ProgressBar spinner=new ProgressBar(this);spinner.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(NativeUi.green(this)));bubble.addView(spinner,new LinearLayout.LayoutParams(dp(34),dp(34)));FrameLayout.LayoutParams bubbleLp=new FrameLayout.LayoutParams(dp(70),dp(70),Gravity.CENTER);overlay.addView(bubble,bubbleLp);overlay.setAlpha(0f);playerFrame.addView(overlay,new FrameLayout.LayoutParams(-1,-1));videoLoadingOverlay=overlay;overlay.animate().alpha(1f).setDuration(140).start();}
-           private void hideVideoLoadingOverlay(){if(videoLoadingOverlay!=null){ViewParent parent=videoLoadingOverlay.getParent();if(parent instanceof ViewGroup)((ViewGroup)parent).removeView(videoLoadingOverlay);videoLoadingOverlay=null;}}
-           private void restorePlayerScroll(){if(pendingPlayerScrollY<0||scroll==null)return;final int y=pendingPlayerScrollY;pendingPlayerScrollY=-1;scroll.post(()->{int max=Math.max(0,body.getHeight()-scroll.getHeight());scroll.scrollTo(0,Math.min(y,max));});}
-          '''
+          marker=' private Button button(LinearLayout target,String label,Runnable r){'
+          helper=' private void restorePlayerScroll(){if(pendingPlayerScrollY<0||scroll==null)return;final int y=pendingPlayerScrollY;pendingPlayerScrollY=-1;scroll.post(()->{int max=Math.max(0,body.getHeight()-scroll.getHeight());scroll.scrollTo(0,Math.min(y,max));});}\n'
           if marker not in s:
               raise SystemExit("button marker not found")
           s=s.replace(marker,helper+marker,1)
 
-          old_open='''  if(mode==0&&openingVideo){message("Film jest już przygotowywany…");return;}
-            if(mode==0)openingVideo=true;
-            final LinearLayout progress=loading("Przygotowuję odtwarzanie…");'''
-          new_open='''  if(mode==0&&openingVideo)return;
-            final boolean switchInPlayer=mode==0&&switchingInsidePlayer();
-            if(mode==0)openingVideo=true;
-            if(switchInPlayer){pendingPlayerScrollY=scroll.getScrollY();showVideoLoadingOverlay();}
-            final LinearLayout progress=switchInPlayer?null:loading("Przygotowuję odtwarzanie…");'''
+          old_open='private void open(Video v,int mode,boolean startOver){\n  final int requestGeneration=generation;'
+          new_open='private void open(Video v,int mode,boolean startOver){\n  final int requestGeneration=generation;\n  if(mode==0&&view!=null&&scroll!=null)pendingPlayerScrollY=scroll.getScrollY();'
           if old_open not in s:
-              raise SystemExit("open loading block not found")
-          s=s.replace(old_open,new_open)
+              raise SystemExit("open header not found")
+          s=s.replace(old_open,new_open,1)
 
-          s=s.replace(
-              'if(progress.getParent()==body)body.removeView(progress);',
-              'if(progress!=null&&progress.getParent()==body)body.removeView(progress);'
-          )
-          s=s.replace(
-              '},error->{if(progress.getParent()==body)body.removeView(progress);openingVideo=false;message(failureText(error));});',
-              '},error->{if(progress!=null&&progress.getParent()==body)body.removeView(progress);hideVideoLoadingOverlay();openingVideo=false;message(failureText(error));});'
-          )
+          old_title='info.addView(NativeUi.text(this,selected.title,19,true));String author='
+          new_title='TextView currentTitle=NativeUi.text(this,selected.title,19,true);currentTitle.setMaxLines(2);currentTitle.setMinLines(2);currentTitle.setEllipsize(android.text.TextUtils.TruncateAt.END);info.addView(currentTitle);String author='
+          if old_title not in s:
+              raise SystemExit("now playing title not found")
+          s=s.replace(old_title,new_title,1)
 
-          s=s.replace(
-              'if(!alive||requestGeneration!=generation){openingVideo=false;return;}',
-              'if(!alive||requestGeneration!=generation){hideVideoLoadingOverlay();openingVideo=false;return;}'
-          )
-          s=s.replace(
-              'else {openingVideo=false;message("Nie udało się uruchomić odtwarzacza. Spróbuj ponownie.");}',
-              'else {hideVideoLoadingOverlay();openingVideo=false;message("Nie udało się uruchomić odtwarzacza. Spróbuj ponownie.");}'
-          )
-          s=s.replace(
-              '}catch(Exception|LinkageError e){openingVideo=false;android.util.Log.e("AlfaTube","Błąd uruchamiania ścieżki",e);',
-              '}catch(Exception|LinkageError e){hideVideoLoadingOverlay();openingVideo=false;android.util.Log.e("AlfaTube","Błąd uruchamiania ścieżki",e);'
-          )
-
-          s=s.replace(
-              'info.addView(NativeUi.text(this,selected.title,19,true));String author=',
-              'TextView currentTitle=NativeUi.text(this,selected.title,19,true);currentTitle.setMaxLines(2);currentTitle.setMinLines(2);currentTitle.setEllipsize(android.text.TextUtils.TruncateAt.END);info.addView(currentTitle);String author='
-          )
           s=s.replace(
               'meta.setPadding(0,dp(7),0,0);info.addView(meta);',
-              'meta.setPadding(0,dp(7),0,0);meta.setMaxLines(1);meta.setEllipsize(android.text.TextUtils.TruncateAt.END);info.addView(meta);'
-          )
-          s=s.replace(
-              'button(saving,"Słuchaj w Pomocniku Alfa",()->{toPA=true;startActivity(new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));finish();});updateAvailableControls();',
-              'button(saving,"Słuchaj w Pomocniku Alfa",()->{toPA=true;startActivity(new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));finish();});updateAvailableControls();restorePlayerScroll();'
+              'meta.setPadding(0,dp(7),0,0);meta.setMaxLines(1);meta.setEllipsize(android.text.TextUtils.TruncateAt.END);info.addView(meta);',
+              1
           )
 
-          assert 'showVideoLoadingOverlay()' in s
+          tail='button(saving,"Słuchaj w Pomocniku Alfa",()->{toPA=true;startActivity(new Intent(this,MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT));finish();});updateAvailableControls();'
+          if tail not in s:
+              raise SystemExit("player tail not found")
+          s=s.replace(tail,tail+'restorePlayerScroll();',1)
+
           assert 'pendingPlayerScrollY=scroll.getScrollY()' in s
           assert 'currentTitle.setMinLines(2)' in s
+          assert 'restorePlayerScroll();' in s
+          assert 'Przygotowuję odtwarzanie' not in s
           assert 'Film jest już przygotowywany' not in s
           p.write_text(s)
-          print("PA 1.7.12 ergonomic transition patch OK")
+          print("PA 1.7.12 player ergonomics patch OK")
           PY
 
       - name: Set version 1.7.12
