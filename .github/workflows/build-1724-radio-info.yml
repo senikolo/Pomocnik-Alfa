@@ -1,0 +1,105 @@
+name: Build Pomocnik Alfa 1.7.24 Radio Info Test
+
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+jobs:
+  build:
+    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.24 RADIO INFO' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Restore verified 1.7.23 source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          mkdir artifact project
+          gh run download 37450458198 -R senikolo/Pomocnik-Alfa -n Pomocnik-Alfa-1.7.23-SOURCE -D artifact
+          tar -xJf artifact/Pomocnik-Alfa-1.7.23-SOURCE.tar.xz -C project
+          grep -n "versionCode 10723" project/app/build.gradle
+          grep -n "RADIO_NOTIFICATION_ID=1722" project/app/src/main/java/com/ispina/lokalnie/radio/RadioService.java
+
+      - name: Apply radio now playing patch
+        run: |
+          set -euxo pipefail
+          base64 -d patches/radio-now-playing-1724.patch.gz.b64 > /tmp/pa1724.patch.gz
+          gzip -dc /tmp/pa1724.patch.gz > /tmp/pa1724.patch
+          cd project
+          patch -p1 < /tmp/pa1724.patch
+          grep -n "versionCode 10724" app/build.gradle
+          grep -n "Teraz na antenie" app/src/main/java/com/ispina/lokalnie/RadioActivity.java
+          grep -n "onMediaMetadataChanged" app/src/main/java/com/ispina/lokalnie/radio/RadioService.java
+          grep -n "onMetadata" app/src/main/java/com/ispina/lokalnie/radio/RadioService.java
+          tar -cJf ../Pomocnik-Alfa-1.7.24-SOURCE.tar.xz .
+
+      - name: Make side-by-side test package
+        run: |
+          set -euxo pipefail
+          sed -i "s/applicationId 'com.senikolo.pomocniknowy'/applicationId 'com.senikolo.pomocniknowy.radioinfo1724'/" project/app/build.gradle
+          sed -i 's/android:label="Pomocnik Alfa"/android:label="Pomocnik Alfa RADIO INFO"/' project/app/src/main/AndroidManifest.xml
+          grep -n "radioinfo1724" project/app/build.gradle
+          grep -n 'Pomocnik Alfa RADIO INFO' project/app/src/main/AndroidManifest.xml
+
+      - name: Prepare Android SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Build signed debug APK
+        working-directory: project
+        run: |
+          set -euxo pipefail
+          chmod +x gradlew
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8
+          org.gradle.workers.max=2
+          org.gradle.parallel=false
+          android.useAndroidX=true
+          EOF
+          ./gradlew --no-daemon assembleDebug -x lint --stacktrace
+          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | head -1)"
+          test -n "$APK"
+          cp "$APK" ../Pomocnik-Alfa-1.7.24-RADIO-INFO.apk
+
+      - name: Verify APK
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          test -s Pomocnik-Alfa-1.7.24-RADIO-INFO.apk
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.24-RADIO-INFO.apk | head -3
+          "$BT/apksigner" verify --verbose --print-certs Pomocnik-Alfa-1.7.24-RADIO-INFO.apk
+          sha256sum Pomocnik-Alfa-1.7.24-RADIO-INFO.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.24-RADIO-INFO
+          path: Pomocnik-Alfa-1.7.24-RADIO-INFO.apk
+          retention-days: 7
+
+      - name: Upload source
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.24-SOURCE
+          path: Pomocnik-Alfa-1.7.24-SOURCE.tar.xz
+          retention-days: 3
