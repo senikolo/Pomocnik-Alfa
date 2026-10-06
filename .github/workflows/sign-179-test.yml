@@ -1,0 +1,77 @@
+name: Sign Pomocnik Alfa 1.7.9 Test APK
+
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  sign:
+    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER SIGN PA 1.7.9' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android build tools
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "build-tools;35.0.0"
+
+      - name: Download unsigned 1.7.9
+        run: |
+          curl -fL --retry 4             "https://github.com/senikolo/Pomocnik-Alfa/releases/download/build-1.7.9-unsigned/Pomocnik-Alfa-1.7.9-UNSIGNED.apk"             -o Pomocnik-Alfa-1.7.9-UNSIGNED.apk
+          test -s Pomocnik-Alfa-1.7.9-UNSIGNED.apk
+
+      - name: Create test signing key
+        run: |
+          keytool -genkeypair             -keystore pa179-test.jks             -storepass "Pomocnik179Test2026"             -keypass "Pomocnik179Test2026"             -alias pa179             -keyalg RSA             -keysize 2048             -validity 10000             -dname "CN=Pomocnik Alfa 1.7.9,O=Pomocnik Alfa,C=PL"
+
+      - name: Align and sign
+        run: |
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          "$BT/zipalign" -p -f 4             Pomocnik-Alfa-1.7.9-UNSIGNED.apk             Pomocnik-Alfa-1.7.9-ALIGNED.apk
+          "$BT/apksigner" sign             --ks pa179-test.jks             --ks-key-alias pa179             --ks-pass pass:Pomocnik179Test2026             --key-pass pass:Pomocnik179Test2026             --v1-signing-enabled true             --v2-signing-enabled true             --v3-signing-enabled true             --out Pomocnik-Alfa-1.7.9-ALFA-TUBE-CRASH-FIX.apk             Pomocnik-Alfa-1.7.9-ALIGNED.apk
+
+      - name: Verify signed APK
+        run: |
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          "$BT/zipalign" -c -v 4 Pomocnik-Alfa-1.7.9-ALFA-TUBE-CRASH-FIX.apk
+          "$BT/apksigner" verify --verbose --print-certs Pomocnik-Alfa-1.7.9-ALFA-TUBE-CRASH-FIX.apk
+          sha256sum Pomocnik-Alfa-1.7.9-ALFA-TUBE-CRASH-FIX.apk
+          ls -lh Pomocnik-Alfa-1.7.9-ALFA-TUBE-CRASH-FIX.apk
+
+      - name: Upload signed artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.9-ALFA-TUBE-CRASH-FIX
+          path: Pomocnik-Alfa-1.7.9-ALFA-TUBE-CRASH-FIX.apk
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Publish signed test release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete build-1.7.9-signed-test -y || true
+          git push --delete origin build-1.7.9-signed-test || true
+          gh release create build-1.7.9-signed-test             "Pomocnik-Alfa-1.7.9-ALFA-TUBE-CRASH-FIX.apk#Pomocnik-Alfa-1.7.9-ALFA-TUBE-CRASH-FIX.apk"             --title "Pomocnik Alfa 1.7.9 Alfa Tube Crash Fix"             --notes "Instalowalny testowy APK 1.7.9 z poprawką awarii Alfa Tube po kliknięciu filmu. Uwaga: podpis testowy; może wymagać odinstalowania poprzedniej wersji."
+
+      - name: Report result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_STATUS: ${{ job.status }}
+        run: |
+          gh issue create             --title "PA 1.7.9 SIGN ${BUILD_STATUS} ${GITHUB_RUN_ID}"             --body "Status: ${BUILD_STATUS}
+
+Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
