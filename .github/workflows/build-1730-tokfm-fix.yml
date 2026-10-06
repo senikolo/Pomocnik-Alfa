@@ -81,20 +81,15 @@ jobs:
 
           p=Path('project/app/src/main/java/com/ispina/lokalnie/radio/RadioInfoPlus.java')
           s=p.read_text()
-          old='''        if(eq(station,"TOK FM")){
-              Result r=parseTokFm(toLines(download("https://audycje.tokfm.pl/ramowka?v=2")));
-              if(r.hasAnything())r.source="TOK FM • ramówka";
-              return r;
-          }
-          '''
+          import re
+          pattern=r'''        if\(eq\(station,"TOK FM"\)\)\{\s*Result r=parseTokFm\(toLines\(download\("https://audycje\.tokfm\.pl/ramowka\?v=2"\)\)\);\s*if\(r\.hasAnything\(\)\)r\.source="TOK FM • ramówka";\s*return r;\s*\}'''
           new='''        if(eq(station,"TOK FM")){
               Result r=fetchTokFmSchedule();
               if(r.hasAnything())r.source="TOK FM • ramówka live";
               return r;
-          }
-          '''
-          assert old in s, 'Nie znaleziono starego bloku TOK FM'
-          s=s.replace(old,new)
+          }'''
+          s,n=re.subn(pattern,new,s,count=1)
+          assert n==1, 'Nie znaleziono starego bloku TOK FM'
 
           anchor='''    private static String download(String url) throws Exception{
           '''
