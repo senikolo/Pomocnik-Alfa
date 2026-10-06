@@ -1,4 +1,4 @@
-name: Build Pomocnik Alfa 1.7.10
+name: Build Pomocnik Alfa 1.7.11
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.10 BUILD' }}
+    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.11 BUILD' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -251,31 +251,165 @@ jobs:
           print("PA 1.7.10 playback stability patch OK")
           PY
 
-      - name: Set version 1.7.10
+      - name: Apply 1.7.11 deep audit fixes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          # TubeActivity: cancel stale opens, keep UI state consistent,
+          # and let native Media3 controls receive their own touch events.
+          p=Path("project/app/src/main/java/com/ispina/lokalnie/TubeActivity.java")
+          s=p.read_text()
+          s=s.replace(
+              'private void screen(String name){if(saver)setSaver(false);if(fullscreen)setFullscreen(false);',
+              'private void screen(String name){openingVideo=false;if(saver)setSaver(false);if(fullscreen)setFullscreen(false);'
+          )
+          s=s.replace(
+              'private void open(Video v,int mode,boolean startOver){\n  if(v==null||v.url==null||v.url.trim().isEmpty())',
+              'private void open(Video v,int mode,boolean startOver){\n  final int requestGeneration=generation;\n  if(v==null||v.url==null||v.url.trim().isEmpty())'
+          )
+          s=s.replace(
+              'waitService(full,mode,0,startOver);',
+              'waitService(full,mode,0,startOver,requestGeneration);'
+          )
+          old=''' private void waitService(Video full,int mode,int attempts){waitService(full,mode,attempts,false);}
+ private void waitService(Video full,int mode,int attempts,boolean startOver){if(!alive){openingVideo=false;return;}TubeService s=TubeService.active;if(s==null){if(attempts<50)main.postDelayed(()->waitService(full,mode,attempts+1,startOver),100);else {openingVideo=false;message("Nie udało się uruchomić odtwarzacza. Spróbuj ponownie.");}return;}try{s.add(full,quality,audio,subtitle,onlyAudio,mode,startOver);if(mode==0){openingVideo=false;if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS},20);playerScreen();if(store.flag("saver",false))setSaver(true);}else {openingVideo=false;message("Dodano do kolejki.");}}catch(Exception|LinkageError e){openingVideo=false;android.util.Log.e("AlfaTube","Błąd uruchamiania ścieżki",e);message("Nie udało się odtworzyć tej ścieżki. Spróbuj innego filmu lub jakości.");}}'''
+          new=''' private void waitService(Video full,int mode,int attempts){waitService(full,mode,attempts,false,generation);}
+ private void waitService(Video full,int mode,int attempts,boolean startOver){waitService(full,mode,attempts,startOver,generation);}
+ private void waitService(Video full,int mode,int attempts,boolean startOver,int requestGeneration){if(!alive||requestGeneration!=generation){openingVideo=false;return;}TubeService s=TubeService.active;if(s==null){if(attempts<50)main.postDelayed(()->waitService(full,mode,attempts+1,startOver,requestGeneration),100);else {openingVideo=false;message("Nie udało się uruchomić odtwarzacza. Spróbuj ponownie.");}return;}try{s.add(full,quality,audio,subtitle,onlyAudio,mode,startOver);if(mode==0){openingVideo=false;if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED)requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS},20);playerScreen();if(store.flag("saver",false))setSaver(true);}else {openingVideo=false;message("Dodano do kolejki.");}}catch(Exception|LinkageError e){openingVideo=false;android.util.Log.e("AlfaTube","Błąd uruchamiania ścieżki",e);message("Nie udało się odtworzyć tej ścieżki. Spróbuj innego filmu lub jakości.");}}'''
+          if old not in s:
+              raise SystemExit("waitService block not found")
+          s=s.replace(old,new)
+          s=s.replace(
+              ' View nativeControls=view.findViewById(androidx.media3.ui.R.id.exo_controller);if(nativeControls!=null)nativeControls.setOnTouchListener((v,event)->controlsLocked||playerGestures.onTouchEvent(event));\n',
+              ''
+          )
+          s=s.replace(
+              'saverPanel=null;bar.setVisibility(View.VISIBLE);bottomNav.setVisibility(View.VISIBLE);scroll.setVisibility(View.VISIBLE);',
+              'saverPanel=null;bar.setVisibility(View.VISIBLE);bottomNav.setVisibility(view!=null?View.GONE:View.VISIBLE);scroll.setVisibility(View.VISIBLE);'
+          )
+          s=s.replace(
+              'if(bottomNav!=null)bottomNav.setVisibility(in?View.GONE:View.VISIBLE);',
+              'if(bottomNav!=null)bottomNav.setVisibility(in?View.GONE:(view!=null?View.GONE:View.VISIBLE));'
+          )
+          s=s.replace(
+              'TextView author=NativeUi.muted(this,video.author+" · "+duration(video.duration),12);',
+              'String recommendationAuthor=(video.author==null||video.author.trim().isEmpty())?"Materiał wideo":video.author;TextView author=NativeUi.muted(this,recommendationAuthor+" · "+duration(video.duration),12);'
+          )
+          p.write_text(s)
+
+          # TubeService: source creation must not mutate the currently playing
+          # item's track state. Make source switching transactional enough to
+          # avoid transient media-item callbacks corrupting current.
+          p=Path("project/app/src/main/java/com/ispina/lokalnie/tube/TubeService.java")
+          s=p.read_text()
+          s=s.replace(
+              'private boolean audioOnly;public Video current;',
+              'private boolean audioOnly,switchingSource;public Video current;'
+          )
+          s=s.replace(
+              'public void onMediaItemTransition(MediaItem i,int reason){current=i==null?null:videos.get(i.mediaId);error="";}',
+              'public void onMediaItemTransition(MediaItem i,int reason){if(switchingSource)return;current=i==null?null:videos.get(i.mediaId);error="";}'
+          )
+          s=s.replace(
+              'if(mode==0){currentQuality=quality;currentAudio=audio;currentSub=subtitle;audioOnly=onlyAudio;player.setMediaSource(source);current=v;player.prepare();player.seekTo(TubeUx.resumePosition(store.prefs.getLong("position:"+v.url,0),v.duration>0?v.duration*1000:0));player.play();}',
+              'if(mode==0){currentQuality=quality;currentAudio=audio;currentSub=subtitle;audioOnly=onlyAudio;player.setMediaSource(source);current=v;applyOnlyAudio(onlyAudio);player.prepare();player.seekTo(TubeUx.resumePosition(store.prefs.getLong("position:"+v.url,0),v.duration>0?v.duration*1000:0));player.play();}'
+          )
+          old_switch='public void switchSource(int quality,int audio,int subtitle,boolean onlyAudio){if(current==null)return;currentQuality=quality;currentAudio=audio;currentSub=subtitle;audioOnly=onlyAudio;Video v=current;long pos=player.getCurrentPosition();boolean play=player.getPlayWhenReady();MediaSource s=source(v,quality,audio,subtitle,onlyAudio);int index=player.getCurrentMediaItemIndex();if(index<0||index>=player.getMediaItemCount())return;player.removeMediaItem(index);player.addMediaSource(index,s);player.seekTo(index,pos);player.prepare();player.setPlayWhenReady(play);}'
+          new_switch='public void switchSource(int quality,int audio,int subtitle,boolean onlyAudio){if(current==null||player==null)return;Video v=current;long pos=player.getCurrentPosition();boolean play=player.getPlayWhenReady();MediaSource replacement=source(v,quality,audio,subtitle,onlyAudio);int index=player.getCurrentMediaItemIndex();if(index<0||index>=player.getMediaItemCount())return;switchingSource=true;try{player.setPlayWhenReady(false);player.removeMediaItem(index);player.addMediaSource(index,replacement);current=v;currentQuality=quality;currentAudio=audio;currentSub=subtitle;audioOnly=onlyAudio;applyOnlyAudio(onlyAudio);player.seekTo(index,pos);player.prepare();player.setPlayWhenReady(play);error="";}finally{switchingSource=false;}}'
+          if old_switch not in s:
+              raise SystemExit("switchSource block not found")
+          s=s.replace(old_switch,new_switch)
+          s=s.replace('new DefaultHttpDataSource.Factory().setUserAgent("PomocnikAlfa/1.7.9")',
+                      'new DefaultHttpDataSource.Factory().setUserAgent("PomocnikAlfa/1.7.11")')
+          s=s.replace(
+              ' player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_VIDEO,only).build());return main;\n }',
+              ' return main;\n }\n private void applyOnlyAudio(boolean only){if(player!=null)player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_VIDEO,only).build());}'
+          )
+          s=s.replace(
+              'public void close(){setSleepTimer(0);remember();player.stop();player.clearMediaItems();current=null;videos.clear();stopSelf();}',
+              'public void close(){setSleepTimer(0);remember();error="";player.stop();player.clearMediaItems();current=null;videos.clear();stopSelf();}'
+          )
+          p.write_text(s)
+
+          # TubeImages: bound both dimensions, survive bitmap OOM, delete partial
+          # downloads, and avoid replacing placeholders with null bitmaps.
+          p=Path("project/app/src/main/java/com/ispina/lokalnie/tube/TubeImages.java")
+          p.write_text("""package com.ispina.lokalnie.tube;
+import android.content.Context;import android.graphics.*;import android.widget.*;import android.util.LruCache;import java.io.*;import java.net.*;import java.lang.ref.WeakReference;import java.util.concurrent.*;
+public final class TubeImages {
+ private static final ExecutorService io=Executors.newFixedThreadPool(2);
+ private static final LruCache<String,Bitmap> memory=new LruCache<String,Bitmap>(2*1024*1024){protected int sizeOf(String k,Bitmap b){return b.getAllocationByteCount();}};
+ private static Bitmap decodeSampled(File file){
+  try{BitmapFactory.Options bounds=new BitmapFactory.Options();bounds.inJustDecodeBounds=true;BitmapFactory.decodeFile(file.getPath(),bounds);if(bounds.outWidth<=0||bounds.outHeight<=0)return null;int sample=1;while(bounds.outWidth/sample>480||bounds.outHeight/sample>480)sample*=2;BitmapFactory.Options opt=new BitmapFactory.Options();opt.inSampleSize=sample;return BitmapFactory.decodeFile(file.getPath(),opt);}catch(OutOfMemoryError oom){memory.evictAll();return null;}
+ }
+ public static void bind(ImageView image,String url,ScrollView scroll){if(url==null||url.isEmpty())return;image.setTag(url);Bitmap cached=memory.get(url);if(cached!=null){image.setImageBitmap(cached);return;}WeakReference<ImageView> ref=new WeakReference<>(image);Context app=image.getContext().getApplicationContext();final boolean[] started={false};Runnable load=()->{if(started[0])return;started[0]=true;io.execute(()->{try{Bitmap b=null;if(url.startsWith("file:")){File local=new File(android.net.Uri.parse(url).getPath());b=decodeSampled(local);}else{File dir=new File(app.getCacheDir(),"tube_thumbs");dir.mkdirs();File f=new File(dir,Integer.toHexString(url.hashCode()));if(!f.exists()){HttpURLConnection c=(HttpURLConnection)new URL(url).openConnection();File temp=new File(f+".tmp");try{c.setConnectTimeout(8000);c.setReadTimeout(8000);if(c.getResponseCode()!=200)return;try(InputStream in=c.getInputStream();OutputStream out=new FileOutputStream(temp)){byte[] buf=new byte[4096];int n,total=0;while((n=in.read(buf))!=-1){total+=n;if(total>2*1024*1024)throw new IOException("Miniatura jest zbyt duża.");out.write(buf,0,n);}}if(!temp.renameTo(f)){temp.delete();return;}}finally{c.disconnect();if(temp.exists()&&!f.exists())temp.delete();}}b=decodeSampled(f);trim(dir);}if(b!=null){memory.put(url,b);Bitmap result=b;ImageView v=ref.get();if(v!=null)v.post(()->{ImageView target=ref.get();if(target!=null&&url.equals(target.getTag()))target.setImageBitmap(result);});}}catch(Exception ignored){}catch(OutOfMemoryError oom){memory.evictAll();}});};if(scroll==null){image.post(load);return;}ViewCheck check=new ViewCheck(ref,scroll,load);scroll.getViewTreeObserver().addOnScrollChangedListener(check);image.post(check::onScrollChanged);}
+ static class ViewCheck implements android.view.ViewTreeObserver.OnScrollChangedListener {final WeakReference<ImageView> ref;final WeakReference<ScrollView> scroll;final Runnable load;ViewCheck(WeakReference<ImageView> r,ScrollView s,Runnable l){ref=r;scroll=new WeakReference<>(s);load=l;}public void onScrollChanged(){ImageView v=ref.get();ScrollView s=scroll.get();if(s==null)return;if(v==null){s.getViewTreeObserver().removeOnScrollChangedListener(this);return;}android.graphics.Rect r=new android.graphics.Rect();if(v.getGlobalVisibleRect(r)){s.getViewTreeObserver().removeOnScrollChangedListener(this);load.run();}}}
+ static synchronized void trim(File d){File[] files=d.listFiles();if(files==null)return;long total=0;for(File f:files)total+=f.length();if(total>20*1024*1024){java.util.Arrays.sort(files,java.util.Comparator.comparingLong(File::lastModified));for(File f:files){total-=f.length();f.delete();if(total<=15*1024*1024)break;}}}
+ public static void clear(Context c){memory.evictAll();File[] f=new File(c.getCacheDir(),"tube_thumbs").listFiles();if(f!=null)for(File x:f)x.delete();}
+}
+""")
+
+          # Extractor hardening without changing dependency versions.
+          p=Path("project/app/src/main/java/com/ispina/lokalnie/tube/ExtractorProvider.java")
+          s=p.read_text()
+          s=s.replace(
+              'for(InfoItem x:i.getRelatedItems())if(x instanceof StreamInfoItem)v.related.add(item((StreamInfoItem)x));',
+              'for(InfoItem x:i.getRelatedItems())if(x instanceof StreamInfoItem){v.related.add(item((StreamInfoItem)x));if(v.related.size()>=12)break;}'
+          )
+          s=s.replace(
+              'static void add(List<Video.Source> to,VideoStream s,boolean separate,String label,int h){Video.Source a=source(s,label);if(a!=null){a.separate=separate;a.height=h;to.add(a);}}',
+              'static void add(List<Video.Source> to,VideoStream s,boolean separate,String label,int h){Video.Source a=source(s,label);if(a!=null){for(Video.Source existing:to)if(existing.url.equals(a.url))return;a.separate=separate;a.height=h;to.add(a);}}'
+          )
+          s=s.replace(
+              'static Video.Source source(Stream s,String label){if(!s.isUrl()||s.getDeliveryMethod()!=DeliveryMethod.PROGRESSIVE_HTTP)return null;MediaFormat f=s.getFormat();return new Video.Source(s.getContent(),label,f==null?"application/octet-stream":f.mimeType,f==null?"bin":f.suffix);}',
+              'static Video.Source source(Stream s,String label){if(!s.isUrl()||s.getDeliveryMethod()!=DeliveryMethod.PROGRESSIVE_HTTP)return null;String content=s.getContent();if(content==null||content.trim().isEmpty())return null;MediaFormat f=s.getFormat();return new Video.Source(content,label,f==null?"application/octet-stream":f.mimeType,f==null?"bin":f.suffix);}'
+          )
+          p.write_text(s)
+
+          # Build-time audit assertions: abort the build rather than silently
+          # shipping without one of the intended fixes.
+          ta=Path("project/app/src/main/java/com/ispina/lokalnie/TubeActivity.java").read_text()
+          ts=Path("project/app/src/main/java/com/ispina/lokalnie/tube/TubeService.java").read_text()
+          ti=Path("project/app/src/main/java/com/ispina/lokalnie/tube/TubeImages.java").read_text()
+          ep=Path("project/app/src/main/java/com/ispina/lokalnie/tube/ExtractorProvider.java").read_text()
+          assert 'requestGeneration!=generation' in ta
+          assert 'nativeControls.setOnTouchListener' not in ta
+          assert 'bottomNav.setVisibility(view!=null?View.GONE:View.VISIBLE)' in ta
+          assert 'switchingSource=true' in ts and 'finally{switchingSource=false;}' in ts
+          assert 'private void applyOnlyAudio' in ts
+          assert 'PomocnikAlfa/1.7.11' in ts
+          assert 'catch(OutOfMemoryError oom)' in ti
+          assert 'bounds.outHeight/sample>480' in ti
+          assert 'v.related.size()>=12' in ep
+          print("PA 1.7.11 deep audit fixes OK")
+          PY
+
+      - name: Set version 1.7.11
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path("project/app/build.gradle")
           s=p.read_text()
-          s=s.replace("versionCode 10706","versionCode 10710").replace("versionCode 10705","versionCode 10710")
-          s=s.replace("versionName '1.7.6'","versionName '1.7.10'").replace("versionName '1.7.5'","versionName '1.7.10'")
+          s=s.replace("versionCode 10706","versionCode 10711").replace("versionCode 10705","versionCode 10711")
+          s=s.replace("versionName '1.7.6'","versionName '1.7.11'").replace("versionName '1.7.5'","versionName '1.7.11'")
           p.write_text(s)
           PY
-          grep -n "versionCode 10710" project/app/build.gradle
-          grep -n "versionName '1.7.10'" project/app/build.gradle
+          grep -n "versionCode 10711" project/app/build.gradle
+          grep -n "versionName '1.7.11'" project/app/build.gradle
           grep -n "openingVideo" project/app/src/main/java/com/ispina/lokalnie/TubeActivity.java
           grep -n "setAllowCrossProtocolRedirects(true)" project/app/src/main/java/com/ispina/lokalnie/tube/TubeService.java
 
       - name: Pack prepared 1.7.10 audit source
         run: |
           set -euxo pipefail
-          tar -cJf Pomocnik-Alfa-1.7.10-AUDIT-SOURCE.tar.xz -C project .
+          tar -cJf Pomocnik-Alfa-1.7.11-AUDIT-SOURCE.tar.xz -C project .
 
       - name: Upload prepared 1.7.10 audit source
         uses: actions/upload-artifact@v4
         with:
-          name: Pomocnik-Alfa-1.7.10-AUDIT-SOURCE
-          path: Pomocnik-Alfa-1.7.10-AUDIT-SOURCE.tar.xz
+          name: Pomocnik-Alfa-1.7.11-AUDIT-SOURCE
+          path: Pomocnik-Alfa-1.7.11-AUDIT-SOURCE.tar.xz
           if-no-files-found: error
           retention-days: 3
 
@@ -305,20 +439,20 @@ jobs:
           find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -ls
           APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -1)"
           test -n "$APK"
-          cp "$APK" ../Pomocnik-Alfa-1.7.10-UNSIGNED.apk
+          cp "$APK" ../Pomocnik-Alfa-1.7.11-UNSIGNED.apk
 
       - name: Verify APK
         run: |
           set -euxo pipefail
-          test -s Pomocnik-Alfa-1.7.10-UNSIGNED.apk
-          sha256sum Pomocnik-Alfa-1.7.10-UNSIGNED.apk
-          ls -lh Pomocnik-Alfa-1.7.10-UNSIGNED.apk
+          test -s Pomocnik-Alfa-1.7.11-UNSIGNED.apk
+          sha256sum Pomocnik-Alfa-1.7.11-UNSIGNED.apk
+          ls -lh Pomocnik-Alfa-1.7.11-UNSIGNED.apk
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Pomocnik-Alfa-1.7.10-UNSIGNED
-          path: Pomocnik-Alfa-1.7.10-UNSIGNED.apk
+          name: Pomocnik-Alfa-1.7.11-UNSIGNED
+          path: Pomocnik-Alfa-1.7.11-UNSIGNED.apk
           if-no-files-found: error
           retention-days: 7
 
@@ -326,9 +460,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete build-1.7.10-unsigned -y || true
-          git push --delete origin build-1.7.10-unsigned || true
-          gh release create build-1.7.10-unsigned "Pomocnik-Alfa-1.7.10-UNSIGNED.apk#Pomocnik-Alfa-1.7.10-UNSIGNED.apk" --title "Pomocnik Alfa 1.7.10 unsigned build" --notes "Automatyczny build 1.7.10 z poprawką stabilności Alfa Tube. Ten plik jest przeznaczony do końcowego podpisania kluczem Pomocnika Alfa."
+          gh release delete build-1.7.11-unsigned -y || true
+          git push --delete origin build-1.7.11-unsigned || true
+          gh release create build-1.7.11-unsigned "Pomocnik-Alfa-1.7.11-UNSIGNED.apk#Pomocnik-Alfa-1.7.11-UNSIGNED.apk" --title "Pomocnik Alfa 1.7.11 unsigned build" --notes "Automatyczny build 1.7.11 z poprawką stabilności Alfa Tube. Ten plik jest przeznaczony do końcowego podpisania kluczem Pomocnika Alfa."
 
       - name: Report workflow result
         if: always()
@@ -336,7 +470,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BUILD_STATUS: ${{ job.status }}
         run: |
-          gh issue create --title "PA 1.7.10 BUILD ${BUILD_STATUS} ${GITHUB_RUN_ID}" --body "Status: ${BUILD_STATUS}
+          gh issue create --title "PA 1.7.11 BUILD ${BUILD_STATUS} ${GITHUB_RUN_ID}" --body "Status: ${BUILD_STATUS}
 
           Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
 
