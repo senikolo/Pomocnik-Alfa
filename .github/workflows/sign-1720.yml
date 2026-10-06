@@ -1,0 +1,64 @@
+name: Sign Pomocnik Alfa 1.7.20
+
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  actions: read
+  issues: write
+
+jobs:
+  sign:
+    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.20 SIGN' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Download built APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          mkdir artifact
+          gh run download 37440203451 -R senikolo/Pomocnik-Alfa -n Pomocnik-Alfa-1.7.20-UNSIGNED -D artifact
+          cp artifact/Pomocnik-Alfa-1.7.20-UNSIGNED.apk app-unsigned.apk
+          test -s app-unsigned.apk
+
+      - name: Prepare Android build tools
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Generate signing key
+        run: |
+          set -euxo pipefail
+          keytool -genkeypair -keystore pa1720.jks -storepass Pomocnik1720Test2026 -keypass Pomocnik1720Test2026 -alias pa1720 -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Pomocnik Alfa 1.7.20,O=Pomocnik Alfa,C=PL"
+
+      - name: Zipalign and sign APK
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          "$BT/zipalign" -p -f 4 app-unsigned.apk app-aligned.apk
+          "$BT/apksigner" sign --ks pa1720.jks --ks-key-alias pa1720 --ks-pass pass:Pomocnik1720Test2026 --key-pass pass:Pomocnik1720Test2026 --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true --out Pomocnik-Alfa-1.7.20.apk app-aligned.apk
+          "$BT/apksigner" verify --verbose --print-certs Pomocnik-Alfa-1.7.20.apk
+          "$BT/zipalign" -c -v 4 Pomocnik-Alfa-1.7.20.apk
+          sha256sum Pomocnik-Alfa-1.7.20.apk
+
+      - name: Upload signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.20-SIGNED
+          path: Pomocnik-Alfa-1.7.20.apk
+          retention-days: 7
