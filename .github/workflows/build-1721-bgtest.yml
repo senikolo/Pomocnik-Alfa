@@ -1,0 +1,86 @@
+name: Build Pomocnik Alfa 1.7.21 BG TEST
+
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+jobs:
+  build:
+    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.21 BG TEST' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Restore verified 1.7.21 source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          mkdir artifact project
+          gh run download 37445613374 -R senikolo/Pomocnik-Alfa -n Pomocnik-Alfa-1.7.21-SOURCE -D artifact
+          tar -xJf artifact/Pomocnik-Alfa-1.7.21-SOURCE.tar.xz -C project
+          grep -n "versionCode 10721" project/app/build.gradle
+
+      - name: Make side-by-side test package
+        run: |
+          set -euxo pipefail
+          sed -i "s/applicationId 'com.senikolo.pomocniknowy'/applicationId 'com.senikolo.pomocniknowy.bgtest'/" project/app/build.gradle
+          sed -i 's/android:label="Pomocnik Alfa"/android:label="Pomocnik Alfa BG TEST"/' project/app/src/main/AndroidManifest.xml
+          grep -n "com.senikolo.pomocniknowy.bgtest" project/app/build.gradle
+          grep -n 'Pomocnik Alfa BG TEST' project/app/src/main/AndroidManifest.xml
+
+      - name: Prepare Android SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          echo "/usr/local/lib/android/sdk/build-tools/35.0.0" >> "$GITHUB_PATH"
+
+      - name: Build release APK
+        working-directory: project
+        run: |
+          set -euxo pipefail
+          chmod +x gradlew
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8
+          org.gradle.workers.max=2
+          org.gradle.parallel=false
+          android.useAndroidX=true
+          EOF
+          ./gradlew --no-daemon assembleRelease -x lintVitalRelease --stacktrace
+          APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -1)"
+          test -n "$APK"
+          cp "$APK" ../app-unsigned.apk
+
+      - name: Sign test APK
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          keytool -genkeypair -keystore bgtest.jks -storepass BgTest17212026 -keypass BgTest17212026 -alias bgtest -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Pomocnik Alfa BG TEST,O=Pomocnik Alfa,C=PL"
+          "$BT/zipalign" -p -f 4 app-unsigned.apk app-aligned.apk
+          "$BT/apksigner" sign --ks bgtest.jks --ks-key-alias bgtest --ks-pass pass:BgTest17212026 --key-pass pass:BgTest17212026 --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true --out Pomocnik-Alfa-1.7.21-BG-TEST.apk app-aligned.apk
+          "$BT/apksigner" verify --verbose --print-certs Pomocnik-Alfa-1.7.21-BG-TEST.apk
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.21-BG-TEST.apk | head -3
+
+      - name: Upload signed test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.21-BG-TEST
+          path: Pomocnik-Alfa-1.7.21-BG-TEST.apk
+          retention-days: 7
