@@ -1,1 +1,2 @@
 Build native foreground radio module for Ispina Lokalnie 1.82.94.
+Retry after D8 JAR fix.
