@@ -276,7 +276,8 @@ jobs:
             src/com/ispina/lokalnie/radio/RadioService.java \
             src/com/ispina/lokalnie/radio/RadioCommandActivity.java
           D8="$ANDROID_HOME/build-tools/35.0.0/d8"
-          "$D8" --release --min-api 23 --lib "$ANDROID_JAR" --output out/dex out/classes
+          jar cf out/radio-classes.jar -C out/classes .
+          "$D8" --release --min-api 23 --lib "$ANDROID_JAR" --output out/dex out/radio-classes.jar
           test -s out/dex/classes.dex
           cp out/dex/classes.dex out/classes6.dex
           sha256sum out/classes6.dex
