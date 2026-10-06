@@ -1,1 +1,2 @@
 Export apksigner and zipalign for local Ispina Lokalnie APK rebuild.
+Include libc++ for zipalign.
