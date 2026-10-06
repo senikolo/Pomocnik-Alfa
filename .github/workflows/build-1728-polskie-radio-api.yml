@@ -1,0 +1,113 @@
+name: Build Pomocnik Alfa 1.7.28 Polish Radio API
+
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+jobs:
+  build:
+    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.28 POLSKIE RADIO API' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Verify Polskie Radio API
+        run: |
+          set -euxo pipefail
+          HDR=(-H 'Accept: application/json, text/plain, */*' -H 'Origin: https://player.polskieradio.pl' -H 'Referer: https://player.polskieradio.pl/' -A 'Mozilla/5.0')
+          curl -fsSL --retry 2 "${HDR[@]}" 'https://apipr.polskieradio.pl/api/schedule?Program=1' -o /tmp/pr1.json
+          curl -fsSL --retry 2 "${HDR[@]}" 'https://apipr.polskieradio.pl/api/schedule?Program=3' -o /tmp/pr3.json
+          python - <<'PY'
+          import json
+          for path in ('/tmp/pr1.json','/tmp/pr3.json'):
+              data=json.load(open(path,encoding='utf-8'))
+              rows=data.get('Schedule') or []
+              assert rows, f'Brak Schedule w {path}'
+              assert any((r.get('Title') or '').strip() for r in rows), f'Brak tytułów w {path}'
+              print(path, 'OK', len(rows))
+          PY
+
+      - name: Restore verified 1.7.27 source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          mkdir artifact project
+          gh run download 37468498855 -R senikolo/Pomocnik-Alfa -n Pomocnik-Alfa-1.7.27-SOURCE -D artifact
+          tar -xJf artifact/Pomocnik-Alfa-1.7.27-SOURCE.tar.xz -C project
+          grep -n "versionCode 10727" project/app/build.gradle
+
+      - name: Apply Polish Radio API patch
+        run: |
+          set -euxo pipefail
+          base64 -d patches/radio-polskie-api-1728.patch.gz.b64 | gzip -dc > /tmp/pa1728.patch
+          cd project
+          patch -p0 < /tmp/pa1728.patch
+          grep -n "versionCode 10728" app/build.gradle
+          grep -n "fetchPolskieRadioApi(1" app/src/main/java/com/ispina/lokalnie/radio/RadioInfoPlus.java
+          grep -n "fetchPolskieRadioApi(3" app/src/main/java/com/ispina/lokalnie/radio/RadioInfoPlus.java
+          grep -n "apipr.polskieradio.pl/api/schedule" app/src/main/java/com/ispina/lokalnie/radio/RadioInfoPlus.java
+          tar -cJf ../Pomocnik-Alfa-1.7.28-SOURCE.tar.xz .
+
+      - name: Make side-by-side test package
+        run: |
+          set -euxo pipefail
+          sed -i "s/applicationId 'com.senikolo.pomocniknowy'/applicationId 'com.senikolo.pomocniknowy.radio1728'/" project/app/build.gradle
+          sed -i 's/android:label="Pomocnik Alfa"/android:label="Pomocnik Alfa RADIO API 1.7.28"/' project/app/src/main/AndroidManifest.xml
+
+      - name: Prepare Android SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: project
+        run: |
+          set -euxo pipefail
+          chmod +x gradlew
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8
+          org.gradle.workers.max=2
+          org.gradle.parallel=false
+          android.useAndroidX=true
+          EOF
+          ./gradlew --no-daemon assembleDebug -x lint --stacktrace
+          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | head -1)"
+          test -n "$APK"
+          cp "$APK" ../Pomocnik-Alfa-1.7.28-POLSKIE-RADIO-API.apk
+
+      - name: Verify APK
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          test -s Pomocnik-Alfa-1.7.28-POLSKIE-RADIO-API.apk
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.28-POLSKIE-RADIO-API.apk | head -3
+          "$BT/apksigner" verify --verbose --print-certs Pomocnik-Alfa-1.7.28-POLSKIE-RADIO-API.apk
+          sha256sum Pomocnik-Alfa-1.7.28-POLSKIE-RADIO-API.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.28-POLSKIE-RADIO-API
+          path: Pomocnik-Alfa-1.7.28-POLSKIE-RADIO-API.apk
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.28-SOURCE
+          path: Pomocnik-Alfa-1.7.28-SOURCE.tar.xz
+          retention-days: 3
