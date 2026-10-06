@@ -1,0 +1,80 @@
+name: Build Alfa Launcher 1.1
+
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+jobs:
+  build:
+    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER ALFA LAUNCHER 1.1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Restore Alfa Launcher source from issue body
+        if: github.event_name == 'issues'
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          set -euxo pipefail
+          mkdir -p project
+          printf '%s' "$ISSUE_BODY" | tr -d '\r\n \t' | base64 -d > /tmp/alfa-launcher.zip
+          unzip -q /tmp/alfa-launcher.zip -d project
+          grep -n "minSdk 17" project/app/build.gradle
+          grep -n "CATEGORY.HOME\|android.intent.category.HOME" project/app/src/main/AndroidManifest.xml project/app/src/main/java/pl/alfalauncher/MainActivity.java || true
+
+      - name: Prepare Android SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: project
+        run: |
+          set -euxo pipefail
+          gradle --no-daemon assembleDebug -x lint --stacktrace
+          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | head -1)"
+          test -n "$APK"
+          cp "$APK" ../Alfa-Launcher-1.1-Android-4.2.2.apk
+
+      - name: Verify APK
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          test -s Alfa-Launcher-1.1-Android-4.2.2.apk
+          "$BT/aapt" dump badging Alfa-Launcher-1.1-Android-4.2.2.apk | tee apk-badging.txt
+          grep -q "sdkVersion:'17'" apk-badging.txt
+          "$BT/apksigner" verify --verbose --print-certs Alfa-Launcher-1.1-Android-4.2.2.apk
+          sha256sum Alfa-Launcher-1.1-Android-4.2.2.apk | tee apk-sha256.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Alfa-Launcher-1.1-Android-4.2.2
+          path: Alfa-Launcher-1.1-Android-4.2.2.apk
+          retention-days: 7
+
+      - name: Report build result
+        if: always() && github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" -R "${{ github.repository }}" --body "ALFA_LAUNCHER_RUN_ID=${{ github.run_id }} STATUS=${{ job.status }}"
