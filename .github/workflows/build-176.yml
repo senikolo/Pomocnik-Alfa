@@ -1,4 +1,4 @@
-name: Build Pomocnik Alfa 1.7.9
+name: Build Pomocnik Alfa 1.7.10
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.9 BUILD' }}
+    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.10 BUILD' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -186,18 +186,83 @@ jobs:
           cd project
           patch -p1 < /tmp/pa179.patch
 
-      - name: Set version 1.7.9
+      - name: Apply 1.7.10 playback stability fix
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          ta = Path("project/app/src/main/java/com/ispina/lokalnie/TubeActivity.java")
+          s = ta.read_text()
+
+          # Android 8-11: activity is already foreground when the user taps Play.
+          # Do not start TubeService as a foreground service and risk the 5-second
+          # ForegroundServiceDidNotStartInTimeException process kill.
+          s = re.sub(r'if\(Build\.VERSION\.SDK_INT>=26\)startForegroundService\(([^;]+)\);else startService\(\1\);',
+                     r'startService(\1);', s)
+          s = re.sub(r'startForegroundService\((new Intent\(this,TubeService\.class\))\);',
+                     r'startService(\1);', s)
+
+          # Keep recommendation UI lighter while the player is active.
+          s = s.replace('if(out.size()==12)break;', 'if(out.size()==6)break;')
+          ta.write_text(s)
+
+          ts = Path("project/app/src/main/java/com/ispina/lokalnie/tube/TubeService.java")
+          s = ts.read_text()
+
+          # Avoid rebuilding the MediaSource when Android reports initial network
+          # capabilities a few seconds after playback starts. Initial quality is
+          # already selected by TubeActivity.defaultQuality().
+          s = re.sub(
+              r'public void onCapabilitiesChanged\(android\.net\.Network n,android\.net\.NetworkCapabilities c\)\{clock\.post\(\(\)->adaptNetwork\(\)\);\}',
+              'public void onCapabilitiesChanged(android.net.Network n,android.net.NetworkCapabilities c){}',
+              s
+          )
+
+          # Harden manual source switching against a transient -1 media index.
+          s = s.replace(
+              'int index=player.getCurrentMediaItemIndex();player.removeMediaItem(index);',
+              'int index=player.getCurrentMediaItemIndex();if(index<0||index>=player.getMediaItemCount())return;player.removeMediaItem(index);'
+          )
+
+          # Smaller buffer reduces peak memory on older / lower-RAM phones.
+          s = s.replace(
+              'setBufferDurationsMs(10000,30000,1500,2000)',
+              'setBufferDurationsMs(6000,18000,1200,1800)'
+          )
+          ts.write_text(s)
+
+          ti = Path("project/app/src/main/java/com/ispina/lokalnie/tube/TubeImages.java")
+          s = ti.read_text()
+          s = s.replace('4*1024*1024', '2*1024*1024')
+          s = s.replace('>960)opt.inSampleSize*=2', '>480)opt.inSampleSize*=2')
+          ti.write_text(s)
+
+          # Build-time assertions: fail rather than silently ship an unfixed APK.
+          ta_s = ta.read_text()
+          ts_s = ts.read_text()
+          ti_s = ti.read_text()
+          assert 'startForegroundService(new Intent(this,TubeService.class))' not in ta_s
+          assert 'if(out.size()==6)break;' in ta_s
+          assert 'onCapabilitiesChanged(android.net.Network n,android.net.NetworkCapabilities c){}' in ts_s
+          assert 'index<0||index>=player.getMediaItemCount()' in ts_s
+          assert 'setBufferDurationsMs(6000,18000,1200,1800)' in ts_s
+          assert '>480)opt.inSampleSize*=2' in ti_s
+          print("PA 1.7.10 playback stability patch OK")
+          PY
+
+      - name: Set version 1.7.10
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path("project/app/build.gradle")
           s=p.read_text()
-          s=s.replace("versionCode 10706","versionCode 10709").replace("versionCode 10705","versionCode 10709")
-          s=s.replace("versionName '1.7.6'","versionName '1.7.9'").replace("versionName '1.7.5'","versionName '1.7.9'")
+          s=s.replace("versionCode 10706","versionCode 10710").replace("versionCode 10705","versionCode 10710")
+          s=s.replace("versionName '1.7.6'","versionName '1.7.10'").replace("versionName '1.7.5'","versionName '1.7.10'")
           p.write_text(s)
           PY
-          grep -n "versionCode 10709" project/app/build.gradle
-          grep -n "versionName '1.7.9'" project/app/build.gradle
+          grep -n "versionCode 10710" project/app/build.gradle
+          grep -n "versionName '1.7.10'" project/app/build.gradle
           grep -n "openingVideo" project/app/src/main/java/com/ispina/lokalnie/TubeActivity.java
           grep -n "setAllowCrossProtocolRedirects(true)" project/app/src/main/java/com/ispina/lokalnie/tube/TubeService.java
 
@@ -227,20 +292,20 @@ jobs:
           find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -ls
           APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -1)"
           test -n "$APK"
-          cp "$APK" ../Pomocnik-Alfa-1.7.9-UNSIGNED.apk
+          cp "$APK" ../Pomocnik-Alfa-1.7.10-UNSIGNED.apk
 
       - name: Verify APK
         run: |
           set -euxo pipefail
-          test -s Pomocnik-Alfa-1.7.9-UNSIGNED.apk
-          sha256sum Pomocnik-Alfa-1.7.9-UNSIGNED.apk
-          ls -lh Pomocnik-Alfa-1.7.9-UNSIGNED.apk
+          test -s Pomocnik-Alfa-1.7.10-UNSIGNED.apk
+          sha256sum Pomocnik-Alfa-1.7.10-UNSIGNED.apk
+          ls -lh Pomocnik-Alfa-1.7.10-UNSIGNED.apk
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Pomocnik-Alfa-1.7.9-UNSIGNED
-          path: Pomocnik-Alfa-1.7.9-UNSIGNED.apk
+          name: Pomocnik-Alfa-1.7.10-UNSIGNED
+          path: Pomocnik-Alfa-1.7.10-UNSIGNED.apk
           if-no-files-found: error
           retention-days: 7
 
@@ -248,9 +313,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete build-1.7.9-unsigned -y || true
-          git push --delete origin build-1.7.9-unsigned || true
-          gh release create build-1.7.9-unsigned "Pomocnik-Alfa-1.7.9-UNSIGNED.apk#Pomocnik-Alfa-1.7.9-UNSIGNED.apk" --title "Pomocnik Alfa 1.7.9 unsigned build" --notes "Automatyczny build 1.7.9 z poprawką stabilności Alfa Tube. Ten plik jest przeznaczony do końcowego podpisania kluczem Pomocnika Alfa."
+          gh release delete build-1.7.10-unsigned -y || true
+          git push --delete origin build-1.7.10-unsigned || true
+          gh release create build-1.7.10-unsigned "Pomocnik-Alfa-1.7.10-UNSIGNED.apk#Pomocnik-Alfa-1.7.10-UNSIGNED.apk" --title "Pomocnik Alfa 1.7.10 unsigned build" --notes "Automatyczny build 1.7.10 z poprawką stabilności Alfa Tube. Ten plik jest przeznaczony do końcowego podpisania kluczem Pomocnika Alfa."
 
       - name: Report workflow result
         if: always()
@@ -258,7 +323,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BUILD_STATUS: ${{ job.status }}
         run: |
-          gh issue create --title "PA 1.7.9 BUILD ${BUILD_STATUS} ${GITHUB_RUN_ID}" --body "Status: ${BUILD_STATUS}
+          gh issue create --title "PA 1.7.10 BUILD ${BUILD_STATUS} ${GITHUB_RUN_ID}" --body "Status: ${BUILD_STATUS}
 
           Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
 
