@@ -35,9 +35,31 @@ jobs:
           PY
           echo '--- ATTRS AROUND RAMOWKA ---'
           grep -Eio '.{0,120}(ramowka|ramówka|schedule|program).{0,240}' /tmp/tok.html | head -80 || true
+          python - <<'PY'
+          import re, html
+          s=open('/tmp/tok.html',encoding='utf-8',errors='ignore').read()
+          m=re.search(r'/_server-islands/ScheduleListIsland\\?[^"\\']+',s)
+          assert m, 'Brak ScheduleListIsland'
+          u='https://audycje.tokfm.pl'+html.unescape(m.group(0))
+          open('/tmp/island-url','w').write(u)
+          print('ISLAND_URL='+u)
+          PY
+          curl -L -A "$UA" --max-time 20 -sS "$(cat /tmp/island-url)" -o /tmp/island.html
+          echo "ISLAND_BYTES=$(wc -c </tmp/island.html)"
+          echo '--- ISLAND TIME TOKENS ---'
+          grep -Eo '([01]?[0-9]|2[0-3]):[0-5][0-9]' /tmp/island.html | sort | uniq -c | head -60 || true
+          echo '--- ISLAND TEXT PREVIEW ---'
+          python - <<'PY'
+          import re,html
+          s=open('/tmp/island.html',encoding='utf-8',errors='ignore').read()
+          print(s[:8000])
+          PY
           cp /tmp/tok.html tokfm-ramowka.html
+          cp /tmp/island.html tokfm-schedule-island.html
       - uses: actions/upload-artifact@v4
         with:
           name: tokfm-ramowka-debug
-          path: tokfm-ramowka.html
+          path: |
+            tokfm-ramowka.html
+            tokfm-schedule-island.html
           retention-days: 1
