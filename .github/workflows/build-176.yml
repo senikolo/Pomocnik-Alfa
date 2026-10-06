@@ -1,4 +1,4 @@
-name: Build Pomocnik Alfa 1.7.11
+name: Build Pomocnik Alfa 1.7.12
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.11 BUILD' }}
+    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.12 BUILD' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -385,31 +385,103 @@ jobs:
           print("PA 1.7.11 deep audit fixes OK")
           PY
 
-      - name: Set version 1.7.11
+      - name: Apply 1.7.12 loading overlay UX fix
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p=Path("project/app/src/main/java/com/ispina/lokalnie/TubeActivity.java")
+          s=p.read_text()
+
+          s=s.replace(
+              'private boolean openingVideo;private Button retryPlaybackButton;',
+              'private boolean openingVideo;private Button retryPlaybackButton;private View loadingOverlay;'
+          )
+
+          s=s.replace(
+              'private void screen(String name){openingVideo=false;',
+              'private void screen(String name){hideLoadingOverlay();openingVideo=false;'
+          )
+
+          anchor=' private Button button(LinearLayout target,String label,Runnable r){'
+          overlay=''' private void showLoadingOverlay(){hideLoadingOverlay();android.widget.FrameLayout host=findViewById(android.R.id.content);if(host==null)return;android.widget.FrameLayout overlay=new android.widget.FrameLayout(this);overlay.setClickable(true);overlay.setFocusable(true);overlay.setContentDescription("Ładowanie filmu");overlay.setBackgroundColor(0x24000000);LinearLayout bubble=new LinearLayout(this);bubble.setGravity(Gravity.CENTER);bubble.setPadding(dp(16),dp(16),dp(16),dp(16));bubble.setBackground(NativeUi.rounded(0xF7FFFFFF,28,this));bubble.setElevation(dp(8));ProgressBar spinner=new ProgressBar(this);spinner.setIndeterminate(true);spinner.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(NativeUi.green(this)));bubble.addView(spinner,new LinearLayout.LayoutParams(dp(42),dp(42)));android.widget.FrameLayout.LayoutParams bubbleLp=new android.widget.FrameLayout.LayoutParams(dp(74),dp(74),Gravity.CENTER);overlay.addView(bubble,bubbleLp);host.addView(overlay,new android.widget.FrameLayout.LayoutParams(-1,-1));loadingOverlay=overlay;overlay.setAlpha(0f);overlay.animate().alpha(1f).setDuration(140).start();}
+ private void hideLoadingOverlay(){if(loadingOverlay==null)return;final View overlay=loadingOverlay;loadingOverlay=null;overlay.animate().cancel();overlay.animate().alpha(0f).setDuration(100).withEndAction(()->{android.view.ViewParent parent=overlay.getParent();if(parent instanceof android.view.ViewGroup)((android.view.ViewGroup)parent).removeView(overlay);}).start();}
+'''
+          if anchor not in s:
+              raise SystemExit("button anchor not found")
+          s=s.replace(anchor,overlay+anchor)
+
+          s=s.replace(
+              'if(mode==0&&openingVideo){message("Film jest już przygotowywany…");return;}',
+              'if(mode==0&&openingVideo){showLoadingOverlay();return;}'
+          )
+          s=s.replace(
+              'final LinearLayout progress=loading("Przygotowuję odtwarzanie…");',
+              'showLoadingOverlay();'
+          )
+          s=s.replace(
+              'if(progress.getParent()==body)body.removeView(progress);\n    if(full==null',
+              'if(full==null'
+          )
+          s=s.replace(
+              '},error->{if(progress.getParent()==body)body.removeView(progress);openingVideo=false;message(failureText(error));});',
+              '},error->{hideLoadingOverlay();openingVideo=false;message(failureText(error));});'
+          )
+          s=s.replace(
+              'openingVideo=false;android.util.Log.e("AlfaTube","Nie udało się rozpocząć odtwarzania",e);message("Nie udało się otworzyć odtwarzacza. Spróbuj ponownie.");',
+              'hideLoadingOverlay();openingVideo=false;android.util.Log.e("AlfaTube","Nie udało się rozpocząć odtwarzania",e);message("Nie udało się otworzyć odtwarzacza. Spróbuj ponownie.");'
+          )
+          s=s.replace(
+              'else {openingVideo=false;message("Nie udało się uruchomić odtwarzacza. Spróbuj ponownie.");}',
+              'else {hideLoadingOverlay();openingVideo=false;message("Nie udało się uruchomić odtwarzacza. Spróbuj ponownie.");}'
+          )
+          s=s.replace(
+              '}catch(Exception|LinkageError e){openingVideo=false;android.util.Log.e("AlfaTube","Błąd uruchamiania ścieżki",e);',
+              '}catch(Exception|LinkageError e){hideLoadingOverlay();openingVideo=false;android.util.Log.e("AlfaTube","Błąd uruchamiania ścieżki",e);'
+          )
+
+          p.write_text(s)
+
+          # Cosmetic tightening only; no playback engine changes.
+          n=Path("project/app/src/main/java/com/ispina/lokalnie/tube/TubeService.java")
+          t=n.read_text().replace('PomocnikAlfa/1.7.11','PomocnikAlfa/1.7.12')
+          n.write_text(t)
+
+          check=p.read_text()
+          assert 'Przygotowuję odtwarzanie' not in check
+          assert 'Film jest już przygotowywany' not in check
+          assert 'showLoadingOverlay();' in check
+          assert 'hideLoadingOverlay();openingVideo=false' in check
+          assert 'smoothScrollTo' in check  # search loader remains unchanged
+          assert 'PomocnikAlfa/1.7.12' in n.read_text()
+          print("PA 1.7.12 overlay loading UX patch OK")
+          PY
+
+      - name: Set version 1.7.12
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path("project/app/build.gradle")
           s=p.read_text()
-          s=s.replace("versionCode 10706","versionCode 10711").replace("versionCode 10705","versionCode 10711")
-          s=s.replace("versionName '1.7.6'","versionName '1.7.11'").replace("versionName '1.7.5'","versionName '1.7.11'")
+          s=s.replace("versionCode 10706","versionCode 10712").replace("versionCode 10705","versionCode 10712")
+          s=s.replace("versionName '1.7.6'","versionName '1.7.12'").replace("versionName '1.7.5'","versionName '1.7.12'")
           p.write_text(s)
           PY
-          grep -n "versionCode 10711" project/app/build.gradle
-          grep -n "versionName '1.7.11'" project/app/build.gradle
+          grep -n "versionCode 10712" project/app/build.gradle
+          grep -n "versionName '1.7.12'" project/app/build.gradle
           grep -n "openingVideo" project/app/src/main/java/com/ispina/lokalnie/TubeActivity.java
           grep -n "setAllowCrossProtocolRedirects(true)" project/app/src/main/java/com/ispina/lokalnie/tube/TubeService.java
 
       - name: Pack prepared 1.7.10 audit source
         run: |
           set -euxo pipefail
-          tar -cJf Pomocnik-Alfa-1.7.11-AUDIT-SOURCE.tar.xz -C project .
+          tar -cJf Pomocnik-Alfa-1.7.12-AUDIT-SOURCE.tar.xz -C project .
 
       - name: Upload prepared 1.7.10 audit source
         uses: actions/upload-artifact@v4
         with:
-          name: Pomocnik-Alfa-1.7.11-AUDIT-SOURCE
-          path: Pomocnik-Alfa-1.7.11-AUDIT-SOURCE.tar.xz
+          name: Pomocnik-Alfa-1.7.12-AUDIT-SOURCE
+          path: Pomocnik-Alfa-1.7.12-AUDIT-SOURCE.tar.xz
           if-no-files-found: error
           retention-days: 3
 
@@ -439,20 +511,20 @@ jobs:
           find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -ls
           APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -1)"
           test -n "$APK"
-          cp "$APK" ../Pomocnik-Alfa-1.7.11-UNSIGNED.apk
+          cp "$APK" ../Pomocnik-Alfa-1.7.12-UNSIGNED.apk
 
       - name: Verify APK
         run: |
           set -euxo pipefail
-          test -s Pomocnik-Alfa-1.7.11-UNSIGNED.apk
-          sha256sum Pomocnik-Alfa-1.7.11-UNSIGNED.apk
-          ls -lh Pomocnik-Alfa-1.7.11-UNSIGNED.apk
+          test -s Pomocnik-Alfa-1.7.12-UNSIGNED.apk
+          sha256sum Pomocnik-Alfa-1.7.12-UNSIGNED.apk
+          ls -lh Pomocnik-Alfa-1.7.12-UNSIGNED.apk
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Pomocnik-Alfa-1.7.11-UNSIGNED
-          path: Pomocnik-Alfa-1.7.11-UNSIGNED.apk
+          name: Pomocnik-Alfa-1.7.12-UNSIGNED
+          path: Pomocnik-Alfa-1.7.12-UNSIGNED.apk
           if-no-files-found: error
           retention-days: 7
 
@@ -460,9 +532,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete build-1.7.11-unsigned -y || true
-          git push --delete origin build-1.7.11-unsigned || true
-          gh release create build-1.7.11-unsigned "Pomocnik-Alfa-1.7.11-UNSIGNED.apk#Pomocnik-Alfa-1.7.11-UNSIGNED.apk" --title "Pomocnik Alfa 1.7.11 unsigned build" --notes "Automatyczny build 1.7.11 z poprawką stabilności Alfa Tube. Ten plik jest przeznaczony do końcowego podpisania kluczem Pomocnika Alfa."
+          gh release delete build-1.7.12-unsigned -y || true
+          git push --delete origin build-1.7.12-unsigned || true
+          gh release create build-1.7.12-unsigned "Pomocnik-Alfa-1.7.12-UNSIGNED.apk#Pomocnik-Alfa-1.7.12-UNSIGNED.apk" --title "Pomocnik Alfa 1.7.12 unsigned build" --notes "Automatyczny build 1.7.12 z poprawką stabilności Alfa Tube. Ten plik jest przeznaczony do końcowego podpisania kluczem Pomocnika Alfa."
 
       - name: Report workflow result
         if: always()
@@ -470,7 +542,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BUILD_STATUS: ${{ job.status }}
         run: |
-          gh issue create --title "PA 1.7.11 BUILD ${BUILD_STATUS} ${GITHUB_RUN_ID}" --body "Status: ${BUILD_STATUS}
+          gh issue create --title "PA 1.7.12 BUILD ${BUILD_STATUS} ${GITHUB_RUN_ID}" --body "Status: ${BUILD_STATUS}
 
           Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
 
