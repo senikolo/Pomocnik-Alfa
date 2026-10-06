@@ -1,0 +1,103 @@
+name: Audit all Pomocnik Alfa radio metadata
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  audit:
+    if: ${{ github.event.issue.title == 'TRIGGER PA RADIO FULL AUDIT' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Probe all radio streams
+        run: |
+          cat > /tmp/audit.py <<'PY'
+          import urllib.request, urllib.error, re, ssl, json, time
+          stations = [
+            ("Program 1 Polskiego Radia","https://stream11.polskieradio.pl/pr1/pr1.sdp/playlist.m3u8"),
+            ("Program 3 Polskiego Radia","https://stream13.polskieradio.pl/pr3/pr3.sdp/playlist.m3u8"),
+            ("TOK FM","https://radiostream.pl/tuba10-1.mp3"),
+            ("ESKA Bochnia","https://ic1.smcdn.pl/2330-1.mp3"),
+            ("RMF FM","https://rs103-krk-cyfronet.rmfstream.pl/RMFFM48"),
+            ("Radio ZET","https://zt02.cdn.eurozet.pl/zet-old.mp3"),
+            ("VOX FM","https://ic2.smcdn.pl/3990-1.mp3"),
+            ("RMF Classic","https://rs9-krk2.rmfstream.pl/rmf_classic"),
+            ("RMF MAXX","https://rs9-krk2-cyfronet.rmfstream.pl/RMFMAXXX48"),
+            ("Złote Przeboje","https://radiostream.pl/tuba8904-1.mp3"),
+            ("Radio Pogoda","https://hub.radiostream.pl/stream.pls?radio=38&type=none&app=none&coding=mp3&redirect=true"),
+            ("Eska2","https://waw.ic.smcdn.pl/6040-1.aac"),
+            ("Eska ROCK","https://n07-eu.rcs.revma.com/1nnezw8qz7zuv"),
+            ("1.FM Birds","https://strm112.1.fm/brazilianbirds_mobile_mp3"),
+            ("Radio Arabella München","https://edge21.stream.radioarabella.de/radioarabella-muenchen/stream/mp3"),
+            ("Antenne Bayern","https://stream.antenne.de/antenne/stream/mp3"),
+            ("Bayern 2","https://dispatcher.rndfnk.com/br/br2/live/mp3/mid"),
+            ("Bayern 3","https://dispatcher.rndfnk.com/br/br3/live/mp3/mid"),
+            ("Deutschlandfunk","https://st01.sslstream.dlf.de/dlf/01/low/aac/stream.aac?aggregator=web"),
+            ("ROCK ANTENNE","https://stream.rockantenne.de/rockantenne/stream/mp3"),
+            ("BR24","https://dispatcher.rndfnk.com/br/br24/live/mp3/mid"),
+            ("BR-KLASSIK","https://dispatcher.rndfnk.com/br/brklassik/live/mp3/mid"),
+            ("BR Heimat","https://dispatcher.rndfnk.com/br/brheimat/live/mp3/mid"),
+            ("Deutschlandfunk Kultur","https://st02.sslstream.dlf.de/dlf/02/low/aac/stream.aac?aggregator=web"),
+          ]
+          def probe(name,url):
+              if ".m3u8" in url:
+                  try:
+                      req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0"})
+                      with urllib.request.urlopen(req,timeout=8) as r:
+                          data=r.read(3000).decode("utf-8","ignore")
+                          return "HLS", "playlist OK" if "#EXTM3U" in data else "HLS no playlist"
+                  except Exception as e: return "HLS-ERR",str(e)[:90]
+              try:
+                  req=urllib.request.Request(url,headers={"User-Agent":"Pomocnik-Alfa-Audit/1.0","Icy-MetaData":"1","Accept":"*/*"})
+                  with urllib.request.urlopen(req,timeout=10) as r:
+                      headers={k.lower():v for k,v in r.headers.items()}
+                      mi=int(headers.get("icy-metaint","0") or 0)
+                      icyname=headers.get("icy-name","")
+                      if mi<=0:
+                          return "NO-ICY", ("icy-name="+icyname)[:120]
+                      remain=mi
+                      while remain:
+                          b=r.read(min(remain,32768))
+                          if not b: break
+                          remain-=len(b)
+                      lb=r.read(1)
+                      if not lb:return "ICY","no metadata block"
+                      ln=lb[0]*16
+                      raw=r.read(ln).decode("latin1","ignore").replace("\x00","").strip()
+                      m=re.search(r"StreamTitle=['\"]([^'\"]*)",raw,re.I)
+                      title=m.group(1).strip() if m else ""
+                      return "ICY", (title or raw or "empty block")[:160]
+              except Exception as e:
+                  return "ERR",str(e)[:120]
+          print("| Stacja | Stream | Wynik |")
+          print("|---|---|---|")
+          for n,u in stations:
+              kind,info=probe(n,u)
+              print(f"| {n} | {kind} | {info.replace('|','/')} |")
+          PY
+          python /tmp/audit.py | tee /tmp/radio-audit.txt
+
+      - name: Verify official fallback sources
+        run: |
+          set -euxo pipefail
+          check() { name="$1"; url="$2"; marker="$3"; code=$(curl -L -A 'Mozilla/5.0' --max-time 12 -sS -o /tmp/page -w '%{http_code}' "$url" || true); bytes=$(wc -c </tmp/page); hits=$(grep -Eio "$marker" /tmp/page | head -3 | tr '\n' ',' || true); printf '%-28s HTTP=%s bytes=%s marker=%s\n' "$name" "$code" "$bytes" "$hits"; }
+          check 'TOK FM' 'https://audycje.tokfm.pl/ramowka?v=2' 'Ramówka|Pierwszy Program|TOK360|Poranek TOK'
+          check 'RMF FM' 'https://www.rmf.fm/' 'Co było grane|Poplista'
+          check 'Radio ZET' 'https://player.radiozet.pl/' 'Sprawdź co graliśmy|Radio ZET'
+          check 'Arabella' 'https://www.radioarabella.de/' 'Sendungen|Radio Arabella'
+          check 'ANTENNE BAYERN' 'https://www.antenne.de/webradio/live' 'Gerade läuft|Gespielte Uhrzeit'
+          check 'ROCK ANTENNE' 'https://www.rockantenne.de/rockhoeren/streams/live' 'Gerade läuft|Gespielte Uhrzeit'
+          check 'BR-KLASSIK' 'https://www.br.de/radio/live/br-klassik/' 'BR Klassik|BR-KLASSIK'
+          check 'Deutschlandfunk' 'https://www.deutschlandfunk.de/programm/' 'Programm|Uhr'
+          check 'DLF Kultur' 'https://www.deutschlandfunkkultur.de/' 'Live|Uhr'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-radio-full-audit
+          path: /tmp/radio-audit.txt
+          retention-days: 3
