@@ -1,4 +1,4 @@
-name: Build Pomocnik Alfa 1.7.13
+name: Build Pomocnik Alfa 1.7.14
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.13 BUILD' }}
+    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.14 BUILD' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -621,31 +621,116 @@ jobs:
           print("PA 1.7.13 calm cinema UI patch OK")
           PY
 
-      - name: Set version 1.7.13
+      - name: Apply 1.7.14 portrait saver and original audio
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          v=Path("project/app/src/main/java/com/ispina/lokalnie/tube/Video.java")
+          s=v.read_text()
+          s=s.replace(
+              'public String url="",title="",author="",channel="",thumb="",license="",provider=""; public long duration; public boolean downloadable;',
+              'public String url="",title="",author="",channel="",thumb="",license="",provider="",language=""; public long duration; public boolean downloadable;'
+          )
+          s=s.replace(
+              'public static final class Source {public String url,label,mime,extension,language="";public boolean separate;public int height;',
+              'public static final class Source {public String url,label,mime,extension,language="";public boolean separate,original;public int height;'
+          )
+          v.write_text(s)
+
+          e=Path("project/app/src/main/java/com/ispina/lokalnie/tube/ExtractorProvider.java")
+          s=e.read_text()
+          s=s.replace(
+              'v.license=i.getLicence();v.provider="extractor";',
+              'v.license=i.getLicence();v.provider="extractor";v.language=i.getLanguageInfo()==null?"":i.getLanguageInfo().toLanguageTag();'
+          )
+          s=s.replace(
+              'a.language=s.getAudioLocale()==null?"":s.getAudioLocale().toLanguageTag();v.audio.add(a);',
+              'a.language=s.getAudioLocale()==null?"":s.getAudioLocale().toLanguageTag();a.original=s.getAudioTrackType()==AudioTrackType.ORIGINAL;v.audio.add(a);'
+          )
+          e.write_text(s)
+
+          p=Path("project/app/src/main/java/com/ispina/lokalnie/TubeActivity.java")
+          s=p.read_text()
+          s=s.replace(
+              'private float oldBrightness=-1;private int qualityBeforeSaver;',
+              'private float oldBrightness=-1;private int qualityBeforeSaver,audioBeforeSaver,orientationBeforeSaver;'
+          )
+          s=s.replace('private LinearLayout saverPanel;', 'private LinearLayout saverPanel,saverControls;')
+          s=s.replace(
+              'private int bestAudio(Video v){int i=0;for(int n=0;n<v.audio.size();n++)if(v.audio.get(n).mime.contains("mp4")||v.audio.get(n).extension.equals("m4a")){i=n;break;}return i;}',
+              'private int bestAudio(Video v){int original=-1,languageMatch=-1;for(int n=0;n<v.audio.size();n++){Video.Source a=v.audio.get(n);boolean preferred=a.mime.contains("mp4")||a.extension.equals("m4a");if(a.original){if(preferred)return n;if(original<0)original=n;}if(!v.language.isEmpty()&&!a.language.isEmpty()){String vl=v.language.split("-")[0],al=a.language.split("-")[0];if(vl.equalsIgnoreCase(al)){if(preferred&&languageMatch<0)languageMatch=n;else if(languageMatch<0)languageMatch=n;}}}if(original>=0)return original;if(languageMatch>=0)return languageMatch;for(int n=0;n<v.audio.size();n++)if(v.audio.get(n).mime.contains("mp4")||v.audio.get(n).extension.equals("m4a"))return n;return 0;}'
+          )
+          s=s.replace(
+              'if(on){oldBrightness=getWindow().getAttributes().screenBrightness;qualityBeforeSaver=quality;saver=true;',
+              'if(on){oldBrightness=getWindow().getAttributes().screenBrightness;qualityBeforeSaver=quality;audioBeforeSaver=audio;orientationBeforeSaver=getRequestedOrientation();saver=true;setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);getWindow().getDecorView().setSystemUiVisibility(5894);'
+          )
+          s=s.replace(
+              'bar.setVisibility(View.GONE);bottomNav.setVisibility(View.GONE);scroll.setVisibility(View.GONE);body.removeView(playerFrame);saverPanel=new LinearLayout(this);saverPanel.setOrientation(LinearLayout.VERTICAL);saverPanel.setGravity(Gravity.CENTER);saverPanel.setBackgroundColor(Color.BLACK);',
+              'bar.setVisibility(View.GONE);bottomNav.setVisibility(View.GONE);scroll.setVisibility(View.GONE);body.removeView(playerFrame);saverPanel=new LinearLayout(this);saverPanel.setOrientation(LinearLayout.VERTICAL);saverPanel.setGravity(Gravity.CENTER);saverPanel.setPadding(0,0,0,0);saverPanel.setBackgroundColor(Color.BLACK);'
+          )
+          s=s.replace(
+              'TextView title=uiText("Alfa Tube Saver",18,true);title.setTextColor(0xFFCCCCCC);saverPanel.addView(title);view.setKeepScreenOn(true);saverPanel.addView(playerFrame,new LinearLayout.LayoutParams(NativeUi.dp(this,250),NativeUi.dp(this,140)));',
+              'view.setKeepScreenOn(true);view.setResizeMode(androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT);saverPanel.addView(playerFrame,new LinearLayout.LayoutParams(-1,0,1));saverControls=new LinearLayout(this);saverControls.setOrientation(LinearLayout.HORIZONTAL);saverControls.setGravity(Gravity.CENTER);saverControls.setPadding(dp(8),dp(6),dp(8),dp(8));saverControls.setBackgroundColor(0xF2111416);saverPanel.addView(saverControls,new LinearLayout.LayoutParams(-1,dp(66)));'
+          )
+          s=s.replace('saverButton("Play / pauza"', 'saverButton("▶ / ❚❚"')
+          s=s.replace('saverButton("Tylko audio / obraz"', 'saverButton(onlyAudio?"Obraz":"Audio"')
+          s=s.replace('saverButton("Wyjdź z Savera"', 'saverButton("Wyjdź"')
+          s=s.replace(
+              'if(service!=null){service.player.setTrackSelectionParameters(service.player.getTrackSelectionParameters().buildUpon().setForceLowestBitrate(true).setMaxVideoSize(640,360).build());if(!onlyAudio&&!selected.video.isEmpty()){int low=0;for(int i=0;i<selected.video.size();i++)if(selected.video.get(i).height<selected.video.get(low).height)low=i;quality=low;change();}}',
+              'if(service!=null){boolean sourceChanged=false;if(selected!=null&&!selected.audio.isEmpty()){int originalAudio=bestAudio(selected);if(originalAudio!=audio){audio=originalAudio;sourceChanged=true;}}service.player.setTrackSelectionParameters(service.player.getTrackSelectionParameters().buildUpon().setForceLowestBitrate(true).setMaxVideoSize(640,360).build());if(!onlyAudio&&selected!=null&&!selected.video.isEmpty()){int low=0;for(int i=0;i<selected.video.size();i++)if(selected.video.get(i).height<selected.video.get(low).height)low=i;if(low!=quality){quality=low;sourceChanged=true;}}if(sourceChanged)change();}'
+          )
+          s=s.replace(
+              '}else {saver=false;if(saverPanel!=null&&view!=null){saverPanel.removeView(playerFrame);root.removeView(saverPanel);body.addView(playerFrame,0,new LinearLayout.LayoutParams(-1,playerHeight()));view.setVisibility(View.VISIBLE);}saverPanel=null;bar.setVisibility(View.VISIBLE);bottomNav.setVisibility(view!=null?View.GONE:View.VISIBLE);scroll.setVisibility(View.VISIBLE);root.setBackgroundColor(cinemaMode?cinemaBg():NativeUi.bg(this));quality=qualityBeforeSaver;if(service!=null){service.player.setTrackSelectionParameters(service.player.getTrackSelectionParameters().buildUpon().setForceLowestBitrate(false).setMaxVideoSize(Integer.MAX_VALUE,Integer.MAX_VALUE).build());change();}}',
+              '}else {saver=false;getWindow().getDecorView().setSystemUiVisibility(cinemaMode?0:View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);setRequestedOrientation(orientationBeforeSaver);if(saverPanel!=null&&view!=null){saverPanel.removeView(playerFrame);root.removeView(saverPanel);body.addView(playerFrame,0,new LinearLayout.LayoutParams(-1,playerHeight()));view.setVisibility(View.VISIBLE);view.setResizeMode(androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT);view.setKeepScreenOn(true);}saverPanel=null;saverControls=null;bar.setVisibility(View.VISIBLE);bottomNav.setVisibility(view!=null?View.GONE:View.VISIBLE);scroll.setVisibility(View.VISIBLE);root.setBackgroundColor(cinemaMode?cinemaBg():NativeUi.bg(this));quality=qualityBeforeSaver;audio=audioBeforeSaver;if(service!=null){service.player.setTrackSelectionParameters(service.player.getTrackSelectionParameters().buildUpon().setForceLowestBitrate(false).setMaxVideoSize(Integer.MAX_VALUE,Integer.MAX_VALUE).build());change();}}'
+          )
+          s=s.replace(
+              'private void saverButton(String label,Runnable action){Button b=button(saverPanel,label,action);b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF242424));b.setTextColor(0xFFCCCCCC);b.getLayoutParams().width=NativeUi.dp(this,250);}',
+              'private void saverButton(String label,Runnable action){if(saverControls==null)return;Button b=NativeUi.button(this,label,true);b.setAllCaps(false);b.setTextSize(12);b.setMinHeight(dp(48));b.setTextColor(0xFFE6E9EA);b.setBackground(new android.graphics.drawable.RippleDrawable(android.content.res.ColorStateList.valueOf(0x3340C878),NativeUi.rounded(0xFF202529,14,this),null));b.setOnClickListener(v->action.run());LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,dp(50),1);lp.setMargins(dp(3),0,dp(3),0);saverControls.addView(b,lp);}'
+          )
+          p.write_text(s)
+
+          service=Path("project/app/src/main/java/com/ispina/lokalnie/tube/TubeService.java")
+          t=service.read_text().replace('PomocnikAlfa/1.7.13','PomocnikAlfa/1.7.14')
+          service.write_text(t)
+
+          vv=v.read_text(); ee=e.read_text(); aa=p.read_text()
+          assert 'boolean separate,original' in vv
+          assert 'AudioTrackType.ORIGINAL' in ee
+          assert 'originalAudio=bestAudio(selected)' in aa
+          assert 'SCREEN_ORIENTATION_PORTRAIT' in aa
+          assert 'saverPanel.addView(playerFrame,new LinearLayout.LayoutParams(-1,0,1))' in aa
+          assert 'saverControls.addView(b,lp)' in aa
+          assert 'audio=audioBeforeSaver' in aa
+          assert 'PomocnikAlfa/1.7.14' in service.read_text()
+          print("PA 1.7.14 Saver portrait/original-audio patch OK")
+          PY
+
+      - name: Set version 1.7.14
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path("project/app/build.gradle")
           s=p.read_text()
-          s=s.replace("versionCode 10706","versionCode 10713").replace("versionCode 10705","versionCode 10713")
-          s=s.replace("versionName '1.7.6'","versionName '1.7.13'").replace("versionName '1.7.5'","versionName '1.7.13'")
+          s=s.replace("versionCode 10706","versionCode 10714").replace("versionCode 10705","versionCode 10714")
+          s=s.replace("versionName '1.7.6'","versionName '1.7.14'").replace("versionName '1.7.5'","versionName '1.7.14'")
           p.write_text(s)
           PY
-          grep -n "versionCode 10713" project/app/build.gradle
-          grep -n "versionName '1.7.13'" project/app/build.gradle
+          grep -n "versionCode 10714" project/app/build.gradle
+          grep -n "versionName '1.7.14'" project/app/build.gradle
           grep -n "openingVideo" project/app/src/main/java/com/ispina/lokalnie/TubeActivity.java
           grep -n "setAllowCrossProtocolRedirects(true)" project/app/src/main/java/com/ispina/lokalnie/tube/TubeService.java
 
       - name: Pack prepared 1.7.10 audit source
         run: |
           set -euxo pipefail
-          tar -cJf Pomocnik-Alfa-1.7.13-AUDIT-SOURCE.tar.xz -C project .
+          tar -cJf Pomocnik-Alfa-1.7.14-AUDIT-SOURCE.tar.xz -C project .
 
       - name: Upload prepared 1.7.10 audit source
         uses: actions/upload-artifact@v4
         with:
-          name: Pomocnik-Alfa-1.7.13-AUDIT-SOURCE
-          path: Pomocnik-Alfa-1.7.13-AUDIT-SOURCE.tar.xz
+          name: Pomocnik-Alfa-1.7.14-AUDIT-SOURCE
+          path: Pomocnik-Alfa-1.7.14-AUDIT-SOURCE.tar.xz
           if-no-files-found: error
           retention-days: 3
 
@@ -675,20 +760,20 @@ jobs:
           find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -ls
           APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -1)"
           test -n "$APK"
-          cp "$APK" ../Pomocnik-Alfa-1.7.13-UNSIGNED.apk
+          cp "$APK" ../Pomocnik-Alfa-1.7.14-UNSIGNED.apk
 
       - name: Verify APK
         run: |
           set -euxo pipefail
-          test -s Pomocnik-Alfa-1.7.13-UNSIGNED.apk
-          sha256sum Pomocnik-Alfa-1.7.13-UNSIGNED.apk
-          ls -lh Pomocnik-Alfa-1.7.13-UNSIGNED.apk
+          test -s Pomocnik-Alfa-1.7.14-UNSIGNED.apk
+          sha256sum Pomocnik-Alfa-1.7.14-UNSIGNED.apk
+          ls -lh Pomocnik-Alfa-1.7.14-UNSIGNED.apk
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Pomocnik-Alfa-1.7.13-UNSIGNED
-          path: Pomocnik-Alfa-1.7.13-UNSIGNED.apk
+          name: Pomocnik-Alfa-1.7.14-UNSIGNED
+          path: Pomocnik-Alfa-1.7.14-UNSIGNED.apk
           if-no-files-found: error
           retention-days: 7
 
@@ -696,9 +781,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete build-1.7.13-unsigned -y || true
-          git push --delete origin build-1.7.13-unsigned || true
-          gh release create build-1.7.13-unsigned "Pomocnik-Alfa-1.7.13-UNSIGNED.apk#Pomocnik-Alfa-1.7.13-UNSIGNED.apk" --title "Pomocnik Alfa 1.7.13 unsigned build" --notes "Automatyczny build 1.7.13 z poprawką stabilności Alfa Tube. Ten plik jest przeznaczony do końcowego podpisania kluczem Pomocnika Alfa."
+          gh release delete build-1.7.14-unsigned -y || true
+          git push --delete origin build-1.7.14-unsigned || true
+          gh release create build-1.7.14-unsigned "Pomocnik-Alfa-1.7.14-UNSIGNED.apk#Pomocnik-Alfa-1.7.14-UNSIGNED.apk" --title "Pomocnik Alfa 1.7.14 unsigned build" --notes "Automatyczny build 1.7.14 z poprawką stabilności Alfa Tube. Ten plik jest przeznaczony do końcowego podpisania kluczem Pomocnika Alfa."
 
       - name: Report workflow result
         if: always()
@@ -706,7 +791,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BUILD_STATUS: ${{ job.status }}
         run: |
-          gh issue create --title "PA 1.7.13 BUILD ${BUILD_STATUS} ${GITHUB_RUN_ID}" --body "Status: ${BUILD_STATUS}
+          gh issue create --title "PA 1.7.14 BUILD ${BUILD_STATUS} ${GITHUB_RUN_ID}" --body "Status: ${BUILD_STATUS}
 
           Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
 
