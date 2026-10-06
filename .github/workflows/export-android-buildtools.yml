@@ -1,0 +1,32 @@
+name: Export Android Build Tools
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'triggers/export-android-buildtools.txt'
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare Android build tools
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "build-tools;35.0.0"
+          mkdir -p out/lib
+          cp "$ANDROID_HOME/build-tools/35.0.0/apksigner" out/
+          cp "$ANDROID_HOME/build-tools/35.0.0/zipalign" out/
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" out/lib/
+          chmod +x out/apksigner out/zipalign
+          ./out/apksigner --version
+          ./out/zipalign -h >/dev/null 2>&1 || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ANDROID-BUILD-TOOLS-SIGNING
+          path: out
+          retention-days: 7
