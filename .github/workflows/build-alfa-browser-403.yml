@@ -1,0 +1,96 @@
+name: Build Alfa Browser Legacy Android 4.0.3
+
+on:
+  push:
+    paths:
+      - 'alfa-browser-build/trigger-403.txt'
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Prepare Android 4.0.3 variant
+        run: |
+          set -euxo pipefail
+          cp -R alfa-browser-project project
+          sed -i "s/applicationId 'pl.alfabrowser.legacy'/applicationId 'pl.alfabrowser.legacy40'/" project/app/build.gradle
+          sed -i "s/minSdk 17/minSdk 15/" project/app/build.gradle
+          sed -i "s/versionCode 110/versionCode 115/" project/app/build.gradle
+          sed -i "s/versionName '1.1-adblock'/versionName '1.1-adblock-api15'/" project/app/build.gradle
+          sed -i 's/android:name=".MainActivity"/android:name="pl.alfabrowser.legacy.MainActivity"/' project/app/src/main/AndroidManifest.xml
+          sed -i 's/Alfa Browser Legacy/Alfa Browser Legacy 4.0/g' project/app/src/main/AndroidManifest.xml
+          grep -n "minSdk 15" project/app/build.gradle
+          grep -n "applicationId 'pl.alfabrowser.legacy40'" project/app/build.gradle
+          grep -n "versionName '1.1-adblock-api15'" project/app/build.gradle
+
+      - name: Restore Pomocnik Alfa icon
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          mkdir -p /tmp/pa-art /tmp/pa-src project/app/src/main/res/drawable
+          gh run download 37463270798 -R senikolo/Pomocnik-Alfa -n Pomocnik-Alfa-1.7.26-SOURCE -D /tmp/pa-art
+          TAR="$(find /tmp/pa-art -type f -name '*.tar.xz' | head -1)"
+          test -n "$TAR"
+          tar -xJf "$TAR" -C /tmp/pa-src
+          ICON="$(find /tmp/pa-src -type f -name 'ic_launcher_cat_legacy.png' | head -1)"
+          test -n "$ICON"
+          cp "$ICON" project/app/src/main/res/drawable/ic_launcher.png
+
+      - name: Prepare Android SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: project
+        run: |
+          set -euxo pipefail
+          gradle --no-daemon :app:assembleDebug -x lint --stacktrace
+          APK="$(find app/build/outputs/apk/debug -type f -name '*.apk' | head -1)"
+          test -n "$APK"
+          cp "$APK" ../Alfa-Browser-Legacy-1.1-ADBLOCK-Android-4.0.3.apk
+
+      - name: Verify APK
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          "$BT/aapt" dump badging Alfa-Browser-Legacy-1.1-ADBLOCK-Android-4.0.3.apk | tee badging.txt
+          grep "sdkVersion:'15'" badging.txt
+          grep "package: name='pl.alfabrowser.legacy40'" badging.txt
+          grep "versionName='1.1-adblock-api15'" badging.txt
+          "$BT/apksigner" verify --verbose --print-certs Alfa-Browser-Legacy-1.1-ADBLOCK-Android-4.0.3.apk
+          sha256sum Alfa-Browser-Legacy-1.1-ADBLOCK-Android-4.0.3.apk | tee sha256.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Alfa-Browser-Legacy-1.1-ADBLOCK-Android-4.0.3
+          path: Alfa-Browser-Legacy-1.1-ADBLOCK-Android-4.0.3.apk
+          retention-days: 7
+
+      - name: Report run id
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 66 -R senikolo/Pomocnik-Alfa --body "ALFA_BROWSER_403_RUN_ID=${{ github.run_id }} STATUS=${{ job.status }}"
