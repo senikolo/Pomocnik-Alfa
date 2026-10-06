@@ -1,0 +1,43 @@
+name: Debug TOK FM schedule HTML
+
+on:
+  push:
+    paths:
+      - 'triggers/debug-tokfm.txt'
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch and inspect TOK FM schedule
+        run: |
+          set -euxo pipefail
+          UA='Mozilla/5.0 (Android; Pomocnik Alfa RadioInfo+)'
+          curl -L -A "$UA" -H 'Accept: text/html,application/xhtml+xml' -H 'Accept-Language: pl,en;q=0.8,de;q=0.7' --max-time 20 -sS 'https://audycje.tokfm.pl/ramowka?v=2' -o /tmp/tok.html
+          echo "BYTES=$(wc -c </tmp/tok.html)"
+          echo '--- TIME TOKENS ---'
+          grep -Eo '([01]?[0-9]|2[0-3]):[0-5][0-9]' /tmp/tok.html | sort | uniq -c | head -40 || true
+          echo '--- RAW AROUND 16: ---'
+          python - <<'PY'
+          import re
+          s=open('/tmp/tok.html',encoding='utf-8',errors='ignore').read()
+          for m in list(re.finditer(r'(?:[01]?\d|2[0-3]):[0-5]\d',s))[:30]:
+              a=max(0,m.start()-350); b=min(len(s),m.end()+650)
+              print('\n###',m.group(),'###\n',s[a:b].replace('\n',' ')[:1100])
+          print('\n--- URL/API TOKENS ---')
+          for pat in [r'https?://[^"\'<> ]+', r'/api[^"\'<> ]+', r'graphql[^"\'<> ]*', r'schedule[^"\'<> ]*', r'ramow[^"\'<> ]*']:
+              vals=[]
+              for x in re.findall(pat,s,re.I):
+                  if x not in vals: vals.append(x)
+              print(pat)
+              for x in vals[:80]: print(x[:500])
+          PY
+          echo '--- ATTRS AROUND RAMOWKA ---'
+          grep -Eio '.{0,120}(ramowka|ramówka|schedule|program).{0,240}' /tmp/tok.html | head -80 || true
+          cp /tmp/tok.html tokfm-ramowka.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tokfm-ramowka-debug
+          path: tokfm-ramowka.html
+          retention-days: 1
