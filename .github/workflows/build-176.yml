@@ -201,6 +201,9 @@ jobs:
           grep -n "openingVideo" project/app/src/main/java/com/ispina/lokalnie/TubeActivity.java
           grep -n "setAllowCrossProtocolRedirects(true)" project/app/src/main/java/com/ispina/lokalnie/tube/TubeService.java
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Prepare Android SDK 35
         run: |
           set -euxo pipefail
