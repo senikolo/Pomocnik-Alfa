@@ -189,9 +189,9 @@ helpers=r'''    private static void sanitize(String station,Result r){
 '''
 assert anchor in s, "RadioInfoPlus helper anchor not found"
 s=s.replace(anchor,helpers+anchor)
-old_clean='''    private static String clean(CharSequence s){if(s==null)return "";String x=s.toString().replace('\n',' ').replace('\r',' ').trim();while(x.contains("  "))x=x.replace("  "," ");return x;}
+old_clean=r'''    private static String clean(CharSequence s){if(s==null)return "";String x=s.toString().replace('\n',' ').replace('\r',' ').trim();while(x.contains("  "))x=x.replace("  "," ");return x;}
 '''
-new_clean='''    private static String clean(CharSequence s){if(s==null)return "";String x=s.toString().replace('\n',' ').replace('\r',' ').trim();while(x.contains("  "))x=x.replace("  "," ");return repairMojibake(x);}
+new_clean=r'''    private static String clean(CharSequence s){if(s==null)return "";String x=s.toString().replace('\n',' ').replace('\r',' ').trim();while(x.contains("  "))x=x.replace("  "," ");return repairMojibake(x);}
 '''
 assert old_clean in s, "RadioInfoPlus clean method not found"
 p.write_text(s.replace(old_clean,new_clean))
