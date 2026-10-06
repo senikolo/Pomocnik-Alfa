@@ -1,0 +1,97 @@
+name: Build Pomocnik Alfa 1.7.27 Polish Radio Info
+
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+jobs:
+  build:
+    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.27 POLSKIE RADIO' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Restore verified 1.7.26 source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          mkdir artifact project
+          gh run download 37463270798 -R senikolo/Pomocnik-Alfa -n Pomocnik-Alfa-1.7.26-SOURCE -D artifact
+          tar -xJf artifact/Pomocnik-Alfa-1.7.26-SOURCE.tar.xz -C project
+          grep -n "versionCode 10726" project/app/build.gradle
+
+      - name: Apply Polish radio adapters
+        run: |
+          set -euxo pipefail
+          base64 -d patches/radio-polskie-1727.patch.gz.b64 | gzip -dc > /tmp/pa1727.patch
+          cd project
+          patch -p1 < /tmp/pa1727.patch
+          grep -n "versionCode 10727" app/build.gradle
+          grep -n "Program 1 Polskiego Radia" app/src/main/java/com/ispina/lokalnie/radio/RadioInfoPlus.java
+          grep -n "parsePolskieRadio3" app/src/main/java/com/ispina/lokalnie/radio/RadioInfoPlus.java
+          grep -n "parsePlayedAt" app/src/main/java/com/ispina/lokalnie/radio/RadioInfoPlus.java
+          tar -cJf ../Pomocnik-Alfa-1.7.27-SOURCE.tar.xz .
+
+      - name: Make side-by-side test package
+        run: |
+          set -euxo pipefail
+          sed -i "s/applicationId 'com.senikolo.pomocniknowy'/applicationId 'com.senikolo.pomocniknowy.radio1727'/" project/app/build.gradle
+          sed -i 's/android:label="Pomocnik Alfa"/android:label="Pomocnik Alfa RADIO 1.7.27"/' project/app/src/main/AndroidManifest.xml
+
+      - name: Prepare Android SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: project
+        run: |
+          set -euxo pipefail
+          chmod +x gradlew
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8
+          org.gradle.workers.max=2
+          org.gradle.parallel=false
+          android.useAndroidX=true
+          EOF
+          ./gradlew --no-daemon assembleDebug -x lint --stacktrace
+          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | head -1)"
+          test -n "$APK"
+          cp "$APK" ../Pomocnik-Alfa-1.7.27-POLSKIE-RADIO.apk
+
+      - name: Verify APK
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          test -s Pomocnik-Alfa-1.7.27-POLSKIE-RADIO.apk
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.27-POLSKIE-RADIO.apk | head -3
+          "$BT/apksigner" verify --verbose --print-certs Pomocnik-Alfa-1.7.27-POLSKIE-RADIO.apk
+          sha256sum Pomocnik-Alfa-1.7.27-POLSKIE-RADIO.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.27-POLSKIE-RADIO
+          path: Pomocnik-Alfa-1.7.27-POLSKIE-RADIO.apk
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.27-SOURCE
+          path: Pomocnik-Alfa-1.7.27-SOURCE.tar.xz
+          retention-days: 3
