@@ -478,22 +478,22 @@ jobs:
 
           marker=' private Button button(LinearLayout target,String label,Runnable r)'
           helper=''' private boolean switchingInsidePlayer(){return view!=null&&playerFrame!=null&&scroll!=null;}
- private void showVideoLoadingOverlay(){if(playerFrame==null)return;hideVideoLoadingOverlay();FrameLayout overlay=new FrameLayout(this);overlay.setClickable(true);overlay.setFocusable(true);overlay.setContentDescription("Ładowanie nowego filmu");overlay.setBackground(NativeUi.rounded(0x66000000,22,this));LinearLayout bubble=new LinearLayout(this);bubble.setGravity(Gravity.CENTER);bubble.setBackground(NativeUi.rounded(0xF2FFFFFF,22,this));bubble.setElevation(dp(8));ProgressBar spinner=new ProgressBar(this);spinner.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(NativeUi.green(this)));bubble.addView(spinner,new LinearLayout.LayoutParams(dp(34),dp(34)));FrameLayout.LayoutParams bubbleLp=new FrameLayout.LayoutParams(dp(70),dp(70),Gravity.CENTER);overlay.addView(bubble,bubbleLp);overlay.setAlpha(0f);playerFrame.addView(overlay,new FrameLayout.LayoutParams(-1,-1));videoLoadingOverlay=overlay;overlay.animate().alpha(1f).setDuration(140).start();}
- private void hideVideoLoadingOverlay(){if(videoLoadingOverlay!=null){ViewParent parent=videoLoadingOverlay.getParent();if(parent instanceof ViewGroup)((ViewGroup)parent).removeView(videoLoadingOverlay);videoLoadingOverlay=null;}}
- private void restorePlayerScroll(){if(pendingPlayerScrollY<0||scroll==null)return;final int y=pendingPlayerScrollY;pendingPlayerScrollY=-1;scroll.post(()->{int max=Math.max(0,body.getHeight()-scroll.getHeight());scroll.scrollTo(0,Math.min(y,max));});}
-'''
+           private void showVideoLoadingOverlay(){if(playerFrame==null)return;hideVideoLoadingOverlay();FrameLayout overlay=new FrameLayout(this);overlay.setClickable(true);overlay.setFocusable(true);overlay.setContentDescription("Ładowanie nowego filmu");overlay.setBackground(NativeUi.rounded(0x66000000,22,this));LinearLayout bubble=new LinearLayout(this);bubble.setGravity(Gravity.CENTER);bubble.setBackground(NativeUi.rounded(0xF2FFFFFF,22,this));bubble.setElevation(dp(8));ProgressBar spinner=new ProgressBar(this);spinner.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(NativeUi.green(this)));bubble.addView(spinner,new LinearLayout.LayoutParams(dp(34),dp(34)));FrameLayout.LayoutParams bubbleLp=new FrameLayout.LayoutParams(dp(70),dp(70),Gravity.CENTER);overlay.addView(bubble,bubbleLp);overlay.setAlpha(0f);playerFrame.addView(overlay,new FrameLayout.LayoutParams(-1,-1));videoLoadingOverlay=overlay;overlay.animate().alpha(1f).setDuration(140).start();}
+           private void hideVideoLoadingOverlay(){if(videoLoadingOverlay!=null){ViewParent parent=videoLoadingOverlay.getParent();if(parent instanceof ViewGroup)((ViewGroup)parent).removeView(videoLoadingOverlay);videoLoadingOverlay=null;}}
+           private void restorePlayerScroll(){if(pendingPlayerScrollY<0||scroll==null)return;final int y=pendingPlayerScrollY;pendingPlayerScrollY=-1;scroll.post(()->{int max=Math.max(0,body.getHeight()-scroll.getHeight());scroll.scrollTo(0,Math.min(y,max));});}
+          '''
           if marker not in s:
               raise SystemExit("button marker not found")
           s=s.replace(marker,helper+marker,1)
 
           old_open='''  if(mode==0&&openingVideo){message("Film jest już przygotowywany…");return;}
-  if(mode==0)openingVideo=true;
-  final LinearLayout progress=loading("Przygotowuję odtwarzanie…");'''
+            if(mode==0)openingVideo=true;
+            final LinearLayout progress=loading("Przygotowuję odtwarzanie…");'''
           new_open='''  if(mode==0&&openingVideo)return;
-  final boolean switchInPlayer=mode==0&&switchingInsidePlayer();
-  if(mode==0)openingVideo=true;
-  if(switchInPlayer){pendingPlayerScrollY=scroll.getScrollY();showVideoLoadingOverlay();}
-  final LinearLayout progress=switchInPlayer?null:loading("Przygotowuję odtwarzanie…");'''
+            final boolean switchInPlayer=mode==0&&switchingInsidePlayer();
+            if(mode==0)openingVideo=true;
+            if(switchInPlayer){pendingPlayerScrollY=scroll.getScrollY();showVideoLoadingOverlay();}
+            final LinearLayout progress=switchInPlayer?null:loading("Przygotowuję odtwarzanie…");'''
           if old_open not in s:
               raise SystemExit("open loading block not found")
           s=s.replace(old_open,new_open)
