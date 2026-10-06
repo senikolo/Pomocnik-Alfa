@@ -1,0 +1,90 @@
+name: Build Pomocnik Alfa 1.7.22 Radio Test
+
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  actions: read
+  issues: write
+
+jobs:
+  build:
+    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.22 RADIO BUILD' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Restore verified 1.7.21 source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          mkdir artifact project
+          gh run download 37445613374 -R senikolo/Pomocnik-Alfa -n Pomocnik-Alfa-1.7.21-SOURCE -D artifact
+          tar -xJf artifact/Pomocnik-Alfa-1.7.21-SOURCE.tar.xz -C project
+          grep -n "versionCode 10721" project/app/build.gradle
+      - name: Apply radio background player patch
+        run: |
+          set -euxo pipefail
+          base64 -d patches/radio-background-1722.patch.gz.b64 > /tmp/pa1722.patch.gz
+          gzip -dc /tmp/pa1722.patch.gz > /tmp/pa1722.patch
+          cd project
+          patch -p1 < /tmp/pa1722.patch
+          grep -n "versionCode 10722" app/build.gradle
+          grep -n "RADIO_NOTIFICATION_ID=1722" app/src/main/java/com/ispina/lokalnie/radio/RadioService.java
+          grep -n "Pauza / Wznów" app/src/main/java/com/ispina/lokalnie/RadioActivity.java
+          test -f app/src/main/res/drawable/ic_radio_notification.xml
+          tar -cJf ../Pomocnik-Alfa-1.7.22-SOURCE.tar.xz .
+      - name: Make side-by-side Radio Test package
+        run: |
+          set -euxo pipefail
+          sed -i "s/applicationId 'com.senikolo.pomocniknowy'/applicationId 'com.senikolo.pomocniknowy.radiotest'/" project/app/build.gradle
+          sed -i 's/android:label="Pomocnik Alfa"/android:label="Pomocnik Alfa RADIO TEST"/' project/app/src/main/AndroidManifest.xml
+      - name: Prepare Android SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+      - name: Build release APK
+        working-directory: project
+        run: |
+          set -euxo pipefail
+          chmod +x gradlew
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8
+          org.gradle.workers.max=2
+          org.gradle.parallel=false
+          android.useAndroidX=true
+          EOF
+          ./gradlew --no-daemon assembleRelease -x lintVitalRelease --stacktrace
+          APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -1)"
+          cp "$APK" ../Pomocnik-Alfa-1.7.22-RADIO-TEST-UNSIGNED.apk
+      - name: Verify APK
+        run: |
+          set -euxo pipefail
+          test -s Pomocnik-Alfa-1.7.22-RADIO-TEST-UNSIGNED.apk
+          /usr/local/lib/android/sdk/build-tools/35.0.0/aapt dump badging Pomocnik-Alfa-1.7.22-RADIO-TEST-UNSIGNED.apk | head -3
+          sha256sum Pomocnik-Alfa-1.7.22-RADIO-TEST-UNSIGNED.apk
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.22-RADIO-TEST-UNSIGNED
+          path: Pomocnik-Alfa-1.7.22-RADIO-TEST-UNSIGNED.apk
+          retention-days: 7
+      - name: Upload source
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.22-SOURCE
+          path: Pomocnik-Alfa-1.7.22-SOURCE.tar.xz
+          retention-days: 3
