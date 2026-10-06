@@ -1,0 +1,99 @@
+name: Build Pomocnik Alfa 1.7.26 Radio Info Plus
+
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+jobs:
+  build:
+    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.26 RADIO INFO PLUS' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Restore verified 1.7.25 source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          mkdir artifact project
+          gh run download 37457509680 -R senikolo/Pomocnik-Alfa -n Pomocnik-Alfa-1.7.25-SOURCE -D artifact
+          tar -xJf artifact/Pomocnik-Alfa-1.7.25-SOURCE.tar.xz -C project
+          grep -n "versionCode 10725" project/app/build.gradle
+
+      - name: Apply Radio Info Plus patch
+        run: |
+          set -euxo pipefail
+          base64 -d patches/radio-info-plus-1726.patch.gz.b64 | gzip -dc > /tmp/pa1726.patch
+          cd project
+          patch -p1 < /tmp/pa1726.patch
+          grep -n "versionCode 10726" app/build.gradle
+          test -f app/src/main/java/com/ispina/lokalnie/radio/RadioInfoPlus.java
+          grep -n "startInfoPlus" app/src/main/java/com/ispina/lokalnie/radio/RadioService.java
+          grep -n "Radio Info+" app/src/main/java/com/ispina/lokalnie/RadioActivity.java
+          tar -cJf ../Pomocnik-Alfa-1.7.26-SOURCE.tar.xz .
+
+      - name: Make side-by-side test package
+        run: |
+          set -euxo pipefail
+          sed -i "s/applicationId 'com.senikolo.pomocniknowy'/applicationId 'com.senikolo.pomocniknowy.radioinfo1726'/" project/app/build.gradle
+          sed -i 's/android:label="Pomocnik Alfa"/android:label="Pomocnik Alfa RADIO INFO+"/' project/app/src/main/AndroidManifest.xml
+          grep -n "radioinfo1726" project/app/build.gradle
+          grep -n 'Pomocnik Alfa RADIO INFO+' project/app/src/main/AndroidManifest.xml
+
+      - name: Prepare Android SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: project
+        run: |
+          set -euxo pipefail
+          chmod +x gradlew
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx3072m -XX:MaxMetaspaceSize=768m -Dfile.encoding=UTF-8
+          org.gradle.workers.max=2
+          org.gradle.parallel=false
+          android.useAndroidX=true
+          EOF
+          ./gradlew --no-daemon assembleDebug -x lint --stacktrace
+          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | head -1)"
+          test -n "$APK"
+          cp "$APK" ../Pomocnik-Alfa-1.7.26-RADIO-INFO-PLUS.apk
+
+      - name: Verify APK
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          test -s Pomocnik-Alfa-1.7.26-RADIO-INFO-PLUS.apk
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.26-RADIO-INFO-PLUS.apk | head -3
+          "$BT/apksigner" verify --verbose --print-certs Pomocnik-Alfa-1.7.26-RADIO-INFO-PLUS.apk
+          sha256sum Pomocnik-Alfa-1.7.26-RADIO-INFO-PLUS.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.26-RADIO-INFO-PLUS
+          path: Pomocnik-Alfa-1.7.26-RADIO-INFO-PLUS.apk
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.26-SOURCE
+          path: Pomocnik-Alfa-1.7.26-SOURCE.tar.xz
+          retention-days: 3
