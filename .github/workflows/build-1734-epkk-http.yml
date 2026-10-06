@@ -1,4 +1,4 @@
-name: Build Pomocnik Alfa 1.7.34 EPKK HTTP Embed
+name: Build Pomocnik Alfa 1.7.34 EPKK Direct Stream
 
 on:
   workflow_dispatch:
@@ -22,15 +22,18 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Verify official EPKK HTTP embed
+      - name: Verify direct EPKK LiveATC stream
         run: |
           set -euxo pipefail
           UA='Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36'
-          curl -L -A "$UA" --retry 2 --retry-all-errors --connect-timeout 10 --max-time 30 -fsS             'http://e.mytuner-radio.com/embed/krakow-airport-atc-pl-519787' -o /tmp/epkk-embed.html
-          grep -q 'id="radio-player"' /tmp/epkk-embed.html
-          grep -q 'playRadio()' /tmp/epkk-embed.html
-          grep -q 'radio_id = 519787' /tmp/epkk-embed.html
-          echo 'Official EPKK HTTP embed verified'
+          rm -f /tmp/epkk.h /tmp/epkk.mp3
+          curl -L -A "$UA" --connect-timeout 10 --max-time 8 -sS -D /tmp/epkk.h -o /tmp/epkk.mp3             'https://d.liveatc.net/epkk_app' || true
+          cat /tmp/epkk.h
+          grep -qi 'content-type: audio/mpeg' /tmp/epkk.h
+          grep -qi 'icy-name: EPKK Twr/App' /tmp/epkk.h
+          test "$(wc -c </tmp/epkk.mp3)" -gt 5000
+          file /tmp/epkk.mp3 | grep -Eqi 'MPEG|audio'
+          echo 'Direct EPKK Twr/App stream verified'
 
       - name: Restore verified 1.7.33 source
         env:
@@ -44,40 +47,31 @@ jobs:
           grep -n "RadioInfo++" project/app/src/main/java/com/ispina/lokalnie/radio/RadioInfoPlus.java
           grep -n "fetchTokFmSchedule" project/app/src/main/java/com/ispina/lokalnie/radio/RadioInfoPlus.java
 
-      - name: Apply EPKK HTTP embed fix
+      - name: Apply native direct EPKK player
         run: |
           set -euxo pipefail
           cp overlays/1.7.34/AviationActivity.java project/app/src/main/java/com/ispina/lokalnie/AviationActivity.java
-          mkdir -p project/app/src/main/res/xml
-          cp overlays/1.7.34/network_security_config.xml project/app/src/main/res/xml/network_security_config.xml
           python - <<'PY'
           from pathlib import Path
-
           p=Path('project/app/build.gradle')
           s=p.read_text()
           assert 'versionCode 10733' in s
           s=s.replace('versionCode 10733','versionCode 10734')
           s=s.replace("versionName '1.7.33'","versionName '1.7.34'")
           p.write_text(s)
-
-          p=Path('project/app/src/main/AndroidManifest.xml')
-          s=p.read_text()
-          if 'android:networkSecurityConfig=' not in s:
-              s=s.replace('<application','<application android:networkSecurityConfig="@xml/network_security_config"',1)
-          p.write_text(s)
           PY
           grep -n "versionCode 10734" project/app/build.gradle
-          grep -n "networkSecurityConfig" project/app/src/main/AndroidManifest.xml
-          grep -n "e.mytuner-radio.com" project/app/src/main/res/xml/network_security_config.xml
-          grep -n "EPKK_EMBED" project/app/src/main/java/com/ispina/lokalnie/AviationActivity.java
+          grep -n "d.liveatc.net/epkk_app" project/app/src/main/java/com/ispina/lokalnie/AviationActivity.java
+          grep -n "RadioService.ACTION_PLAY" project/app/src/main/java/com/ispina/lokalnie/AviationActivity.java
+          ! grep -q "WebView" project/app/src/main/java/com/ispina/lokalnie/AviationActivity.java
           cd project
           tar -cJf ../Pomocnik-Alfa-1.7.34-SOURCE.tar.xz .
 
       - name: Make side-by-side test package
         run: |
           set -euxo pipefail
-          sed -i "s/applicationId 'com.senikolo.pomocniknowy'/applicationId 'com.senikolo.pomocniknowy.epkk1734'/" project/app/build.gradle
-          sed -i 's/android:label="Pomocnik Alfa"/android:label="Pomocnik Alfa EPKK 1.7.34"/' project/app/src/main/AndroidManifest.xml
+          sed -i "s/applicationId 'com.senikolo.pomocniknowy'/applicationId 'com.senikolo.pomocniknowy.epkk1734direct'/" project/app/build.gradle
+          sed -i 's/android:label="Pomocnik Alfa"/android:label="Pomocnik Alfa EPKK DIRECT 1.7.34"/' project/app/src/main/AndroidManifest.xml
 
       - name: Prepare Android SDK
         run: |
@@ -101,21 +95,21 @@ jobs:
           ./gradlew --no-daemon assembleDebug -x lint --stacktrace
           APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | head -1)"
           test -n "$APK"
-          cp "$APK" ../Pomocnik-Alfa-1.7.34-EPKK-HTTP-FIX.apk
+          cp "$APK" ../Pomocnik-Alfa-1.7.34-EPKK-DIRECT.apk
 
       - name: Verify APK
         run: |
           set -euxo pipefail
           BT="$ANDROID_HOME/build-tools/35.0.0"
-          test -s Pomocnik-Alfa-1.7.34-EPKK-HTTP-FIX.apk
-          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.34-EPKK-HTTP-FIX.apk | head -3
-          "$BT/apksigner" verify --verbose --print-certs Pomocnik-Alfa-1.7.34-EPKK-HTTP-FIX.apk
-          sha256sum Pomocnik-Alfa-1.7.34-EPKK-HTTP-FIX.apk
+          test -s Pomocnik-Alfa-1.7.34-EPKK-DIRECT.apk
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.34-EPKK-DIRECT.apk | head -3
+          "$BT/apksigner" verify --verbose --print-certs Pomocnik-Alfa-1.7.34-EPKK-DIRECT.apk
+          sha256sum Pomocnik-Alfa-1.7.34-EPKK-DIRECT.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Pomocnik-Alfa-1.7.34-EPKK-HTTP-FIX
-          path: Pomocnik-Alfa-1.7.34-EPKK-HTTP-FIX.apk
+          name: Pomocnik-Alfa-1.7.34-EPKK-DIRECT
+          path: Pomocnik-Alfa-1.7.34-EPKK-DIRECT.apk
           retention-days: 7
 
       - uses: actions/upload-artifact@v4
