@@ -1,4 +1,4 @@
-name: Build Pomocnik Alfa 1.7.14
+name: Build Pomocnik Alfa 1.7.15
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.14 BUILD' }}
+    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.15 BUILD' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -706,31 +706,64 @@ jobs:
           print("PA 1.7.14 Saver portrait/original-audio patch OK")
           PY
 
-      - name: Set version 1.7.14
+      - name: Apply 1.7.15 move Saver tile
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p=Path("project/app/src/main/java/com/ispina/lokalnie/TubeActivity.java")
+          s=p.read_text()
+
+          old='installPlayerSurface(s);LinearLayout info=panel();'
+          new='installPlayerSurface(s);Button saverTile=button(body,"Alfa Tube Saver",()->setSaver(!saver));saverTile.setContentDescription("Uruchom Alfa Tube Saver");LinearLayout info=panel();'
+          if old not in s:
+              raise SystemExit("player surface anchor not found")
+          s=s.replace(old,new,1)
+
+          old_extra='if(pipAvailable())button(extras,"Oglądaj w małym oknie",this::pip);button(extras,"Alfa Tube Saver",()->setSaver(!saver));LinearLayout saving=panel();'
+          new_extra='if(pipAvailable())button(extras,"Oglądaj w małym oknie",this::pip);LinearLayout saving=panel();'
+          if old_extra not in s:
+              raise SystemExit("old Saver tile in extras not found")
+          s=s.replace(old_extra,new_extra,1)
+
+          p.write_text(s)
+
+          service=Path("project/app/src/main/java/com/ispina/lokalnie/tube/TubeService.java")
+          t=service.read_text().replace('PomocnikAlfa/1.7.14','PomocnikAlfa/1.7.15')
+          service.write_text(t)
+
+          check=p.read_text()
+          assert 'installPlayerSurface(s);Button saverTile=button(body,"Alfa Tube Saver"' in check
+          assert 'button(extras,"Alfa Tube Saver"' not in check
+          assert 'PomocnikAlfa/1.7.15' in service.read_text()
+          print("PA 1.7.15 Saver tile move OK")
+          PY
+
+      - name: Set version 1.7.15
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path("project/app/build.gradle")
           s=p.read_text()
-          s=s.replace("versionCode 10706","versionCode 10714").replace("versionCode 10705","versionCode 10714")
-          s=s.replace("versionName '1.7.6'","versionName '1.7.14'").replace("versionName '1.7.5'","versionName '1.7.14'")
+          s=s.replace("versionCode 10706","versionCode 10715").replace("versionCode 10705","versionCode 10715")
+          s=s.replace("versionName '1.7.6'","versionName '1.7.15'").replace("versionName '1.7.5'","versionName '1.7.15'")
           p.write_text(s)
           PY
-          grep -n "versionCode 10714" project/app/build.gradle
-          grep -n "versionName '1.7.14'" project/app/build.gradle
+          grep -n "versionCode 10715" project/app/build.gradle
+          grep -n "versionName '1.7.15'" project/app/build.gradle
           grep -n "openingVideo" project/app/src/main/java/com/ispina/lokalnie/TubeActivity.java
           grep -n "setAllowCrossProtocolRedirects(true)" project/app/src/main/java/com/ispina/lokalnie/tube/TubeService.java
 
       - name: Pack prepared 1.7.10 audit source
         run: |
           set -euxo pipefail
-          tar -cJf Pomocnik-Alfa-1.7.14-AUDIT-SOURCE.tar.xz -C project .
+          tar -cJf Pomocnik-Alfa-1.7.15-AUDIT-SOURCE.tar.xz -C project .
 
       - name: Upload prepared 1.7.10 audit source
         uses: actions/upload-artifact@v4
         with:
-          name: Pomocnik-Alfa-1.7.14-AUDIT-SOURCE
-          path: Pomocnik-Alfa-1.7.14-AUDIT-SOURCE.tar.xz
+          name: Pomocnik-Alfa-1.7.15-AUDIT-SOURCE
+          path: Pomocnik-Alfa-1.7.15-AUDIT-SOURCE.tar.xz
           if-no-files-found: error
           retention-days: 3
 
@@ -760,20 +793,20 @@ jobs:
           find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -ls
           APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -1)"
           test -n "$APK"
-          cp "$APK" ../Pomocnik-Alfa-1.7.14-UNSIGNED.apk
+          cp "$APK" ../Pomocnik-Alfa-1.7.15-UNSIGNED.apk
 
       - name: Verify APK
         run: |
           set -euxo pipefail
-          test -s Pomocnik-Alfa-1.7.14-UNSIGNED.apk
-          sha256sum Pomocnik-Alfa-1.7.14-UNSIGNED.apk
-          ls -lh Pomocnik-Alfa-1.7.14-UNSIGNED.apk
+          test -s Pomocnik-Alfa-1.7.15-UNSIGNED.apk
+          sha256sum Pomocnik-Alfa-1.7.15-UNSIGNED.apk
+          ls -lh Pomocnik-Alfa-1.7.15-UNSIGNED.apk
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Pomocnik-Alfa-1.7.14-UNSIGNED
-          path: Pomocnik-Alfa-1.7.14-UNSIGNED.apk
+          name: Pomocnik-Alfa-1.7.15-UNSIGNED
+          path: Pomocnik-Alfa-1.7.15-UNSIGNED.apk
           if-no-files-found: error
           retention-days: 7
 
@@ -781,9 +814,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete build-1.7.14-unsigned -y || true
-          git push --delete origin build-1.7.14-unsigned || true
-          gh release create build-1.7.14-unsigned "Pomocnik-Alfa-1.7.14-UNSIGNED.apk#Pomocnik-Alfa-1.7.14-UNSIGNED.apk" --title "Pomocnik Alfa 1.7.14 unsigned build" --notes "Automatyczny build 1.7.14 z poprawką stabilności Alfa Tube. Ten plik jest przeznaczony do końcowego podpisania kluczem Pomocnika Alfa."
+          gh release delete build-1.7.15-unsigned -y || true
+          git push --delete origin build-1.7.15-unsigned || true
+          gh release create build-1.7.15-unsigned "Pomocnik-Alfa-1.7.15-UNSIGNED.apk#Pomocnik-Alfa-1.7.15-UNSIGNED.apk" --title "Pomocnik Alfa 1.7.15 unsigned build" --notes "Automatyczny build 1.7.15 z poprawką stabilności Alfa Tube. Ten plik jest przeznaczony do końcowego podpisania kluczem Pomocnika Alfa."
 
       - name: Report workflow result
         if: always()
@@ -791,7 +824,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BUILD_STATUS: ${{ job.status }}
         run: |
-          gh issue create --title "PA 1.7.14 BUILD ${BUILD_STATUS} ${GITHUB_RUN_ID}" --body "Status: ${BUILD_STATUS}
+          gh issue create --title "PA 1.7.15 BUILD ${BUILD_STATUS} ${GITHUB_RUN_ID}" --body "Status: ${BUILD_STATUS}
 
           Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
 
