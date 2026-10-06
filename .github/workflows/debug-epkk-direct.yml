@@ -1,0 +1,41 @@
+name: Debug myTuner EPKK stream
+
+on:
+  push:
+    paths:
+      - 'triggers/debug-epkk-direct.txt'
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect station page and widget scripts
+        run: |
+          set -euxo pipefail
+          UA='Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36'
+          curl -L -A "$UA" --max-time 30 -fsS 'https://mytuner-radio.com/radio/krakow-airport-atc-pl-519787/' -o /tmp/page.html
+          curl -L -A "$UA" --max-time 30 -fsS 'https://mytuner-radio.com/static/js/widgets/player-v1.js' -o /tmp/player.js
+          curl -L -A "$UA" --max-time 30 -fsS 'https://mytuner-radio.com/static/js/widgets/widget-player-v1.js' -o /tmp/widget.js
+          echo '--- PAGE URLS ---'
+          grep -Eo 'https?://[^"'''<> ]+' /tmp/page.html | sort -u | head -200 || true
+          echo '--- PAGE stream/api hints ---'
+          grep -Ein 'stream|audio|radio_id|station_id|519787|player|ajax|api' /tmp/page.html | head -200 || true
+          echo '--- PLAYER URLs ---'
+          grep -Eo 'https?://[^"'''<> ]+' /tmp/player.js | sort -u | head -200 || true
+          echo '--- PLAYER api/stream hints ---'
+          grep -Ein 'stream|audio|ajax|api|target|station|radio' /tmp/player.js | head -300 || true
+          echo '--- WIDGET api/stream hints ---'
+          grep -Ein 'stream|audio|ajax|api|target|station|radio' /tmp/widget.js | head -300 || true
+          cp /tmp/page.html epkk-page.html
+          cp /tmp/player.js epkk-player.js
+          cp /tmp/widget.js epkk-widget.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: epkk-direct-debug
+          path: |
+            epkk-page.html
+            epkk-player.js
+            epkk-widget.js
+          retention-days: 1
