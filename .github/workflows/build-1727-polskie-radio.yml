@@ -38,7 +38,7 @@ jobs:
           set -euxo pipefail
           base64 -d patches/radio-polskie-1727.patch.gz.b64 | gzip -dc > /tmp/pa1727.patch
           cd project
-          patch -p1 < /tmp/pa1727.patch
+          patch -p0 < /tmp/pa1727.patch
           grep -n "versionCode 10727" app/build.gradle
           grep -n "Program 1 Polskiego Radia" app/src/main/java/com/ispina/lokalnie/radio/RadioInfoPlus.java
           grep -n "parsePolskieRadio3" app/src/main/java/com/ispina/lokalnie/radio/RadioInfoPlus.java
