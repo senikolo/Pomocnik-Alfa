@@ -1,0 +1,287 @@
+name: Build IL Native Radio Dex
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'triggers/build-il-native-radio-dex.txt'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Prepare SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+      - name: Write native radio sources
+        run: |
+          set -euxo pipefail
+          mkdir -p src/com/ispina/lokalnie/radio out/classes out/dex
+          cat > src/com/ispina/lokalnie/radio/RadioService.java <<'JAVA'
+          package com.ispina.lokalnie.radio;
+          import android.app.*;
+          import android.content.*;
+          import android.media.*;
+          import android.os.*;
+
+          public class RadioService extends Service {
+              public static final String ACTION_PLAY="com.ispina.lokalnie.radio.PLAY";
+              public static final String ACTION_TOGGLE="com.ispina.lokalnie.radio.TOGGLE";
+              public static final String ACTION_STOP="com.ispina.lokalnie.radio.STOP";
+              private static final String CHANNEL="ispina_lokalnie_radio";
+              private static final int NOTIF_ID=18294;
+              private MediaPlayer player;
+              private AudioManager audioManager;
+              private String lastName="Radio", lastUrl="";
+              private boolean preparing=false;
+
+              private final AudioManager.OnAudioFocusChangeListener focusListener=change -> {
+                  if (player==null) return;
+                  if (change==AudioManager.AUDIOFOCUS_LOSS ||
+                      change==AudioManager.AUDIOFOCUS_LOSS_TRANSIENT ||
+                      change==AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK) pausePlayback();
+              };
+
+              @Override public void onCreate() {
+                  super.onCreate();
+                  audioManager=(AudioManager)getSystemService(AUDIO_SERVICE);
+                  createChannel();
+                  SharedPreferences p=getSharedPreferences("il_radio_state",MODE_PRIVATE);
+                  lastName=p.getString("name","Radio");
+                  lastUrl=p.getString("url","");
+              }
+
+              @Override public int onStartCommand(Intent intent,int flags,int startId) {
+                  if (intent==null) return lastUrl.isEmpty()?START_NOT_STICKY:START_STICKY;
+                  String action=intent.getAction();
+                  if (ACTION_PLAY.equals(action)) {
+                      String name=intent.getStringExtra("name");
+                      String url=intent.getStringExtra("url");
+                      if (name!=null && !name.trim().isEmpty()) lastName=name.trim();
+                      if (url!=null && !url.trim().isEmpty()) {
+                          lastUrl=url.trim();
+                          getSharedPreferences("il_radio_state",MODE_PRIVATE).edit()
+                              .putString("name",lastName).putString("url",lastUrl).apply();
+                          startForeground(NOTIF_ID,buildNotification("Łączenie…"));
+                          play(lastUrl);
+                      }
+                  } else if (ACTION_TOGGLE.equals(action)) {
+                      toggle();
+                  } else if (ACTION_STOP.equals(action)) {
+                      stopRadio();
+                      return START_NOT_STICKY;
+                  }
+                  return lastUrl.isEmpty()?START_NOT_STICKY:START_STICKY;
+              }
+
+              private void play(String url) {
+                  releasePlayer();
+                  requestFocus();
+                  preparing=true;
+                  updateNotification(null);
+                  try {
+                      player=new MediaPlayer();
+                      player.setAudioAttributes(new AudioAttributes.Builder()
+                          .setUsage(AudioAttributes.USAGE_MEDIA)
+                          .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build());
+                      player.setWakeMode(getApplicationContext(),PowerManager.PARTIAL_WAKE_LOCK);
+                      player.setOnPreparedListener(mp -> {
+                          preparing=false;
+                          try { mp.start(); } catch(Throwable ignored) {}
+                          updateNotification(null);
+                      });
+                      player.setOnErrorListener((mp,what,extra) -> {
+                          preparing=false;
+                          updateNotification("Błąd połączenia");
+                          return true;
+                      });
+                      player.setOnCompletionListener(mp -> updateNotification("Strumień zakończony"));
+                      player.setDataSource(url);
+                      player.prepareAsync();
+                  } catch(Throwable e) {
+                      preparing=false;
+                      updateNotification("Nie udało się połączyć");
+                  }
+              }
+
+              private void toggle() {
+                  if (player!=null) {
+                      try {
+                          if (player.isPlaying()) pausePlayback();
+                          else if (!preparing) {
+                              requestFocus();
+                              player.start();
+                              updateNotification(null);
+                          }
+                          return;
+                      } catch(Throwable ignored) {}
+                  }
+                  if (!lastUrl.isEmpty()) {
+                      startForeground(NOTIF_ID,buildNotification("Łączenie…"));
+                      play(lastUrl);
+                  }
+              }
+
+              private void pausePlayback() {
+                  preparing=false;
+                  if (player!=null) {
+                      try { if (player.isPlaying()) player.pause(); } catch(Throwable ignored) {}
+                  }
+                  updateNotification(null);
+              }
+
+              private void stopRadio() {
+                  preparing=false;
+                  releasePlayer();
+                  abandonFocus();
+                  if (Build.VERSION.SDK_INT>=24) stopForeground(STOP_FOREGROUND_REMOVE);
+                  else stopForeground(true);
+                  ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).cancel(NOTIF_ID);
+                  stopSelf();
+              }
+
+              private void releasePlayer() {
+                  if (player!=null) {
+                      try { player.stop(); } catch(Throwable ignored) {}
+                      try { player.reset(); } catch(Throwable ignored) {}
+                      try { player.release(); } catch(Throwable ignored) {}
+                      player=null;
+                  }
+              }
+
+              private void requestFocus() {
+                  try { audioManager.requestAudioFocus(focusListener,AudioManager.STREAM_MUSIC,AudioManager.AUDIOFOCUS_GAIN); }
+                  catch(Throwable ignored) {}
+              }
+              private void abandonFocus() {
+                  try { audioManager.abandonAudioFocus(focusListener); } catch(Throwable ignored) {}
+              }
+
+              private void createChannel() {
+                  if (Build.VERSION.SDK_INT<26) return;
+                  NotificationManager nm=(NotificationManager)getSystemService(NOTIFICATION_SERVICE);
+                  NotificationChannel ch=new NotificationChannel(CHANNEL,"Ispina Lokalnie – Radio",NotificationManager.IMPORTANCE_LOW);
+                  ch.setDescription("Sterowanie radiem odtwarzanym w tle");
+                  ch.setSound(null,null);
+                  ch.enableVibration(false);
+                  ch.setShowBadge(false);
+                  nm.createNotificationChannel(ch);
+              }
+
+              private PendingIntent serviceCommand(String action,int requestCode) {
+                  Intent i=new Intent(this,RadioService.class).setAction(action);
+                  return PendingIntent.getService(this,requestCode,i,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
+              }
+              private PendingIntent openApp() {
+                  Intent i=new Intent();
+                  i.setClassName(this,"com.ispina.lokalnie.HomeActivity");
+                  i.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP|Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                  return PendingIntent.getActivity(this,18290,i,PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
+              }
+
+              private Notification buildNotification(String forcedState) {
+                  boolean playing=false;
+                  try { playing=player!=null && player.isPlaying(); } catch(Throwable ignored) {}
+                  String state=forcedState!=null?forcedState:(preparing?"Łączenie…":(playing?"Odtwarzanie na żywo":"Pauza"));
+                  int icon=getApplicationInfo().icon;
+                  if (icon==0) icon=android.R.drawable.ic_media_play;
+                  Notification.Builder b=Build.VERSION.SDK_INT>=26?new Notification.Builder(this,CHANNEL):new Notification.Builder(this);
+                  b.setSmallIcon(icon)
+                   .setContentTitle(lastName==null||lastName.isEmpty()?"Radio":lastName)
+                   .setContentText(state)
+                   .setSubText("Ispina Lokalnie • Radio")
+                   .setContentIntent(openApp())
+                   .setCategory(Notification.CATEGORY_TRANSPORT)
+                   .setOnlyAlertOnce(true)
+                   .setShowWhen(false)
+                   .setOngoing(playing||preparing)
+                   .setVisibility(Notification.VISIBILITY_PUBLIC)
+                   .addAction(new Notification.Action.Builder(
+                       playing?android.R.drawable.ic_media_pause:android.R.drawable.ic_media_play,
+                       playing?"Pauza":"Wznów",serviceCommand(ACTION_TOGGLE,18291)).build())
+                   .addAction(new Notification.Action.Builder(
+                       android.R.drawable.ic_menu_close_clear_cancel,"Stop",serviceCommand(ACTION_STOP,18292)).build())
+                   .setStyle(new Notification.MediaStyle().setShowActionsInCompactView(0,1));
+                  return b.build();
+              }
+
+              private void updateNotification(String forcedState) {
+                  if (lastUrl==null||lastUrl.isEmpty()) return;
+                  ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(NOTIF_ID,buildNotification(forcedState));
+              }
+              @Override public void onDestroy() {
+                  releasePlayer();
+                  abandonFocus();
+                  super.onDestroy();
+              }
+              @Override public IBinder onBind(Intent intent) { return null; }
+          }
+          JAVA
+
+          cat > src/com/ispina/lokalnie/radio/RadioCommandActivity.java <<'JAVA'
+          package com.ispina.lokalnie.radio;
+          import android.app.Activity;
+          import android.content.Intent;
+          import android.net.Uri;
+          import android.os.Build;
+          import android.os.Bundle;
+
+          public class RadioCommandActivity extends Activity {
+              @Override protected void onCreate(Bundle state) {
+                  super.onCreate(state);
+                  handle(getIntent());
+                  finish();
+              }
+              @Override protected void onNewIntent(Intent intent) {
+                  super.onNewIntent(intent);
+                  handle(intent);
+                  finish();
+              }
+              private void handle(Intent incoming) {
+                  Uri data=incoming==null?null:incoming.getData();
+                  if (data==null) return;
+                  String cmd=data.getHost();
+                  if (cmd==null) cmd="";
+                  Intent s=new Intent(this,RadioService.class);
+                  if ("play".equalsIgnoreCase(cmd)) {
+                      s.setAction(RadioService.ACTION_PLAY);
+                      s.putExtra("name",data.getQueryParameter("name"));
+                      s.putExtra("url",data.getQueryParameter("url"));
+                  } else if ("toggle".equalsIgnoreCase(cmd)) {
+                      s.setAction(RadioService.ACTION_TOGGLE);
+                  } else if ("stop".equalsIgnoreCase(cmd)) {
+                      s.setAction(RadioService.ACTION_STOP);
+                  } else return;
+                  try {
+                      if (Build.VERSION.SDK_INT>=26 && !RadioService.ACTION_STOP.equals(s.getAction())) startForegroundService(s);
+                      else startService(s);
+                  } catch(Throwable ignored) {}
+              }
+          }
+          JAVA
+      - name: Compile dex
+        run: |
+          set -euxo pipefail
+          ANDROID_JAR="$ANDROID_HOME/platforms/android-35/android.jar"
+          javac --release 8 -cp "$ANDROID_JAR" -d out/classes \
+            src/com/ispina/lokalnie/radio/RadioService.java \
+            src/com/ispina/lokalnie/radio/RadioCommandActivity.java
+          D8="$ANDROID_HOME/build-tools/35.0.0/d8"
+          "$D8" --release --min-api 23 --lib "$ANDROID_JAR" --output out/dex out/classes
+          test -s out/dex/classes.dex
+          cp out/dex/classes.dex out/classes6.dex
+          sha256sum out/classes6.dex
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IL-NATIVE-RADIO-DEX
+          path: out/classes6.dex
+          retention-days: 7
