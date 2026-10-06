@@ -1,0 +1,2 @@
+Build Pomocnik Alfa 1.7.35 Android 7 Compat
+TLS compatibility for Android 7.0 with bundled ISRG Root X1.
