@@ -1,0 +1,47 @@
+name: Probe EPKK direct ATC stream
+
+on:
+  push:
+    paths:
+      - 'triggers/probe-epkk.txt'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe EPKK pages and stream candidates
+        run: |
+          set -euxo pipefail
+          UA='Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36'
+          mkdir -p /tmp/epkk
+          echo '=== MOBILE FEED PAGE ==='
+          curl -L -A "$UA" --max-time 15 -sS -D /tmp/epkk/mobile.h -o /tmp/epkk/mobile.html 'https://m.liveatc.net/feeds/?icao=epkk' || true
+          head -40 /tmp/epkk/mobile.h || true
+          grep -Eoi 'href="[^"]+|src="[^"]+|mount=[A-Za-z0-9_./-]+' /tmp/epkk/mobile.html | head -100 || true
+
+          echo '=== SEARCH PAGE ==='
+          curl -L -A "$UA" --max-time 15 -sS -D /tmp/epkk/search.h -o /tmp/epkk/search.html 'https://www.liveatc.net/search/?icao=krk' || true
+          head -40 /tmp/epkk/search.h || true
+          grep -Eoi 'href="[^"]+|src="[^"]+|mount=[A-Za-z0-9_./-]+' /tmp/epkk/search.html | grep -Ei 'listen|mount|epkk|audio|mp3|pls|m3u' | head -100 || true
+
+          echo '=== FLISTEN ==='
+          for u in             'https://www.liveatc.net/flisten.php?mount=epkk'             'http://www.liveatc.net/flisten.php?mount=epkk'             'https://d.liveatc.net/epkk'             'http://d.liveatc.net/epkk'             'https://d.liveatc.net/epkk_twr'             'https://d.liveatc.net/epkk_app'             'https://d.liveatc.net/epkk_twr_app'             'https://d.liveatc.net/epkk_twrapp'
+          do
+            echo "--- $u"
+            curl -L -A "$UA" --max-time 12 --range 0-4095 -sS -D /tmp/epkk/h -o /tmp/epkk/b "$u" || true
+            sed -n '1,25p' /tmp/epkk/h || true
+            file /tmp/epkk/b || true
+            wc -c /tmp/epkk/b || true
+            strings -n 5 /tmp/epkk/b | head -12 || true
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EPKK-direct-stream-probe
+          path: /tmp/epkk
+          retention-days: 2
