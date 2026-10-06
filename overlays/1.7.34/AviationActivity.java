@@ -1,33 +1,40 @@
 package com.ispina.lokalnie;
 
-import android.graphics.Bitmap;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.webkit.CookieManager;
-import android.webkit.WebChromeClient;
-import android.webkit.WebResourceError;
-import android.webkit.WebResourceRequest;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.Gravity;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import android.view.Gravity;
+
+import androidx.core.content.ContextCompat;
+
+import com.ispina.lokalnie.radio.RadioService;
 
 public class AviationActivity extends ThemedActivity {
-    private static final String EPKK_EMBED = "http://e.mytuner-radio.com/embed/krakow-airport-atc-pl-519787";
+    private static final String EPKK_NAME = "Kraków Airport EPKK • Tower / Approach";
+    private static final String EPKK_URL = "https://d.liveatc.net/epkk_app";
 
-    private WebView engine;
+    private final Handler handler = new Handler(Looper.getMainLooper());
     private TextView status;
     private Button playButton;
-    private boolean engineReady = false;
-    private boolean autoplayPending = true;
-    private int readyPolls = 0;
+
+    private final Runnable stateTick = new Runnable() {
+        @Override public void run() {
+            refreshState();
+            handler.postDelayed(this, 1200);
+        }
+    };
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         buildUi();
+        startListening();
+        handler.post(stateTick);
     }
 
     private void buildUi() {
@@ -37,7 +44,7 @@ public class AviationActivity extends ThemedActivity {
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(NativeUi.dp(this,14),NativeUi.dp(this,14),NativeUi.dp(this,14),NativeUi.dp(this,28));
+        root.setPadding(NativeUi.dp(this,14), NativeUi.dp(this,14), NativeUi.dp(this,14), NativeUi.dp(this,28));
         scroll.addView(root);
 
         LinearLayout head = new LinearLayout(this);
@@ -55,15 +62,15 @@ public class AviationActivity extends ThemedActivity {
         live.addView(NativeUi.text(this,"✈️ Nasłuch Kraków Airport / EPKK",19,true));
         NativeUi.addSpacer(live,this,5);
         live.addView(NativeUi.muted(this,
-                "Bez przekierowania do strony. Dźwięk uruchamiany jest przez ukryty odtwarzacz EPKK, a cały interfejs pozostaje w Pomocniku Alfa.",13));
+                "Bez przeglądarki i bez myTuner. Pomocnik łączy się bezpośrednio z feedem EPKK Tower / Approach.",13));
         NativeUi.addSpacer(live,this,12);
 
-        status = NativeUi.muted(this,"Przygotowanie nasłuchu EPKK…",14);
+        status = NativeUi.muted(this,"Łączenie z EPKK…",14);
         live.addView(status);
         NativeUi.addSpacer(live,this,10);
 
         playButton = NativeUi.button(this,"▶ Włącz nasłuch EPKK",false);
-        playButton.setOnClickListener(v -> startListening(true));
+        playButton.setOnClickListener(v -> startListening());
         live.addView(playButton,new LinearLayout.LayoutParams(-1,NativeUi.dp(this,52)));
         NativeUi.addSpacer(live,this,8);
 
@@ -73,18 +80,18 @@ public class AviationActivity extends ThemedActivity {
 
         NativeUi.addSpacer(live,this,9);
         live.addView(NativeUi.muted(this,
-                "Pomocnik próbuje wystartować automatycznie. Jeśli Android nie pozwoli na autostart dźwięku, dotknij „Włącz nasłuch EPKK”.",12));
+                "Nasłuch uruchamia się automatycznie po wejściu z kafelka. Może grać dalej po wyjściu z tego ekranu, a sterowanie jest dostępne także z powiadomienia. W eterze bywają przerwy ciszy między transmisjami.",12));
         root.addView(live);
 
         LinearLayout freq = NativeUi.card(this);
         freq.addView(NativeUi.text(this,"Częstotliwości EPKK",18,true));
         TextView f = NativeUi.text(this,
-                "Ground: 118.105 MHz\n"+
-                "Tower: 123.255 MHz\n"+
-                "Approach: 121.075 MHz\n"+
-                "Approach: 126.975 MHz\n"+
-                "Director / Approach: 126.530 MHz\n"+
-                "Delivery: 121.980 MHz\n"+
+                "Ground: 118.105 MHz\n" +
+                "Tower: 123.255 MHz\n" +
+                "Approach: 121.075 MHz\n" +
+                "Approach: 126.975 MHz\n" +
+                "Director / Approach: 126.530 MHz\n" +
+                "Delivery: 121.980 MHz\n" +
                 "ATIS: 126.130 MHz",14,false);
         f.setLineSpacing(0,1.18f);
         NativeUi.addSpacer(freq,this,7);
@@ -95,167 +102,61 @@ public class AviationActivity extends ThemedActivity {
         note.addView(NativeUi.text(this,"Jak działa",17,true));
         NativeUi.addSpacer(note,this,4);
         note.addView(NativeUi.muted(this,
-                "Widoczny ekran jest w całości częścią Pomocnika Alfa. Ukryty WebView ładuje wyłącznie oficjalny embed EPKK. Nawigacja do stron zewnętrznych jest zablokowana.",12));
+                "Pomocnik Alfa odtwarza bezpośredni publiczny feed internetowy EPKK Twr/App jako strumień MP3. Nie otwiera strony WWW i nie używa ukrytego WebView.",12));
         root.addView(note);
 
-        createEngine(root);
         setContentView(scroll);
-        loadEngine();
     }
 
-    private void createEngine(LinearLayout root) {
-        engine = new WebView(this);
-        engine.setAlpha(0.01f);
-        engine.setBackgroundColor(0x00000000);
-
-        WebSettings s = engine.getSettings();
-        s.setJavaScriptEnabled(true);
-        s.setDomStorageEnabled(true);
-        s.setMediaPlaybackRequiresUserGesture(false);
-        s.setLoadsImagesAutomatically(false);
-        s.setSupportZoom(false);
-        s.setBuiltInZoomControls(false);
-        s.setDisplayZoomControls(false);
-        s.setSupportMultipleWindows(false);
-        s.setJavaScriptCanOpenWindowsAutomatically(false);
-        s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-
-        CookieManager cm = CookieManager.getInstance();
-        cm.setAcceptCookie(true);
-        try { cm.setAcceptThirdPartyCookies(engine,true); } catch(Throwable ignored) {}
-
-        engine.setWebChromeClient(new WebChromeClient());
-
-        engine.setWebViewClient(new WebViewClient() {
-            @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) {
-                if(req==null || req.getUrl()==null) return true;
-                String u=req.getUrl().toString();
-                // Dopuszczamy tylko właściwy embed EPKK jako stronę główną.
-                return !u.startsWith(EPKK_EMBED);
-            }
-
-            @Override public void onPageStarted(WebView view,String url,Bitmap icon) {
-                engineReady=false;
-                readyPolls=0;
-                if(status!=null) status.setText("Łączenie z EPKK…");
-            }
-
-            @Override public void onPageFinished(WebView view,String url) {
-                engineReady=false;
-                readyPolls=0;
-                if(status!=null) status.setText("Uruchamianie odtwarzacza EPKK…");
-                view.postDelayed(() -> pollReady(),500);
-            }
-
-            @Override public void onReceivedError(WebView view,WebResourceRequest req,WebResourceError err) {
-                if(req!=null && req.isForMainFrame() && status!=null) {
-                    engineReady=false;
-                    status.setText("Nie udało się połączyć z odtwarzaczem EPKK. Dotknij „Włącz nasłuch EPKK”, aby spróbować ponownie.");
-                }
-            }
-        });
-
-        root.addView(engine,new LinearLayout.LayoutParams(2,2));
-    }
-
-    private void loadEngine() {
-        if(engine==null)return;
-        engineReady=false;
-        autoplayPending=true;
-        readyPolls=0;
-        if(status!=null)status.setText("Przygotowanie nasłuchu EPKK…");
-        engine.loadUrl(EPKK_EMBED);
-    }
-
-    private void pollReady() {
-        if(engine==null)return;
-        String js="(function(){try{"+
-                "var a=document.getElementById('radio-player');"+
-                "return (typeof playRadio==='function' && a)?'ready':document.readyState;"+
-                "}catch(e){return 'error';}})();";
-        engine.evaluateJavascript(js,res -> {
-            String r=res==null?"":res.replace("\"","");
-            if(r.contains("ready")) {
-                engineReady=true;
-                readyPolls=0;
-                if(status!=null)status.setText("EPKK gotowe do odtwarzania");
-                if(autoplayPending) {
-                    autoplayPending=false;
-                    engine.postDelayed(() -> startListening(false),350);
-                }
-            } else {
-                readyPolls++;
-                if(readyPolls<=18) {
-                    if(status!=null)status.setText("Łączenie z odtwarzaczem EPKK…");
-                    engine.postDelayed(() -> pollReady(),500);
-                } else {
-                    engineReady=false;
-                    if(status!=null)status.setText("Odtwarzacz EPKK nie odpowiedział. Dotknij „Włącz nasłuch EPKK”, aby ponowić połączenie.");
-                }
-            }
-        });
-    }
-
-    private void startListening(boolean userAction) {
-        if(engine==null)return;
-        if(!engineReady) {
-            if(userAction) {
-                autoplayPending=true;
-                loadEngine();
-            }
-            return;
+    private void startListening() {
+        if (status != null) status.setText("Łączenie z Kraków-Balice EPKK…");
+        if (playButton != null) playButton.setText("⏳ Łączenie…");
+        Intent i = new Intent(this, RadioService.class)
+                .setAction(RadioService.ACTION_PLAY)
+                .putExtra("name", EPKK_NAME)
+                .putExtra("url", EPKK_URL);
+        try {
+            ContextCompat.startForegroundService(this, i);
+        } catch (Throwable e) {
+            if (status != null) status.setText("Nie udało się uruchomić nasłuchu: " + safeMessage(e));
+            if (playButton != null) playButton.setText("▶ Spróbuj ponownie");
         }
-
-        if(status!=null)status.setText("Uruchamianie nasłuchu EPKK…");
-        String js="(function(){try{"+
-                "if(typeof playRadio!=='function')return 'no_function';"+
-                "playRadio();return 'called';"+
-                "}catch(e){return 'error';}})();";
-        engine.evaluateJavascript(js,res -> engine.postDelayed(() -> verifyPlayback(),1200));
-    }
-
-    private void verifyPlayback() {
-        if(engine==null)return;
-        String js="(function(){try{"+
-                "var a=document.getElementById('radio-player');"+
-                "if(a && !a.paused)return 'playing';"+
-                "if(typeof mtPlayer!=='undefined' && mtPlayer && typeof mtPlayer.isPlaying==='function' && mtPlayer.isPlaying())return 'playing';"+
-                "return 'paused';"+
-                "}catch(e){return 'error';}})();";
-        engine.evaluateJavascript(js,res -> {
-            String r=res==null?"":res.replace("\"","");
-            if(r.contains("playing")) {
-                if(status!=null)status.setText("🔴 Nasłuch EPKK włączony");
-                if(playButton!=null)playButton.setText("▶ Nasłuch działa");
-            } else {
-                if(status!=null)status.setText("Połączenie gotowe, ale dźwięk nie wystartował. Dotknij „Włącz nasłuch EPKK”.");
-                if(playButton!=null)playButton.setText("▶ Włącz nasłuch EPKK");
-            }
-        });
     }
 
     private void stopListening() {
-        if(engine==null)return;
-        String js="(function(){try{"+
-                "if(typeof mtPlayer!=='undefined' && mtPlayer && typeof mtPlayer.stop==='function')mtPlayer.stop();"+
-                "var a=document.getElementById('radio-player');if(a){a.pause();a.currentTime=0;}"+
-                "return 'stopped';"+
-                "}catch(e){return 'error';}})();";
-        engine.evaluateJavascript(js,null);
-        if(status!=null)status.setText("Nasłuch zatrzymany");
-        if(playButton!=null)playButton.setText("▶ Włącz nasłuch EPKK");
+        try {
+            startService(new Intent(this, RadioService.class).setAction(RadioService.ACTION_STOP));
+        } catch (Throwable ignored) {}
+        if (status != null) status.setText("Nasłuch EPKK zatrzymany");
+        if (playButton != null) playButton.setText("▶ Włącz nasłuch EPKK");
+    }
+
+    private void refreshState() {
+        SharedPreferences p = getSharedPreferences("radio_state", MODE_PRIVATE);
+        String name = p.getString("name", "");
+        if (!EPKK_NAME.equals(name)) return;
+        boolean playing = p.getBoolean("playing", false);
+        boolean desired = p.getBoolean("desired", false);
+        String error = p.getString("error", "");
+        if (playing) {
+            if (status != null) status.setText("🔴 EPKK Twr/App • nasłuch działa");
+            if (playButton != null) playButton.setText("▶ Nasłuch działa");
+        } else if (error != null && !error.trim().isEmpty()) {
+            if (status != null) status.setText("Błąd połączenia EPKK. Dotknij „Włącz nasłuch”, aby spróbować ponownie.");
+            if (playButton != null) playButton.setText("▶ Spróbuj ponownie");
+        } else if (desired) {
+            if (status != null) status.setText("Łączenie ze strumieniem EPKK Twr/App…");
+            if (playButton != null) playButton.setText("⏳ Łączenie…");
+        }
+    }
+
+    private static String safeMessage(Throwable e) {
+        String m = e == null ? "" : e.getMessage();
+        return (m == null || m.trim().isEmpty()) ? "błąd systemu audio" : m;
     }
 
     @Override protected void onDestroy() {
-        if(engine!=null) {
-            try {
-                stopListening();
-                engine.loadUrl("about:blank");
-                engine.stopLoading();
-                engine.destroy();
-            } catch(Throwable ignored) {}
-            engine=null;
-        }
+        handler.removeCallbacksAndMessages(null);
         super.onDestroy();
     }
 }
