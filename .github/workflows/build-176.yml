@@ -1,4 +1,4 @@
-name: Build Pomocnik Alfa 1.7.15
+name: Build Pomocnik Alfa 1.7.16
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.15 BUILD' }}
+    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.16 BUILD' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
 
@@ -754,16 +754,29 @@ jobs:
           grep -n "openingVideo" project/app/src/main/java/com/ispina/lokalnie/TubeActivity.java
           grep -n "setAllowCrossProtocolRedirects(true)" project/app/src/main/java/com/ispina/lokalnie/tube/TubeService.java
 
+      - name: Apply 1.7.16 Alfa Tube Kids
+        run: |
+          set -euxo pipefail
+          base64 -d patches/alfa-tube-kids-1716.patch.gz.b64 > /tmp/pa1716.patch.gz
+          gzip -dc /tmp/pa1716.patch.gz > /tmp/pa1716.patch
+          cd project
+          patch -p1 < /tmp/pa1716.patch
+          grep -n "versionCode 10716" app/build.gradle
+          grep -n "versionName '1.7.16'" app/build.gradle
+          grep -n "Alfa Tube Kids" app/src/main/java/com/ispina/lokalnie/MainActivity.java
+          grep -n "kidsMode" app/src/main/java/com/ispina/lokalnie/TubeActivity.java
+          test -f app/src/main/res/drawable/ic_alfa_tube_kids.xml
+
       - name: Pack prepared 1.7.10 audit source
         run: |
           set -euxo pipefail
-          tar -cJf Pomocnik-Alfa-1.7.15-AUDIT-SOURCE.tar.xz -C project .
+          tar -cJf Pomocnik-Alfa-1.7.16-AUDIT-SOURCE.tar.xz -C project .
 
       - name: Upload prepared 1.7.10 audit source
         uses: actions/upload-artifact@v4
         with:
-          name: Pomocnik-Alfa-1.7.15-AUDIT-SOURCE
-          path: Pomocnik-Alfa-1.7.15-AUDIT-SOURCE.tar.xz
+          name: Pomocnik-Alfa-1.7.16-AUDIT-SOURCE
+          path: Pomocnik-Alfa-1.7.16-AUDIT-SOURCE.tar.xz
           if-no-files-found: error
           retention-days: 3
 
@@ -793,20 +806,20 @@ jobs:
           find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -ls
           APK="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | head -1)"
           test -n "$APK"
-          cp "$APK" ../Pomocnik-Alfa-1.7.15-UNSIGNED.apk
+          cp "$APK" ../Pomocnik-Alfa-1.7.16-UNSIGNED.apk
 
       - name: Verify APK
         run: |
           set -euxo pipefail
-          test -s Pomocnik-Alfa-1.7.15-UNSIGNED.apk
-          sha256sum Pomocnik-Alfa-1.7.15-UNSIGNED.apk
-          ls -lh Pomocnik-Alfa-1.7.15-UNSIGNED.apk
+          test -s Pomocnik-Alfa-1.7.16-UNSIGNED.apk
+          sha256sum Pomocnik-Alfa-1.7.16-UNSIGNED.apk
+          ls -lh Pomocnik-Alfa-1.7.16-UNSIGNED.apk
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Pomocnik-Alfa-1.7.15-UNSIGNED
-          path: Pomocnik-Alfa-1.7.15-UNSIGNED.apk
+          name: Pomocnik-Alfa-1.7.16-UNSIGNED
+          path: Pomocnik-Alfa-1.7.16-UNSIGNED.apk
           if-no-files-found: error
           retention-days: 7
 
@@ -814,9 +827,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete build-1.7.15-unsigned -y || true
-          git push --delete origin build-1.7.15-unsigned || true
-          gh release create build-1.7.15-unsigned "Pomocnik-Alfa-1.7.15-UNSIGNED.apk#Pomocnik-Alfa-1.7.15-UNSIGNED.apk" --title "Pomocnik Alfa 1.7.15 unsigned build" --notes "Automatyczny build 1.7.15 z poprawką stabilności Alfa Tube. Ten plik jest przeznaczony do końcowego podpisania kluczem Pomocnika Alfa."
+          gh release delete build-1.7.16-unsigned -y || true
+          git push --delete origin build-1.7.16-unsigned || true
+          gh release create build-1.7.16-unsigned "Pomocnik-Alfa-1.7.16-UNSIGNED.apk#Pomocnik-Alfa-1.7.16-UNSIGNED.apk" --title "Pomocnik Alfa 1.7.16 unsigned build" --notes "Automatyczny build 1.7.16 z poprawką stabilności Alfa Tube. Ten plik jest przeznaczony do końcowego podpisania kluczem Pomocnika Alfa."
 
       - name: Report workflow result
         if: always()
@@ -824,7 +837,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BUILD_STATUS: ${{ job.status }}
         run: |
-          gh issue create --title "PA 1.7.15 BUILD ${BUILD_STATUS} ${GITHUB_RUN_ID}" --body "Status: ${BUILD_STATUS}
+          gh issue create --title "PA 1.7.16 BUILD ${BUILD_STATUS} ${GITHUB_RUN_ID}" --body "Status: ${BUILD_STATUS}
 
           Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
 
