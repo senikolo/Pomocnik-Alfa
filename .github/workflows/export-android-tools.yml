@@ -18,11 +18,13 @@ jobs:
       - name: Install Android build tools
         run: |
           set -euxo pipefail
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "build-tools;35.0.0"
-          test -x "$ANDROID_HOME/build-tools/35.0.0/apksigner"
-          test -x "$ANDROID_HOME/build-tools/35.0.0/zipalign"
-          tar -cJf android-build-tools-35.tar.xz -C "$ANDROID_HOME/build-tools" 35.0.0
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "build-tools;35.0.0"
+          test -x "/usr/local/lib/android/sdk/build-tools/35.0.0/apksigner"
+          test -x "/usr/local/lib/android/sdk/build-tools/35.0.0/zipalign"
+          tar -cJf android-build-tools-35.tar.xz -C "/usr/local/lib/android/sdk/build-tools" 35.0.0
       - name: Upload tools
         uses: actions/upload-artifact@v4
         with:
