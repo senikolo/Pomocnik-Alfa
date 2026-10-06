@@ -1,4 +1,4 @@
-name: Build Alfa Browser Legacy 1.0
+name: Build Alfa Browser Legacy 1.1 AdBlock
 
 on:
   push:
@@ -63,22 +63,23 @@ jobs:
           gradle --no-daemon :app:assembleDebug -x lint --stacktrace
           APK="$(find app/build/outputs/apk/debug -type f -name '*.apk' | head -1)"
           test -n "$APK"
-          cp "$APK" ../Alfa-Browser-Legacy-1.0-Android-4.2.apk
+          cp "$APK" ../Alfa-Browser-Legacy-1.1-ADBLOCK-Android-4.2.apk
 
       - name: Verify APK
         run: |
           set -euxo pipefail
           BT="$ANDROID_HOME/build-tools/35.0.0"
-          "$BT/aapt" dump badging Alfa-Browser-Legacy-1.0-Android-4.2.apk | tee badging.txt
+          "$BT/aapt" dump badging Alfa-Browser-Legacy-1.1-ADBLOCK-Android-4.2.apk | tee badging.txt
           grep "sdkVersion:'17'" badging.txt
           grep "package: name='pl.alfabrowser.legacy'" badging.txt
-          "$BT/apksigner" verify --verbose --print-certs Alfa-Browser-Legacy-1.0-Android-4.2.apk
-          sha256sum Alfa-Browser-Legacy-1.0-Android-4.2.apk | tee sha256.txt
+          grep "versionName='1.1-adblock'" badging.txt
+          "$BT/apksigner" verify --verbose --print-certs Alfa-Browser-Legacy-1.1-ADBLOCK-Android-4.2.apk
+          sha256sum Alfa-Browser-Legacy-1.1-ADBLOCK-Android-4.2.apk | tee sha256.txt
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Alfa-Browser-Legacy-1.0-Android-4.2
-          path: Alfa-Browser-Legacy-1.0-Android-4.2.apk
+          name: Alfa-Browser-Legacy-1.1-ADBLOCK-Android-4.2
+          path: Alfa-Browser-Legacy-1.1-ADBLOCK-Android-4.2.apk
           retention-days: 7
 
       - name: Report run id
