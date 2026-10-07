@@ -1,0 +1,78 @@
+name: Fetch ChatGPT Android 7 bundle
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+
+jobs:
+  fetch:
+    if: ${{ github.event.issue.title == 'TRIGGER CHATGPT ANDROID 7 FETCH' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Fetch APKMirror bundle
+        shell: bash
+        run: |
+          set -euxo pipefail
+          UA='Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36'
+          PAGE='https://www.apkmirror.com/apk/openai/chatgpt/chatgpt-1-2026-041-release/chatgpt-1-2026-041-3-android-apk-download/'
+          curl -fL --retry 4 --retry-delay 2 -A "$UA" -c cookies.txt -b cookies.txt "$PAGE" -o page1.html
+
+          python - <<'PY'
+          from pathlib import Path
+          import re, html
+          s=Path('page1.html').read_text(errors='ignore')
+          links=re.findall(r'href=["\']([^"\']+)["\']', s)
+          cand=[html.unescape(x) for x in links if '/download/?key=' in x]
+          if not cand:
+              raise SystemExit('No APKMirror keyed download link found')
+          u=cand[0]
+          if u.startswith('/'):
+              u='https://www.apkmirror.com'+u
+          Path('stage2.url').write_text(u)
+          print(u)
+          PY
+
+          sleep 16
+          URL2="$(cat stage2.url)"
+          curl -fL --retry 4 --retry-delay 2 -A "$UA" -e "$PAGE" -c cookies.txt -b cookies.txt "$URL2" -o page2.html
+
+          python - <<'PY'
+          from pathlib import Path
+          import re, html
+          s=Path('page2.html').read_text(errors='ignore')
+          links=[html.unescape(x) for x in re.findall(r'href=["\']([^"\']+)["\']', s)]
+          cand=[]
+          for x in links:
+              if 'download' in x and ('apkmirror.com' in x or x.endswith('.apkm')):
+                  cand.append(x)
+          for x in links:
+              if '.apkm' in x:
+                  cand.insert(0,x)
+          # Prefer CDN/file link rather than another page.
+          cand=sorted(set(cand), key=lambda x:(0 if '.apkm' in x else 1, len(x)))
+          if not cand:
+              Path('page2-debug.html').write_text(s)
+              raise SystemExit('No final APKM link found')
+          u=cand[0]
+          if u.startswith('//'): u='https:'+u
+          elif u.startswith('/'): u='https://www.apkmirror.com'+u
+          Path('final.url').write_text(u)
+          print(u)
+          PY
+
+          FINAL="$(cat final.url)"
+          curl -fL --retry 4 --retry-delay 2 -A "$UA" -e "$URL2" -c cookies.txt -b cookies.txt "$FINAL" -o ChatGPT-1.2026.041-Android-7.0-arm64.apkm
+          test -s ChatGPT-1.2026.041-Android-7.0-arm64.apkm
+          sha256sum ChatGPT-1.2026.041-Android-7.0-arm64.apkm | tee sha256.txt
+          grep -qi '^3942c54d6cfc5349da61cfb1f6c58359d70e54856d67c4d792c705ceee355bc8' sha256.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChatGPT-1.2026.041-Android-7.0-arm64
+          path: ChatGPT-1.2026.041-Android-7.0-arm64.apkm
+          retention-days: 7
