@@ -1,0 +1,87 @@
+name: Build Alfa Launcher 7 Stable 1.6.1
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    if: ${{ github.event.issue.title == 'TRIGGER ALFA LAUNCHER 7 STABLE 1.6.1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Prepare stable package
+        run: |
+          set -euxo pipefail
+          cp -a alfa-launcher7-project launcher-stable
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('launcher-stable/app/build.gradle')
+          s=p.read_text()
+          s=s.replace("applicationId 'pl.alfalauncher.seven'", "applicationId 'pl.alfalauncher.stable'")
+          s=s.replace("versionCode 16", "versionCode 17")
+          s=s.replace("versionName '1.6'", "versionName '1.6.1'")
+          p.write_text(s)
+          m=Path('launcher-stable/app/src/main/AndroidManifest.xml')
+          t=m.read_text().replace('android:label="Alfa Launcher 7"', 'android:label="Alfa Launcher 7 Stable"')
+          m.write_text(t)
+          PY
+
+      - name: Prepare Android SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: launcher-stable
+        run: |
+          set -euxo pipefail
+          gradle --no-daemon :app:assembleDebug -x lint --stacktrace
+          cp app/build/outputs/apk/debug/app-debug.apk ../Alfa-Launcher-7-1.6.1-STABLE-Android-7.apk
+
+      - name: Preserve signing key
+        run: |
+          set -euxo pipefail
+          test -s "$HOME/.android/debug.keystore"
+          cp "$HOME/.android/debug.keystore" Alfa-Launcher-7-Stable-debug.keystore
+
+      - name: Verify
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          "$BT/aapt" dump badging Alfa-Launcher-7-1.6.1-STABLE-Android-7.apk | tee badging.txt
+          grep "package: name='pl.alfalauncher.stable'" badging.txt
+          grep "sdkVersion:'24'" badging.txt
+          "$BT/apksigner" verify --verbose --print-certs Alfa-Launcher-7-1.6.1-STABLE-Android-7.apk | tee signature.txt
+          sha256sum Alfa-Launcher-7-1.6.1-STABLE-Android-7.apk | tee sha256.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Alfa-Launcher-7-1.6.1-STABLE-Android-7
+          path: Alfa-Launcher-7-1.6.1-STABLE-Android-7.apk
+          retention-days: 30
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Alfa-Launcher-7-STABLE-SIGNING-KEY
+          path: Alfa-Launcher-7-Stable-debug.keystore
+          retention-days: 90
