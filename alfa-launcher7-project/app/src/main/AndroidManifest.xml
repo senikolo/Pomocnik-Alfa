@@ -11,11 +11,15 @@
         android:theme="@style/AppTheme">
 
         <activity android:name=".AppDrawerActivity" android:screenOrientation="portrait" />
+        <activity android:name=".WidgetBoardActivity" android:screenOrientation="portrait" />
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
+            android:clearTaskOnLaunch="true"
+            android:stateNotNeeded="true"
+            android:excludeFromRecents="true"
             android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
