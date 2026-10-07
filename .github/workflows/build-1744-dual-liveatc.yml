@@ -63,24 +63,42 @@ jobs:
 
           aviation = r'''package com.ispina.lokalnie;
 
-          import android.content.ActivityNotFoundException;
           import android.content.Intent;
-          import android.net.Uri;
+          import android.content.SharedPreferences;
           import android.os.Bundle;
+          import android.os.Handler;
+          import android.os.Looper;
           import android.view.Gravity;
           import android.widget.Button;
           import android.widget.LinearLayout;
           import android.widget.ScrollView;
           import android.widget.TextView;
-          import android.widget.Toast;
+
+          import androidx.core.content.ContextCompat;
+
+          import com.ispina.lokalnie.radio.RadioService;
 
           public class AviationActivity extends ThemedActivity {
-              private static final String EPKK_PAGE = "https://www.liveatc.net/search/?icao=EPKK";
-              private static final String EPWA_PAGE = "https://www.liveatc.net/search/?icao=EPWA";
+              private static final String EPKK_NAME = "Kraków Airport EPKK • Tower / Approach";
+              private static final String EPKK_URL  = "https://d.liveatc.net/epkk_app";
+              private static final String EPWA_NAME = "Warszawa Chopina EPWA • Approach";
+              private static final String EPWA_URL  = "https://d.liveatc.net/epwa_app";
+
+              private final Handler handler = new Handler(Looper.getMainLooper());
+              private TextView status;
+              private Button krkButton, wawButton, stopButton;
+
+              private final Runnable stateTick = new Runnable() {
+                  @Override public void run() {
+                      refreshState();
+                      handler.postDelayed(this, 1200);
+                  }
+              };
 
               @Override protected void onCreate(Bundle state) {
                   super.onCreate(state);
                   buildUi();
+                  handler.post(stateTick);
               }
 
               private void buildUi() {
@@ -108,17 +126,20 @@ jobs:
                   intro.addView(NativeUi.text(this,"✈️ Wybierz lotnisko",19,true));
                   NativeUi.addSpacer(intro,this,5);
                   intro.addView(NativeUi.muted(this,
-                          "Kafelek prowadzi teraz do dwóch oficjalnych transmisji LiveATC. Wybierz Kraków-Balice albo Warszawę-Chopina.",13));
+                          "Nasłuch działa bez otwierania przeglądarki. Wybierz Kraków-Balice albo Warszawę-Chopina. Dźwięk może grać dalej w tle i jest sterowany z powiadomienia.",13));
+                  NativeUi.addSpacer(intro,this,10);
+                  status = NativeUi.muted(this,"Wybierz transmisję.",14);
+                  intro.addView(status);
                   root.addView(intro);
 
                   LinearLayout krk = NativeUi.card(this);
                   krk.addView(NativeUi.text(this,"Kraków · EPKK",19,true));
                   NativeUi.addSpacer(krk,this,4);
                   krk.addView(NativeUi.muted(this,
-                          "Tower / Approach · transmisja LiveATC dla Krakowa-Balic.",13));
+                          "LiveATC EPKK APP • Kraków-Balice.",13));
                   NativeUi.addSpacer(krk,this,10);
-                  Button krkButton = NativeUi.button(this,"▶ Otwórz LiveATC Kraków",false);
-                  krkButton.setOnClickListener(v -> openLiveAtc(EPKK_PAGE));
+                  krkButton = NativeUi.button(this,"▶ Włącz Kraków EPKK",false);
+                  krkButton.setOnClickListener(v -> startListening(EPKK_NAME, EPKK_URL));
                   krk.addView(krkButton,new LinearLayout.LayoutParams(-1,NativeUi.dp(this,52)));
                   root.addView(krk);
 
@@ -126,31 +147,74 @@ jobs:
                   waw.addView(NativeUi.text(this,"Warszawa · EPWA",19,true));
                   NativeUi.addSpacer(waw,this,4);
                   waw.addView(NativeUi.muted(this,
-                          "Warszawa-Chopina · transmisja LiveATC dla EPWA.",13));
+                          "LiveATC EPWA APP • Warszawa-Chopina.",13));
                   NativeUi.addSpacer(waw,this,10);
-                  Button wawButton = NativeUi.button(this,"▶ Otwórz LiveATC Warszawa",false);
-                  wawButton.setOnClickListener(v -> openLiveAtc(EPWA_PAGE));
+                  wawButton = NativeUi.button(this,"▶ Włącz Warszawę EPWA",false);
+                  wawButton.setOnClickListener(v -> startListening(EPWA_NAME, EPWA_URL));
                   waw.addView(wawButton,new LinearLayout.LayoutParams(-1,NativeUi.dp(this,52)));
                   root.addView(waw);
 
-                  LinearLayout note = NativeUi.card(this);
-                  note.addView(NativeUi.text(this,"Informacja",17,true));
-                  NativeUi.addSpacer(note,this,4);
-                  note.addView(NativeUi.muted(this,
-                          "LiveATC otwiera się w przeglądarce, dzięki czemu korzystamy z oficjalnego odtwarzacza serwisu. Jeśli dany feed ma status DOWN, możesz wrócić i wybrać drugie lotnisko.",12));
-                  root.addView(note);
+                  LinearLayout controls = NativeUi.card(this);
+                  controls.addView(NativeUi.text(this,"Sterowanie",17,true));
+                  NativeUi.addSpacer(controls,this,8);
+                  stopButton = NativeUi.button(this,"■ Zatrzymaj nasłuch",true);
+                  stopButton.setOnClickListener(v -> stopListening());
+                  controls.addView(stopButton,new LinearLayout.LayoutParams(-1,NativeUi.dp(this,50)));
+                  NativeUi.addSpacer(controls,this,8);
+                  controls.addView(NativeUi.muted(this,
+                          "Jeśli wybrany feed LiveATC ma chwilowo status DOWN, drugi może nadal działać. Między komunikatami w eterze mogą występować dłuższe chwile ciszy.",12));
+                  root.addView(controls);
 
                   setContentView(scroll);
               }
 
-              private void openLiveAtc(String url) {
+              private void startListening(String name, String url) {
+                  if (status != null) status.setText("Łączenie z " + name + "…");
+                  Intent i = new Intent(this, RadioService.class)
+                          .setAction(RadioService.ACTION_PLAY)
+                          .putExtra("name", name)
+                          .putExtra("url", url);
                   try {
-                      startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
-                  } catch (ActivityNotFoundException e) {
-                      Toast.makeText(this,"Brak przeglądarki do otwarcia LiveATC.",Toast.LENGTH_LONG).show();
+                      ContextCompat.startForegroundService(this, i);
                   } catch (Throwable e) {
-                      Toast.makeText(this,"Nie udało się otworzyć LiveATC.",Toast.LENGTH_LONG).show();
+                      if (status != null) status.setText("Nie udało się uruchomić nasłuchu.");
                   }
+              }
+
+              private void stopListening() {
+                  try {
+                      startService(new Intent(this, RadioService.class).setAction(RadioService.ACTION_STOP));
+                  } catch (Throwable ignored) {}
+                  if (status != null) status.setText("Nasłuch zatrzymany.");
+                  refreshButtons("");
+              }
+
+              private void refreshState() {
+                  SharedPreferences p = getSharedPreferences("radio_state", MODE_PRIVATE);
+                  String name = p.getString("name", "");
+                  boolean playing = p.getBoolean("playing", false);
+                  boolean desired = p.getBoolean("desired", false);
+                  String error = p.getString("error", "");
+
+                  refreshButtons(name);
+
+                  if (playing && (EPKK_NAME.equals(name) || EPWA_NAME.equals(name))) {
+                      if (status != null) status.setText("🔴 " + name + " • nasłuch działa");
+                  } else if (error != null && !error.trim().isEmpty() && (EPKK_NAME.equals(name) || EPWA_NAME.equals(name))) {
+                      if (status != null) status.setText("Błąd połączenia. Wybierz transmisję ponownie albo spróbuj drugiego lotniska.");
+                  } else if (desired && (EPKK_NAME.equals(name) || EPWA_NAME.equals(name))) {
+                      if (status != null) status.setText("Łączenie z " + name + "…");
+                  }
+              }
+
+              private void refreshButtons(String name) {
+                  if (krkButton != null) krkButton.setText(EPKK_NAME.equals(name) ? "▶ Kraków EPKK • wybrany" : "▶ Włącz Kraków EPKK");
+                  if (wawButton != null) wawButton.setText(EPWA_NAME.equals(name) ? "▶ Warszawa EPWA • wybrana" : "▶ Włącz Warszawę EPWA");
+              }
+
+              @Override protected void onDestroy() {
+                  handler.removeCallbacksAndMessages(null);
+                  super.onDestroy();
               }
           }
           '''
