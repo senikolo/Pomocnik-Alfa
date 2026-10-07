@@ -185,6 +185,11 @@ rp.write_text(s)
 bp = Path("project/app/build.gradle")
 b = bp.read_text()
 b = b.replace("minSdk 23", "minSdk 29")
+if "useLegacyPackaging true" not in b:
+    b = b.replace(
+        'androidResources { noCompress += ["pcm"] }',
+        'packagingOptions { dex { useLegacyPackaging true } }\n    androidResources { noCompress += ["pcm"] }'
+    )
 b = b.replace("versionCode 10736", "versionCode 10737")
 b = b.replace("versionName '1.7.36'", "versionName '1.7.37'")
 bp.write_text(b)
