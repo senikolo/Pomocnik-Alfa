@@ -1,0 +1,41 @@
+name: Diagnose IL A7 weather native code
+on:
+  issues:
+    types: [opened]
+permissions:
+  contents: read
+jobs:
+  diag:
+    if: github.event.issue.title == 'TRIGGER IL A7 WEATHER DIAG'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Download current IL A7 APK
+        run: |
+          set -euxo pipefail
+          curl -L --fail --retry 3 'https://drive.usercontent.google.com/download?id=1RKT6ejY3MFA9vRw9TCs6Em9WQpUPX_70&export=download&confirm=t' -o base.apk
+          unzip -t base.apk >/dev/null
+      - name: Install JADX
+        run: |
+          set -euxo pipefail
+          curl -L --fail --retry 3 https://github.com/skylot/jadx/releases/download/v1.5.6/jadx-1.5.6.zip -o jadx.zip
+          unzip -q jadx.zip -d jadx
+      - name: Decompile
+        run: |
+          set -euxo pipefail
+          mkdir -p out
+          ./jadx/bin/jadx --no-res -d out base.apk
+          grep -Rni -B35 -A120 'fetchWeather' out/sources > il-weather-diag.txt || true
+          grep -Rni -B25 -A120 'createWebView' out/sources >> il-weather-diag.txt || true
+          grep -Rni -B15 -A50 'open-meteo' out/sources >> il-weather-diag.txt || true
+          test -s il-weather-diag.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IL-A7-WEATHER-DIAG
+          path: il-weather-diag.txt
+          retention-days: 2
