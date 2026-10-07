@@ -1,0 +1,113 @@
+name: Build Pomocnik Alfa 1.7.37 Modern Reader
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'triggers/build-1737-reader-modern.txt'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Restore Pomocnik Alfa 1.7.36 source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          mkdir artifact
+          gh run download 37574069132 -R senikolo/Pomocnik-Alfa -n Pomocnik-Alfa-1.7.36-CZYTNIK-ALFA-SOURCE -D artifact
+          tar -xJf artifact/Pomocnik-Alfa-1.7.36-CZYTNIK-ALFA-SOURCE.tar.xz
+          test -d project
+          grep -n "versionCode 10736" project/app/build.gradle
+
+      - name: Add improved Czytnik Alfa
+        run: |
+          set -euxo pipefail
+          base64 -d helpers/czytnik-alfa/ReaderActivity-modern.java.gz.b64 | gzip -dc > project/app/src/main/java/com/ispina/lokalnie/ReaderActivity.java
+          grep -n "Aa Czytanie" project/app/src/main/java/com/ispina/lokalnie/ReaderActivity.java
+          grep -n "Interlinia" project/app/src/main/java/com/ispina/lokalnie/ReaderActivity.java
+
+      - name: Move reader higher and set Android 10+ version
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          p=Path("project/app/build.gradle")
+          s=p.read_text()
+          s=s.replace("minSdk 23","minSdk 29")
+          s=s.replace("versionCode 10736","versionCode 10737")
+          s=s.replace("versionName '1.7.36'","versionName '1.7.37'")
+          p.write_text(s)
+
+          m=Path("project/app/src/main/java/com/ispina/lokalnie/MainActivity.java")
+          s=m.read_text()
+          reader='        addActionCard("Czytnik Alfa","PDF, EPUB, MOBI/AZW, DOC/DOCX, ODT, TXT, RTF, HTML, FB2 i Markdown.",v->startActivity(new Intent(this,ReaderActivity.class)));\n'
+          while s.count(reader)>0:
+              s=s.replace(reader,"",1)
+          anchor='        addActionCard("Chwila spokoju","Mruczenie kota, ptaki, deszcz, szumy i fale. Dźwięki offline z timerem.",v->startActivity(new Intent(this,RainActivity.class)));\n'
+          assert anchor in s
+          s=s.replace(anchor, anchor+reader)
+          s=s.replace("POMOCNIK ALFA 1.7.36","POMOCNIK ALFA 1.7.37")
+          m.write_text(s)
+          PY
+          grep -n "minSdk 29" project/app/build.gradle
+          grep -n "versionCode 10737" project/app/build.gradle
+          grep -n -A2 -B1 "Chwila spokoju" project/app/src/main/java/com/ispina/lokalnie/MainActivity.java
+
+      - name: Prepare Android SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Build full modern APK
+        working-directory: project
+        run: |
+          set -euxo pipefail
+          chmod +x gradlew
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8
+          org.gradle.workers.max=2
+          org.gradle.parallel=false
+          android.useAndroidX=true
+          kotlin.code.style=official
+          EOF
+          ./gradlew --no-daemon assembleDebug -x lint --stacktrace
+          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | head -1)"
+          test -n "$APK"
+          cp "$APK" ../Pomocnik-Alfa-1.7.37-ANDROID10-READER-FULL-UNSIGNED.apk
+          cd ..
+          stat -c '%n %s bytes' Pomocnik-Alfa-1.7.37-ANDROID10-READER-FULL-UNSIGNED.apk
+
+      - name: Verify APK
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.37-ANDROID10-READER-FULL-UNSIGNED.apk | head -5
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.37-ANDROID10-READER-FULL-UNSIGNED.apk | grep "package: name='com.senikolo.pomocniknowy'"
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.37-ANDROID10-READER-FULL-UNSIGNED.apk | grep "versionCode='10737'"
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.37-ANDROID10-READER-FULL-UNSIGNED.apk | grep "sdkVersion:'29'"
+          unzip -t Pomocnik-Alfa-1.7.37-ANDROID10-READER-FULL-UNSIGNED.apk >/dev/null
+          sha256sum Pomocnik-Alfa-1.7.37-ANDROID10-READER-FULL-UNSIGNED.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.37-ANDROID10-READER-FULL-UNSIGNED
+          path: Pomocnik-Alfa-1.7.37-ANDROID10-READER-FULL-UNSIGNED.apk
+          retention-days: 7
