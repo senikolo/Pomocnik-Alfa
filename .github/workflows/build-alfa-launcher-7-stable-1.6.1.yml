@@ -58,30 +58,3 @@ jobs:
           gradle --no-daemon :app:assembleDebug -x lint --stacktrace
           cp app/build/outputs/apk/debug/app-debug.apk ../Alfa-Launcher-7-1.6.1-STABLE-Android-7.apk
 
-      - name: Preserve signing key
-        run: |
-          set -euxo pipefail
-          test -s "$HOME/.android/debug.keystore"
-          cp "$HOME/.android/debug.keystore" Alfa-Launcher-7-Stable-debug.keystore
-
-      - name: Verify
-        run: |
-          set -euxo pipefail
-          BT="$ANDROID_HOME/build-tools/35.0.0"
-          "$BT/aapt" dump badging Alfa-Launcher-7-1.6.1-STABLE-Android-7.apk | tee badging.txt
-          grep "package: name='pl.alfalauncher.stable'" badging.txt
-          grep "sdkVersion:'24'" badging.txt
-          "$BT/apksigner" verify --verbose --print-certs Alfa-Launcher-7-1.6.1-STABLE-Android-7.apk | tee signature.txt
-          sha256sum Alfa-Launcher-7-1.6.1-STABLE-Android-7.apk | tee sha256.txt
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Alfa-Launcher-7-1.6.1-STABLE-Android-7
-          path: Alfa-Launcher-7-1.6.1-STABLE-Android-7.apk
-          retention-days: 30
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Alfa-Launcher-7-STABLE-SIGNING-KEY
-          path: Alfa-Launcher-7-Stable-debug.keystore
-          retention-days: 90
