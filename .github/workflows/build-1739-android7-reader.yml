@@ -1,0 +1,112 @@
+name: Build Pomocnik Alfa 1.7.39 Android 7 Fullscreen Reader
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'triggers/build-1739-android7-reader.txt'
+      - 'helpers/czytnik-alfa/patch_modern_reader.py'
+      - 'helpers/czytnik-alfa/patch_fullscreen_reader.py'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Restore Android 7 weather-fixed 1.7.36 source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          mkdir artifact
+          gh run download 37574069132 -R senikolo/Pomocnik-Alfa -n Pomocnik-Alfa-1.7.36-CZYTNIK-ALFA-SOURCE -D artifact
+          tar -xJf artifact/Pomocnik-Alfa-1.7.36-CZYTNIK-ALFA-SOURCE.tar.xz
+          test -d project
+          test -s project/app/src/main/res/raw/isrg_root_x1.pem
+          grep -n '@raw/isrg_root_x1' project/app/src/main/res/xml/tube_network.xml
+          grep -n '<certificates src="system"' project/app/src/main/res/xml/tube_network.xml
+          grep -n 'networkSecurityConfig="@xml/tube_network"' project/app/src/main/AndroidManifest.xml
+          grep -n 'minSdk 23' project/app/build.gradle
+
+      - name: Apply full modern reader UX and fullscreen
+        run: |
+          set -euxo pipefail
+          python helpers/czytnik-alfa/patch_modern_reader.py
+          python helpers/czytnik-alfa/patch_fullscreen_reader.py
+          python - <<'PY'
+          from pathlib import Path
+
+          p=Path("project/app/build.gradle")
+          s=p.read_text()
+          s=s.replace("minSdk 29","minSdk 23")
+          s=s.replace("versionCode 10738","versionCode 10739")
+          s=s.replace("versionName '1.7.38'","versionName '1.7.39'")
+          p.write_text(s)
+
+          m=Path("project/app/src/main/java/com/ispina/lokalnie/MainActivity.java")
+          s=m.read_text().replace("POMOCNIK ALFA 1.7.38","POMOCNIK ALFA 1.7.39")
+          m.write_text(s)
+          PY
+          grep -n "Pełny ekran" project/app/src/main/java/com/ispina/lokalnie/ReaderActivity.java
+          grep -n "Aa Czytanie" project/app/src/main/java/com/ispina/lokalnie/ReaderActivity.java
+          grep -n "Interlinia" project/app/src/main/java/com/ispina/lokalnie/ReaderActivity.java
+          grep -n "minSdk 23" project/app/build.gradle
+          grep -n "versionCode 10739" project/app/build.gradle
+          test -s project/app/src/main/res/raw/isrg_root_x1.pem
+          grep -n '@raw/isrg_root_x1' project/app/src/main/res/xml/tube_network.xml
+
+      - name: Prepare Android SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Build Android 7+ APK
+        working-directory: project
+        run: |
+          set -euxo pipefail
+          chmod +x gradlew
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8
+          org.gradle.workers.max=2
+          org.gradle.parallel=false
+          android.useAndroidX=true
+          kotlin.code.style=official
+          EOF
+          ./gradlew --no-daemon assembleDebug -x lint --stacktrace
+          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | head -1)"
+          test -n "$APK"
+          cp "$APK" ../Pomocnik-Alfa-1.7.39-ANDROID7-FULLSCREEN-WEATHER-UNSIGNED.apk
+          cd ..
+          stat -c '%n %s bytes' Pomocnik-Alfa-1.7.39-ANDROID7-FULLSCREEN-WEATHER-UNSIGNED.apk
+
+      - name: Verify APK
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.39-ANDROID7-FULLSCREEN-WEATHER-UNSIGNED.apk | head -6
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.39-ANDROID7-FULLSCREEN-WEATHER-UNSIGNED.apk | grep "package: name='com.senikolo.pomocniknowy'"
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.39-ANDROID7-FULLSCREEN-WEATHER-UNSIGNED.apk | grep "versionCode='10739'"
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.39-ANDROID7-FULLSCREEN-WEATHER-UNSIGNED.apk | grep "sdkVersion:'23'"
+          unzip -l Pomocnik-Alfa-1.7.39-ANDROID7-FULLSCREEN-WEATHER-UNSIGNED.apk | grep -E 'res/raw/isrg_root_x1|isrg_root_x1'
+          unzip -t Pomocnik-Alfa-1.7.39-ANDROID7-FULLSCREEN-WEATHER-UNSIGNED.apk >/dev/null
+          sha256sum Pomocnik-Alfa-1.7.39-ANDROID7-FULLSCREEN-WEATHER-UNSIGNED.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.39-ANDROID7-FULLSCREEN-WEATHER-UNSIGNED
+          path: Pomocnik-Alfa-1.7.39-ANDROID7-FULLSCREEN-WEATHER-UNSIGNED.apk
+          retention-days: 7
