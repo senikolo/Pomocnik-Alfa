@@ -5,14 +5,14 @@ s = rp.read_text()
 
 # Track the views that need to disappear in fullscreen mode.
 s = s.replace(
-    'private TextView titleView, statusView;',
-    'private TextView titleView, statusView;\n    private View readerTopBar, readerControls;\n    private boolean readerFullscreen = false;'
+    'private TextView titleView, statusView, pageInfo;',
+    'private TextView titleView, statusView, pageInfo;\n    private View readerHeader, readerControls;\n    private boolean readerFullscreen = false;'
 )
 
 # Capture the top bar and controls container references.
 s = s.replace(
-    'root.addView(top, new LinearLayout.LayoutParams(-1, -2));',
-    'root.addView(top, new LinearLayout.LayoutParams(-1, -2));\n        readerTopBar = top;'
+    'root.addView(header, new LinearLayout.LayoutParams(-1, -2));',
+    'root.addView(header, new LinearLayout.LayoutParams(-1, -2));\n        readerHeader = header;'
 )
 s = s.replace(
     'root.addView(controls, new LinearLayout.LayoutParams(-1, -2));',
@@ -37,9 +37,10 @@ s = s.replace(
 anchor = '    private void previous() {\n'
 helpers = '''    private void enterReaderFullscreen() {
         readerFullscreen = true;
-        if (readerTopBar != null) readerTopBar.setVisibility(View.GONE);
+        if (readerHeader != null) readerHeader.setVisibility(View.GONE);
         if (readerControls != null) readerControls.setVisibility(View.GONE);
         if (statusView != null) statusView.setVisibility(View.GONE);
+        if (pageInfo != null) pageInfo.setVisibility(View.GONE);
         View decor = getWindow().getDecorView();
         decor.setSystemUiVisibility(
             View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
@@ -54,9 +55,10 @@ helpers = '''    private void enterReaderFullscreen() {
 
     private void exitReaderFullscreen() {
         readerFullscreen = false;
-        if (readerTopBar != null) readerTopBar.setVisibility(View.VISIBLE);
+        if (readerHeader != null) readerHeader.setVisibility(View.VISIBLE);
         if (readerControls != null) readerControls.setVisibility(View.VISIBLE);
         if (statusView != null) statusView.setVisibility(View.VISIBLE);
+        if (pageInfo != null && pdf != null) pageInfo.setVisibility(View.VISIBLE);
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
     }
 
