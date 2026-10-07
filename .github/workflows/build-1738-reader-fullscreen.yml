@@ -1,0 +1,93 @@
+name: Build Pomocnik Alfa 1.7.38 Fullscreen Reader
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'triggers/build-1738-reader-fullscreen.txt'
+      - 'helpers/czytnik-alfa/patch_fullscreen_reader.py'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Restore Pomocnik Alfa 1.7.36 source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          mkdir artifact
+          gh run download 37574069132 -R senikolo/Pomocnik-Alfa -n Pomocnik-Alfa-1.7.36-CZYTNIK-ALFA-SOURCE -D artifact
+          tar -xJf artifact/Pomocnik-Alfa-1.7.36-CZYTNIK-ALFA-SOURCE.tar.xz
+          test -d project
+
+      - name: Apply modern reader patch
+        run: |
+          set -euxo pipefail
+          python helpers/czytnik-alfa/patch_modern_reader.py
+
+      - name: Apply fullscreen reader patch
+        run: |
+          set -euxo pipefail
+          python helpers/czytnik-alfa/patch_fullscreen_reader.py
+          grep -n "Pełny ekran" project/app/src/main/java/com/ispina/lokalnie/ReaderActivity.java
+          grep -n "onBackPressed" project/app/src/main/java/com/ispina/lokalnie/ReaderActivity.java
+          grep -n "attachReaderGestures" project/app/src/main/java/com/ispina/lokalnie/ReaderActivity.java
+          grep -n "versionCode 10738" project/app/build.gradle
+          grep -n "minSdk 29" project/app/build.gradle
+
+      - name: Prepare Android SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: project
+        run: |
+          set -euxo pipefail
+          chmod +x gradlew
+          cat > gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8
+          org.gradle.workers.max=2
+          org.gradle.parallel=false
+          android.useAndroidX=true
+          kotlin.code.style=official
+          EOF
+          ./gradlew --no-daemon assembleDebug -x lint --stacktrace
+          APK="$(find app/build/outputs/apk/debug -maxdepth 1 -type f -name '*.apk' | head -1)"
+          test -n "$APK"
+          cp "$APK" ../Pomocnik-Alfa-1.7.38-ANDROID10-CZYTNIK-FULLSCREEN-UNSIGNED.apk
+          cd ..
+          stat -c '%n %s bytes' Pomocnik-Alfa-1.7.38-ANDROID10-CZYTNIK-FULLSCREEN-UNSIGNED.apk
+
+      - name: Verify APK
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.38-ANDROID10-CZYTNIK-FULLSCREEN-UNSIGNED.apk | head -5
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.38-ANDROID10-CZYTNIK-FULLSCREEN-UNSIGNED.apk | grep "package: name='com.senikolo.pomocniknowy'"
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.38-ANDROID10-CZYTNIK-FULLSCREEN-UNSIGNED.apk | grep "versionCode='10738'"
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.38-ANDROID10-CZYTNIK-FULLSCREEN-UNSIGNED.apk | grep "sdkVersion:'29'"
+          unzip -t Pomocnik-Alfa-1.7.38-ANDROID10-CZYTNIK-FULLSCREEN-UNSIGNED.apk >/dev/null
+          sha256sum Pomocnik-Alfa-1.7.38-ANDROID10-CZYTNIK-FULLSCREEN-UNSIGNED.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.38-ANDROID10-CZYTNIK-FULLSCREEN-UNSIGNED
+          path: Pomocnik-Alfa-1.7.38-ANDROID10-CZYTNIK-FULLSCREEN-UNSIGNED.apk
+          retention-days: 7
