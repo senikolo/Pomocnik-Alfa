@@ -816,17 +816,34 @@ public class MainActivity extends Activity {
 
     private class ReverseGeocodeTask extends AsyncTask<Double, Void, String> {
         @Override protected String doInBackground(Double... p) {
+            String osm = reverseWithOpenStreetMap(p[0], p[1]);
+            if (osm != null && !osm.trim().isEmpty()) return osm;
+
             try {
                 Geocoder g = new Geocoder(MainActivity.this, new Locale("pl","PL"));
                 List<Address> list = g.getFromLocation(p[0], p[1], 1);
                 if (list != null && !list.isEmpty()) {
                     Address a = list.get(0);
-                    if (a.getLocality() != null) return a.getLocality();
-                    if (a.getSubAdminArea() != null) return a.getSubAdminArea();
+                    String fine = firstNonEmpty(
+                            a.getSubLocality(),
+                            safeFeature(a),
+                            a.getLocality(),
+                            a.getSubAdminArea()
+                    );
+                    String broad = firstDifferent(
+                            fine,
+                            a.getLocality(),
+                            a.getSubAdminArea(),
+                            a.getAdminArea()
+                    );
+                    if (fine != null && broad != null) return fine + " · " + broad;
+                    if (fine != null) return fine;
+                    if (broad != null) return broad;
                 }
             } catch (Exception ignored) {}
             return "GPS";
         }
+
         @Override protected void onPostExecute(String place) {
             if (gpsMode) {
                 weatherPlace = place;
@@ -834,6 +851,97 @@ public class MainActivity extends Activity {
                 updateLocationChip();
             }
         }
+    }
+
+    private String reverseWithOpenStreetMap(double lat, double lon) {
+        HttpURLConnection c = null;
+        try {
+            String endpoint = "https://nominatim.openstreetmap.org/reverse?format=jsonv2"
+                    + "&lat=" + lat + "&lon=" + lon
+                    + "&zoom=18&addressdetails=1&accept-language=pl";
+            c = (HttpURLConnection) new URL(endpoint).openConnection();
+            c.setConnectTimeout(6000);
+            c.setReadTimeout(6000);
+            c.setRequestProperty("User-Agent", "AlfaLauncher7/1.6 (personal Android launcher)");
+            c.setRequestProperty("Accept-Language", "pl");
+
+            BufferedReader br = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = br.readLine()) != null) sb.append(line);
+            br.close();
+
+            JSONObject root = new JSONObject(sb.toString());
+            JSONObject a = root.optJSONObject("address");
+            if (a == null) return null;
+
+            String fine = firstNonEmpty(
+                    a.optString("neighbourhood", null),
+                    a.optString("quarter", null),
+                    a.optString("suburb", null),
+                    a.optString("hamlet", null),
+                    a.optString("isolated_dwelling", null),
+                    a.optString("village", null),
+                    a.optString("city_district", null),
+                    a.optString("borough", null)
+            );
+
+            String broad = firstDifferent(
+                    fine,
+                    a.optString("village", null),
+                    a.optString("town", null),
+                    a.optString("city", null),
+                    a.optString("municipality", null),
+                    a.optString("county", null)
+            );
+
+            if (fine != null && broad != null) return fine + " · " + broad;
+            if (fine != null) return fine;
+            if (broad != null) return broad;
+
+            String display = root.optString("display_name", null);
+            if (display != null && !display.trim().isEmpty()) {
+                String[] parts = display.split(",");
+                return parts.length > 0 ? parts[0].trim() : display;
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (c != null) c.disconnect();
+        }
+        return null;
+    }
+
+    private String safeFeature(Address a) {
+        try {
+            String f = a.getFeatureName();
+            if (f == null || f.trim().isEmpty()) return null;
+            // Nie pokazuj numeru budynku jako nazwy lokalizacji.
+            if (f.matches("[0-9A-Za-z\\-/ ]{1,12}") && f.matches(".*[0-9].*")) return null;
+            return f;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String firstNonEmpty(String... values) {
+        for (String v : values) {
+            if (v != null) {
+                String s = v.trim();
+                if (!s.isEmpty() && !"null".equalsIgnoreCase(s)) return s;
+            }
+        }
+        return null;
+    }
+
+    private String firstDifferent(String fine, String... values) {
+        for (String v : values) {
+            if (v != null) {
+                String s = v.trim();
+                if (!s.isEmpty() && !"null".equalsIgnoreCase(s)
+                        && (fine == null || !s.equalsIgnoreCase(fine))) return s;
+            }
+        }
+        return null;
     }
 
     private void geocodePlace(String query) {
