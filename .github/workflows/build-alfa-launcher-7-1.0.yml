@@ -1,0 +1,98 @@
+name: Build Alfa Launcher 7 1.0
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+jobs:
+  build:
+    if: ${{ github.event.issue.title == 'TRIGGER ALFA LAUNCHER 7 1.0' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Reconstruct launcher source
+        run: |
+          set -euxo pipefail
+          cat alfa-launcher-build/chunk-00.b64 alfa-launcher-build/chunk-01.b64 alfa-launcher-build/chunk-02.b64 alfa-launcher-build/chunk-03.b64 > /tmp/alfa7.b64
+          base64 -d /tmp/alfa7.b64 > /tmp/alfa7.zip
+          unzip -q /tmp/alfa7.zip -d /tmp/alfa7
+          mv /tmp/alfa7/AlfaLauncher6-ci-min project
+
+      - name: Adapt for Android 7
+        run: |
+          set -euxo pipefail
+          sed -i "s/minSdk 23/minSdk 24/g" project/app/build.gradle
+          sed -i "s/pl\.alfalauncher\.six/pl.alfalauncher.seven/g" project/app/build.gradle
+          find project/app/src -type f \( -name '*.xml' -o -name '*.java' \) -print0 | xargs -0 sed -i             -e 's/Alfa Launcher 6/Alfa Launcher 7/g'             -e 's/Launcher Alfa 6/Launcher Alfa 7/g'
+          grep -n "minSdk 24" project/app/build.gradle
+          grep -n "applicationId 'pl.alfalauncher.seven'" project/app/build.gradle
+
+      - name: Restore Pomocnik Alfa icon
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          mkdir -p /tmp/pa-art /tmp/pa-src
+          gh run download 37463270798 -R senikolo/Pomocnik-Alfa -n Pomocnik-Alfa-1.7.26-SOURCE -D /tmp/pa-art
+          TAR="$(find /tmp/pa-art -type f -name '*.tar.xz' | head -1)"
+          test -n "$TAR"
+          tar -xJf "$TAR" -C /tmp/pa-src
+          ICON="$(find /tmp/pa-src -type f -name 'ic_launcher_cat_legacy.png' | head -1)"
+          test -n "$ICON"
+          cp "$ICON" project/app/src/main/res/drawable/ic_launcher.png
+
+      - name: Prepare Android SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: project
+        run: |
+          set -euxo pipefail
+          gradle --no-daemon :app:assembleDebug -x lint --stacktrace
+          APK="$(find app/build/outputs/apk/debug -type f -name '*.apk' | head -1)"
+          test -n "$APK"
+          cp "$APK" ../Alfa-Launcher-7-1.0-Android-7.apk
+
+      - name: Verify APK
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          "$BT/aapt" dump badging Alfa-Launcher-7-1.0-Android-7.apk | tee badging.txt
+          grep "sdkVersion:'24'" badging.txt
+          grep "package: name='pl.alfalauncher.seven'" badging.txt
+          "$BT/apksigner" verify --verbose --print-certs Alfa-Launcher-7-1.0-Android-7.apk
+          sha256sum Alfa-Launcher-7-1.0-Android-7.apk | tee sha256.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Alfa-Launcher-7-1.0-Android-7
+          path: Alfa-Launcher-7-1.0-Android-7.apk
+          retention-days: 7
+
+      - name: Report run id
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" -R senikolo/Pomocnik-Alfa --body "ALFA_LAUNCHER_7_RUN_ID=${{ github.run_id }} STATUS=${{ job.status }}"
