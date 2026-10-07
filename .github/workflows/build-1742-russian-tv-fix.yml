@@ -1,0 +1,105 @@
+name: Build PA 1.7.42 Russian TV Fix
+on:
+  issues:
+    types: [opened]
+permissions:
+  contents: read
+  actions: read
+  issues: write
+jobs:
+  build:
+    if: \${{ github.event.issue.title == 'TRIGGER PA 1.7.42 RUSSIAN TV FIX' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Restore current source
+        env:
+          GH_TOKEN: \${{ github.token }}
+        run: |
+          set -euxo pipefail
+          mkdir artifact
+          gh run download 37574069132 -R senikolo/Pomocnik-Alfa -n Pomocnik-Alfa-1.7.36-CZYTNIK-ALFA-SOURCE -D artifact
+          tar -xJf artifact/Pomocnik-Alfa-1.7.36-CZYTNIK-ALFA-SOURCE.tar.xz
+          test -d project
+          test -s project/app/src/main/res/raw/isrg_root_x1.pem
+      - name: Apply current reader and Russian TV fixes
+        run: |
+          set -euxo pipefail
+          python helpers/czytnik-alfa/patch_modern_reader.py
+          python helpers/czytnik-alfa/patch_fullscreen_reader.py
+          python helpers/czytnik-alfa/patch_pdf_zoom_sepia.py
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          tv=Path('project/app/src/main/java/com/ispina/lokalnie/TvActivity.java')
+          s=tv.read_text()
+          repl={
+          'v -> startBroadcast("Россия 1", "1", true)':'v -> startDirectFallback("Россия 1", new String[]{"https://live.smotrim.ru/vgtrk/0/russia1-hd/index.m3u8","https://vgtrkregion-reg.cdnvideo.ru/vgtrk/0/russia1-hd/index.m3u8"})',
+          'v -> startBroadcast("Россия 24", "3", true)':'v -> startDirectFallback("Россия 24", new String[]{"https://live.smotrim.ru/vgtrk/0/russia24-hd/index.m3u8","https://vgtrkregion-reg.cdnvideo.ru/vgtrk/0/russia24-hd/720p.m3u8","https://vgtrkregion-reg.cdnvideo.ru/vgtrk/0/russia24-hd/1080p.m3u8"})',
+          'v -> startBroadcast("Россия Культура", "4", true)':'v -> startDirectFallback("Россия Культура", new String[]{"https://live.smotrim.ru/vgtrk/0/kultura-hd/index.m3u8","https://vgtrkregion-reg.cdnvideo.ru/vgtrk/0/kultura-hd/index.m3u8"})',
+          'v -> startBroadcast("НТВ Сериал", "ntvseries", true)':'v -> startDirectFallback("НТВ Сериал", new String[]{"https://cdn.ntv.ru/th_serial/playlist.m3u8"})',
+          'v -> startBroadcast("СТС / STS", "ctc_ext", true)':'v -> startDirectFallback("СТС / STS", new String[]{"https://zabava-htlive.cdn.ngenix.net/hls/CH_STS/variant.m3u8","https://zabava-htlive.cdn.ngenix.net/hls/CH_STS_2/variant.m3u8"})',
+          'v -> startBroadcast("НТВ / NTV", "ntv", true)':'v -> startDirectFallback("НТВ / NTV", new String[]{"https://cdn-dvr.ntv.ru/ntv0_hd/index.m3u8","https://cdn.ntv.ru/ntv-spb/index.m3u8","https://cdn.ntv.ru/vitrina/index.m3u8"})',
+          'v -> startBroadcast("World Fashion Channel Russia", "wfc", true)':'v -> startDirectFallback("World Fashion Channel Russia", new String[]{"https://cdn.wfc.tv/cdn/stream-rus.m3u8"})',
+          'v -> startBroadcast("НТВ Стиль / NTV Style", "ntvstyle", true)':'v -> startDirectFallback("НТВ Стиль / NTV Style", new String[]{"https://cdn.ntv.ru/th_style/playlist.m3u8"})'}
+          for a,b in repl.items():
+              if s.count(a)!=1: raise SystemExit(f'missing selector: {a}')
+              s=s.replace(a,b)
+          tv.write_text(s)
+          p=Path('project/app/build.gradle')
+          x=p.read_text()
+          x=re.sub(r'\bminSdk\s+\d+','minSdk 23',x,count=1)
+          x=re.sub(r'\bversionCode\s+\d+','versionCode 10742',x,count=1)
+          x=re.sub(r"\bversionName\s+'[^']+'","versionName '1.7.42'",x,count=1)
+          p.write_text(x)
+          m=Path('project/app/src/main/java/com/ispina/lokalnie/MainActivity.java')
+          m.write_text(re.sub(r'POMOCNIK ALFA 1\.7\.\d+','POMOCNIK ALFA 1.7.42',m.read_text()))
+          PY
+          grep -n "startDirectFallback" project/app/src/main/java/com/ispina/lokalnie/TvActivity.java | grep -E "Россия|НТВ|СТС|World Fashion"
+          grep -n "versionCode 10742" project/app/build.gradle
+          grep -n "minSdk 23" project/app/build.gradle
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Android SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+      - name: Build
+        working-directory: project
+        run: |
+          set -euxo pipefail
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug -x lint --stacktrace
+          APK="$(find app/build/outputs/apk/debug -name '*.apk' | head -1)"
+          test -s "$APK"
+          cp "$APK" ../Pomocnik-Alfa-1.7.42-ANDROID6-7-RUSSIAN-TV-FIX.apk
+      - name: Verify
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.42-ANDROID6-7-RUSSIAN-TV-FIX.apk | tee badging.txt
+          grep "versionCode='10742'" badging.txt
+          grep "sdkVersion:'23'" badging.txt
+          "$BT/apksigner" verify --verbose --print-certs Pomocnik-Alfa-1.7.42-ANDROID6-7-RUSSIAN-TV-FIX.apk
+          unzip -t Pomocnik-Alfa-1.7.42-ANDROID6-7-RUSSIAN-TV-FIX.apk >/dev/null
+          sha256sum Pomocnik-Alfa-1.7.42-ANDROID6-7-RUSSIAN-TV-FIX.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.42-ANDROID6-7-RUSSIAN-TV-FIX
+          path: Pomocnik-Alfa-1.7.42-ANDROID6-7-RUSSIAN-TV-FIX.apk
+          retention-days: 7
+      - name: Report
+        if: always()
+        env:
+          GH_TOKEN: \${{ github.token }}
+          ST: \${{ job.status }}
+        run: gh issue create --title "PA 1.7.42 RESULT $ST $GITHUB_RUN_ID" --body "Build $ST. Run $GITHUB_RUN_ID"
