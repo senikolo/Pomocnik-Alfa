@@ -8,7 +8,7 @@ permissions:
   issues: write
 jobs:
   build:
-    if: \${{ github.event.issue.title == 'TRIGGER PA 1.7.42 RUSSIAN TV FIX' }}
+    if: ${{ github.event.issue.title == 'TRIGGER PA 1.7.42 RUSSIAN TV FIX' }}
     runs-on: ubuntu-latest
     timeout-minutes: 55
     steps:
@@ -19,7 +19,7 @@ jobs:
           java-version: '17'
       - name: Restore current source
         env:
-          GH_TOKEN: \${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euxo pipefail
           mkdir artifact
@@ -100,6 +100,6 @@ jobs:
       - name: Report
         if: always()
         env:
-          GH_TOKEN: \${{ github.token }}
-          ST: \${{ job.status }}
+          GH_TOKEN: ${{ github.token }}
+          ST: ${{ job.status }}
         run: gh issue create --title "PA 1.7.42 RESULT $ST $GITHUB_RUN_ID" --body "Build $ST. Run $GITHUB_RUN_ID"
