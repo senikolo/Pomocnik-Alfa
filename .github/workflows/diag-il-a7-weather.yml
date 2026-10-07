@@ -18,7 +18,7 @@ jobs:
       - name: Download current IL A7 APK
         run: |
           set -euxo pipefail
-          curl -L --fail --retry 3 'https://drive.usercontent.google.com/download?id=1RKT6ejY3MFA9vRw9TCs6Em9WQpUPX_70&export=download&confirm=t' -o base.apk
+          curl -L --fail --retry 3 'https://drive.usercontent.google.com/download?id=1W3YdJDrOtQJ6buz5KV8Wpng6wYD_gQJQ&export=download&confirm=t' -o base.apk
           unzip -t base.apk >/dev/null
       - name: Install JADX
         run: |
