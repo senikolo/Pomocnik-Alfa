@@ -231,7 +231,7 @@ jobs:
           m.write_text(re.sub(r'POMOCNIK ALFA 1\.7\.\d+','POMOCNIK ALFA 1.7.44',m.read_text()))
           PY
 
-          grep -n "EPKK_PAGE\|EPWA_PAGE\|Otwórz LiveATC" project/app/src/main/java/com/ispina/lokalnie/AviationActivity.java
+          grep -n "EPKK_URL\|EPWA_URL\|Włącz Kraków\|Włącz Warszawę" project/app/src/main/java/com/ispina/lokalnie/AviationActivity.java
           grep -n "versionCode 10744" project/app/build.gradle
           grep -n "minSdk 23" project/app/build.gradle
 
