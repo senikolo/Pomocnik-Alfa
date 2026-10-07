@@ -58,7 +58,7 @@ helpers = '''    private void enterReaderFullscreen() {
         if (readerHeader != null) readerHeader.setVisibility(View.VISIBLE);
         if (readerControls != null) readerControls.setVisibility(View.VISIBLE);
         if (statusView != null) statusView.setVisibility(View.VISIBLE);
-        if (pageInfo != null && pdf != null) pageInfo.setVisibility(View.VISIBLE);
+        if (pageInfo != null && pdfRenderer != null) pageInfo.setVisibility(View.VISIBLE);
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
     }
 
