@@ -31,6 +31,6 @@ jobs:
         with:
           name: Pomocnik-Alfa-1.7.42-DRIVE-APK
           path: apkroot/
-          compression-level: 0
+          compression-level: 6
           include-hidden-files: true
           retention-days: 7
