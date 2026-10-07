@@ -149,10 +149,8 @@ public class RadioService extends Service {
         String content=!lastProgram.isEmpty()?"Audycja: "+lastProgram:(!song.isEmpty()?"Teraz gra: "+song:state);
         StringBuilder big=new StringBuilder();
         if(!lastProgram.isEmpty())big.append("🎙 Audycja: ").append(lastProgram);
-        if(!song.isEmpty()){if(big.length()>0)big.append('
-');big.append("♫ Teraz gra: ").append(song);}
-        if(big.length()>0)big.append('
-').append(state);
+        if(!song.isEmpty()){if(big.length()>0)big.append("\\n");big.append("♫ Teraz gra: ").append(song);}
+        if(big.length()>0)big.append("\\n").append(state);
 
         Notification.Builder b=Build.VERSION.SDK_INT>=26?new Notification.Builder(this,CHANNEL):new Notification.Builder(this);
         b.setSmallIcon(makeRadioIcon()).setContentTitle(lastName==null||lastName.isEmpty()?"Radio":lastName).setContentText(content).setSubText("Ispina Lokalnie • Radio").setContentIntent(openApp()).setCategory(Notification.CATEGORY_TRANSPORT).setOnlyAlertOnce(true).setShowWhen(false).setOngoing(playing||preparing).setVisibility(Notification.VISIBILITY_PUBLIC)
