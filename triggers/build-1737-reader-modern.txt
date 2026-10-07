@@ -1,3 +1,5 @@
 Build Pomocnik Alfa 1.7.37 Android 10+ full reader.
 
 Retry direct source patch build.
+
+Run simplified modern reader workflow.
