@@ -73,28 +73,6 @@ helpers = '''    private void enterReaderFullscreen() {
 assert anchor in s, "previous() anchor missing"
 s = s.replace(anchor, helpers + anchor, 1)
 
-# When returning to activity while in fullscreen, keep system bars hidden.
-onresume_anchor = '    @Override protected void onDestroy() {\n'
-if 'onWindowFocusChanged' not in s:
-    focus = '''    @Override
-    public void onWindowFocusChanged(boolean hasFocus) {
-        super.onWindowFocusChanged(hasFocus);
-        if (hasFocus && readerFullscreen) {
-            getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
-                View.SYSTEM_UI_FLAG_FULLSCREEN |
-                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
-                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
-                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
-                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-            );
-        }
-    }
-
-'''
-    assert onresume_anchor in s, "onDestroy anchor missing"
-    s = s.replace(onresume_anchor, focus + onresume_anchor, 1)
-
 # Version bump only.
 bp = Path("project/app/build.gradle")
 b = bp.read_text()
