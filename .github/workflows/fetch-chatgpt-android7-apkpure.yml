@@ -1,0 +1,57 @@
+name: Fetch ChatGPT Android 7 Verified
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  fetch:
+    if: ${{ github.event.issue.title == 'TRIGGER CHATGPT ANDROID7 APKPURE' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Download ChatGPT Android 7 XAPK
+        run: |
+          set -euxo pipefail
+          URL='https://d.apkpure.net/b/XAPK/com.openai.chatgpt?nc=arm64-v8a&sv=24&versionCode=2532228'
+          curl -fL --retry 6 --retry-delay 3 -A 'Mozilla/5.0' "$URL" -o ChatGPT-1.2025.329-Android-7.0-arm64.xapk
+          test -s ChatGPT-1.2025.329-Android-7.0-arm64.xapk
+          ls -lh ChatGPT-1.2025.329-Android-7.0-arm64.xapk
+          unzip -t ChatGPT-1.2025.329-Android-7.0-arm64.xapk
+          mkdir xapk
+          unzip -q ChatGPT-1.2025.329-Android-7.0-arm64.xapk -d xapk
+          find xapk -maxdepth 2 -type f -printf '%p %s bytes\n' | sort
+
+      - name: Prepare Android verifier
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Verify APK signatures
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          BASE="$(find xapk -type f -name '*.apk' | head -1)"
+          test -n "$BASE"
+          "$BT/aapt" dump badging "$BASE" | tee badging.txt || true
+          grep -q "package: name='com.openai.chatgpt'" badging.txt
+          # Every split must verify cryptographically.
+          while IFS= read -r apk; do
+            "$BT/apksigner" verify --verbose --print-certs "$apk" > sig.txt
+            grep -q "Signer #1 certificate SHA-1 digest: 51a2f260766c9c1a83b7dd5b4572040ac23e4aea" sig.txt
+          done < <(find xapk -type f -name '*.apk' | sort)
+          sha256sum ChatGPT-1.2025.329-Android-7.0-arm64.xapk | tee sha256.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ChatGPT-1.2025.329-Android-7.0-arm64
+          path: ChatGPT-1.2025.329-Android-7.0-arm64.xapk
+          retention-days: 7
