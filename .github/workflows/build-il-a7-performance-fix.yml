@@ -1,0 +1,60 @@
+name: Build IL 1.82.95 A7 Performance Fix
+on:
+  issues:
+    types: [opened]
+permissions:
+  contents: read
+jobs:
+  build:
+    if: github.event.issue.title == 'TRIGGER IL 1.82.95 A7 PERFORMANCE FIX'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Download current Android 7 weather build
+        run: |
+          set -euxo pipefail
+          curl -L --fail --retry 3 --retry-delay 2 'https://drive.usercontent.google.com/download?id=1W3YdJDrOtQJ6buz5KV8Wpng6wYD_gQJQ&export=download&confirm=t' -o base.apk
+          test -s base.apk
+          unzip -t base.apk >/dev/null
+          unzip -p base.apk AndroidManifest.xml | strings -el | grep -F '1.82.95'
+          unzip -p base.apk assets/main_ui.js | grep -aF 'api.open-meteo.com/v1/forecast' >/dev/null
+      - name: Patch performance without changing weather
+        run: |
+          set -euxo pipefail
+          python helpers/il-a7-performance/patch_apk.py base.apk Ispina-Lokalnie-Live-1.82.95-A7-WEATHER-PERFORMANCE-FIX.apk
+          unzip -t Ispina-Lokalnie-Live-1.82.95-A7-WEATHER-PERFORMANCE-FIX.apk >/dev/null
+          unzip -p Ispina-Lokalnie-Live-1.82.95-A7-WEATHER-PERFORMANCE-FIX.apk assets/main_ui.js | grep -aF '__IL_ANDROID7_PERFORMANCE_FIX' >/dev/null
+          unzip -p Ispina-Lokalnie-Live-1.82.95-A7-WEATHER-PERFORMANCE-FIX.apk assets/main_ui.js | grep -aF 'api.open-meteo.com/v1/forecast' >/dev/null
+      - name: Sign Android 7 APK
+        run: |
+          set -euxo pipefail
+          PASS="$(openssl rand -hex 18)"
+          keytool -genkeypair -noprompt -storetype PKCS12 -keystore il-a7-performance.p12 -storepass "$PASS" -keypass "$PASS" -alias ispina-a7-performance -keyalg RSA -keysize 2048 -validity 3650 -dname 'CN=Ispina Lokalnie Android 7 Performance, O=Ispina Lokalnie, C=PL'
+          jarsigner -keystore il-a7-performance.p12 -storetype PKCS12 -storepass "$PASS" -keypass "$PASS" -sigalg SHA256withRSA -digestalg SHA-256 Ispina-Lokalnie-Live-1.82.95-A7-WEATHER-PERFORMANCE-FIX.apk ispina-a7-performance
+          jarsigner -verify Ispina-Lokalnie-Live-1.82.95-A7-WEATHER-PERFORMANCE-FIX.apk
+          unzip -t Ispina-Lokalnie-Live-1.82.95-A7-WEATHER-PERFORMANCE-FIX.apk >/dev/null
+          sha256sum Ispina-Lokalnie-Live-1.82.95-A7-WEATHER-PERFORMANCE-FIX.apk
+      - name: Prepare Drive-ready APK
+        run: |
+          set -euxo pipefail
+          mkdir driveapk
+          unzip -q Ispina-Lokalnie-Live-1.82.95-A7-WEATHER-PERFORMANCE-FIX.apk -d driveapk
+          test -s driveapk/AndroidManifest.xml
+          test -s driveapk/META-INF/MANIFEST.MF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IL-1.82.95-A7-WEATHER-PERFORMANCE-FIX
+          path: Ispina-Lokalnie-Live-1.82.95-A7-WEATHER-PERFORMANCE-FIX.apk
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IL-1.82.95-A7-WEATHER-PERFORMANCE-DRIVE-APK
+          path: driveapk/
+          compression-level: 6
+          include-hidden-files: true
+          retention-days: 7
