@@ -42,6 +42,7 @@ jobs:
           find project/app/src -type f \( -name '*.xml' -o -name '*.java' \) -print0 | xargs -0 sed -i             -e 's/Alfa Launcher 6/Alfa Launcher 7/g'             -e 's/Launcher Alfa 6/Launcher Alfa 7/g'
           grep -n "minSdk 24" project/app/build.gradle
           grep -n "applicationId 'pl.alfalauncher.seven'" project/app/build.gradle
+          sed -i 's/Intent x=new Intent(c,MainActivity.class)/Intent x=new Intent(c,RemindersActivity.class)/g' project/app/src/main/java/pl/alfalauncher/legacy/ReminderReceiver.java
 
       - name: Restore Pomocnik Alfa icon
         env:
