@@ -1,11 +1,11 @@
 package pl.alfalauncher.seven;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -13,13 +13,20 @@ import android.content.pm.ResolveInfo;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.location.Address;
+import android.location.Geocoder;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.BatteryManager;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.provider.CalendarContract;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -38,6 +45,7 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -45,16 +53,25 @@ import java.util.Locale;
 
 public class MainActivity extends Activity {
     private static final int REQ_READER = 71;
+    private static final int REQ_LOCATION = 72;
     private static final String PREFS = "alfa_launcher_7";
     private static final String PREF_NOTE = "note";
+    private static final String PREF_GPS = "weather_gps";
+    private static final String PREF_PLACE = "weather_place";
+    private static final String PREF_LAT = "weather_lat";
+    private static final String PREF_LON = "weather_lon";
 
     private final Handler clockHandler = new Handler();
 
     private TextView timeView, dateView;
-    private TextView weatherIcon, temperatureView, weatherDescription, weatherStatus;
-    private TextView feelsView, humidityView, pressureView, windView, sunView;
-    private LinearLayout forecastRow;
+    private TextView locationChip, weatherIcon, temperatureView, weatherDescription, daySummaryView, weatherStatus;
     private TextView batteryView, ramView, calendarView, noteView;
+
+    private double weatherLat = 52.2297;
+    private double weatherLon = 21.0122;
+    private String weatherPlace = "Warszawa";
+    private boolean gpsMode = false;
+    private WeatherResult lastWeather;
 
     private final Runnable clockTick = new Runnable() {
         @Override public void run() {
@@ -66,11 +83,15 @@ public class MainActivity extends Activity {
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
-        getWindow().setStatusBarColor(Color.argb(110, 0, 0, 0));
-        getWindow().setNavigationBarColor(Color.argb(210, 0, 0, 0));
+        getWindow().setStatusBarColor(Color.argb(105, 0, 0, 0));
+        getWindow().setNavigationBarColor(Color.argb(215, 0, 0, 0));
+
+        loadLocationPrefs();
         setContentView(buildPhoneHome());
         clockHandler.post(clockTick);
-        loadWeather();
+
+        if (gpsMode) resolveGps(true);
+        else loadWeather();
     }
 
     @Override protected void onResume() {
@@ -85,9 +106,26 @@ public class MainActivity extends Activity {
         super.onDestroy();
     }
 
+    private void loadLocationPrefs() {
+        SharedPreferences p = getSharedPreferences(PREFS, MODE_PRIVATE);
+        gpsMode = p.getBoolean(PREF_GPS, false);
+        weatherPlace = p.getString(PREF_PLACE, "Warszawa");
+        weatherLat = Double.longBitsToDouble(p.getLong(PREF_LAT, Double.doubleToLongBits(52.2297)));
+        weatherLon = Double.longBitsToDouble(p.getLong(PREF_LON, Double.doubleToLongBits(21.0122)));
+    }
+
+    private void saveLocationPrefs() {
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                .putBoolean(PREF_GPS, gpsMode)
+                .putString(PREF_PLACE, weatherPlace)
+                .putLong(PREF_LAT, Double.doubleToLongBits(weatherLat))
+                .putLong(PREF_LON, Double.doubleToLongBits(weatherLon))
+                .apply();
+    }
+
     private View buildPhoneHome() {
         FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Color.argb(72, 0, 0, 0));
+        root.setBackgroundColor(Color.argb(60, 0, 0, 0));
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
@@ -95,28 +133,21 @@ public class MainActivity extends Activity {
 
         LinearLayout body = new LinearLayout(this);
         body.setOrientation(LinearLayout.VERTICAL);
-        body.setPadding(dp(12), dp(8), dp(12), dp(18));
+        body.setPadding(dp(13), dp(10), dp(13), dp(20));
 
-        timeView = new TextView(this);
-        timeView.setTextColor(Color.WHITE);
-        timeView.setTextSize(56);
+        timeView = text("", 55, Color.WHITE, Gravity.CENTER_HORIZONTAL);
         timeView.setTypeface(Typeface.create("sans-serif-thin", Typeface.NORMAL));
-        timeView.setGravity(Gravity.CENTER_HORIZONTAL);
-        body.addView(timeView, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        body.addView(timeView);
 
-        dateView = new TextView(this);
-        dateView.setTextColor(Color.rgb(220, 230, 235));
-        dateView.setTextSize(15);
-        dateView.setGravity(Gravity.CENTER_HORIZONTAL);
+        dateView = text("", 15, Color.rgb(221, 231, 234), Gravity.CENTER_HORIZONTAL);
         LinearLayout.LayoutParams dateLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        dateLp.setMargins(0, -dp(7), 0, dp(10));
+        dateLp.setMargins(0, -dp(6), 0, dp(12));
         body.addView(dateView, dateLp);
 
         body.addView(buildWeatherWidget());
 
-        TextView widgetsTitle = sectionTitle("WIDŻETY ALFA");
+        TextView widgetsTitle = sectionTitle("NA DZIŚ");
         body.addView(widgetsTitle);
-
         body.addView(twoPanelRow(buildSystemWidget(), buildCalendarWidget()));
         body.addView(twoPanelRow(buildNoteWidget(), buildRadioWidget()));
 
@@ -136,12 +167,9 @@ public class MainActivity extends Activity {
                 tile("▦", "Aplikacje", v -> startActivity(new Intent(this, AppDrawerActivity.class)))
         ));
 
-        TextView hint = new TextView(this);
-        hint.setText("Alfa Launcher 7 v1.2 Widgets • Android 7+");
-        hint.setTextColor(Color.argb(180, 255, 255, 255));
-        hint.setTextSize(10);
-        hint.setGravity(Gravity.CENTER);
-        hint.setPadding(0, dp(10), 0, dp(4));
+        TextView hint = text("Alfa Launcher 7 v1.3 • telefon • Android 7+", 10,
+                Color.argb(165, 255, 255, 255), Gravity.CENTER);
+        hint.setPadding(0, dp(12), 0, dp(4));
         body.addView(hint);
 
         scroll.addView(body);
@@ -152,76 +180,74 @@ public class MainActivity extends Activity {
     private View buildWeatherWidget() {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(12), dp(10), dp(12), dp(10));
+        card.setPadding(dp(13), dp(11), dp(13), dp(11));
         card.setBackground(weatherBackground());
-        card.setOnClickListener(v -> loadWeather());
+        card.setOnClickListener(v -> showWeatherDetails());
 
-        LinearLayout top = new LinearLayout(this);
-        top.setOrientation(LinearLayout.HORIZONTAL);
-        top.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
 
-        weatherIcon = text("☁", 46, Color.WHITE, Gravity.CENTER);
-        top.addView(weatherIcon, new LinearLayout.LayoutParams(dp(66), dp(72)));
+        locationChip = text((gpsMode ? "📍 GPS" : "⌂ " + weatherPlace) + "  ▾", 12,
+                Color.rgb(160, 226, 235), Gravity.START);
+        locationChip.setTypeface(Typeface.DEFAULT_BOLD);
+        locationChip.setPadding(dp(2), dp(4), dp(8), dp(4));
+        locationChip.setOnClickListener(v -> showLocationChooser());
+        header.addView(locationChip, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+
+        TextView refresh = text("↻", 22, Color.rgb(210, 235, 238), Gravity.CENTER);
+        refresh.setPadding(dp(12), 0, dp(4), 0);
+        refresh.setOnClickListener(v -> {
+            if (gpsMode) resolveGps(false); else loadWeather();
+        });
+        header.addView(refresh, new LinearLayout.LayoutParams(dp(46), dp(42)));
+        card.addView(header);
+
+        LinearLayout hero = new LinearLayout(this);
+        hero.setOrientation(LinearLayout.HORIZONTAL);
+        hero.setGravity(Gravity.CENTER_VERTICAL);
+        hero.setPadding(0, dp(2), 0, dp(3));
+
+        weatherIcon = text("☁", 50, Color.WHITE, Gravity.CENTER);
+        hero.addView(weatherIcon, new LinearLayout.LayoutParams(dp(72), dp(76)));
 
         LinearLayout headline = new LinearLayout(this);
         headline.setOrientation(LinearLayout.VERTICAL);
-        headline.setPadding(dp(6), 0, 0, 0);
+        headline.setPadding(dp(8), 0, 0, 0);
 
-        temperatureView = text("--°", 34, Color.WHITE, Gravity.START);
+        temperatureView = text("--°", 37, Color.WHITE, Gravity.START);
         temperatureView.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
         headline.addView(temperatureView);
 
-        weatherDescription = text("Warszawa • pogoda", 15, Color.rgb(235, 242, 244), Gravity.START);
+        weatherDescription = text("Pobieram pogodę…", 15, Color.rgb(237, 243, 245), Gravity.START);
         headline.addView(weatherDescription);
 
-        weatherStatus = text("Dotknij, aby odświeżyć", 10, Color.rgb(140, 220, 232), Gravity.START);
-        headline.addView(weatherStatus);
+        hero.addView(headline, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        card.addView(hero);
 
-        top.addView(headline, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        card.addView(top);
+        daySummaryView = text("Za chwilę podsumuję pogodę do końca dnia.", 13,
+                Color.rgb(219, 235, 238), Gravity.START);
+        daySummaryView.setPadding(dp(3), dp(5), dp(3), dp(5));
+        card.addView(daySummaryView);
 
-        LinearLayout details1 = detailRow();
-        feelsView = detail("Odczuwalna --°");
-        humidityView = detail("Wilgotność --%");
-        details1.addView(feelsView, detailLp());
-        details1.addView(humidityView, detailLp());
-        card.addView(details1);
-
-        LinearLayout details2 = detailRow();
-        pressureView = detail("Ciśnienie ---- hPa");
-        windView = detail("Wiatr -- km/h");
-        details2.addView(pressureView, detailLp());
-        details2.addView(windView, detailLp());
-        card.addView(details2);
-
-        sunView = text("☀ Wschód --:--   •   Zachód --:--", 11, Color.rgb(220, 235, 238), Gravity.CENTER);
-        sunView.setPadding(0, dp(5), 0, dp(4));
-        card.addView(sunView);
-
-        forecastRow = new LinearLayout(this);
-        forecastRow.setOrientation(LinearLayout.HORIZONTAL);
-        forecastRow.setGravity(Gravity.CENTER);
-        for (int i = 0; i < 5; i++) forecastRow.addView(forecastCell("—", "☁", "--/--"), forecastLp());
-        card.addView(forecastRow);
+        weatherStatus = text("Dotknij pogodę po szczegóły", 10,
+                Color.rgb(135, 207, 217), Gravity.START);
+        weatherStatus.setPadding(dp(3), dp(2), 0, 0);
+        card.addView(weatherStatus);
 
         return card;
     }
 
     private View buildSystemWidget() {
         LinearLayout card = miniCard();
-        TextView title = miniTitle("SYSTEM");
-        card.addView(title);
+        card.addView(miniTitle("TELEFON"));
 
-        batteryView = text("🔋 Bateria --%", 15, Color.WHITE, Gravity.START);
-        batteryView.setPadding(0, dp(5), 0, dp(3));
+        batteryView = text("🔋 --%", 15, Color.WHITE, Gravity.START);
+        batteryView.setPadding(0, dp(6), 0, dp(3));
         card.addView(batteryView);
 
-        ramView = text("RAM -- / -- GB", 12, Color.rgb(205, 225, 230), Gravity.START);
+        ramView = text("RAM -- GB wolne", 11, Color.rgb(207, 225, 229), Gravity.START);
         card.addView(ramView);
-
-        TextView caption = text("Odświeża się automatycznie", 9, Color.rgb(130, 205, 217), Gravity.START);
-        caption.setPadding(0, dp(5), 0, 0);
-        card.addView(caption);
         return card;
     }
 
@@ -231,10 +257,10 @@ public class MainActivity extends Activity {
         card.addView(miniTitle("KALENDARZ"));
 
         calendarView = text("", 14, Color.WHITE, Gravity.START);
-        calendarView.setPadding(0, dp(5), 0, dp(4));
+        calendarView.setPadding(0, dp(6), 0, dp(3));
         card.addView(calendarView);
 
-        TextView caption = text("Dotknij, aby otworzyć kalendarz", 9, Color.rgb(130, 205, 217), Gravity.START);
+        TextView caption = text("Otwórz kalendarz", 9, Color.rgb(135, 207, 217), Gravity.START);
         card.addView(caption);
         return card;
     }
@@ -247,10 +273,10 @@ public class MainActivity extends Activity {
         noteView = text("", 13, Color.WHITE, Gravity.START);
         noteView.setMinLines(2);
         noteView.setMaxLines(3);
-        noteView.setPadding(0, dp(5), 0, dp(4));
+        noteView.setPadding(0, dp(6), 0, dp(3));
         card.addView(noteView);
 
-        TextView caption = text("Dotknij, aby edytować", 9, Color.rgb(130, 205, 217), Gravity.START);
+        TextView caption = text("Dotknij, aby edytować", 9, Color.rgb(135, 207, 217), Gravity.START);
         card.addView(caption);
         updateNote();
         return card;
@@ -262,10 +288,10 @@ public class MainActivity extends Activity {
         card.addView(miniTitle("RADIO"));
 
         TextView icon = text("◉  Alfa Radio", 15, Color.WHITE, Gravity.START);
-        icon.setPadding(0, dp(5), 0, dp(4));
+        icon.setPadding(0, dp(6), 0, dp(3));
         card.addView(icon);
 
-        TextView caption = text("Otwórz radio w Pomocniku Alfa", 9, Color.rgb(130, 205, 217), Gravity.START);
+        TextView caption = text("Radio w Pomocniku Alfa", 9, Color.rgb(135, 207, 217), Gravity.START);
         card.addView(caption);
         return card;
     }
@@ -283,57 +309,23 @@ public class MainActivity extends Activity {
     private LinearLayout miniCard() {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(10), dp(8), dp(10), dp(8));
-        card.setMinimumHeight(dp(105));
+        card.setPadding(dp(11), dp(9), dp(11), dp(9));
+        card.setMinimumHeight(dp(94));
         card.setBackground(panelBackground());
         return card;
     }
 
     private TextView miniTitle(String s) {
-        TextView t = text(s, 10, Color.rgb(145, 220, 230), Gravity.START);
+        TextView t = text(s, 10, Color.rgb(151, 219, 228), Gravity.START);
         t.setTypeface(Typeface.DEFAULT_BOLD);
         return t;
     }
 
     private TextView sectionTitle(String s) {
-        TextView t = text(s, 11, Color.rgb(152, 219, 230), Gravity.START);
+        TextView t = text(s, 11, Color.rgb(157, 220, 229), Gravity.START);
         t.setTypeface(Typeface.DEFAULT_BOLD);
-        t.setPadding(dp(4), dp(13), 0, dp(4));
+        t.setPadding(dp(4), dp(14), 0, dp(4));
         return t;
-    }
-
-    private LinearLayout detailRow() {
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setPadding(0, dp(3), 0, 0);
-        return row;
-    }
-
-    private LinearLayout.LayoutParams detailLp() {
-        return new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-    }
-
-    private TextView detail(String s) {
-        return text(s, 11, Color.rgb(220, 235, 238), Gravity.CENTER);
-    }
-
-    private LinearLayout forecastCell(String day, String symbol, String temps) {
-        LinearLayout cell = new LinearLayout(this);
-        cell.setOrientation(LinearLayout.VERTICAL);
-        cell.setGravity(Gravity.CENTER);
-        cell.setPadding(dp(2), dp(4), dp(2), dp(2));
-
-        TextView d = text(day, 9, Color.rgb(185, 215, 220), Gravity.CENTER);
-        TextView i = text(symbol, 20, Color.WHITE, Gravity.CENTER);
-        TextView t = text(temps, 10, Color.WHITE, Gravity.CENTER);
-        cell.addView(d);
-        cell.addView(i);
-        cell.addView(t);
-        return cell;
-    }
-
-    private LinearLayout.LayoutParams forecastLp() {
-        return new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
     }
 
     private TextView text(String s, float size, int color, int gravity) {
@@ -348,7 +340,7 @@ public class MainActivity extends Activity {
     private LinearLayout tileRow(View left, View right) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(86), 1f);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(82), 1f);
         lp.setMargins(dp(3), dp(3), dp(3), dp(3));
         row.addView(left, lp);
         row.addView(right, lp);
@@ -371,27 +363,27 @@ public class MainActivity extends Activity {
     private GradientDrawable weatherBackground() {
         GradientDrawable g = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                new int[]{Color.argb(225, 24, 57, 70), Color.argb(195, 9, 26, 34)});
-        g.setCornerRadius(dp(7));
-        g.setStroke(dp(1), Color.argb(170, 78, 211, 229));
+                new int[]{Color.argb(225, 26, 57, 69), Color.argb(197, 11, 28, 35)});
+        g.setCornerRadius(dp(9));
+        g.setStroke(dp(1), Color.argb(155, 92, 203, 219));
         return g;
     }
 
     private GradientDrawable panelBackground() {
         GradientDrawable g = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                new int[]{Color.argb(210, 31, 51, 60), Color.argb(188, 17, 29, 35)});
-        g.setCornerRadius(dp(6));
-        g.setStroke(dp(1), Color.argb(95, 255, 255, 255));
+                new int[]{Color.argb(200, 32, 49, 57), Color.argb(181, 18, 29, 34)});
+        g.setCornerRadius(dp(8));
+        g.setStroke(dp(1), Color.argb(72, 255, 255, 255));
         return g;
     }
 
     private GradientDrawable tileBackground() {
         GradientDrawable g = new GradientDrawable(
                 GradientDrawable.Orientation.TL_BR,
-                new int[]{Color.argb(205, 39, 62, 73), Color.argb(190, 22, 36, 43)});
-        g.setCornerRadius(dp(5));
-        g.setStroke(dp(1), Color.argb(90, 255, 255, 255));
+                new int[]{Color.argb(200, 37, 59, 69), Color.argb(184, 23, 36, 42)});
+        g.setCornerRadius(dp(7));
+        g.setStroke(dp(1), Color.argb(78, 255, 255, 255));
         return g;
     }
 
@@ -405,7 +397,7 @@ public class MainActivity extends Activity {
         dateView.setText(new SimpleDateFormat("EEEE, d MMMM", new Locale("pl", "PL")).format(now));
         if (calendarView != null) {
             String day = new SimpleDateFormat("EEEE", new Locale("pl", "PL")).format(now);
-            String date = new SimpleDateFormat("d MMMM yyyy", new Locale("pl", "PL")).format(now);
+            String date = new SimpleDateFormat("d MMMM", new Locale("pl", "PL")).format(now);
             calendarView.setText(capitalize(day) + "\n" + date);
         }
     }
@@ -427,15 +419,14 @@ public class MainActivity extends Activity {
         if (am != null) {
             am.getMemoryInfo(mi);
             double avail = mi.availMem / 1073741824.0;
-            double total = mi.totalMem / 1073741824.0;
-            ramView.setText(String.format(Locale.getDefault(), "RAM %.1f / %.1f GB wolne", avail, total));
+            ramView.setText(String.format(Locale.getDefault(), "RAM %.1f GB wolne", avail));
         }
     }
 
     private void updateNote() {
         if (noteView == null) return;
         String note = getSharedPreferences(PREFS, MODE_PRIVATE).getString(PREF_NOTE, "");
-        noteView.setText(note.trim().isEmpty() ? "Dotknij i zapisz krótką notatkę…" : note);
+        noteView.setText(note.trim().isEmpty() ? "Krótka notatka…" : note);
     }
 
     private void editNote() {
@@ -470,8 +461,219 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void showLocationChooser() {
+        final String[] options = {"📍 GPS telefonu", "Warszawa", "Ispina", "Inna miejscowość…"};
+        new AlertDialog.Builder(this)
+                .setTitle("Pogoda — lokalizacja")
+                .setItems(options, (d, which) -> {
+                    if (which == 0) selectGps();
+                    else if (which == 1) geocodePlace("Warszawa");
+                    else if (which == 2) geocodePlace("Ispina");
+                    else askCustomPlace();
+                })
+                .setNegativeButton("Anuluj", null)
+                .show();
+    }
+
+    private void askCustomPlace() {
+        final EditText input = new EditText(this);
+        input.setHint("Wpisz miejscowość");
+        input.setSingleLine(true);
+        input.setText(gpsMode ? "" : weatherPlace);
+        input.setSelection(input.getText().length());
+
+        new AlertDialog.Builder(this)
+                .setTitle("Wybierz miejscowość")
+                .setView(input)
+                .setNegativeButton("Anuluj", null)
+                .setPositiveButton("Ustaw", (d, w) -> {
+                    String q = input.getText().toString().trim();
+                    if (!q.isEmpty()) geocodePlace(q);
+                })
+                .show();
+    }
+
+    private void selectGps() {
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+            }, REQ_LOCATION);
+            return;
+        }
+        gpsMode = true;
+        weatherPlace = "GPS";
+        saveLocationPrefs();
+        updateLocationChip();
+        resolveGps(false);
+    }
+
+    @Override public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQ_LOCATION) {
+            boolean ok = false;
+            for (int result : grantResults) if (result == PackageManager.PERMISSION_GRANTED) ok = true;
+            if (ok) selectGps();
+            else Toast.makeText(this, "GPS nie został włączony. Możesz wybrać miejscowość ręcznie.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void updateLocationChip() {
+        if (locationChip != null) {
+            locationChip.setText((gpsMode ? "📍 GPS" : "⌂ " + weatherPlace) + "  ▾");
+        }
+    }
+
+    private void resolveGps(boolean quiet) {
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            if (!quiet) selectGps();
+            return;
+        }
+
+        if (weatherStatus != null) weatherStatus.setText("Ustalam pozycję GPS…");
+        final LocationManager lm = (LocationManager) getSystemService(LOCATION_SERVICE);
+        if (lm == null) {
+            loadWeather();
+            return;
+        }
+
+        Location best = null;
+        try {
+            Location a = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+            Location b = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            if (a != null) best = a;
+            if (b != null && (best == null || b.getTime() > best.getTime())) best = b;
+        } catch (Exception ignored) {}
+
+        if (best != null) {
+            applyGpsLocation(best);
+            return;
+        }
+
+        String provider = null;
+        try {
+            if (lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) provider = LocationManager.NETWORK_PROVIDER;
+            else if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) provider = LocationManager.GPS_PROVIDER;
+        } catch (Exception ignored) {}
+
+        if (provider == null) {
+            if (!quiet) {
+                new AlertDialog.Builder(this)
+                        .setTitle("Lokalizacja jest wyłączona")
+                        .setMessage("Włącz lokalizację telefonu albo wybierz miejscowość ręcznie.")
+                        .setNegativeButton("Anuluj", null)
+                        .setPositiveButton("Ustawienia", (d, w) -> startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)))
+                        .show();
+            }
+            loadWeather();
+            return;
+        }
+
+        try {
+            lm.requestSingleUpdate(provider, new LocationListener() {
+                @Override public void onLocationChanged(Location location) { applyGpsLocation(location); }
+                @Override public void onStatusChanged(String provider, int status, Bundle extras) {}
+                @Override public void onProviderEnabled(String provider) {}
+                @Override public void onProviderDisabled(String provider) {}
+            }, Looper.getMainLooper());
+        } catch (Exception e) {
+            loadWeather();
+        }
+    }
+
+    private void applyGpsLocation(Location location) {
+        weatherLat = location.getLatitude();
+        weatherLon = location.getLongitude();
+        gpsMode = true;
+        weatherPlace = "GPS";
+        saveLocationPrefs();
+        updateLocationChip();
+        new ReverseGeocodeTask().execute(weatherLat, weatherLon);
+        loadWeather();
+    }
+
+    private class ReverseGeocodeTask extends AsyncTask<Double, Void, String> {
+        @Override protected String doInBackground(Double... p) {
+            try {
+                Geocoder geocoder = new Geocoder(MainActivity.this, new Locale("pl", "PL"));
+                List<Address> list = geocoder.getFromLocation(p[0], p[1], 1);
+                if (list != null && !list.isEmpty()) {
+                    Address a = list.get(0);
+                    if (a.getLocality() != null) return a.getLocality();
+                    if (a.getSubAdminArea() != null) return a.getSubAdminArea();
+                }
+            } catch (Exception ignored) {}
+            return null;
+        }
+
+        @Override protected void onPostExecute(String place) {
+            if (place != null && gpsMode) {
+                weatherPlace = place;
+                saveLocationPrefs();
+                if (locationChip != null) locationChip.setText("📍 " + place + "  ▾");
+                if (lastWeather != null) weatherDescription.setText(weatherText(lastWeather.code));
+            }
+        }
+    }
+
+    private void geocodePlace(String query) {
+        if (weatherStatus != null) weatherStatus.setText("Szukam miejscowości…");
+        new PlaceSearchTask().execute(query);
+    }
+
+    private class PlaceSearchTask extends AsyncTask<String, Void, PlaceResult> {
+        @Override protected PlaceResult doInBackground(String... q) {
+            HttpURLConnection c = null;
+            try {
+                String name = URLEncoder.encode(q[0], "UTF-8");
+                URL u = new URL("https://geocoding-api.open-meteo.com/v1/search?name=" + name + "&count=1&language=pl&format=json");
+                c = (HttpURLConnection) u.openConnection();
+                c.setConnectTimeout(7000);
+                c.setReadTimeout(7000);
+                BufferedReader br = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = br.readLine()) != null) sb.append(line);
+                br.close();
+
+                JSONObject root = new JSONObject(sb.toString());
+                JSONArray results = root.optJSONArray("results");
+                if (results == null || results.length() == 0) return new PlaceResult(null, 0, 0, "Brak wyników");
+                JSONObject x = results.getJSONObject(0);
+                return new PlaceResult(x.getString("name"), x.getDouble("latitude"), x.getDouble("longitude"), null);
+            } catch (Exception e) {
+                return new PlaceResult(null, 0, 0, "Błąd wyszukiwania");
+            } finally {
+                if (c != null) c.disconnect();
+            }
+        }
+
+        @Override protected void onPostExecute(PlaceResult r) {
+            if (r.error != null) {
+                Toast.makeText(MainActivity.this, r.error, Toast.LENGTH_LONG).show();
+                weatherStatus.setText("Dotknij pogodę po szczegóły");
+                return;
+            }
+            gpsMode = false;
+            weatherPlace = r.name;
+            weatherLat = r.lat;
+            weatherLon = r.lon;
+            saveLocationPrefs();
+            updateLocationChip();
+            loadWeather();
+        }
+    }
+
+    private static class PlaceResult {
+        final String name, error;
+        final double lat, lon;
+        PlaceResult(String n, double la, double lo, String e) { name=n; lat=la; lon=lo; error=e; }
+    }
+
     private void loadWeather() {
-        weatherStatus.setText("Odświeżanie…");
+        if (weatherStatus != null) weatherStatus.setText("Odświeżam pogodę…");
         new WeatherTask().execute();
     }
 
@@ -479,15 +681,17 @@ public class MainActivity extends Activity {
         @Override protected WeatherResult doInBackground(Void... ignored) {
             HttpURLConnection c = null;
             try {
-                String endpoint = "https://api.open-meteo.com/v1/forecast?latitude=52.2297&longitude=21.0122"
-                        + "&current=temperature_2m,apparent_temperature,relative_humidity_2m,pressure_msl,weather_code,wind_speed_10m"
-                        + "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset"
-                        + "&forecast_days=5&timezone=Europe%2FWarsaw";
+                String endpoint = "https://api.open-meteo.com/v1/forecast?latitude=" + weatherLat
+                        + "&longitude=" + weatherLon
+                        + "&current=temperature_2m,weather_code"
+                        + "&hourly=temperature_2m,weather_code,precipitation_probability"
+                        + "&daily=weather_code,temperature_2m_max,temperature_2m_min"
+                        + "&forecast_days=5&timezone=auto";
                 URL u = new URL(endpoint);
                 c = (HttpURLConnection) u.openConnection();
                 c.setConnectTimeout(7000);
                 c.setReadTimeout(7000);
-                c.setRequestProperty("User-Agent", "AlfaLauncher7/1.2");
+                c.setRequestProperty("User-Agent", "AlfaLauncher7/1.3");
 
                 BufferedReader br = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"));
                 StringBuilder sb = new StringBuilder();
@@ -497,24 +701,52 @@ public class MainActivity extends Activity {
 
                 JSONObject root = new JSONObject(sb.toString());
                 JSONObject current = root.getJSONObject("current");
+                JSONObject hourly = root.getJSONObject("hourly");
                 JSONObject daily = root.getJSONObject("daily");
 
                 WeatherResult r = new WeatherResult();
                 r.temp = current.getDouble("temperature_2m");
-                r.feels = current.getDouble("apparent_temperature");
-                r.humidity = current.getInt("relative_humidity_2m");
-                r.pressure = current.getDouble("pressure_msl");
                 r.code = current.getInt("weather_code");
-                r.wind = current.getDouble("wind_speed_10m");
+                r.currentTime = current.getString("time");
 
-                JSONArray times = daily.getJSONArray("time");
-                JSONArray codes = daily.getJSONArray("weather_code");
-                JSONArray max = daily.getJSONArray("temperature_2m_max");
-                JSONArray min = daily.getJSONArray("temperature_2m_min");
-                JSONArray sunrise = daily.getJSONArray("sunrise");
-                JSONArray sunset = daily.getJSONArray("sunset");
+                JSONArray ht = hourly.getJSONArray("time");
+                JSONArray htemp = hourly.getJSONArray("temperature_2m");
+                JSONArray hcode = hourly.getJSONArray("weather_code");
+                JSONArray hpop = hourly.getJSONArray("precipitation_probability");
 
-                int count = Math.min(5, times.length());
+                String datePrefix = r.currentTime.substring(0, 10);
+                double min = 999, max = -999;
+                int firstWet = -1, firstWetCode = -1, maxPop = 0;
+
+                for (int i = 0; i < ht.length(); i++) {
+                    String time = ht.getString(i);
+                    if (!time.startsWith(datePrefix) || time.compareTo(r.currentTime) < 0) continue;
+                    double t = htemp.getDouble(i);
+                    min = Math.min(min, t);
+                    max = Math.max(max, t);
+                    int pop = hpop.optInt(i, 0);
+                    maxPop = Math.max(maxPop, pop);
+                    if (firstWet < 0 && pop >= 40) {
+                        firstWet = i;
+                        firstWetCode = hcode.optInt(i, r.code);
+                    }
+                }
+
+                if (min == 999 || max == -999) { min = r.temp; max = r.temp; }
+                r.dayMin = min;
+                r.dayMax = max;
+                r.maxPop = maxPop;
+                if (firstWet >= 0) {
+                    String ft = ht.getString(firstWet);
+                    r.firstWetHour = ft.length() >= 16 ? ft.substring(11,16) : "";
+                    r.firstWetCode = firstWetCode;
+                }
+
+                JSONArray dtime = daily.getJSONArray("time");
+                JSONArray dcode = daily.getJSONArray("weather_code");
+                JSONArray dmax = daily.getJSONArray("temperature_2m_max");
+                JSONArray dmin = daily.getJSONArray("temperature_2m_min");
+                int count = Math.min(5, dtime.length());
                 r.days = new String[count];
                 r.codes = new int[count];
                 r.max = new double[count];
@@ -523,15 +755,12 @@ public class MainActivity extends Activity {
                 SimpleDateFormat iso = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
                 SimpleDateFormat shortDay = new SimpleDateFormat("EEE", new Locale("pl", "PL"));
                 for (int i = 0; i < count; i++) {
-                    Date d = iso.parse(times.getString(i));
-                    r.days[i] = d != null ? shortDay.format(d) : "—";
-                    r.codes[i] = codes.getInt(i);
-                    r.max[i] = max.getDouble(i);
-                    r.min[i] = min.getDouble(i);
+                    Date d = iso.parse(dtime.getString(i));
+                    r.days[i] = d != null ? capitalize(shortDay.format(d)) : "—";
+                    r.codes[i] = dcode.getInt(i);
+                    r.max[i] = dmax.getDouble(i);
+                    r.min[i] = dmin.getDouble(i);
                 }
-
-                r.sunrise = hhmm(sunrise.getString(0));
-                r.sunset = hhmm(sunset.getString(0));
                 return r;
             } catch (Exception e) {
                 WeatherResult r = new WeatherResult();
@@ -547,44 +776,71 @@ public class MainActivity extends Activity {
             if (r.error != null) {
                 temperatureView.setText("--°");
                 weatherIcon.setText("☁");
-                weatherDescription.setText("Warszawa • brak danych");
-                weatherStatus.setText("Dotknij, aby spróbować ponownie");
+                weatherDescription.setText("Brak danych pogodowych");
+                daySummaryView.setText("Sprawdź internet lub odśwież pogodę.");
+                weatherStatus.setText("Dotknij ↻, aby spróbować ponownie");
                 return;
             }
 
+            lastWeather = r;
             temperatureView.setText(String.format(Locale.getDefault(), "%.0f°", r.temp));
             weatherIcon.setText(weatherSymbol(r.code));
-            weatherDescription.setText("Warszawa • " + weatherText(r.code));
-            weatherStatus.setText("Aktualizacja online • dotknij, aby odświeżyć");
-            feelsView.setText(String.format(Locale.getDefault(), "Odczuwalna %.0f°", r.feels));
-            humidityView.setText("Wilgotność " + r.humidity + "%");
-            pressureView.setText(String.format(Locale.getDefault(), "Ciśnienie %.0f hPa", r.pressure));
-            windView.setText(String.format(Locale.getDefault(), "Wiatr %.0f km/h", r.wind));
-            sunView.setText("☀ Wschód " + r.sunrise + "   •   Zachód " + r.sunset);
-
-            forecastRow.removeAllViews();
-            if (r.days != null) {
-                for (int i = 0; i < r.days.length; i++) {
-                    String temps = String.format(Locale.getDefault(), "%.0f/%.0f°", r.max[i], r.min[i]);
-                    forecastRow.addView(forecastCell(r.days[i], weatherSymbol(r.codes[i]), temps), forecastLp());
-                }
-            }
+            weatherDescription.setText(weatherText(r.code));
+            daySummaryView.setText(buildDaySummary(r));
+            weatherStatus.setText("Dotknij pogodę po prognozę 5-dniową");
         }
     }
 
-    private static String hhmm(String iso) {
-        int t = iso.indexOf('T');
-        if (t >= 0 && iso.length() >= t + 6) return iso.substring(t + 1, t + 6);
-        return "--:--";
-    }
-
     private static class WeatherResult {
-        double temp, feels, pressure, wind;
-        int humidity, code;
-        String sunrise = "--:--", sunset = "--:--", error;
+        double temp, dayMin, dayMax;
+        int code, maxPop, firstWetCode = -1;
+        String currentTime, firstWetHour, error;
         String[] days;
         int[] codes;
         double[] max, min;
+    }
+
+    private String buildDaySummary(WeatherResult r) {
+        String temps = String.format(Locale.getDefault(), "%.0f–%.0f°C", r.dayMin, r.dayMax);
+        if (r.firstWetHour != null && !r.firstWetHour.isEmpty()) {
+            String event;
+            if (r.firstWetCode >= 95) event = "możliwa burza";
+            else if (r.firstWetCode >= 71 && r.firstWetCode <= 86) event = "możliwy śnieg";
+            else event = "możliwy deszcz";
+            return "Do końca dnia: po " + r.firstWetHour + " " + event + " • " + temps;
+        }
+        if (r.maxPop < 30) return "Do końca dnia: bez większych opadów • " + temps;
+        return "Do końca dnia: możliwe przelotne opady • " + temps;
+    }
+
+    private void showWeatherDetails() {
+        if (lastWeather == null) {
+            loadWeather();
+            return;
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append((gpsMode ? "📍 " : "⌂ ")).append(weatherPlace).append("\n\n");
+        sb.append(String.format(Locale.getDefault(), "%.0f°C • %s\n", lastWeather.temp, weatherText(lastWeather.code)));
+        sb.append(buildDaySummary(lastWeather)).append("\n\n");
+        sb.append("Najbliższe dni:\n");
+        if (lastWeather.days != null) {
+            for (int i = 0; i < lastWeather.days.length; i++) {
+                sb.append(lastWeather.days[i]).append("  ")
+                        .append(weatherSymbol(lastWeather.codes[i])).append("  ")
+                        .append(String.format(Locale.getDefault(), "%.0f / %.0f°C", lastWeather.max[i], lastWeather.min[i]))
+                        .append("\n");
+            }
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("Pogoda")
+                .setMessage(sb.toString())
+                .setNeutralButton("Lokalizacja", (d, w) -> showLocationChooser())
+                .setNegativeButton("Zamknij", null)
+                .setPositiveButton("Odśwież", (d, w) -> {
+                    if (gpsMode) resolveGps(false); else loadWeather();
+                })
+                .show();
     }
 
     private String weatherSymbol(int code) {
@@ -600,18 +856,18 @@ public class MainActivity extends Activity {
     }
 
     private String weatherText(int code) {
-        if (code == 0) return "bezchmurnie";
-        if (code == 1) return "przeważnie pogodnie";
-        if (code == 2) return "częściowe zachmurzenie";
-        if (code == 3) return "pochmurno";
-        if (code == 45 || code == 48) return "mgła";
-        if (code >= 51 && code <= 57) return "mżawka";
-        if (code >= 61 && code <= 67) return "deszcz";
-        if (code >= 71 && code <= 77) return "śnieg";
-        if (code >= 80 && code <= 82) return "przelotny deszcz";
-        if (code >= 85 && code <= 86) return "przelotny śnieg";
-        if (code >= 95) return "burza";
-        return "warunki zmienne";
+        if (code == 0) return "Bezchmurnie";
+        if (code == 1) return "Przeważnie pogodnie";
+        if (code == 2) return "Częściowe zachmurzenie";
+        if (code == 3) return "Pochmurno";
+        if (code == 45 || code == 48) return "Mgła";
+        if (code >= 51 && code <= 57) return "Mżawka";
+        if (code >= 61 && code <= 67) return "Deszcz";
+        if (code >= 71 && code <= 77) return "Śnieg";
+        if (code >= 80 && code <= 82) return "Przelotny deszcz";
+        if (code >= 85 && code <= 86) return "Przelotny śnieg";
+        if (code >= 95) return "Burza";
+        return "Warunki zmienne";
     }
 
     private void launchPomocnik() {
