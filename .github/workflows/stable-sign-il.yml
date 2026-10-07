@@ -1,0 +1,115 @@
+name: Stable Sign Ispina Lokalnie
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: 'Run ID zawierający artefakt APK (puste = bieżący run)'
+        required: false
+        default: ''
+      artifact_name:
+        description: 'Nazwa artefaktu zawierającego APK'
+        required: true
+      output_name:
+        description: 'Nazwa wynikowego APK'
+        required: false
+        default: 'Ispina-Lokalnie-STABLE.apk'
+  workflow_call:
+    inputs:
+      source_run_id:
+        required: false
+        type: string
+        default: ''
+      artifact_name:
+        required: true
+        type: string
+      output_name:
+        required: false
+        type: string
+        default: 'Ispina-Lokalnie-STABLE.apk'
+    secrets:
+      IL_STABLE_KEYSTORE_B64:
+        required: true
+      IL_STABLE_KEYSTORE_PASS:
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  sign:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      EXPECTED_CERT_SHA256: '6D:75:BA:F7:F4:40:2F:F9:3C:93:50:5F:D6:D7:A5:C0:EA:B3:D1:C7:C2:AA:2A:39:EE:B5:E4:AE:16:6F:62:5F'
+      KEY_ALIAS: 'ispina-lokalnie-stable'
+    steps:
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android build tools
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Download source APK artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_RUN_ID: ${{ inputs.source_run_id }}
+          INPUT_ARTIFACT: ${{ inputs.artifact_name }}
+        run: |
+          set -euxo pipefail
+          RUN_ID="$INPUT_RUN_ID"
+          if [ -z "$RUN_ID" ]; then RUN_ID="$GITHUB_RUN_ID"; fi
+          mkdir -p source-artifact
+          gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -n "$INPUT_ARTIFACT" -D source-artifact
+          SRC="$(find source-artifact -type f -name '*.apk' | head -1)"
+          test -n "$SRC" -a -s "$SRC"
+          cp "$SRC" source.apk
+          unzip -t source.apk >/dev/null
+
+      - name: Restore permanent signing key and verify fingerprint
+        env:
+          KEYSTORE_B64: ${{ secrets.IL_STABLE_KEYSTORE_B64 }}
+          KEYSTORE_PASS: ${{ secrets.IL_STABLE_KEYSTORE_PASS }}
+        run: |
+          set -euxo pipefail
+          test -n "$KEYSTORE_B64"
+          test -n "$KEYSTORE_PASS"
+          printf '%s' "$KEYSTORE_B64" | base64 -d > stable-signing.p12
+          ACTUAL="$(keytool -list -v -storetype PKCS12 -keystore stable-signing.p12 -storepass "$KEYSTORE_PASS" -alias "$KEY_ALIAS" | awk -F': ' '/SHA256:/{print $2; exit}')"
+          test "$ACTUAL" = "$EXPECTED_CERT_SHA256"
+
+      - name: Align and stable-sign APK
+        env:
+          KEYSTORE_PASS: ${{ secrets.IL_STABLE_KEYSTORE_PASS }}
+          OUTPUT_NAME: ${{ inputs.output_name }}
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          OUT="$OUTPUT_NAME"
+          "$BT/zipalign" -p -f 4 source.apk aligned.apk
+          "$BT/apksigner" sign             --ks stable-signing.p12             --ks-type PKCS12             --ks-key-alias "$KEY_ALIAS"             --ks-pass env:KEYSTORE_PASS             --key-pass env:KEYSTORE_PASS             --v1-signing-enabled true             --v2-signing-enabled true             --v3-signing-enabled true             --out "$OUT" aligned.apk
+          "$BT/apksigner" verify --verbose --print-certs "$OUT" | tee verify.txt
+          "$BT/zipalign" -c -v 4 "$OUT" >/dev/null
+          EXPECTED_COMPACT="$(printf '%s' "$EXPECTED_CERT_SHA256" | tr -d ':' | tr 'A-F' 'a-f')"
+          grep -qi "$EXPECTED_COMPACT" verify.txt
+          unzip -t "$OUT" >/dev/null
+          sha256sum "$OUT" | tee sha256.txt
+
+      - name: Upload stable-signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ispina-Lokalnie-STABLE-SIGNED
+          path: |
+            ${{ inputs.output_name }}
+            verify.txt
+            sha256.txt
+          retention-days: 30
