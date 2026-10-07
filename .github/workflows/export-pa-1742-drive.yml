@@ -1,0 +1,36 @@
+name: Export PA 1.7.42 Drive APK
+on:
+  issues:
+    types: [opened]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  export:
+    if: ${{ github.event.issue.title == 'EXPORT PA 1.7.42 DRIVE APK' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download verified APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.42-ANDROID6-7-RUSSIAN-TV-FIX
+          path: artifact
+          run-id: 37650040911
+          github-token: ${{ github.token }}
+      - name: Prepare APK-shaped artifact
+        run: |
+          set -euxo pipefail
+          APK="artifact/Pomocnik-Alfa-1.7.42-ANDROID6-7-RUSSIAN-TV-FIX.apk"
+          test -s "$APK"
+          mkdir apkroot
+          unzip -q "$APK" -d apkroot
+          test -s apkroot/AndroidManifest.xml
+          test -s apkroot/classes.dex
+      - name: Upload Drive-ready APK bytes
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.42-DRIVE-APK
+          path: apkroot/
+          compression-level: 0
+          include-hidden-files: true
+          retention-days: 7
