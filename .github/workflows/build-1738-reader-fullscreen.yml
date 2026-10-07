@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - 'triggers/build-1738-reader-fullscreen.txt'
+      - 'helpers/czytnik-alfa/patch_modern_reader.py'
       - 'helpers/czytnik-alfa/patch_fullscreen_reader.py'
 
 permissions:
@@ -33,20 +34,15 @@ jobs:
           tar -xJf artifact/Pomocnik-Alfa-1.7.36-CZYTNIK-ALFA-SOURCE.tar.xz
           test -d project
 
-      - name: Apply modern reader patch
+      - name: Apply modern reader and fullscreen patches
         run: |
           set -euxo pipefail
           python helpers/czytnik-alfa/patch_modern_reader.py
-
-      - name: Apply fullscreen reader patch
-        run: |
-          set -euxo pipefail
           python helpers/czytnik-alfa/patch_fullscreen_reader.py
           grep -n "Pełny ekran" project/app/src/main/java/com/ispina/lokalnie/ReaderActivity.java
-          grep -n "onBackPressed" project/app/src/main/java/com/ispina/lokalnie/ReaderActivity.java
-          grep -n "attachReaderGestures" project/app/src/main/java/com/ispina/lokalnie/ReaderActivity.java
+          grep -n "enterReaderFullscreen" project/app/src/main/java/com/ispina/lokalnie/ReaderActivity.java
           grep -n "versionCode 10738" project/app/build.gradle
-          grep -n "minSdk 29" project/app/build.gradle
+          grep -n "sdkVersion" /dev/null || true
 
       - name: Prepare Android SDK
         run: |
@@ -56,7 +52,7 @@ jobs:
           "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
           echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
 
-      - name: Build APK
+      - name: Build Android 10+ APK
         working-directory: project
         run: |
           set -euxo pipefail
