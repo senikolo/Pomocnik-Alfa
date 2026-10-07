@@ -1,0 +1,69 @@
+name: Build Alfa Launcher 7 System 1.4
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+jobs:
+  build:
+    if: ${{ github.event.issue.title == 'TRIGGER ALFA LAUNCHER 7 SYSTEM 1.4' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Prepare Android SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: alfa-launcher7-project
+        run: |
+          set -euxo pipefail
+          gradle --no-daemon :app:assembleDebug -x lint --stacktrace
+          APK="$(find app/build/outputs/apk/debug -type f -name '*.apk' | head -1)"
+          test -n "$APK"
+          cp "$APK" ../Alfa-Launcher-7-1.4-SYSTEM-Android-7.apk
+
+      - name: Verify APK
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          "$BT/aapt" dump badging Alfa-Launcher-7-1.4-SYSTEM-Android-7.apk | tee badging.txt
+          grep "sdkVersion:'24'" badging.txt
+          grep "package: name='pl.alfalauncher.seven'" badging.txt
+          grep "category='android.intent.category.HOME'" badging.txt || true
+          "$BT/apksigner" verify --verbose --print-certs Alfa-Launcher-7-1.4-SYSTEM-Android-7.apk
+          sha256sum Alfa-Launcher-7-1.4-SYSTEM-Android-7.apk | tee sha256.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Alfa-Launcher-7-1.4-SYSTEM-Android-7
+          path: Alfa-Launcher-7-1.4-SYSTEM-Android-7.apk
+          retention-days: 7
+
+      - name: Report run id
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" -R senikolo/Pomocnik-Alfa --body "ALFA_LAUNCHER_7_SYSTEM_1_4_RUN_ID=${{ github.run_id }} STATUS=${{ job.status }}"
