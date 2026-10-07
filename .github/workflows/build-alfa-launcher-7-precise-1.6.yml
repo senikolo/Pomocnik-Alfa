@@ -1,0 +1,52 @@
+name: Build Alfa Launcher 7 Precise 1.6
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    if: ${{ github.event.issue.title == 'TRIGGER ALFA LAUNCHER 7 PRECISE 1.6' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Android SDK
+        run: |
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Build
+        working-directory: alfa-launcher7-project
+        run: |
+          gradle --no-daemon :app:assembleDebug -x lint
+          cp app/build/outputs/apk/debug/app-debug.apk ../Alfa-Launcher-7-1.6-PRECISE-Android-7.apk
+
+      - name: Verify
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging Alfa-Launcher-7-1.6-PRECISE-Android-7.apk | tee badging.txt
+          grep "sdkVersion:'24'" badging.txt
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose Alfa-Launcher-7-1.6-PRECISE-Android-7.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Alfa-Launcher-7-1.6-PRECISE-Android-7
+          path: Alfa-Launcher-7-1.6-PRECISE-Android-7.apk
+          retention-days: 7
