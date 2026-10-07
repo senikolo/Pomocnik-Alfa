@@ -89,6 +89,7 @@ public class MainActivity extends Activity {
         loadLocationPrefs();
         setContentView(buildPhoneHome());
         clockHandler.post(clockTick);
+        offerDefaultLauncherIfNeeded();
 
         if (gpsMode) resolveGps(true);
         else loadWeather();
@@ -165,6 +166,10 @@ public class MainActivity extends Activity {
         body.addView(tileRow(
                 tile("▤", "PDF / EPUB", v -> openReader()),
                 tile("▦", "Aplikacje", v -> startActivity(new Intent(this, AppDrawerActivity.class)))
+        ));
+        body.addView(tileRow(
+                tile("▣", "Widżety", v -> startActivity(new Intent(this, WidgetBoardActivity.class))),
+                tile("⌂", "Ekran główny", v -> openHomeSettings())
         ));
 
         TextView hint = text("Alfa Launcher 7 v1.3 • telefon • Android 7+", 10,
@@ -868,6 +873,34 @@ public class MainActivity extends Activity {
         if (code >= 85 && code <= 86) return "Przelotny śnieg";
         if (code >= 95) return "Burza";
         return "Warunki zmienne";
+    }
+
+    private boolean isDefaultLauncher() {
+        Intent home = new Intent(Intent.ACTION_MAIN);
+        home.addCategory(Intent.CATEGORY_HOME);
+        ResolveInfo ri = getPackageManager().resolveActivity(home, PackageManager.MATCH_DEFAULT_ONLY);
+        return ri != null && ri.activityInfo != null && getPackageName().equals(ri.activityInfo.packageName);
+    }
+
+    private void offerDefaultLauncherIfNeeded() {
+        SharedPreferences p = getSharedPreferences(PREFS, MODE_PRIVATE);
+        if (isDefaultLauncher() || p.getBoolean("home_prompt_shown", false)) return;
+        p.edit().putBoolean("home_prompt_shown", true).apply();
+
+        new AlertDialog.Builder(this)
+                .setTitle("Ustawić Alfa Launcher jako ekran główny?")
+                .setMessage("Wtedy przycisk HOME będzie zawsze otwierał Alfa Launcher zamiast dotychczasowego pulpitu.")
+                .setNegativeButton("Później", null)
+                .setPositiveButton("Ustaw", (d, w) -> openHomeSettings())
+                .show();
+    }
+
+    private void openHomeSettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_HOME_SETTINGS));
+        } catch (Exception e) {
+            startActivity(new Intent(Settings.ACTION_SETTINGS));
+        }
     }
 
     private void launchPomocnik() {
