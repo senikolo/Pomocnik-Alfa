@@ -16,7 +16,7 @@ method=''' private String weatherPlaceLabel(){
   else if(forecast!=null&&forecast.location!=null)
    label=forecast.location.name;
   if(label==null||label.trim().isEmpty()||
-     label.trim().matches("(?i)^GPS\\s*[-+0-9., ]+"))
+     label.trim().startsWith("GPS "))
    return "Twoja okolica";
   return label.trim();
  }
