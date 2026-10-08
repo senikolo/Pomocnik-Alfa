@@ -88,7 +88,7 @@ public final class GtfsNearby {
     }
     private static File feed(Context ctx,String provider,Result out)throws Exception{
         File dir=new File(ctx.getCacheDir(),"pa_gtfs");if(!dir.isDirectory()&&!dir.mkdirs())throw new IOException("Brak miejsca na rozkłady");
-        File dest=new File(dir,provider+"-lite.zip");
+        File dest=new File(dir,(provider.equals("mld")?"mld-rt-v2":provider)+"-lite.zip");
         out.downloadedAt=dest.lastModified();
         if(dest.isFile()&&dest.length()>10000&&System.currentTimeMillis()-dest.lastModified()<FRESH)return dest;
         File temp=new File(dir,provider+".download");
