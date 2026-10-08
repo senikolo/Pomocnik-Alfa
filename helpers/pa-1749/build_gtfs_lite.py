@@ -77,7 +77,13 @@ for provider,url in SOURCES.items():
                     numeric=trips.get(stop.get("trip_id",""))
                     if numeric is None or stop.get("pickup_type","")=="1":continue
                     line=[numeric,stop.get("stop_id",""),stop.get("stop_sequence",""),stop.get("departure_time","")]
-                    dst.write((",".join(line)+"\n").encode("utf-8"))
+                    if provider=="mld":
+                        # Preserve original arbitrary IDs and their CSV escaping.
+                        buffer=io.StringIO(newline="")
+                        csv.writer(buffer,lineterminator="\n").writerow(line)
+                        dst.write(buffer.getvalue().encode("utf-8"))
+                    else:
+                        dst.write((",".join(line)+"\n").encode("utf-8"))
                     n+=1
                     if n%1000000==0:print(provider,"stop_times_kept",n,flush=True)
         print(provider,"selected_stop_times",n,"compressed_bytes",out.stat().st_size,flush=True)
