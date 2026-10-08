@@ -25,6 +25,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import com.ispina.lokalnie.transit.GtfsNearby;
 import com.ispina.lokalnie.transit.DepartureCountdown;
+import com.ispina.lokalnie.transit.CzynaczasLinks;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -371,6 +372,17 @@ public final class LineDeparturesActivity extends ThemedActivity {
         });
         external.addView(web,new LinearLayout.LayoutParams(-1,dp(52)));
         if(provider().equals("warsaw")){
+            NativeUi.addSpacer(external,this,7);
+            String selectedStopId=result.stops.isEmpty()?null:result.stops.get(0).id;
+            String deepLink=CzynaczasLinks.forStop("warsaw",selectedStopId);
+            Button liveMap=NativeUi.button(this,"Czynaczas · LIVE dla wybranego przystanku",false);
+            liveMap.setOnClickListener(v->{
+                try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(deepLink)));}
+                catch(Exception ex){message.setText("Nie można otworzyć Czynaczas.pl.");}
+            });
+            external.addView(liveMap,new LinearLayout.LayoutParams(-1,dp(55)));
+            external.addView(NativeUi.muted(this,
+                "Otwieram niezależną mapę Czynaczas.pl, dopasowaną do numeru stanowiska. Opóźnienia oblicza serwis zewnętrzny — nie są jeszcze pobierane do PA.",12));
             NativeUi.addSpacer(external,this,7);
             Button map=NativeUi.button(this,"Pokaż pojazdy na mapie LIVE",true);
             map.setOnClickListener(v->{
