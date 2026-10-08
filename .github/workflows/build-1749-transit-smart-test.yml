@@ -271,6 +271,7 @@ jobs:
       - name: Static audit smoke tests
         run: |
           set -euxo pipefail
+          python helpers/pa-1749/test_smart_offer.py
           grep -F 'NearbyDeparturesActivity' project/app/src/main/AndroidManifest.xml
           grep -F 'SmartOferta' helpers/pa-1749/SmartOffer.java || true
           grep -F 'Odjazdy stąd' project/app/src/main/java/com/ispina/lokalnie/MainActivity.java
