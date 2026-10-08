@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Daily compact rolling GTFS: actual service dates, short trip IDs, no shapes."""
+"""Daily compact rolling GTFS: preserve rider-facing stop codes and route types."""
 from __future__ import annotations
 import csv,io,zipfile,requests,datetime
 from pathlib import Path
@@ -12,8 +12,8 @@ OUT=Path("data/pa-gtfs");OUT.mkdir(parents=True,exist_ok=True)
 now=datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=2))).date()
 dates={(now+datetime.timedelta(days=d)).strftime("%Y%m%d") for d in (-1,0,1,2)}
 HEADERS={
- "stops.txt":["stop_id","stop_name","stop_lat","stop_lon"],
- "routes.txt":["route_id","route_short_name","route_long_name"],
+ "stops.txt":["stop_id","stop_code","stop_name","stop_lat","stop_lon"],
+ "routes.txt":["route_id","route_short_name","route_long_name","route_type"],
  "trips.txt":["trip_id","route_id","service_id","trip_headsign"],
  "stop_times.txt":["trip_id","stop_id","stop_sequence","departure_time"],
  "calendar.txt":["service_id","monday","tuesday","wednesday","thursday","friday","saturday","sunday","start_date","end_date"],
