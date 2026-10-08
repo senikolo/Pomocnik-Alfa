@@ -76,7 +76,7 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         NativeUi.addSpacer(root,this,15);
         LinearLayout info=NativeUi.card(this);
         info.addView(NativeUi.text(this,"Dane i dokładność",17,true));
-        info.addView(NativeUi.muted(this,"Warszawa: WTP (autobusy, tramwaje, metro i SKM) przez WarsawGTFS; pociągi Kolei Mazowieckich nie są częścią tej bazy. Małopolska: rozkłady autobusów MLD. Godziny są planowe, bez opóźnień na żywo. Odległości podano w linii prostej. Dane WTP: ZTM Warszawa, Mikołaj Kuranowski i © OpenStreetMap contributors.",13));
+        info.addView(NativeUi.muted(this,"Warszawa: rozkłady WTP/WarsawGTFS; Małopolska: MLD. Brak oznaczenia live nie oznacza punktualności. Opóźnienia będą widoczne wyłącznie po dopasowaniu świeżej informacji o konkretnym kursie i stanowisku. Sama pozycja GPS pojazdu nie daje pewnego opóźnienia. Odległości są w linii prostej. Dane: ZTM Warszawa, Mikołaj Kuranowski i © OpenStreetMap contributors.",13));
         root.addView(info);
     }
     private boolean permitted(){
@@ -198,11 +198,20 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         for(List<GtfsNearby.Stop> platforms:groups.values()){
             GtfsNearby.Stop closest=platforms.get(0);
             LinkedHashSet<String> numbers=new LinkedHashSet<>();
-            for(GtfsNearby.Stop st:platforms)if(st.code!=null&&!st.code.trim().isEmpty())numbers.add(st.code.trim());
-            String label=closest.name+" · "+Math.round(closest.distance)+" m";
-            if(!numbers.isEmpty())label+=" · stanowiska: "+android.text.TextUtils.join(", ",numbers);
-            TextView txt=NativeUi.text(this,label,15,false);
-            txt.setPadding(0,dp(7),0,dp(7));stopCard.addView(txt);
+            for(GtfsNearby.Stop st:platforms)
+                if(st.code!=null&&!st.code.trim().isEmpty())numbers.add(st.code.trim());
+            LinearLayout stopPanel=NativeUi.card(this);
+            TextView stopName=NativeUi.text(this,closest.name,19,true);
+            stopPanel.addView(stopName);
+            NativeUi.addSpacer(stopPanel,this,4);
+            String posts=numbers.isEmpty()?"Numer stanowiska: brak w danych":
+                "Stanowiska: "+android.text.TextUtils.join("  ·  ",numbers);
+            TextView postNumber=NativeUi.text(this,posts,numbers.isEmpty()?14:18,!numbers.isEmpty());
+            stopPanel.addView(postNumber);
+            NativeUi.addSpacer(stopPanel,this,3);
+            stopPanel.addView(NativeUi.muted(this,Math.round(closest.distance)+" m w linii prostej",14));
+            stopPanel.setContentDescription(closest.name+". "+posts+". "+Math.round(closest.distance)+" metrów.");
+            stopCard.addView(stopPanel);
         }
         if(groups.isEmpty())stopCard.addView(NativeUi.muted(this,"Nie znaleziono przystanków autobusowych ani tramwajowych w pobliżu.",14));
         results.addView(stopCard);
@@ -242,20 +251,37 @@ public class NearbyDeparturesActivity extends ThemedActivity {
             if(near.length()>0)near.append(" • ");
             near.append(stopLabel(d.stop));
         }
-        section.addView(NativeUi.muted(this,"Przystanki: "+near+" · odjazdy planowe, nie na żywo",12));
+        section.addView(NativeUi.muted(this,"Wybrana okolica · rozkład planowy. Opóźnienia tylko z potwierdzonych aktualnych danych.",14));
         NativeUi.addSpacer(section,this,8);
         int count=0;
         for(GtfsNearby.Departure d:selected){
             if(count++>=12)break;
-            LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);
-            TextView line=NativeUi.text(this,d.line,18,true);
-            row.addView(line,new LinearLayout.LayoutParams(dp(56),-2));
+            LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.TOP);
+            TextView line=NativeUi.text(this,d.line,20,true);
+            row.addView(line,new LinearLayout.LayoutParams(dp(57),-2));
             LinearLayout description=new LinearLayout(this);description.setOrientation(LinearLayout.VERTICAL);
-            description.addView(NativeUi.text(this,d.headsign,15,true));
-            description.addView(NativeUi.muted(this,stopLabel(d.stop)+" · "+Math.round(d.stop.distance)+" m",12));
+            description.addView(NativeUi.text(this,d.headsign,17,true));
+            NativeUi.addSpacer(description,this,4);
+            description.addView(NativeUi.text(this,d.stop.name,17,true));
+            if(d.stop.code!=null&&!d.stop.code.trim().isEmpty())
+                description.addView(NativeUi.text(this,"Stanowisko "+d.stop.code,16,true));
+            else description.addView(NativeUi.muted(this,"Numer stanowiska niedostępny",13));
+            description.addView(NativeUi.muted(this,Math.round(d.stop.distance)+" m od Ciebie",13));
             row.addView(description,new LinearLayout.LayoutParams(0,-2,1));
-            TextView clock=NativeUi.text(this,time(d.when),18,true);
-            row.addView(clock);
+            LinearLayout clockColumn=new LinearLayout(this);
+            clockColumn.setOrientation(LinearLayout.VERTICAL);
+            clockColumn.setGravity(Gravity.RIGHT);
+            TextView clock=NativeUi.text(this,time(d.when),21,true);
+            clock.setGravity(Gravity.RIGHT);
+            clockColumn.addView(clock);
+            Integer delay=d.confirmedDelayMinutes(System.currentTimeMillis());
+            String liveLabel=delay==null?"Brak danych live":
+               delay>0?"+"+delay+" min · live":
+               delay<0?delay+" min · live":"Bez opóźnienia · live";
+            TextView deviation=NativeUi.text(this,liveLabel,delay==null?12:15,delay!=null);
+            deviation.setGravity(Gravity.RIGHT);
+            clockColumn.addView(deviation);
+            row.addView(clockColumn,new LinearLayout.LayoutParams(dp(108),-2));
             LinearLayout panel=NativeUi.card(this);
             panel.addView(row);
             panel.setClickable(true);panel.setFocusable(true);
