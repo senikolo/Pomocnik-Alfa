@@ -191,8 +191,8 @@ public final class GtfsNearby {
             if(result.stops.isEmpty()){result.note="Nie znaleziono przystanków tej sieci w promieniu 1,9 km.";return result;}
             Map<String,Stop> chosen=new HashMap<>();
             for(Stop stop:result.stops)chosen.put(stop.id,stop);
-            Set<String> dayServices=active(z,today),previousServices=active(z,previous);
-            Set<String> services=new HashSet<>(dayServices);services.addAll(previousServices);
+            Set<String> dayServices=active(z,today),previousServices=active(z,previous),nextServices=active(z,today.plusDays(1));
+            Set<String> services=new HashSet<>(dayServices);services.addAll(previousServices);services.addAll(nextServices);
             Map<String,String> routes=new HashMap<>();collectRoutes(z,routes);
             Map<String,Trip> trips=new HashMap<>();
             try(Rows csv=new Rows(z,"trips.txt")){
@@ -212,9 +212,10 @@ public final class GtfsNearby {
                     Stop stop=chosen.get(csv.s(r,"stop_id"));if(stop==null)continue;
                     String tid=csv.s(r,"trip_id");Trip trip=trips.get(tid);if(trip==null)continue;
                     int seconds=time(csv.s(r,"departure_time"));if(seconds<0)continue;
-                    for(int dayOffset=-1;dayOffset<=0;dayOffset++){
+                    for(int dayOffset=-1;dayOffset<=1;dayOffset++){
                         if(dayOffset==0&&!dayServices.contains(trip.service))continue;
                         if(dayOffset==-1&&!previousServices.contains(trip.service))continue;
+                        if(dayOffset==1&&!nextServices.contains(trip.service))continue;
                         LocalDate date=today.plusDays(dayOffset);
                         long departure=date.atStartOfDay(ZONE).plusSeconds(seconds).toInstant().toEpochMilli();
                         if(departure<moment-120000L||departure>moment+120L*60000L)continue;
