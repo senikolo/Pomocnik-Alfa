@@ -1,0 +1,48 @@
+name: PA 1.7.54 Rail Realtime Compatibility
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.issue.title == 'TRIGGER PA 1754 RAIL RT PROBE' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check public Warsaw GTFS and PolishTrains GTFS-RT identifiers
+        run: |
+          python3 - <<'PY'
+          import urllib.request,zipfile,io,csv,json,collections
+          def download(url,limit):
+            req=urllib.request.Request(url,headers={'User-Agent':'PomocnikAlfa/1.7.54 matching audit'})
+            with urllib.request.urlopen(req,timeout=65) as r:
+              data=r.read(limit+1)
+              if len(data)>limit:raise ValueError('over size limit '+str(len(data)))
+              return data
+          w=download('https://mkuran.pl/gtfs/warsaw.zip',30000000)
+          z=zipfile.ZipFile(io.BytesIO(w))
+          names={r['route_id']:r for r in csv.DictReader(io.TextIOWrapper(z.open('routes.txt'),encoding='utf-8-sig'))}
+          trains=set()
+          for row in csv.DictReader(io.TextIOWrapper(z.open('trips.txt'),encoding='utf-8-sig')):
+            route=names.get(row['route_id'],{})
+            line=route.get('route_short_name','')
+            if line.startswith('S') or route.get('route_type','')=='2':trains.add(row['trip_id'])
+          print('WARSAW_SKm',len(trains),'EXAMPLE',sorted(trains)[:3])
+          data=download('https://mkuran.pl/gtfs/polish_trains/updates.json',100000000)
+          print('RT_BYTES',len(data))
+          doc=json.loads(data)
+          print('RT_ROOT',type(doc).__name__,list(doc)[:12] if isinstance(doc,dict) else len(doc))
+          entries=doc.get('entity',doc.get('entities',[])) if isinstance(doc,dict) else doc
+          keys=set()
+          samples=[]
+          for e in entries:
+            trip=e.get('tripUpdate',e.get('trip_update',e))
+            descriptor=trip.get('trip',{}) if isinstance(trip,dict) else {}
+            tid=descriptor.get('tripId',descriptor.get('trip_id',''))
+            if tid:
+              keys.add(str(tid))
+              if len(samples)<4:samples.append({'tid':str(tid),'tripKeys':list(trip)[:10],'descKeys':list(descriptor)[:10]})
+          print('RT_ENTITIES',len(entries),'RT_TRIP_IDS',len(keys),'MATCH_WTP_SKm',len(trains&keys),'RT_SAMPLE',samples)
+          PY
