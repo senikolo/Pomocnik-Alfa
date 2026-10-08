@@ -45,7 +45,7 @@ public class Test {
      MldRealtime.applyJson(json(ts,ok.tripId,"20261009",ok.stop.id,ok.routeId,180),list,now);
      test(ok.confirmedDelayMinutes(now)==null,"Different date must never match");
      ok=departure();list=Collections.singletonList(ok);
-     MldRealtime.applyJson(json(ts,ok.tripId,ok.serviceDate,"DIFFERENT_STOP",ok.routeId,180).replace("\"stopSequence\":12,","\"stopSequence\":99,"),list,now);
+         .replace("12,","99,"),list,now);
      test(ok.confirmedDelayMinutes(now)==null,"Different stop must never match");
      // A matching stop_sequence must not override an explicitly different stop_id.
      ok=departure();list=Collections.singletonList(ok);
