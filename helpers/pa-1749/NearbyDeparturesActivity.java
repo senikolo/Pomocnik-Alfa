@@ -17,6 +17,11 @@ import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.net.Uri;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
+import android.content.res.Configuration;
+import android.text.TextUtils;
+import android.util.TypedValue;
 
 import com.ispina.lokalnie.transit.GtfsNearby;
 import java.text.SimpleDateFormat;
@@ -241,59 +246,115 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         service.addView(disruptions,new LinearLayout.LayoutParams(-1,dp(52)));
         results.addView(service);
     }
+    /** Consistent meaning for each color, with separate high-contrast night variants. */
+    private TextView transitChip(String label, int sp, int lightBackground, int lightText,
+                                 int darkBackground, int darkText, boolean oneLine){
+        TextView view=NativeUi.text(this,label,sp,true);
+        boolean dark=(getResources().getConfiguration().uiMode&
+                Configuration.UI_MODE_NIGHT_MASK)==Configuration.UI_MODE_NIGHT_YES;
+        view.setTextColor(dark?darkText:lightText);
+        GradientDrawable background=new GradientDrawable();
+        background.setColor(dark?darkBackground:lightBackground);
+        background.setCornerRadius(dp(12));
+        view.setBackground(background);
+        view.setPadding(dp(10),dp(9),dp(10),dp(9));
+        view.setGravity(Gravity.CENTER_VERTICAL);
+        if(oneLine){
+            view.setSingleLine(true);
+            view.setEllipsize(TextUtils.TruncateAt.END);
+            view.setMinWidth(0);
+            view.setContentDescription(label);
+        }
+        return view;
+    }
+    private TextView lineChip(String label){
+        return transitChip(label,19,0xFFEDE2FA,0xFF4B258A,0xFF392651,0xFFF2DCFF,true);
+    }
+    private TextView destinationChip(String label){
+        TextView v=transitChip(label,17,0xFFE2EFFF,0xFF174A84,0xFF193657,0xFFE2F0FF,true);
+        // Use the available width before shortening long termini to an ellipsis.
+        v.setAutoSizeTextTypeUniformWithConfiguration(12,17,1,TypedValue.COMPLEX_UNIT_SP);
+        return v;
+    }
+    private TextView stopChip(String label){
+        TextView v=transitChip(label,15,0xFFDDF4E9,0xFF075A4C,0xFF163E35,0xFFDDFCED,true);
+        v.setAutoSizeTextTypeUniformWithConfiguration(12,15,1,TypedValue.COMPLEX_UNIT_SP);
+        return v;
+    }
+    private TextView platformChip(String label){
+        return transitChip(label,14,0xFFF2E9FF,0xFF5A3279,0xFF45304F,0xFFF3E2FF,true);
+    }
+    private TextView timeChip(String label){
+        return transitChip(label,21,0xFFE1F2FF,0xFF0D456D,0xFF1D3B57,0xFFE6F5FF,true);
+    }
+    private TextView liveChip(String label,Integer delay){
+        if(delay==null)return transitChip(label,13,0xFFF0F2F5,0xFF49515D,0xFF30343C,0xFFE4E7ED,true);
+        if(delay>0)return transitChip(label,14,0xFFFFE7CC,0xFF873700,0xFF5A3418,0xFFFFE5C8,true);
+        return transitChip(label,14,0xFFDFF4E5,0xFF166138,0xFF194532,0xFFDFF7E7,true);
+    }
     private void addDepartureSection(GtfsNearby.Result value,String mode,String heading,boolean alwaysVisible){
         List<GtfsNearby.Departure> selected=new ArrayList<>();
         for(GtfsNearby.Departure d:value.departures)if(mode.equals(d.mode))selected.add(d);
         if(selected.isEmpty()&&!alwaysVisible)return;
         LinearLayout section=NativeUi.card(this);
-        section.addView(NativeUi.text(this,heading+" · planowo",19,true));
+        section.addView(NativeUi.text(this,heading+" · odjazdy",19,true));
         if(selected.isEmpty()){
             section.addView(NativeUi.muted(this,
                 "Nie znaleziono potwierdzonych odjazdów w najbliższych dwóch godzinach z pobliskich przystanków tej kategorii.",14));
             results.addView(section);return;
         }
-        Set<String> stopKeys=new HashSet<>();
-        StringBuilder near=new StringBuilder();
-        for(GtfsNearby.Departure d:selected){
-            if(stopKeys.size()>=4)break;
-            if(!stopKeys.add(d.stop.id))continue;
-            if(near.length()>0)near.append(" • ");
-            near.append(stopLabel(d.stop));
-        }
-        section.addView(NativeUi.muted(this,"Wybrana okolica · rozkład planowy. Opóźnienia tylko z potwierdzonych aktualnych danych.",14));
-        NativeUi.addSpacer(section,this,8);
+        section.addView(NativeUi.muted(this,
+            "Fiolet: linia · niebieski: kierunek · zielony: przystanek · błękit: godzina",12));
+        NativeUi.addSpacer(section,this,9);
         int count=0;
         for(GtfsNearby.Departure d:selected){
             if(count++>=12)break;
-            LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.TOP);
-            TextView line=NativeUi.text(this,d.line,20,true);
-            row.addView(line,new LinearLayout.LayoutParams(dp(57),-2));
-            LinearLayout description=new LinearLayout(this);description.setOrientation(LinearLayout.VERTICAL);
-            description.addView(NativeUi.text(this,d.headsign,17,true));
-            NativeUi.addSpacer(description,this,4);
-            description.addView(NativeUi.text(this,d.stop.name,17,true));
-            if(d.stop.code!=null&&!d.stop.code.trim().isEmpty())
-                description.addView(NativeUi.text(this,"Stanowisko "+d.stop.code,16,true));
-            else description.addView(NativeUi.muted(this,"Numer stanowiska niedostępny",13));
-            description.addView(NativeUi.muted(this,Math.round(d.stop.distance)+" m od Ciebie",13));
-            row.addView(description,new LinearLayout.LayoutParams(0,-2,1));
-            LinearLayout clockColumn=new LinearLayout(this);
-            clockColumn.setOrientation(LinearLayout.VERTICAL);
-            clockColumn.setGravity(Gravity.RIGHT);
-            TextView clock=NativeUi.text(this,time(d.when),21,true);
-            clock.setGravity(Gravity.RIGHT);
-            clockColumn.addView(clock);
+            LinearLayout panel=NativeUi.card(this);
+            // Line and destination: one horizontal row; no broken destination text.
+            LinearLayout top=new LinearLayout(this);
+            top.setOrientation(LinearLayout.HORIZONTAL);
+            top.setGravity(Gravity.CENTER_VERTICAL);
+            TextView number=lineChip(d.line);
+            number.setGravity(Gravity.CENTER);
+            top.addView(number,new LinearLayout.LayoutParams(dp(65),-2));
+            NativeUi.addSpacer(top,this,5);
+            TextView direction=destinationChip(d.headsign);
+            top.addView(direction,new LinearLayout.LayoutParams(0,-2,1));
+            panel.addView(top);
+            NativeUi.addSpacer(panel,this,7);
+
+            LinearLayout middle=new LinearLayout(this);
+            middle.setOrientation(LinearLayout.HORIZONTAL);
+            middle.setGravity(Gravity.CENTER_VERTICAL);
+            TextView name=stopChip(d.stop.name);
+            middle.addView(name,new LinearLayout.LayoutParams(0,-2,1));
+            NativeUi.addSpacer(middle,this,5);
+            String post=d.stop.code==null?"":d.stop.code.trim();
+            TextView platform=platformChip(post.isEmpty()?"Nr —":"Stan. "+post);
+            platform.setGravity(Gravity.CENTER);
+            middle.addView(platform,new LinearLayout.LayoutParams(dp(85),-2));
+            panel.addView(middle);
+            NativeUi.addSpacer(panel,this,7);
+
+            LinearLayout bottom=new LinearLayout(this);
+            bottom.setOrientation(LinearLayout.HORIZONTAL);
+            bottom.setGravity(Gravity.CENTER_VERTICAL);
+            TextView clock=timeChip(time(d.when));
+            clock.setGravity(Gravity.CENTER);
+            bottom.addView(clock,new LinearLayout.LayoutParams(dp(92),-2));
+            NativeUi.addSpacer(bottom,this,7);
             Integer delay=d.confirmedDelayMinutes(System.currentTimeMillis());
             String liveLabel=delay==null?"Brak danych live":
-               delay>0?"+"+delay+" min · live":
-               delay<0?delay+" min · live":"Bez opóźnienia · live";
-            TextView deviation=NativeUi.text(this,liveLabel,delay==null?12:15,delay!=null);
-            deviation.setGravity(Gravity.RIGHT);
-            clockColumn.addView(deviation);
-            row.addView(clockColumn,new LinearLayout.LayoutParams(dp(108),-2));
-            LinearLayout panel=NativeUi.card(this);
-            panel.addView(row);
-            panel.setClickable(true);panel.setFocusable(true);
+                    delay>0?"+"+delay+" min · LIVE":
+                    delay<0?delay+" min · LIVE":"Bez opóźnienia · LIVE";
+            TextView status=liveChip(liveLabel,delay);
+            status.setGravity(Gravity.CENTER);
+            bottom.addView(status,new LinearLayout.LayoutParams(0,-2,1));
+            panel.addView(bottom);
+            panel.setContentDescription("Linia "+d.line+". Kierunek "+d.headsign+
+                ". Przystanek "+stopLabel(d.stop)+". Odjazd "+time(d.when)+". "+liveLabel);
+            panel.setClickable(true);
+            panel.setFocusable(true);
             NativeUi.onClick(panel,v->route(d));
             section.addView(panel);
         }
