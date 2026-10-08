@@ -304,17 +304,17 @@ jobs:
         run: |
           set -euxo pipefail
           BT="$ANDROID_HOME/build-tools/35.0.0"
-          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.49-A10-RADIO-FLAGS-GPS-TEST-SIGNED.apk | tee badging.txt
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.49-A10-ODJAZDY-SMART-TEST-SIGNED.apk | tee badging.txt
           grep "versionCode='10750'" badging.txt
           grep "sdkVersion:'29'" badging.txt
-          unzip -t Pomocnik-Alfa-1.7.49-A10-RADIO-FLAGS-GPS-TEST-SIGNED.apk >/dev/null
-          "$BT/apksigner" verify --verbose --print-certs Pomocnik-Alfa-1.7.49-A10-RADIO-FLAGS-GPS-TEST-SIGNED.apk
-          sha256sum Pomocnik-Alfa-1.7.49-A10-RADIO-FLAGS-GPS-TEST-SIGNED.apk
+          unzip -t Pomocnik-Alfa-1.7.49-A10-ODJAZDY-SMART-TEST-SIGNED.apk >/dev/null
+          "$BT/apksigner" verify --verbose --print-certs Pomocnik-Alfa-1.7.49-A10-ODJAZDY-SMART-TEST-SIGNED.apk
+          sha256sum Pomocnik-Alfa-1.7.49-A10-ODJAZDY-SMART-TEST-SIGNED.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Pomocnik-Alfa-1.7.49-A10-RADIO-FLAGS-GPS-TEST-SIGNED
-          path: Pomocnik-Alfa-1.7.49-A10-RADIO-FLAGS-GPS-TEST-SIGNED.apk
+          name: Pomocnik-Alfa-1.7.49-A10-ODJAZDY-SMART-TEST-SIGNED
+          path: Pomocnik-Alfa-1.7.49-A10-ODJAZDY-SMART-TEST-SIGNED.apk
           retention-days: 7
 
       - name: Report
