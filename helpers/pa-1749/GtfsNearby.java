@@ -167,6 +167,7 @@ public final class GtfsNearby {
         LocalDate today=now.toLocalDate(),previous=today.minusDays(1);
         long moment=now.toInstant().toEpochMilli();
         Map<String,Stop> allStops=new HashMap<>();
+        Map<String,String> stopNames=new HashMap<>();
         try(ZipFile z=new ZipFile(archive)){
             try(Rows csv=new Rows(z,"stops.txt")){
                 List<String> r;int lines=0;
@@ -175,6 +176,7 @@ public final class GtfsNearby {
                     String id=csv.s(r,"stop_id"),name=csv.s(r,"stop_name");
                     double slat=decimal(csv.s(r,"stop_lat")),slon=decimal(csv.s(r,"stop_lon"));
                     if(id.isEmpty()||name.isEmpty()||!Double.isFinite(slat)||!Double.isFinite(slon))continue;
+                    stopNames.put(id,name);
                     float[] distance=new float[1];
                     Location.distanceBetween(lat,lon,slat,slon,distance);
                     if(distance[0]>1900)continue;
@@ -241,10 +243,9 @@ public final class GtfsNearby {
                     List<Departure> ls=wanted.get(csv.s(r,"trip_id"));if(ls==null)continue;
                     int sequence=parseInt(csv.s(r,"stop_sequence"),-1);
                     String id=csv.s(r,"stop_id");
-                    Stop next=allStops.get(id);
-                    // Route beyond 1.9 km: keep name using full map below if needed
+                    String next=stopNames.get(id);
                     if(next==null)continue;
-                    for(Departure d:ls)if(sequence>=d.sequence && d.following.size()<8)d.following.add(next.name);
+                    for(Departure d:ls)if(sequence>=d.sequence && d.following.size()<8)d.following.add(next);
                 }
             }
         }
