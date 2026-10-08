@@ -1,0 +1,28 @@
+name: PA 1.7.47 Remote Stream Audit
+on:
+  issues:
+    types: [opened]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  audit:
+    if: ${{ github.event.issue.title == 'TRIGGER PA 1747 STREAM AUDIT' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore exact build sources
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p audit_artifact
+          gh run download 37774373279 -R senikolo/Pomocnik-Alfa -n pa-1747-effective-sources-for-audit -D audit_artifact
+          tar -xJf audit_artifact/pa-1747-effective-source.tar.xz
+      - name: Probe streams
+        run: python3 helpers/pa-1747/audit_streams.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pa1747-independent-stream-audit
+          path: pa1747-stream-report.json
+          retention-days: 5
