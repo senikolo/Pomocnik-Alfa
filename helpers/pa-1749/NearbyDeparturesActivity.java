@@ -15,10 +15,12 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
+import android.widget.HorizontalScrollView;
 import android.widget.TextView;
 import android.net.Uri;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.text.TextUtils;
 import android.util.TypedValue;
@@ -49,6 +51,9 @@ public class NearbyDeparturesActivity extends ThemedActivity {
     private LinearLayout results;
     private Button locate,refresh;
     private ProgressBar progress;
+    private final Map<String,LinearLayout> modeSections=new LinkedHashMap<>();
+    private final Map<String,TextView> modeFilters=new LinkedHashMap<>();
+    private String activeMode="all";
     private Location lastFix;
     private long lastFixAt;
     private boolean screenVisible;
@@ -234,6 +239,8 @@ public class NearbyDeparturesActivity extends ThemedActivity {
     }
     private void render(GtfsNearby.Result value,Location fix){
         stopCountdowns();
+        modeSections.clear();
+        modeFilters.clear();
         results.removeAllViews();
         SimpleDateFormat stamp=new SimpleDateFormat("dd.MM, HH:mm",new Locale("pl","PL"));
         stamp.setTimeZone(java.util.TimeZone.getTimeZone("Europe/Warsaw"));
@@ -281,11 +288,14 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         if(groups.isEmpty())stopCard.addView(NativeUi.muted(this,"Nie znaleziono przystanków autobusowych ani tramwajowych w pobliżu.",14));
         results.addView(stopCard);
         boolean warsaw="warsaw".equals(GtfsNearby.networkFor(fix.getLatitude(),fix.getLongitude()));
-        addDepartureSection(value,"bus","🚌 Autobusy",false);
+        if(!warsaw && !activeMode.equals("all") && !activeMode.equals("bus"))
+            activeMode="all";
+        addModeFilters(warsaw);
+        addDepartureSection(value,"bus","🚌 Autobusy",true);
         if(warsaw){
-            addDepartureSection(value,"tram","🚋 Tramwaje",false);
+            addDepartureSection(value,"tram","🚋 Tramwaje",true);
             addDepartureSection(value,"skm","🚆 Pociągi SKM",true);
-            addDepartureSection(value,"metro","🚇 Metro",false);
+            addDepartureSection(value,"metro","🚇 Metro",true);
             LinearLayout km=NativeUi.card(this);
             km.addView(NativeUi.text(this,"🚆 Koleje Mazowieckie (KM)",18,true));
             km.addView(NativeUi.muted(this,
@@ -313,7 +323,62 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         service.addView(NativeUi.muted(this,
             "To zewnętrzny serwis z własnymi danymi na żywo. PA nie pobiera jeszcze jego prognoz.",12));
         results.addView(service);
+        applyModeFilter();
         startCountdowns();
+    }
+    private void addModeFilters(boolean warsaw){
+        LinearLayout wrapper=NativeUi.card(this);
+        wrapper.addView(NativeUi.text(this,"Pokaż odjazdy",18,true));
+        NativeUi.addSpacer(wrapper,this,7);
+        HorizontalScrollView scroller=new HorizontalScrollView(this);
+        scroller.setHorizontalScrollBarEnabled(false);
+        scroller.setFillViewport(false);
+        LinearLayout chips=new LinearLayout(this);
+        chips.setOrientation(LinearLayout.HORIZONTAL);
+        String[] keys=warsaw?new String[]{"all","bus","tram","skm","metro"}:
+            new String[]{"all","bus"};
+        String[] names=warsaw?new String[]{"Wszystkie","Autobusy","Tramwaje","SKM","Metro"}:
+            new String[]{"Wszystkie","Autobusy"};
+        for(int i=0;i<keys.length;i++){
+            final String mode=keys[i];
+            TextView chip=NativeUi.text(this,names[i],15,true);
+            chip.setPadding(dp(13),dp(10),dp(13),dp(10));
+            chip.setGravity(Gravity.CENTER);
+            chip.setMinHeight(dp(44));
+            chip.setClickable(true);
+            chip.setFocusable(true);
+            chip.setContentDescription("Filtruj odjazdy: "+names[i]);
+            chip.setOnClickListener(v->{
+                activeMode=mode;
+                applyModeFilter();
+            });
+            modeFilters.put(mode,chip);
+            if(i>0)horizontalGap(chips,7);
+            chips.addView(chip,new LinearLayout.LayoutParams(-2,-2));
+        }
+        scroller.addView(chips);
+        wrapper.addView(scroller);
+        results.addView(wrapper);
+    }
+    private void applyModeFilter(){
+        for(Map.Entry<String,LinearLayout> item:modeSections.entrySet())
+            item.getValue().setVisibility(activeMode.equals("all") ||
+                activeMode.equals(item.getKey())?View.VISIBLE:View.GONE);
+        boolean dark=(getResources().getConfiguration().uiMode&
+            Configuration.UI_MODE_NIGHT_MASK)==Configuration.UI_MODE_NIGHT_YES;
+        for(Map.Entry<String,TextView> item:modeFilters.entrySet()){
+            boolean selected=item.getKey().equals(activeMode);
+            TextView chip=item.getValue();
+            int background=selected?(dark?0xFF387BC0:0xFF20609C):
+                (dark?0xFF303944:0xFFEAF0F5);
+            int foreground=selected?0xFFFFFFFF:(dark?0xFFE9F2FD:0xFF284561);
+            GradientDrawable drawable=new GradientDrawable();
+            drawable.setColor(background);
+            drawable.setCornerRadius(dp(16));
+            chip.setBackground(drawable);
+            chip.setTextColor(foreground);
+            chip.setSelected(selected);
+        }
     }
     private void horizontalGap(LinearLayout layout,int dps){
         layout.addView(new View(this),new LinearLayout.LayoutParams(dp(dps),1));
@@ -369,6 +434,7 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         for(GtfsNearby.Departure d:value.departures)if(mode.equals(d.mode))selected.add(d);
         if(selected.isEmpty()&&!alwaysVisible)return;
         LinearLayout section=NativeUi.card(this);
+        modeSections.put(mode,section);
         section.addView(NativeUi.text(this,heading+" · odjazdy",19,true));
         if(selected.isEmpty()){
             section.addView(NativeUi.muted(this,
