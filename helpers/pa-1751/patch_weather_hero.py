@@ -31,4 +31,8 @@ s=s.replace(anchor,anchor+'''
 p.write_text(s,encoding="utf-8")
 assert 'NativeUi.text(this,weatherPlaceLabel(),18,true)' in s
 assert 'if(forecast!=null)render();' in s
+main=Path("project/app/src/main/java/com/ispina/lokalnie/MainActivity.java")
+v=main.read_text(encoding="utf-8")
+assert "POMOCNIK ALFA 1.7.50" in v
+main.write_text(v.replace("POMOCNIK ALFA 1.7.50","POMOCNIK ALFA 1.7.51"),encoding="utf-8")
 print("PASS: weather hero label refreshed after geocoding; raw GPS coordinates not displayed")
