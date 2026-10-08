@@ -214,6 +214,16 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)));}
         catch(Exception e){status.setText("Nie ma przeglądarki do otwarcia rozkładu.");}
     }
-    @Override protected void onStop(){stopGps();super.onStop();}
+    @Override protected void onStop(){
+        boolean searching=locating || (progress!=null && progress.getVisibility()==View.VISIBLE);
+        stopGps();
+        if(searching){
+            generation++;
+            if(locate!=null)locate.setEnabled(true);
+            if(progress!=null)progress.setVisibility(View.GONE);
+            if(status!=null)status.setText("Wyszukiwanie przerwane po opuszczeniu ekranu. Dotknij przycisku, aby spróbować ponownie.");
+        }
+        super.onStop();
+    }
     @Override protected void onDestroy(){destroyed=true;generation++;stopGps();ui.removeCallbacksAndMessages(null);work.shutdownNow();super.onDestroy();}
 }
