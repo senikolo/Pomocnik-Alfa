@@ -1,0 +1,36 @@
+name: Inspect PA source for requested updates
+on:
+  issues:
+    types: [opened]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    if: ${{ github.event.issue.title == 'TRIGGER PA SOURCE INSPECTION 2026-10-08' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore Android source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifact
+          gh run download 37574069132 -R senikolo/Pomocnik-Alfa -n Pomocnik-Alfa-1.7.36-CZYTNIK-ALFA-SOURCE -D artifact
+          tar -xJf artifact/Pomocnik-Alfa-1.7.36-CZYTNIK-ALFA-SOURCE.tar.xz
+      - name: Inspect Radio, Weather, menu and manifest
+        run: |
+          set -euo pipefail
+          base=project/app/src/main/java/com/ispina/lokalnie
+          find "$base" -maxdepth 2 -type f -name '*.java' | grep -E 'RadioActivity|WeatherActivity|MainActivity|RadioService|NativeUi' | sort
+          for name in RadioActivity WeatherActivity MainActivity; do
+            echo "--- START $name ---"
+            if [ -f "$base/$name.java" ]; then nl -ba "$base/$name.java" | head -550; fi
+            echo "--- END $name ---"
+          done
+          echo "--- AndroidManifest permissions ---"
+          grep -n -E 'permission|WeatherActivity|RadioActivity|MainActivity|AviationActivity' project/app/src/main/AndroidManifest.xml || true
+          echo "--- app/build.gradle ---"
+          head -70 project/app/build.gradle
