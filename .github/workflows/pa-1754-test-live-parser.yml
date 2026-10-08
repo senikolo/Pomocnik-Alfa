@@ -1,0 +1,20 @@
+name: PA 1.7.54 Realtime Parser Tests
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.issue.title == 'TRIGGER PA 1754 RT PARSER TESTS' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Test actual GTFS RT parser and data freshness gates
+        run: python3 helpers/pa-1754/test_mld_realtime_java.py
