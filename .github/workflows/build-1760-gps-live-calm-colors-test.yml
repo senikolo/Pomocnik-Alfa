@@ -298,7 +298,7 @@ jobs:
           python helpers/pa-1755/test_countdown.py
           python helpers/pa-1756/test_transit_filters.py
           python helpers/pa-1757/test_departure_search.py
-          python helpers/pa-1757/test_ui_search.py
+          python helpers/pa-1760/test_ui_search.py
           python helpers/pa-1758/test_deeplink.py
           python helpers/pa-1759/test_inapp_live.py
           python helpers/pa-1760/test_gps_palette.py
