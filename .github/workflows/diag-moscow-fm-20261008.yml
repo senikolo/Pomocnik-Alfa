@@ -1,0 +1,37 @@
+name: Probe Moscow FM streaming sources
+on:
+  issues:
+    types: [opened]
+permissions:
+  contents: read
+  issues: write
+jobs:
+  probe:
+    if: ${{ github.event.issue.title == 'TRIGGER PA 1746 MOSCOW STREAM PROBE' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - name: Probe online streams
+        run: |
+          set +e
+          urls=(
+            'https://icecast.vgtrk.cdnvideo.ru/moscowfm128'
+            'http://icecast.vgtrk.cdnvideo.ru:8000/moscowfm128'
+            'http://icecast.vgtrk.cdnvideo.ru/moscowfm128'
+            'https://icecast-vgtrk.cdnvideo.ru/moscowfm128'
+            'https://radio-live-mg.rtr-vesti.ru/live/givc9.smil/chunklist_b2600000.m3u8'
+            'https://www.mosfm.com/'
+            'https://www.m24.ru/radio'
+          )
+          for url in "${urls[@]}"; do
+            echo "=== STREAM: $url"
+            curl -sSL --retry 0 --connect-timeout 5 --max-time 12 -A 'Mozilla/5.0 Android PA Radio' -D /tmp/headers -o /tmp/audio -w 'CURL_STAT %{http_code} %{content_type} %{size_download} %{url_effective}\n' "$url"
+            echo "bytes=$(wc -c < /tmp/audio) signature=$(head -c 10 /tmp/audio | od -An -tx1)"
+            grep -iE '^(HTTP/|Content-Type:|icy-|Location:)' /tmp/headers | tail -8
+            echo
+          done
+      - name: Report log location
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh issue comment "${{ github.event.issue.number }}" --body "Probe finished. Logs: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
