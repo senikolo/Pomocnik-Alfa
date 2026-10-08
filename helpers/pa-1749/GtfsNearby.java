@@ -26,6 +26,17 @@ public final class GtfsNearby {
         public String line,headsign,tripId,routeId,mode;
         public long when;
         public int sequence;
+        // Populated only when a trustworthy GTFS-RT TripUpdate matches exactly this trip and stop.
+        // Never infer punctuality or delays from GPS position alone.
+        public Integer liveDelaySeconds;
+        public long liveReportedAtMillis;
+        public Integer confirmedDelayMinutes(long nowMillis){
+            if(liveDelaySeconds==null || liveReportedAtMillis<=0 ||
+               liveReportedAtMillis>nowMillis+30000L ||
+               nowMillis-liveReportedAtMillis>120000L ||
+               Math.abs(liveDelaySeconds)>7200)return null;
+            return (int)Math.round(liveDelaySeconds/60.0);
+        }
         public final List<String> following=new ArrayList<>();
     }
     public static final class Result {
