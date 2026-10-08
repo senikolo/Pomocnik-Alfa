@@ -231,6 +231,15 @@ public class NearbyDeparturesActivity extends ThemedActivity {
             km.addView(site,new LinearLayout.LayoutParams(-1,dp(52)));
             results.addView(km);
         }
+        LinearLayout service=NativeUi.card(this);
+        service.addView(NativeUi.text(this,"Informacje bieżące u przewoźnika",18,true));
+        service.addView(NativeUi.muted(this,
+            "Odjazdy PA są rozkładowe. Na razie nie ma potwierdzonych korekt minutowych dla konkretnych kursów. Możesz sprawdzić bieżące utrudnienia u przewoźnika.",14));
+        Button disruptions=NativeUi.button(this,"Sprawdź bieżące utrudnienia",true);
+        disruptions.setOnClickListener(v->open(warsaw?
+            "https://www.wtp.waw.pl/utrudnienia/":"https://kolejemalopolskie.com.pl/pl/utrudnienia"));
+        service.addView(disruptions,new LinearLayout.LayoutParams(-1,dp(52)));
+        results.addView(service);
     }
     private void addDepartureSection(GtfsNearby.Result value,String mode,String heading,boolean alwaysVisible){
         List<GtfsNearby.Departure> selected=new ArrayList<>();
