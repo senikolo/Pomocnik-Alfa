@@ -23,7 +23,7 @@ public final class GtfsNearby {
     }
     public static final class Departure {
         public Stop stop;
-        public String line,headsign,tripId,routeId,mode;
+        public String line,headsign,tripId,routeId,mode,serviceDate;
         public long when;
         public int sequence;
         // Populated only when a trustworthy GTFS-RT TripUpdate matches exactly this trip and stop.
@@ -42,7 +42,7 @@ public final class GtfsNearby {
     public static final class Result {
         public final List<Stop> stops=new ArrayList<>();
         public final List<Departure> departures=new ArrayList<>();
-        public String source,feedName,note;
+        public String source,feedName,note,liveNote;
         public boolean oldData;
         public long downloadedAt;
     }
@@ -282,7 +282,8 @@ public final class GtfsNearby {
                         item.line=route==null?trip.route:route.name;
                         item.mode=route==null?"bus":route.mode;
                         item.headsign=trip.headsign.isEmpty()?"Kierunek według rozkładu":trip.headsign;
-                        item.when=departure;item.sequence=parseInt(csv.s(r,"stop_sequence"),-1);
+                        item.when=departure;item.serviceDate=date.toString().replace("-","");
+                        item.sequence=parseInt(csv.s(r,"stop_sequence"),-1);
                         result.departures.add(item);
                     }
                 }
@@ -317,6 +318,10 @@ public final class GtfsNearby {
                 }
             }
         }
+        if(provider.equals("mld")){
+            // Network request only after explicit nearby-departures tap on the worker thread.
+            result.liveNote=MldRealtime.apply(ctx,result.departures);
+        }else result.liveNote="WTP: brak zweryfikowanego źródła prognoz minutowych dla tych kursów.";
         if(result.departures.isEmpty())result.note="Brak kursów w ciągu najbliższych 120 minut na wybranych przystankach. To odjazdy planowe.";
         else result.note="Godziny planowe, nie na żywo. Upewnij się, że rozkład nadal obowiązuje.";
         return result;
