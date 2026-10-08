@@ -188,6 +188,12 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         String age=stamp.format(new Date(value.downloadedAt));
         status.setText(value.feedName+" · dane "+age+(value.oldData?" · UWAGA: starszy rozkład":""));
         NativeUi.addSpacer(results,this,9);
+        LinearLayout liveState=NativeUi.card(this);
+        liveState.addView(NativeUi.text(this,"Stan informacji LIVE",17,true));
+        liveState.addView(NativeUi.muted(this,value.liveNote==null?
+            "Brak zweryfikowanych aktualizacji; godziny są planowe.":value.liveNote,14));
+        results.addView(liveState);
+        NativeUi.addSpacer(results,this,8);
         LinearLayout stopCard=NativeUi.card(this);
         stopCard.addView(NativeUi.text(this,"🚏 5 najbliższych przystanków",19,true));
         // Show a maximum of five named stop complexes, not eight platform entries.
