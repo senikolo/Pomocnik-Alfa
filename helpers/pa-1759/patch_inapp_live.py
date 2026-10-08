@@ -23,10 +23,14 @@ manifest.write_text(s,encoding="utf-8")
 
 line_file=base/"LineDeparturesActivity.java"
 s=line_file.read_text(encoding="utf-8")
-s=replace_one(s,'render(data,line);','render(data,line,stopId);',"pass selected stop")
+s=replace_one(s,
+    'final String provider=provider(),line=enteredLine(),stopId=stations.get(position).id;',
+    'final String provider=provider(),line=enteredLine(),stopId=stations.get(position).id,stopName=stations.get(position).name;',
+    "freeze the selected platform name")
+s=replace_one(s,'render(data,line);','render(data,line,stopId,stopName);',"pass selected stop")
 s=replace_one(s,
     'private void render(GtfsNearby.Result result,String line){',
-    'private void render(GtfsNearby.Result result,String line,String stopId){',
+    'private void render(GtfsNearby.Result result,String line,String stopId,String stopName){',
     "render stop signature")
 s=replace_one(s,
     'String selectedStopId=result.stops.isEmpty()?null:result.stops.get(0).id;',
@@ -42,8 +46,7 @@ s=replace_one(s,
     '            liveMap.setOnClickListener(v->{\n'
     '                try{startActivity(new Intent(this,LiveMapActivity.class)\n'
     '                    .putExtra(LiveMapActivity.EXTRA_STOP_ID,selectedStopId)\n'
-    '                    .putExtra(LiveMapActivity.EXTRA_STOP_NAME,stations.isEmpty()?\n'
-    '                        "Wybrany przystanek":stations.get(stops.getSelectedItemPosition()).name)\n'
+    '                    .putExtra(LiveMapActivity.EXTRA_STOP_NAME,stopName)\n'
     '                    .putExtra(LiveMapActivity.EXTRA_LINE,line));}\n'
     '                catch(Exception ex){message.setText("Nie można otworzyć mapy LIVE.");}\n'
     '            });',
