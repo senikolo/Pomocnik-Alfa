@@ -312,7 +312,7 @@ jobs:
           set -euxo pipefail
           BT="$ANDROID_HOME/build-tools/35.0.0"
           "$BT/aapt" dump badging Pomocnik-Alfa-1.7.50-A10-ODJAZDY-GRUPY-GPS-TEST-SIGNED.apk | tee badging.txt
-          grep "versionCode='10750'" badging.txt
+          grep "versionCode='10751'" badging.txt
           grep "sdkVersion:'29'" badging.txt
           unzip -t Pomocnik-Alfa-1.7.50-A10-ODJAZDY-GRUPY-GPS-TEST-SIGNED.apk >/dev/null
           "$BT/apksigner" verify --verbose --print-certs Pomocnik-Alfa-1.7.50-A10-ODJAZDY-GRUPY-GPS-TEST-SIGNED.apk
