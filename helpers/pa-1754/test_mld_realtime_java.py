@@ -47,6 +47,17 @@ public class Test {
      ok=departure();list=Collections.singletonList(ok);
      MldRealtime.applyJson(json(ts,ok.tripId,ok.serviceDate,"DIFFERENT_STOP",ok.routeId,180).replace("\"stopSequence\":12,","\"stopSequence\":99,"),list,now);
      test(ok.confirmedDelayMinutes(now)==null,"Different stop must never match");
+     // A matching stop_sequence must not override an explicitly different stop_id.
+     ok=departure();list=Collections.singletonList(ok);
+     MldRealtime.applyJson(json(ts,ok.tripId,ok.serviceDate,"DIFFERENT_STOP",ok.routeId,180),list,now);
+     test(ok.confirmedDelayMinutes(now)==null,
+         "Conflicting stop ID and otherwise matching sequence must be rejected");
+     // Conversely a correct stop_id must not override an explicitly wrong sequence.
+     ok=departure();list=Collections.singletonList(ok);
+     MldRealtime.applyJson(json(ts,ok.tripId,ok.serviceDate,ok.stop.id,ok.routeId,180)
+         .replace("\\"stopSequence\\":12,","\\"stopSequence\\":99,"),list,now);
+     test(ok.confirmedDelayMinutes(now)==null,
+         "Conflicting stop sequence and correct ID must be rejected");
      ok=departure();list=Collections.singletonList(ok);
      MldRealtime.applyJson(json(ts,ok.tripId,ok.serviceDate,ok.stop.id,"OTHER_ROUTE",180),list,now);
      test(ok.confirmedDelayMinutes(now)==null,"Different route must never match");
@@ -56,7 +67,7 @@ public class Test {
      ok=departure();list=Collections.singletonList(ok);
      MldRealtime.applyJson(json(ts,ok.tripId,ok.serviceDate,ok.stop.id,ok.routeId,10800),list,now);
      test(ok.confirmedDelayMinutes(now)==null,"Three-hour outlier rejected");
-     System.out.println("PASS: actual GTFS-RT parser strict trip/date/route/stop, +3 min and stale suppression");
+     System.out.println("PASS: GTFS-RT strict trip/date/route/stop ID AND sequence, +3 min, stale suppression");
   }
 }
 """)
