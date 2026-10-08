@@ -254,6 +254,9 @@ public class NearbyDeparturesActivity extends ThemedActivity {
             "To zewnętrzny serwis z własnymi danymi na żywo. PA nie pobiera jeszcze jego prognoz.",12));
         results.addView(service);
     }
+    private void horizontalGap(LinearLayout layout,int dps){
+        layout.addView(new View(this),new LinearLayout.LayoutParams(dp(dps),1));
+    }
     /** Consistent meaning for each color, with separate high-contrast night variants. */
     private TextView transitChip(String label, int sp, int lightBackground, int lightText,
                                  int darkBackground, int darkText, boolean oneLine){
@@ -325,7 +328,7 @@ public class NearbyDeparturesActivity extends ThemedActivity {
             TextView number=lineChip(d.line);
             number.setGravity(Gravity.CENTER);
             top.addView(number,new LinearLayout.LayoutParams(dp(65),-2));
-            NativeUi.addSpacer(top,this,5);
+            horizontalGap(top ,5);
             TextView direction=destinationChip(d.headsign);
             top.addView(direction,new LinearLayout.LayoutParams(0,-2,1));
             panel.addView(top);
@@ -336,7 +339,7 @@ public class NearbyDeparturesActivity extends ThemedActivity {
             middle.setGravity(Gravity.CENTER_VERTICAL);
             TextView name=stopChip(d.stop.name);
             middle.addView(name,new LinearLayout.LayoutParams(0,-2,1));
-            NativeUi.addSpacer(middle,this,5);
+            horizontalGap(middle ,5);
             String post=d.stop.code==null?"":d.stop.code.trim();
             TextView platform=platformChip(post.isEmpty()?"Nr —":"Stan. "+post);
             platform.setGravity(Gravity.CENTER);
@@ -350,7 +353,7 @@ public class NearbyDeparturesActivity extends ThemedActivity {
             TextView clock=timeChip(time(d.when));
             clock.setGravity(Gravity.CENTER);
             bottom.addView(clock,new LinearLayout.LayoutParams(dp(92),-2));
-            NativeUi.addSpacer(bottom,this,7);
+            horizontalGap(bottom ,7);
             Integer delay=d.confirmedDelayMinutes(System.currentTimeMillis());
             String liveLabel=delay==null?"Brak danych live":
                     delay>0?"+"+delay+" min · LIVE":
