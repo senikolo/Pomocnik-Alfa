@@ -1,0 +1,5 @@
+{
+  "schema": 1,
+  "mld_gtfs_rt_json": "",
+  "note": "Nie publikuj kluczy. Wpisz dopiero sprawdzony oficjalny ogólnodostępny URL GTFS-RT JSON, po potwierdzeniu identyfikatorów kursów."
+}
