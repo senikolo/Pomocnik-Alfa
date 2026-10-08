@@ -1,0 +1,29 @@
+name: PA 1.7.49 Transit Feed Availability
+on:
+  issues:
+    types: [opened]
+permissions:
+  contents: read
+jobs:
+  probe:
+    if: ${{ github.event.issue.title == 'TRIGGER PA 1749 FEED PROBE' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check GTFS feeds
+        run: |
+          python3 - <<'PY'
+          import requests,zipfile,io
+          for url in ['https://kolejemalopolskie.com.pl/rozklady_jazdy/mld-gtfs.zip','https://mkuran.pl/gtfs/warsaw.zip']:
+            try:
+              r=requests.get(url,timeout=45,headers={'User-Agent':'PomocnikAlfa/1.7.49 transit-departures'})
+              print('FEED',url,'HTTP',r.status_code,'BYTES',len(r.content),'TYPE',r.headers.get('content-type'),flush=True)
+              r.raise_for_status()
+              with zipfile.ZipFile(io.BytesIO(r.content)) as z:
+                print('GTFS_FILES',z.namelist()[:20],flush=True)
+                for name in ['stops.txt','trips.txt','stop_times.txt','calendar.txt','calendar_dates.txt']:
+                  if name in z.namelist():
+                    lines=z.open(name).read(500).decode('utf-8-sig',errors='replace')
+                    print(name,lines[:400].splitlines()[:2],flush=True)
+            except Exception as e:print('ERROR',url,type(e).__name__,str(e)[:200],flush=True)
+          PY
