@@ -370,6 +370,18 @@ public final class LineDeparturesActivity extends ThemedActivity {
             catch(Exception ex){message.setText("Nie można otworzyć serwisu LIVE.");}
         });
         external.addView(web,new LinearLayout.LayoutParams(-1,dp(52)));
+        if(provider().equals("warsaw")){
+            NativeUi.addSpacer(external,this,7);
+            Button map=NativeUi.button(this,"Pokaż pojazdy na mapie LIVE",true);
+            map.setOnClickListener(v->{
+                try{startActivity(new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://buslive.pl/miasta/warszawa.html")));}
+                catch(Exception ex){message.setText("Nie można otworzyć mapy pojazdów.");}
+            });
+            external.addView(map,new LinearLayout.LayoutParams(-1,dp(52)));
+            external.addView(NativeUi.muted(this,
+                "Mapa otwiera się w przeglądarce. PA nie pobiera z niej danych bezpośrednio.",12));
+        }
         departures.addView(external);
         ui.removeCallbacks(tick);
         if(visible&&!timers.isEmpty())ui.postDelayed(tick,30000L);
