@@ -22,6 +22,9 @@ import com.ispina.lokalnie.transit.GtfsNearby;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -70,7 +73,7 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         NativeUi.addSpacer(root,this,15);
         LinearLayout info=NativeUi.card(this);
         info.addView(NativeUi.text(this,"Dane i dokładność",17,true));
-        info.addView(NativeUi.muted(this,"Warszawa: dane rozkładowe WTP przetworzone przez WarsawGTFS. Małopolska: rozkład MLD Kolei Małopolskich. Odjazdy planowe, nie przewidywania na żywo. Odległość podana jest w linii prostej. Przy braku aktualnego rozkładu nie wyświetlam zgadywanych godzin.",13));
+        info.addView(NativeUi.muted(this,"Warszawa: WTP (autobusy, tramwaje, metro i SKM) przez WarsawGTFS; pociągi Kolei Mazowieckich nie są częścią tej bazy. Małopolska: rozkłady autobusów MLD. Godziny są planowe, bez opóźnień na żywo. Odległości podano w linii prostej. Dane WTP: ZTM Warszawa, Mikołaj Kuranowski i © OpenStreetMap contributors.",13));
         root.addView(info);
     }
     private boolean permitted(){
@@ -163,44 +166,91 @@ public class NearbyDeparturesActivity extends ThemedActivity {
             "https://www.wtp.waw.pl/rozklady-jazdy/":"https://kolejemalopolskie.com.pl/pl/rozklad-jazdy/rozklady-autobusowe"));
         results.addView(web,new LinearLayout.LayoutParams(-1,dp(54)));
     }
+    private String stopLabel(GtfsNearby.Stop stop){
+        if(stop==null)return "Nieznany przystanek";
+        String name=stop.name==null?"Przystanek":stop.name;
+        String code=stop.code==null?"":stop.code.trim();
+        if(code.isEmpty() || name.endsWith(" "+code))return name;
+        return name+" "+code;
+    }
     private void render(GtfsNearby.Result value,Location fix){
         results.removeAllViews();
-        String age=new SimpleDateFormat("dd.MM, HH:mm",new Locale("pl","PL")).format(new Date(value.downloadedAt));
-        status.setText(value.feedName+" · dane "+age+(value.oldData?" · UWAGA: zapisane dane, sprawdź aktualność":""));
+        SimpleDateFormat stamp=new SimpleDateFormat("dd.MM, HH:mm",new Locale("pl","PL"));
+        stamp.setTimeZone(java.util.TimeZone.getTimeZone("Europe/Warsaw"));
+        String age=stamp.format(new Date(value.downloadedAt));
+        status.setText(value.feedName+" · dane "+age+(value.oldData?" · UWAGA: starszy rozkład":""));
         NativeUi.addSpacer(results,this,9);
-        LinearLayout stopCard=NativeUi.card(this);stopCard.addView(NativeUi.text(this,"🚏 Przystanki najbliżej Ciebie",19,true));
+        LinearLayout stopCard=NativeUi.card(this);
+        stopCard.addView(NativeUi.text(this,"🚏 Najbliższe przystanki",19,true));
+        int limit=0;
         for(GtfsNearby.Stop stop:value.stops){
-            TextView txt=NativeUi.text(this,stop.name+" · "+Math.round(stop.distance)+" m w linii prostej",15,false);
-            txt.setPadding(0,dp(7),0,dp(7));stopCard.addView(txt);
+            if(limit++>=8)break;
+            TextView txt=NativeUi.text(this,stopLabel(stop)+" · "+Math.round(stop.distance)+" m w linii prostej",15,false);
+            txt.setPadding(0,dp(6),0,dp(6));stopCard.addView(txt);
         }
+        if(value.stops.isEmpty())stopCard.addView(NativeUi.muted(this,value.note,14));
         results.addView(stopCard);
-        LinearLayout departures=NativeUi.card(this);
-        departures.addView(NativeUi.text(this,"🚌 Najbliższe odjazdy · planowo",19,true));
-        departures.addView(NativeUi.muted(this,value.note,12));
-        NativeUi.addSpacer(departures,this,10);
-        if(value.departures.isEmpty())
-            departures.addView(NativeUi.muted(this,"Brak potwierdzonych godzin w najbliższych dwóch godzinach.",15));
+        boolean warsaw="warsaw".equals(GtfsNearby.networkFor(fix.getLatitude(),fix.getLongitude()));
+        addDepartureSection(value,"bus","🚌 Autobusy",false);
+        if(warsaw){
+            addDepartureSection(value,"tram","🚋 Tramwaje",false);
+            addDepartureSection(value,"skm","🚆 Pociągi SKM",true);
+            addDepartureSection(value,"metro","🚇 Metro",false);
+            LinearLayout km=NativeUi.card(this);
+            km.addView(NativeUi.text(this,"🚆 Koleje Mazowieckie (KM)",18,true));
+            km.addView(NativeUi.muted(this,
+                "Pociągi KM nie są zawarte w aktualnym rozkładzie WTP w tej aplikacji. Nie podaję niezweryfikowanych godzin.",13));
+            NativeUi.addSpacer(km,this,8);
+            Button site=NativeUi.button(this,"Sprawdź rozkład KM u przewoźnika",true);
+            site.setOnClickListener(v->open("https://www.mazowieckie.com.pl/pl"));
+            km.addView(site,new LinearLayout.LayoutParams(-1,dp(52)));
+            results.addView(km);
+        }
+    }
+    private void addDepartureSection(GtfsNearby.Result value,String mode,String heading,boolean alwaysVisible){
+        List<GtfsNearby.Departure> selected=new ArrayList<>();
+        for(GtfsNearby.Departure d:value.departures)if(mode.equals(d.mode))selected.add(d);
+        if(selected.isEmpty()&&!alwaysVisible)return;
+        LinearLayout section=NativeUi.card(this);
+        section.addView(NativeUi.text(this,heading+" · planowo",19,true));
+        if(selected.isEmpty()){
+            section.addView(NativeUi.muted(this,
+                "Nie znaleziono potwierdzonych odjazdów w najbliższych dwóch godzinach z pobliskich przystanków tej kategorii.",14));
+            results.addView(section);return;
+        }
+        Set<String> stopKeys=new HashSet<>();
+        StringBuilder near=new StringBuilder();
+        for(GtfsNearby.Departure d:selected){
+            if(stopKeys.size()>=4)break;
+            if(!stopKeys.add(d.stop.id))continue;
+            if(near.length()>0)near.append(" • ");
+            near.append(stopLabel(d.stop));
+        }
+        section.addView(NativeUi.muted(this,"Przystanki: "+near+" · odjazdy planowe, nie na żywo",12));
+        NativeUi.addSpacer(section,this,8);
         int count=0;
-        for(GtfsNearby.Departure d:value.departures){
-            if(count++>=24)break;
+        for(GtfsNearby.Departure d:selected){
+            if(count++>=12)break;
             LinearLayout row=new LinearLayout(this);row.setGravity(Gravity.CENTER_VERTICAL);
             TextView line=NativeUi.text(this,d.line,18,true);
-            line.setMinWidth(dp(53));row.addView(line,new LinearLayout.LayoutParams(dp(55),-2));
+            row.addView(line,new LinearLayout.LayoutParams(dp(56),-2));
             LinearLayout description=new LinearLayout(this);description.setOrientation(LinearLayout.VERTICAL);
             description.addView(NativeUi.text(this,d.headsign,15,true));
-            description.addView(NativeUi.muted(this,d.stop.name+" · planowo",12));
+            description.addView(NativeUi.muted(this,stopLabel(d.stop)+" · "+Math.round(d.stop.distance)+" m",12));
             row.addView(description,new LinearLayout.LayoutParams(0,-2,1));
-            TextView clock=NativeUi.text(this,time(d.when),18,true);row.addView(clock);
-            LinearLayout panel=NativeUi.card(this);panel.addView(row);
+            TextView clock=NativeUi.text(this,time(d.when),18,true);
+            row.addView(clock);
+            LinearLayout panel=NativeUi.card(this);
+            panel.addView(row);
             panel.setClickable(true);panel.setFocusable(true);
             NativeUi.onClick(panel,v->route(d));
-            departures.addView(panel);
+            section.addView(panel);
         }
-        results.addView(departures);
+        results.addView(section);
     }
     private void route(GtfsNearby.Departure d){
         StringBuilder text=new StringBuilder();
-        text.append("Odjazd planowy: ").append(time(d.when)).append("\nPrzystanek: ").append(d.stop.name)
+        text.append("Odjazd planowy: ").append(time(d.when)).append("\nPrzystanek: ").append(stopLabel(d.stop))
             .append("\nLinia ").append(d.line).append(" · ").append(d.headsign).append("\n\n");
         if(d.following.isEmpty())text.append("Brak dostępnej listy kolejnych przystanków w pobranych danych.");
         else{
