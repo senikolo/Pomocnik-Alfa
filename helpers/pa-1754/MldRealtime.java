@@ -117,10 +117,15 @@ public final class MldRealtime {
                 int seq=stop.has("stopSequence")?stop.optInt("stopSequence",-1):stop.optInt("stop_sequence",-1);
                 for(GtfsNearby.Departure d:targets){
                     if(!route.isEmpty()&&!route.equals(d.routeId))continue;
-                    boolean sameStop=!stopId.isEmpty()&&stopId.equals(d.stop.id);
-                    boolean sameSequence=seq>0&&seq==d.sequence;
-                    if(!sameStop&&!sameSequence)continue;
-                    if(d.liveReportedAtMillis>0)continue;
+                    // If the provider supplies both stop_id and stop_sequence, both
+                    // must match. Matching only the sequence could put a delay on
+                    // another platform when the feed itself names a different stop.
+                    if(stopId.isEmpty()&&seq<=0)continue;
+                    if(!stopId.isEmpty()&&!stopId.equals(d.stop.id))continue;
+                    if(seq>0&&seq!=d.sequence)continue;
+                    // Keep the newest correction when a feed includes duplicate
+                    // updates for one exact trip/date/stop.
+                    if(d.liveReportedAtMillis>=updateSecs*1000L)continue;
                     d.liveDelaySeconds=seconds;
                     d.liveReportedAtMillis=updateSecs*1000L;
                     matches++;
