@@ -15,6 +15,6 @@ assert "item.serviceDate=date.toString().replace" in gtfs
 assert "mld-rt-v2" in gtfs
 main=base/"MainActivity.java"
 s=main.read_text(encoding="utf-8")
-assert "POMOCNIK ALFA 1.7.53" in s or "POMOCNIK ALFA 1.7.54" in s
+assert any(("POMOCNIK ALFA "+v) in s for v in ("1.7.53","1.7.54","1.7.55"))
 main.write_text(s.replace("POMOCNIK ALFA 1.7.53","POMOCNIK ALFA 1.7.54"),encoding="utf-8")
 print("PASS: MLD GTFS-RT adapter, immutable original trip IDs, cache migration and truthful LIVE state")
