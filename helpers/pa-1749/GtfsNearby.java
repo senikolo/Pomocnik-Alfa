@@ -326,4 +326,192 @@ public final class GtfsNearby {
         else result.note="Godziny planowe, nie na żywo. Upewnij się, że rozkład nadal obowiązuje.";
         return result;
     }
+
+    /** A stop/platform on a selected line; supports discovery without GPS. */
+    public static final class LineStop {
+        public String id,name,code;
+        public int sequence;
+        public String label(){
+            return name+(code==null||code.isEmpty()?"":" · stan. "+code);
+        }
+    }
+    private static boolean manualProvider(String provider){
+        return "warsaw".equals(provider)||"mld".equals(provider);
+    }
+    private static String manualLine(String text)throws IOException{
+        String line=clean(text).toUpperCase(Locale.ROOT);
+        if(!line.matches("[A-Z0-9]{1,8}"))
+            throw new IOException("Wpisz prawidłowy numer linii, np. 517, A7, S1.");
+        return line;
+    }
+    private static Set<String> routeIdsForLine(ZipFile z,String provider,String line)throws Exception{
+        Set<String> found=new HashSet<>();
+        try(Rows rows=new Rows(z,"routes.txt")){
+            List<String> row;
+            while((row=rows.next())!=null){
+                String name=rows.s(row,"route_short_name");
+                if(name.isEmpty())name=rows.s(row,"route_long_name");
+                if(line.equalsIgnoreCase(name))found.add(rows.s(row,"route_id"));
+            }
+        }
+        return found;
+    }
+    private static Map<String,Stop> loadManualStops(ZipFile z,String provider)throws Exception{
+        Map<String,Stop> all=new HashMap<>();
+        try(Rows rows=new Rows(z,"stops.txt")){
+            List<String> row;int n=0;
+            while((row=rows.next())!=null){
+                if((++n&8191)==0)checkCancelled();
+                String id=rows.s(row,"stop_id"),name=rows.s(row,"stop_name");
+                if(id.isEmpty()||name.isEmpty())continue;
+                Stop stop=new Stop();
+                stop.id=id;stop.name=name;
+                stop.code=passengerStopNumber(id,rows.s(row,"stop_code"),provider);
+                all.put(id,stop);
+            }
+        }
+        return all;
+    }
+    public static List<LineStop> lineStops(Context ctx,String provider,String entered)throws Exception{
+        if(!manualProvider(provider))throw new IOException("Wybierz Warszawę albo MLD.");
+        String line=manualLine(entered);
+        Result data=new Result();
+        List<LineStop> output=new ArrayList<>();
+        try(ZipFile z=new ZipFile(feed(ctx,provider,data))){
+            Set<String> routeIds=routeIdsForLine(z,provider,line);
+            if(routeIds.isEmpty())return output;
+            Set<String> trips=new HashSet<>();
+            try(Rows rows=new Rows(z,"trips.txt")){
+                List<String> row;int n=0;
+                while((row=rows.next())!=null){
+                    if((++n&16383)==0)checkCancelled();
+                    if(routeIds.contains(rows.s(row,"route_id")))
+                        trips.add(rows.s(row,"trip_id"));
+                }
+            }
+            if(trips.isEmpty())return output;
+            Map<String,Integer> positions=new HashMap<>();
+            try(Rows rows=new Rows(z,"stop_times.txt")){
+                List<String> row;int n=0;
+                while((row=rows.next())!=null){
+                    if((++n&32767)==0)checkCancelled();
+                    if(!trips.contains(rows.s(row,"trip_id")))continue;
+                    String id=rows.s(row,"stop_id");
+                    int seq=parseInt(rows.s(row,"stop_sequence"),Integer.MAX_VALUE);
+                    Integer old=positions.get(id);
+                    if(old==null||seq<old)positions.put(id,seq);
+                }
+            }
+            Map<String,Stop> all=loadManualStops(z,provider);
+            for(Map.Entry<String,Integer> entry:positions.entrySet()){
+                Stop stop=all.get(entry.getKey());if(stop==null)continue;
+                LineStop item=new LineStop();
+                item.id=stop.id;item.name=stop.name;item.code=stop.code;
+                item.sequence=entry.getValue();
+                output.add(item);
+            }
+        }
+        output.sort(Comparator.comparingInt((LineStop d)->d.sequence)
+            .thenComparing(d->d.name,java.text.Collator.getInstance(new Locale("pl","PL")))
+            .thenComparing(d->d.code==null?"":d.code));
+        return output;
+    }
+    /** All upcoming scheduled departures for an explicitly selected line and platform.
+     * Includes service calendars, overnight trips and verified LIVE only if available.
+     */
+    public static Result lineStopDepartures(Context ctx,String provider,String entered,String stopId)
+            throws Exception{
+        if(!manualProvider(provider))throw new IOException("Wybierz Warszawę albo MLD.");
+        String line=manualLine(entered);
+        if(stopId==null||stopId.isEmpty())throw new IOException("Wybierz przystanek.");
+        Result out=new Result();
+        out.feedName="warsaw".equals(provider)?"Warszawski Transport Publiczny":"Małopolskie Linie Dowozowe";
+        out.source=provider.equals("warsaw")?"WarsawGTFS · ZTM/WTP":"GTFS MLD · Koleje Małopolskie";
+        File file=feed(ctx,provider,out);
+        ZonedDateTime now=ZonedDateTime.now(ZONE);
+        LocalDate today=now.toLocalDate(),previous=today.minusDays(1),next=today.plusDays(1);
+        long at=now.toInstant().toEpochMilli();
+        try(ZipFile z=new ZipFile(file)){
+            Set<String> routes=routeIdsForLine(z,provider,line);
+            if(routes.isEmpty()){out.note="Linia nie występuje w pobranym rozkładzie.";return out;}
+            Map<String,Stop> allStops=loadManualStops(z,provider);
+            Stop stop=allStops.get(stopId);
+            if(stop==null){out.note="Wybrany przystanek nie występuje w rozkładzie.";return out;}
+            out.stops.add(stop);
+            Set<String> todayServices=active(z,today);
+            Set<String> previousServices=active(z,previous);
+            Set<String> nextServices=active(z,next);
+            Set<String> services=new HashSet<>(todayServices);
+            services.addAll(previousServices);services.addAll(nextServices);
+            Map<String,Trip> trips=new HashMap<>();
+            try(Rows rows=new Rows(z,"trips.txt")){
+                List<String> row;int n=0;
+                while((row=rows.next())!=null){
+                    if((++n&16383)==0)checkCancelled();
+                    String route=rows.s(row,"route_id");
+                    String service=rows.s(row,"service_id");
+                    if(!routes.contains(route)||!services.contains(service))continue;
+                    trips.put(rows.s(row,"trip_id"),
+                        new Trip(route,rows.s(row,"trip_headsign"),service));
+                }
+            }
+            Map<String,Route> routeInfo=new HashMap<>();
+            collectRoutes(z,routeInfo,provider);
+            try(Rows rows=new Rows(z,"stop_times.txt")){
+                List<String> row;int n=0;
+                while((row=rows.next())!=null){
+                    if((++n&32767)==0)checkCancelled();
+                    if(!stopId.equals(rows.s(row,"stop_id")))continue;
+                    String tripId=rows.s(row,"trip_id");
+                    Trip trip=trips.get(tripId);if(trip==null)continue;
+                    int seconds=time(rows.s(row,"departure_time"));if(seconds<0)continue;
+                    for(int offset=-1;offset<=1;offset++){
+                        if(offset==-1&&!previousServices.contains(trip.service))continue;
+                        if(offset==0&&!todayServices.contains(trip.service))continue;
+                        if(offset==1&&!nextServices.contains(trip.service))continue;
+                        LocalDate day=today.plusDays(offset);
+                        long when=day.atStartOfDay(ZONE).plusSeconds(seconds).toInstant().toEpochMilli();
+                        if(when<at-60000L||when>at+120L*60000L)continue;
+                        Departure d=new Departure();
+                        Route route=routeInfo.get(trip.route);
+                        d.stop=stop;d.tripId=tripId;d.routeId=trip.route;
+                        d.line=line;
+                        d.headsign=trip.headsign.isEmpty()?"Kierunek według rozkładu":trip.headsign;
+                        d.mode=route==null?"bus":route.mode;
+                        d.when=when;d.serviceDate=day.toString().replace("-","");
+                        d.sequence=parseInt(rows.s(row,"stop_sequence"),-1);
+                        out.departures.add(d);
+                    }
+                }
+            }
+            out.departures.sort(Comparator.comparingLong(d->d.when));
+            if(out.departures.size()>30)
+                out.departures.subList(30,out.departures.size()).clear();
+            if(!out.departures.isEmpty()){
+                Map<String,List<Departure>> wanted=new HashMap<>();
+                for(Departure d:out.departures)
+                    wanted.computeIfAbsent(d.tripId,k->new ArrayList<>()).add(d);
+                try(Rows rows=new Rows(z,"stop_times.txt")){
+                    List<String> row;int n=0;
+                    while((row=rows.next())!=null){
+                        if((++n&32767)==0)checkCancelled();
+                        List<Departure> matching=wanted.get(rows.s(row,"trip_id"));
+                        if(matching==null)continue;
+                        String name=allStops.containsKey(rows.s(row,"stop_id"))?
+                            allStops.get(rows.s(row,"stop_id")).name:"";
+                        int seq=parseInt(rows.s(row,"stop_sequence"),-1);
+                        if(name.isEmpty())continue;
+                        for(Departure d:matching)
+                            if(seq>=d.sequence&&d.following.size()<8)d.following.add(name);
+                    }
+                }
+            }
+        }
+        if(provider.equals("mld"))out.liveNote=MldRealtime.apply(ctx,out.departures);
+        else out.liveNote="WTP: godziny planowe; brak zweryfikowanego źródła prognoz dla tej linii.";
+        if(out.departures.isEmpty())
+            out.note="Brak najbliższych kursów tej linii z wybranego stanowiska w ciągu dwóch godzin.";
+        else out.note="Wyniki pochodzą z rozkładu GTFS. Aktualizacje LIVE tylko po potwierdzeniu źródła.";
+        return out;
+    }
 }
