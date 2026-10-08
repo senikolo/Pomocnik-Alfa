@@ -1,4 +1,4 @@
-name: Build PA 1.7.45 A10 Radio GPS Installable Preview
+name: Build PA 1.7.46 A10 Moscow FM and airplane icon TEST
 
 on:
   issues:
@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   build:
-    if: ${{ github.event.issue.title == 'TRIGGER PA 1.7.45 A10 INSTALLABLE PREVIEW' }}
+    if: ${{ github.event.issue.title == 'TRIGGER PA 1.7.46 A10 MOSCOW ICON BUILD' }}
     runs-on: ubuntu-latest
     timeout-minutes: 55
     steps:
@@ -223,31 +223,32 @@ jobs:
           p=Path('project/app/build.gradle')
           x=p.read_text()
           x=re.sub(r'\bminSdk\s+\d+','minSdk 29',x,count=1)
-          x=re.sub(r'\bversionCode\s+\d+','versionCode 10746',x,count=1)
-          x=re.sub(r"\bversionName\s+'[^']+'","versionName '1.7.45-A10'",x,count=1)
+          x=re.sub(r'\bversionCode\s+\d+','versionCode 10747',x,count=1)
+          x=re.sub(r"\bversionName\s+'[^']+'","versionName '1.7.46-A10'",x,count=1)
           p.write_text(x)
 
           m=Path('project/app/src/main/java/com/ispina/lokalnie/MainActivity.java')
-          m.write_text(re.sub(r'POMOCNIK ALFA 1\.7\.\d+','POMOCNIK ALFA 1.7.45 A10',m.read_text()))
+          m.write_text(re.sub(r'POMOCNIK ALFA 1\.7\.\d+','POMOCNIK ALFA 1.7.46 A10',m.read_text()))
           PY
           python helpers/pa-1745/patch_radio_menu.py
           python helpers/pa-1745/patch_weather_gps.py
+          python helpers/pa-1746/patch_moscow_airport.py
           python - <<'PY'
           from pathlib import Path
           p=Path('project/app/build.gradle')
           s=p.read_text()
           key="applicationId 'com.senikolo.pomocniknowy'"
           assert s.count(key)==1
-          p.write_text(s.replace(key, "applicationId 'com.senikolo.pomocniknowy.preview1745'"))
+          p.write_text(s.replace(key, "applicationId 'com.senikolo.pomocniknowy.preview1746'"))
           p=Path('project/app/src/main/AndroidManifest.xml')
           s=p.read_text()
           key='android:label="Pomocnik Alfa"'
           assert s.count(key)==1
-          p.write_text(s.replace(key,'android:label="Pomocnik Alfa 1.7.45 TEST"'))
+          p.write_text(s.replace(key,'android:label="Pomocnik Alfa 1.7.46 TEST"'))
           PY
 
           grep -n "EPKK_URL\|EPWA_URL\|Włącz Kraków\|Włącz Warszawę" project/app/src/main/java/com/ispina/lokalnie/AviationActivity.java
-          grep -n "versionCode 10746" project/app/build.gradle
+          grep -n "versionCode 10747" project/app/build.gradle
           grep -n "minSdk 29" project/app/build.gradle
 
       - uses: gradle/actions/setup-gradle@v4
@@ -270,23 +271,23 @@ jobs:
           ./gradlew --no-daemon assembleDebug -x lint --stacktrace
           APK="$(find app/build/outputs/apk/debug -name '*.apk' | head -1)"
           test -s "$APK"
-          cp "$APK" ../Pomocnik-Alfa-1.7.45-A10-RADIO-FLAGS-GPS-TEST-SIGNED.apk
+          cp "$APK" ../Pomocnik-Alfa-1.7.46-A10-RADIO-FLAGS-GPS-TEST-SIGNED.apk
 
       - name: Verify package
         run: |
           set -euxo pipefail
           BT="$ANDROID_HOME/build-tools/35.0.0"
-          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.45-A10-RADIO-FLAGS-GPS-TEST-SIGNED.apk | tee badging.txt
-          grep "versionCode='10746'" badging.txt
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.46-A10-RADIO-FLAGS-GPS-TEST-SIGNED.apk | tee badging.txt
+          grep "versionCode='10747'" badging.txt
           grep "sdkVersion:'29'" badging.txt
-          unzip -t Pomocnik-Alfa-1.7.45-A10-RADIO-FLAGS-GPS-TEST-SIGNED.apk >/dev/null
-          "$BT/apksigner" verify --verbose --print-certs Pomocnik-Alfa-1.7.45-A10-RADIO-FLAGS-GPS-TEST-SIGNED.apk
-          sha256sum Pomocnik-Alfa-1.7.45-A10-RADIO-FLAGS-GPS-TEST-SIGNED.apk
+          unzip -t Pomocnik-Alfa-1.7.46-A10-RADIO-FLAGS-GPS-TEST-SIGNED.apk >/dev/null
+          "$BT/apksigner" verify --verbose --print-certs Pomocnik-Alfa-1.7.46-A10-RADIO-FLAGS-GPS-TEST-SIGNED.apk
+          sha256sum Pomocnik-Alfa-1.7.46-A10-RADIO-FLAGS-GPS-TEST-SIGNED.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Pomocnik-Alfa-1.7.45-A10-RADIO-FLAGS-GPS-TEST-SIGNED
-          path: Pomocnik-Alfa-1.7.45-A10-RADIO-FLAGS-GPS-TEST-SIGNED.apk
+          name: Pomocnik-Alfa-1.7.46-A10-RADIO-FLAGS-GPS-TEST-SIGNED
+          path: Pomocnik-Alfa-1.7.46-A10-RADIO-FLAGS-GPS-TEST-SIGNED.apk
           retention-days: 7
 
       - name: Report
@@ -294,4 +295,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           ST: ${{ job.status }}
-        run: gh issue create --title "PA 1.7.45 A10 RADIO FLAGS GPS RESULT $ST $GITHUB_RUN_ID" --body "Build $ST. Run $GITHUB_RUN_ID"
+        run: gh issue create --title "PA 1.7.46 A10 RADIO FLAGS GPS RESULT $ST $GITHUB_RUN_ID" --body "Build $ST. Run $GITHUB_RUN_ID"
