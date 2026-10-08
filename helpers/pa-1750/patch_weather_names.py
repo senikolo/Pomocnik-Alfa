@@ -36,4 +36,8 @@ assert s.count(old)==1
 s=s.replace(old,new)
 assert '"GPS %.4f' not in s
 geo.write_text(s,encoding="utf-8")
+main=base/"MainActivity.java"
+m=main.read_text(encoding="utf-8")
+assert "POMOCNIK ALFA 1.7.49" in m
+main.write_text(m.replace("POMOCNIK ALFA 1.7.49","POMOCNIK ALFA 1.7.50"),encoding="utf-8")
 print("PASS: weather uses place/estate/road labels; no GPS coordinates displayed")
