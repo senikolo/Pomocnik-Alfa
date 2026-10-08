@@ -14,6 +14,14 @@ with TemporaryDirectory() as tmp:
         dest.write_text(code,encoding="utf-8")
         return str(dest)
     files=[java("com/ispina/lokalnie/transit/GtfsNearby.java",source.read_text(encoding="utf-8")),
+        java("com/ispina/lokalnie/transit/MldRealtime.java", """
+package com.ispina.lokalnie.transit;
+public final class MldRealtime {
+  public static String apply(android.content.Context ctx,java.util.List<GtfsNearby.Departure> list){
+    return "test only";
+  }
+}
+"""),
         java("android/content/Context.java", """
 package android.content;
 public class Context {public java.io.File getCacheDir(){return new java.io.File(".");}}
