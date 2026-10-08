@@ -10,10 +10,10 @@ anchor='            {"Deutschlandfunk Kultur","https://st02.sslstream.dlf.de/dlf
 assert s.count(anchor)==1,"Unknown PA radio station list"
 added = '''            {"Москва FM 92.0","https://icecast.vgtrk.cdnvideo.ru/moscowfm128"},
             {"Русское Радио","https://rusradio.hostingradio.ru/rusradio96.aacp"},
-            {"Европа Плюс","https://europaplus.hostingradio.ru:8030/ep128"},
+            {"Европа Плюс","https://ep256.hostingradio.ru:8052/europaplus256.mp3"},
             {"Ретро FM","https://retro.hostingradio.ru:8043/retro128"},
             {"Радио Maximum","https://maximum.hostingradio.ru/maximum96.aacp"},
-            {"Маруся FM","https://radio-holding.ru:9433/marusya_default"}'''
+            {"Новое Радио","https://stream.newradio.ru/novoe96.aacp"}'''
 s=s.replace(anchor,anchor+",\n"+added)
 # Keep original player, station metadata, notification, and favorites storage.
 start=s.index("    private void renderStations(){")
@@ -22,7 +22,7 @@ s=s[:start]+'''    private static String countryCode(String name){
         if(name.equals("1.FM Birds")) return "OTHER";
         if(name.equals("Москва FM 92.0") || name.equals("Русское Радио") ||
            name.equals("Европа Плюс") || name.equals("Ретро FM") ||
-           name.equals("Радио Maximum") || name.equals("Маруся FM")) return "RU";
+           name.equals("Радио Maximum") || name.equals("Новое Радио")) return "RU";
         if(name.equals("Radio Arabella München") || name.equals("Antenne Bayern") ||
            name.equals("Bayern 2") || name.equals("Bayern 3") ||
            name.equals("Deutschlandfunk") || name.equals("ROCK ANTENNE") ||
