@@ -55,6 +55,32 @@ s=s[:a]+''' public static String summary(List<Deal> list){
 s=s.replace('||n.equals("pasta do zebow")||n.equals("pasty do zebow")','')
 deals.write_text(s)
 
+# Respect multipacks: 2 x 250 g is 500 g, not 250 g. Unknown multi-buy pricing
+# remains unranked when conditions cannot be determined reliably.
+parser=pkg/"deals/DealsParser.java"
+ss=parser.read_text()
+mark='  for(int i=0;i<words.length;i++)if(n.contains("przy zakupie "+words[i]))d.minimum=i+2;'
+assert ss.count(mark)==1
+ss=ss.replace(mark,mark+"""
+  Matcher multipack=Pattern.compile("(?i)(\\\\d{1,2})\\\\s*[x×]\\\\s*(\\\\d+(?:[.,]\\\\d+)?)\\\\s*(kg|g|ml|l)\\\\b").matcher(text);
+  if(multipack.find()){
+      int boxes=Integer.parseInt(multipack.group(1));
+      double each=Double.parseDouble(multipack.group(2).replace(',','.'));
+      String suffix=multipack.group(3).toLowerCase(Locale.ROOT);
+      if(boxes>1&&boxes<=24&&each>0&&each<=10000){
+          double amount=boxes*each;
+          if(suffix.equals("g")||suffix.equals("ml"))amount/=1000.0;
+          d.unit=(suffix.equals("g")||suffix.equals("kg"))?"kg":"l";
+          if(amount>0)d.unitPrice=d.price/amount;
+      }
+  }
+  if(n.contains("drugi za")||n.contains("2 1 gratis")||n.contains("3 w cenie 2")
+     ||n.contains("co drugi")||n.contains("multirabat")||n.contains("gratis przy zakupie"))
+      d.details=false; // Price attribution across units uncertain. Do not crown winner.
+""")
+parser.write_text(ss)
+
+
 activity=pkg/"DealsActivity.java"
 s=activity.read_text()
 old='''  if(!r.offers.isEmpty() && "Wszystkie".equals(store)){LinearLayout win=NativeUi.card(this);win.setBackground(NativeUi.roundedStroke(Color.rgb(252,244,220),Color.rgb(236,218,167),22,this));win.addView(NativeUi.text(this,r.stale?"Zapisane oferty · odśwież przed zakupem":DealsRepository.summary(r.offers),18,true));if(r.partial)win.addView(NativeUi.muted(this,"Porównanie częściowe: nie wszystkie źródła odpowiedziały.",13));results.addView(win);}'''
@@ -95,6 +121,10 @@ if start>=0:
           (Float.isFinite(accuracy)&&accuracy>120f?"\\nUwaga: przy słabym sygnale GPS osiedle może być sąsiednie.":"")+
           "\\nNazwy na podstawie © OpenStreetMap. Podgląd szczegółów i pozycji jest dostępny po odświeżeniu GPS.");
 '''+s[end:]
+# Keep the main weather presentation conversational; precision remains in GPS details.
+s=s.replace('      cityStatus.setText("Twoja okolica: "+details.label+" · "+certainty);',
+            '      cityStatus.setText("Pogoda dla: "+details.label+(Float.isFinite(accuracy)&&accuracy>120f?" · lokalizacja przybliżona":""));')
+s=s.replace('🎯 Doprecyzuj lokalizację (cel: 25 m)','🎯 Doprecyzuj okolicę')
 weather.write_text(s)
 
 gps=pkg/"GpsMicroArea.java"
