@@ -18,12 +18,12 @@ import java.util.zip.ZipFile;
 public final class GtfsNearby {
     private GtfsNearby(){}
     public static final class Stop {
-        public String id,name;
+        public String id,name,code;
         public double lat,lon,distance;
     }
     public static final class Departure {
         public Stop stop;
-        public String line,headsign,tripId,routeId;
+        public String line,headsign,tripId,routeId,mode;
         public long when;
         public int sequence;
         public final List<String> following=new ArrayList<>();
@@ -38,6 +38,32 @@ public final class GtfsNearby {
     private static class Trip {
         String route,headsign,service;
         Trip(String r,String h,String s){route=r;headsign=h;service=s;}
+    }
+    private static class Route {
+        String name, mode;
+        Route(String n,String m){name=n;mode=m;}
+    }
+    /** GTFS route_type drives grouping. Prefix fallback supports older cached lite feeds. */
+    public static String modeFor(String type, String line, String provider){
+        String l=line==null?"":line.trim().toUpperCase(Locale.ROOT);
+        int t=parseInt(type,-1);
+        if(t==0 || (t>=900&&t<=906))return "tram";
+        if(t==1 || (t>=400&&t<=405))return "metro";
+        if(t==2 || (t>=100&&t<=117))return "skm";
+        if(t==3 || (t>=700&&t<=716))return "bus";
+        if("mld".equals(provider))return "bus";
+        if(l.matches("S(1|2|3|4|40)"))return "skm";
+        if(l.matches("M[12]"))return "metro";
+        if(l.matches("([1-9]|[1-9][0-9])"))return "tram";
+        return "bus";
+    }
+    public static String passengerStopNumber(String stopId,String publishedCode,String provider){
+        String code=clean(publishedCode);
+        if(!code.isEmpty())return code;
+        // Warsaw bus/tram: 4-digit stop complex + 2-digit platform (e.g. 700901 -> 01).
+        if("warsaw".equals(provider)&&stopId!=null&&stopId.matches("[0-9]{6}"))
+            return stopId.substring(4);
+        return "";
     }
     private static final ZoneId ZONE=ZoneId.of("Europe/Warsaw");
     private static final String BASE="https://raw.githubusercontent.com/senikolo/Pomocnik-Alfa/main/data/pa-gtfs/";
@@ -147,12 +173,13 @@ public final class GtfsNearby {
     private static void checkCancelled()throws InterruptedIOException{
         if(Thread.currentThread().isInterrupted())throw new InterruptedIOException("Sprawdzanie rozkładu anulowane");
     }
-    private static void collectRoutes(ZipFile z,Map<String,String> routes)throws IOException{
+    private static void collectRoutes(ZipFile z,Map<String,Route> routes,String provider)throws IOException{
         try(Rows csv=new Rows(z,"routes.txt")){
             List<String> r;while((r=csv.next())!=null){
-                String id=csv.s(r,"route_id");String name=csv.s(r,"route_short_name");
+                String id=csv.s(r,"route_id"),name=csv.s(r,"route_short_name");
                 if(name.isEmpty())name=csv.s(r,"route_long_name");
-                routes.put(id,name.isEmpty()?id:name);
+                if(name.isEmpty())name=id;
+                routes.put(id,new Route(name,modeFor(csv.s(r,"route_type"),name,provider)));
             }
         }
     }
@@ -179,21 +206,34 @@ public final class GtfsNearby {
                     stopNames.put(id,name);
                     float[] distance=new float[1];
                     Location.distanceBetween(lat,lon,slat,slon,distance);
-                    if(distance[0]>1900)continue;
+                    boolean railNode=provider.equals("warsaw")&&id.matches("[0-9]{4}");
+                    if(distance[0]>(railNode?4300:1900))continue;
                     Stop stop=new Stop();stop.id=id;stop.name=name;stop.lat=slat;stop.lon=slon;stop.distance=distance[0];
+                    stop.code=passengerStopNumber(id,csv.s(r,"stop_code"),provider);
                     allStops.put(id,stop);
                 }
             }
             List<Stop> near=new ArrayList<>(allStops.values());
             near.sort(Comparator.comparingDouble(s->s.distance));
-            // Avoid fifty bus platforms: show up to 6 nearest, within reasonable walking distance.
-            for(Stop stop:near){if(result.stops.size()>=6)break;result.stops.add(stop);}
+            // Keep bus/tram platforms and SKM rail station nodes independently.
+            int cityPlatforms=0,railStations=0;
+            for(Stop stop:near){
+                boolean railNode=provider.equals("warsaw") && stop.id.matches("[0-9]{4}");
+                if(railNode){
+                    if(railStations>=5 || stop.distance>4300)continue;
+                    railStations++;
+                }else{
+                    if(cityPlatforms>=34 || stop.distance>1900)continue;
+                    cityPlatforms++;
+                }
+                result.stops.add(stop);
+            }
             if(result.stops.isEmpty()){result.note="Nie znaleziono przystanków tej sieci w promieniu 1,9 km.";return result;}
             Map<String,Stop> chosen=new HashMap<>();
             for(Stop stop:result.stops)chosen.put(stop.id,stop);
             Set<String> dayServices=active(z,today),previousServices=active(z,previous),nextServices=active(z,today.plusDays(1));
             Set<String> services=new HashSet<>(dayServices);services.addAll(previousServices);services.addAll(nextServices);
-            Map<String,String> routes=new HashMap<>();collectRoutes(z,routes);
+            Map<String,Route> routes=new HashMap<>();collectRoutes(z,routes,provider);
             Map<String,Trip> trips=new HashMap<>();
             try(Rows csv=new Rows(z,"trips.txt")){
                 List<String> r;int lines=0;
@@ -220,7 +260,10 @@ public final class GtfsNearby {
                         long departure=date.atStartOfDay(ZONE).plusSeconds(seconds).toInstant().toEpochMilli();
                         if(departure<moment-120000L||departure>moment+120L*60000L)continue;
                         Departure item=new Departure();
-                        item.stop=stop;item.tripId=tid;item.routeId=trip.route;item.line=routes.getOrDefault(trip.route,trip.route);
+                        Route route=routes.get(trip.route);
+                        item.stop=stop;item.tripId=tid;item.routeId=trip.route;
+                        item.line=route==null?trip.route:route.name;
+                        item.mode=route==null?"bus":route.mode;
                         item.headsign=trip.headsign.isEmpty()?"Kierunek według rozkładu":trip.headsign;
                         item.when=departure;item.sequence=parseInt(csv.s(r,"stop_sequence"),-1);
                         result.departures.add(item);
@@ -228,7 +271,14 @@ public final class GtfsNearby {
                 }
             }
             result.departures.sort(Comparator.comparingLong(d->d.when));
-            if(result.departures.size()>60)result.departures.subList(60,result.departures.size()).clear();
+            // Do not allow plentiful bus courses to hide the tram/SKM sections.
+            Map<String,Integer> byMode=new HashMap<>();
+            Iterator<Departure> cursor=result.departures.iterator();
+            while(cursor.hasNext()){
+                Departure d=cursor.next();
+                int n=byMode.getOrDefault(d.mode,0);
+                if(n>=30)cursor.remove(); else byMode.put(d.mode,n+1);
+            }
             // One extra pass through stop_times for short, genuinely scheduled stop lists.
             Map<String,List<Departure>> wanted=new HashMap<>();
             for(Departure d:result.departures){
