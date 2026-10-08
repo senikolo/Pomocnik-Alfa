@@ -21,7 +21,7 @@ jobs:
               data=r.read(limit+1)
               if len(data)>limit:raise ValueError('over size limit '+str(len(data)))
               return data
-          w=download('https://mkuran.pl/gtfs/warsaw.zip',30000000)
+          w=download('https://mkuran.pl/gtfs/warsaw.zip',150000000)
           z=zipfile.ZipFile(io.BytesIO(w))
           names={r['route_id']:r for r in csv.DictReader(io.TextIOWrapper(z.open('routes.txt'),encoding='utf-8-sig'))}
           trains=set()
