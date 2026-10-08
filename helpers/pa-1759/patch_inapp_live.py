@@ -83,4 +83,9 @@ button='''            if(warsaw && closest.id!=null && closest.id.matches("[0-9]
 near=replace_one(near,target,button,"nearest stops live button")
 near_file.write_text(near,encoding="utf-8")
 
+main=base/"MainActivity.java"
+version=main.read_text(encoding="utf-8")
+assert "POMOCNIK ALFA 1.7.58" in version, "Expected 1.7.58 base patch"
+main.write_text(version.replace("POMOCNIK ALFA 1.7.58","POMOCNIK ALFA 1.7.59"),encoding="utf-8")
+
 print("PASS: 1.7.59 in-app map manifest, exact selected stop, nearest-stop actions, safe LIVE attribution")
