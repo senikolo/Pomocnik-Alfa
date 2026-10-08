@@ -392,9 +392,10 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         view.setTextColor(dark?darkText:lightText);
         GradientDrawable background=new GradientDrawable();
         background.setColor(dark?darkBackground:lightBackground);
-        background.setCornerRadius(dp(12));
+        background.setCornerRadius(dp(10));
         view.setBackground(background);
         view.setPadding(dp(10),dp(9),dp(10),dp(9));
+        view.setMinHeight(dp(41));
         view.setGravity(Gravity.CENTER_VERTICAL);
         if(oneLine){
             view.setSingleLine(true);
@@ -405,29 +406,34 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         return view;
     }
     private TextView lineChip(String label){
-        return transitChip(label,19,0xFFEDE2FA,0xFF4B258A,0xFF392651,0xFFF2DCFF,true);
+        // Route number: bold white on a saturated purple badge (light/dark accessible).
+        return transitChip(label,20,0xFF5836A5,0xFFFFFFFF,0xFF714DC0,0xFFFFFFFF,true);
     }
     private TextView destinationChip(String label){
-        TextView v=transitChip(label,17,0xFFE2EFFF,0xFF174A84,0xFF193657,0xFFE2F0FF,true);
+        // Direction: calm blue, distinct from route and stop.
+        TextView v=transitChip(label,17,0xFFE6F0FF,0xFF174783,0xFF1C3A61,0xFFF0F6FF,true);
         // Use the available width before shortening long termini to an ellipsis.
         v.setAutoSizeTextTypeUniformWithConfiguration(12,17,1,TypedValue.COMPLEX_UNIT_SP);
         return v;
     }
     private TextView stopChip(String label){
-        TextView v=transitChip(label,15,0xFFDDF4E9,0xFF075A4C,0xFF163E35,0xFFDDFCED,true);
+        // Stop name: green/teal with high-contrast dark text.
+        TextView v=transitChip(label,16,0xFFE0F4E9,0xFF075B46,0xFF173F34,0xFFE3FFF0,true);
         v.setAutoSizeTextTypeUniformWithConfiguration(12,15,1,TypedValue.COMPLEX_UNIT_SP);
         return v;
     }
     private TextView platformChip(String label){
-        return transitChip(label,14,0xFFF2E9FF,0xFF5A3279,0xFF45304F,0xFFF3E2FF,true);
+        // Boarding position is always amber, NEVER the same purple as the route.
+        return transitChip(label,15,0xFFFFEDD0,0xFF794200,0xFF52391D,0xFFFFEAC0,true);
     }
     private TextView timeChip(String label){
-        return transitChip(label,21,0xFFE1F2FF,0xFF0D456D,0xFF1D3B57,0xFFE6F5FF,true);
+        // Departure clock: strong deep teal badge (distinct from direction blue).
+        return transitChip(label,21,0xFF125E7B,0xFFFFFFFF,0xFF17678B,0xFFFFFFFF,true);
     }
     private TextView liveChip(String label,Integer delay){
-        if(delay==null)return transitChip(label,13,0xFFF0F2F5,0xFF49515D,0xFF30343C,0xFFE4E7ED,true);
-        if(delay>0)return transitChip(label,14,0xFFFFE7CC,0xFF873700,0xFF5A3418,0xFFFFE5C8,true);
-        return transitChip(label,14,0xFFDFF4E5,0xFF166138,0xFF194532,0xFFDFF7E7,true);
+        if(delay==null)return transitChip(label,13,0xFFF0F3F6,0xFF46515E,0xFF353D48,0xFFEFF3F9,true);
+        if(delay>0)return transitChip(label,14,0xFFFFE6D0,0xFF8C3706,0xFF5A321C,0xFFFFECD9,true);
+        return transitChip(label,14,0xFFDEF6E5,0xFF126035,0xFF19442C,0xFFE5FFED,true);
     }
     private void addDepartureSection(GtfsNearby.Result value,String mode,String heading,boolean alwaysVisible){
         List<GtfsNearby.Departure> selected=new ArrayList<>();
@@ -442,7 +448,7 @@ public class NearbyDeparturesActivity extends ThemedActivity {
             results.addView(section);return;
         }
         section.addView(NativeUi.muted(this,
-            "Fiolet: linia · niebieski: kierunek · zielony: przystanek · błękit: godzina",12));
+            "Fiolet: linia · niebieski: kierunek · zielony: przystanek · bursztyn: stanowisko · morski: godzina",12));
         NativeUi.addSpacer(section,this,9);
         int count=0;
         for(GtfsNearby.Departure d:selected){
@@ -454,9 +460,11 @@ public class NearbyDeparturesActivity extends ThemedActivity {
             top.setGravity(Gravity.CENTER_VERTICAL);
             TextView number=lineChip(d.line);
             number.setGravity(Gravity.CENTER);
+            number.setContentDescription("Linia "+d.line);
             top.addView(number,new LinearLayout.LayoutParams(dp(65),-2));
             horizontalGap(top ,5);
             TextView direction=destinationChip(d.headsign);
+            direction.setContentDescription("Kierunek: "+d.headsign);
             top.addView(direction,new LinearLayout.LayoutParams(0,-2,1));
             panel.addView(top);
             NativeUi.addSpacer(panel,this,7);
@@ -465,10 +473,12 @@ public class NearbyDeparturesActivity extends ThemedActivity {
             middle.setOrientation(LinearLayout.HORIZONTAL);
             middle.setGravity(Gravity.CENTER_VERTICAL);
             TextView name=stopChip(d.stop.name);
+            name.setContentDescription("Przystanek: "+d.stop.name);
             middle.addView(name,new LinearLayout.LayoutParams(0,-2,1));
             horizontalGap(middle ,5);
             String post=d.stop.code==null?"":d.stop.code.trim();
             TextView platform=platformChip(post.isEmpty()?"Nr —":"Stan. "+post);
+            platform.setContentDescription(post.isEmpty()?"Numer stanowiska niedostępny":"Stanowisko "+post);
             platform.setGravity(Gravity.CENTER);
             middle.addView(platform,new LinearLayout.LayoutParams(dp(85),-2));
             panel.addView(middle);
@@ -478,6 +488,7 @@ public class NearbyDeparturesActivity extends ThemedActivity {
             bottom.setOrientation(LinearLayout.HORIZONTAL);
             bottom.setGravity(Gravity.CENTER_VERTICAL);
             TextView clock=timeChip(time(d.when));
+            clock.setContentDescription("Odjazd planowy "+time(d.when));
             clock.setGravity(Gravity.CENTER);
             bottom.addView(clock,new LinearLayout.LayoutParams(dp(92),-2));
             horizontalGap(bottom ,7);
