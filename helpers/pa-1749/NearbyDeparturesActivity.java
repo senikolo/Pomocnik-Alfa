@@ -25,6 +25,9 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -170,8 +173,8 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         if(stop==null)return "Nieznany przystanek";
         String name=stop.name==null?"Przystanek":stop.name;
         String code=stop.code==null?"":stop.code.trim();
-        if(code.isEmpty() || name.endsWith(" "+code))return name;
-        return name+" "+code;
+        if(code.isEmpty())return name;
+        return name+" · stanowisko "+code;
     }
     private void render(GtfsNearby.Result value,Location fix){
         results.removeAllViews();
@@ -181,14 +184,27 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         status.setText(value.feedName+" · dane "+age+(value.oldData?" · UWAGA: starszy rozkład":""));
         NativeUi.addSpacer(results,this,9);
         LinearLayout stopCard=NativeUi.card(this);
-        stopCard.addView(NativeUi.text(this,"🚏 Najbliższe przystanki",19,true));
-        int limit=0;
+        stopCard.addView(NativeUi.text(this,"🚏 5 najbliższych przystanków",19,true));
+        // Show a maximum of five named stop complexes, not eight platform entries.
+        Map<String,List<GtfsNearby.Stop>> groups=new LinkedHashMap<>();
         for(GtfsNearby.Stop stop:value.stops){
-            if(limit++>=8)break;
-            TextView txt=NativeUi.text(this,stopLabel(stop)+" · "+Math.round(stop.distance)+" m w linii prostej",15,false);
-            txt.setPadding(0,dp(6),0,dp(6));stopCard.addView(txt);
+            if(stop.id.matches("[0-9]{4}"))continue; // SKM appears in its own section
+            String key=stop.name.toLowerCase(Locale.ROOT);
+            if(!groups.containsKey(key) && groups.size()>=5)continue;
+            List<GtfsNearby.Stop> platforms=groups.get(key);
+            if(platforms==null){platforms=new ArrayList<>();groups.put(key,platforms);}
+            platforms.add(stop);
         }
-        if(value.stops.isEmpty())stopCard.addView(NativeUi.muted(this,value.note,14));
+        for(List<GtfsNearby.Stop> platforms:groups.values()){
+            GtfsNearby.Stop closest=platforms.get(0);
+            LinkedHashSet<String> numbers=new LinkedHashSet<>();
+            for(GtfsNearby.Stop st:platforms)if(st.code!=null&&!st.code.trim().isEmpty())numbers.add(st.code.trim());
+            String label=closest.name+" · "+Math.round(closest.distance)+" m";
+            if(!numbers.isEmpty())label+=" · stanowiska: "+android.text.TextUtils.join(", ",numbers);
+            TextView txt=NativeUi.text(this,label,15,false);
+            txt.setPadding(0,dp(7),0,dp(7));stopCard.addView(txt);
+        }
+        if(groups.isEmpty())stopCard.addView(NativeUi.muted(this,"Nie znaleziono przystanków autobusowych ani tramwajowych w pobliżu.",14));
         results.addView(stopCard);
         boolean warsaw="warsaw".equals(GtfsNearby.networkFor(fix.getLatitude(),fix.getLongitude()));
         addDepartureSection(value,"bus","🚌 Autobusy",false);
