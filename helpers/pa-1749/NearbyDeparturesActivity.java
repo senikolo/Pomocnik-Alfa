@@ -16,6 +16,10 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.HorizontalScrollView;
+import android.widget.EditText;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.text.InputFilter;
 import android.widget.TextView;
 import android.net.Uri;
 import android.graphics.Color;
@@ -27,6 +31,7 @@ import android.util.TypedValue;
 
 import com.ispina.lokalnie.transit.GtfsNearby;
 import com.ispina.lokalnie.transit.DepartureCountdown;
+import com.ispina.lokalnie.transit.DepartureQuickFilter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -54,6 +59,18 @@ public class NearbyDeparturesActivity extends ThemedActivity {
     private final Map<String,LinearLayout> modeSections=new LinkedHashMap<>();
     private final Map<String,TextView> modeFilters=new LinkedHashMap<>();
     private String activeMode="all";
+    private String searchQuery="";
+    private final Map<String,List<DepartureCard>> modeCards=new LinkedHashMap<>();
+    private TextView noMatches,quickLine,quickStop,quickTime;
+    private LinearLayout nearestPanel;
+    private GtfsNearby.Departure nearestDeparture;
+    private static final class DepartureCard {
+        final GtfsNearby.Departure departure;
+        final LinearLayout view;
+        DepartureCard(GtfsNearby.Departure d,LinearLayout panel){
+            departure=d;view=panel;
+        }
+    }
     private Location lastFix;
     private long lastFixAt;
     private boolean screenVisible;
@@ -241,6 +258,8 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         stopCountdowns();
         modeSections.clear();
         modeFilters.clear();
+        modeCards.clear();
+        nearestDeparture=null;
         results.removeAllViews();
         SimpleDateFormat stamp=new SimpleDateFormat("dd.MM, HH:mm",new Locale("pl","PL"));
         stamp.setTimeZone(java.util.TimeZone.getTimeZone("Europe/Warsaw"));
@@ -311,6 +330,8 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         if(!warsaw && !activeMode.equals("all") && !activeMode.equals("bus"))
             activeMode="all";
         addModeFilters(warsaw);
+        addLineSearch();
+        addNearestPanel();
         addDepartureSection(value,"bus","🚌 Autobusy",true);
         if(warsaw){
             addDepartureSection(value,"tram","🚋 Tramwaje",true);
@@ -380,10 +401,94 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         wrapper.addView(scroller);
         results.addView(wrapper);
     }
+    private void addLineSearch(){
+        LinearLayout card=NativeUi.card(this);
+        card.addView(NativeUi.text(this,"Znajdź konkretną linię lub kierunek",17,true));
+        NativeUi.addSpacer(card,this,7);
+        EditText input=new EditText(this);
+        input.setSingleLine(true);
+        input.setTextSize(16);
+        input.setHint("Linia, kierunek lub przystanek…");
+        input.setContentDescription("Wyszukaj linię, kierunek lub przystanek w pobranych odjazdach");
+        input.setFilters(new InputFilter[]{new InputFilter.LengthFilter(48)});
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        input.setText(searchQuery);
+        input.addTextChangedListener(new TextWatcher(){
+            @Override public void beforeTextChanged(CharSequence s,int start,int count,int after){}
+            @Override public void onTextChanged(CharSequence s,int start,int before,int count){
+                searchQuery=s.toString().trim();
+                applyModeFilter();
+            }
+            @Override public void afterTextChanged(Editable s){}
+        });
+        card.addView(input,new LinearLayout.LayoutParams(-1,dp(52)));
+        noMatches=NativeUi.muted(this,"Nie znaleziono takich odjazdów w pobranym rozkładzie.",14);
+        noMatches.setVisibility(View.GONE);
+        card.addView(noMatches);
+        results.addView(card);
+    }
+    private void addNearestPanel(){
+        nearestPanel=NativeUi.card(this);
+        nearestPanel.addView(NativeUi.text(this,"⏱ Najbliższy odjazd z wyświetlonych",18,true));
+        NativeUi.addSpacer(nearestPanel,this,6);
+        LinearLayout top=new LinearLayout(this);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        quickLine=lineChip("–");
+        quickLine.setGravity(Gravity.CENTER);
+        top.addView(quickLine,new LinearLayout.LayoutParams(dp(65),-2));
+        horizontalGap(top,6);
+        quickTime=destinationChip("Czekam na odjazdy…");
+        top.addView(quickTime,new LinearLayout.LayoutParams(0,-2,1));
+        nearestPanel.addView(top);
+        NativeUi.addSpacer(nearestPanel,this,5);
+        quickStop=stopChip("Przystanek");
+        nearestPanel.addView(quickStop,new LinearLayout.LayoutParams(-1,-2));
+        nearestPanel.setClickable(true);
+        nearestPanel.setFocusable(true);
+        nearestPanel.setOnClickListener(v->{
+            if(nearestDeparture!=null)route(nearestDeparture);
+        });
+        results.addView(nearestPanel);
+    }
     private void applyModeFilter(){
-        for(Map.Entry<String,LinearLayout> item:modeSections.entrySet())
-            item.getValue().setVisibility(activeMode.equals("all") ||
-                activeMode.equals(item.getKey())?View.VISIBLE:View.GONE);
+        long now=System.currentTimeMillis();
+        boolean searching=!searchQuery.isEmpty();
+        int visible=0;
+        GtfsNearby.Departure soonest=null;
+        long earliest=Long.MAX_VALUE;
+        for(Map.Entry<String,LinearLayout> item:modeSections.entrySet()){
+            String mode=item.getKey();
+            boolean modeSelected=activeMode.equals("all") || activeMode.equals(mode);
+            List<DepartureCard> cards=modeCards.get(mode);
+            if(cards==null)cards=new ArrayList<>();
+            int localVisible=0;
+            for(DepartureCard card:cards){
+                boolean matched=modeSelected &&
+                    DepartureQuickFilter.matches(card.departure,searchQuery);
+                // Keep first 12 rows per mode in the default view; a text search
+                // can find any of the 30 locally cached entries without a new GPS call.
+                boolean show=matched && (searching || localVisible<12);
+                card.view.setVisibility(show?View.VISIBLE:View.GONE);
+                if(!show)continue;
+                localVisible++;
+                visible++;
+                long estimated=DepartureQuickFilter.expectedTime(card.departure,now);
+                if(estimated>=now-60000L && (estimated<earliest ||
+                   estimated==earliest && soonest!=null &&
+                   card.departure.stop.distance<soonest.stop.distance)){
+                    earliest=estimated;
+                    soonest=card.departure;
+                }
+            }
+            // Empty mode sections show their original explanatory text,
+            // unless the user typed a specific search.
+            item.getValue().setVisibility(modeSelected &&
+                (localVisible>0 || cards.isEmpty() && !searching)?
+                View.VISIBLE:View.GONE);
+        }
+        if(noMatches!=null)noMatches.setVisibility(visible==0?View.VISIBLE:View.GONE);
+        nearestDeparture=soonest;
+        refreshNearestPanel(now);
         boolean dark=(getResources().getConfiguration().uiMode&
             Configuration.UI_MODE_NIGHT_MASK)==Configuration.UI_MODE_NIGHT_YES;
         for(Map.Entry<String,TextView> item:modeFilters.entrySet()){
@@ -399,6 +504,24 @@ public class NearbyDeparturesActivity extends ThemedActivity {
             chip.setTextColor(foreground);
             chip.setSelected(selected);
         }
+    }
+    private void refreshNearestPanel(long now){
+        if(nearestPanel==null || quickLine==null || quickStop==null || quickTime==null)return;
+        GtfsNearby.Departure d=nearestDeparture;
+        if(d==null){
+            nearestPanel.setVisibility(View.GONE);
+            return;
+        }
+        nearestPanel.setVisibility(View.VISIBLE);
+        Integer delay=d.confirmedDelayMinutes(now);
+        quickLine.setText(d.line);
+        quickTime.setText(d.headsign+" · "+DepartureCountdown.label(d.when,now,delay));
+        quickTime.setContentDescription("Kierunek "+d.headsign+". "+
+            DepartureCountdown.label(d.when,now,delay));
+        quickStop.setText(stopLabel(d.stop));
+        nearestPanel.setContentDescription("Najbliższy odjazd. Linia "+d.line+
+            ". Kierunek "+d.headsign+". Przystanek "+stopLabel(d.stop)+". "+
+            DepartureCountdown.label(d.when,now,delay)+". Dotknij, aby poznać trasę.");
     }
     private void horizontalGap(LinearLayout layout,int dps){
         layout.addView(new View(this),new LinearLayout.LayoutParams(dp(dps),1));
@@ -461,6 +584,8 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         if(selected.isEmpty()&&!alwaysVisible)return;
         LinearLayout section=NativeUi.card(this);
         modeSections.put(mode,section);
+        List<DepartureCard> rows=new ArrayList<>();
+        modeCards.put(mode,rows);
         section.addView(NativeUi.text(this,heading+" · odjazdy",19,true));
         if(selected.isEmpty()){
             section.addView(NativeUi.muted(this,
@@ -472,7 +597,7 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         NativeUi.addSpacer(section,this,9);
         int count=0;
         for(GtfsNearby.Departure d:selected){
-            if(count++>=12)break;
+            if(count++>=30)break;
             LinearLayout panel=NativeUi.card(this);
             // Line and destination: one horizontal row; no broken destination text.
             LinearLayout top=new LinearLayout(this);
@@ -531,6 +656,7 @@ public class NearbyDeparturesActivity extends ThemedActivity {
             panel.setClickable(true);
             panel.setFocusable(true);
             NativeUi.onClick(panel,v->route(d));
+            rows.add(new DepartureCard(d,panel));
             section.addView(panel);
         }
         results.addView(section);
@@ -540,11 +666,41 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         for(CountdownLabel label:countdownLabels){
             Integer delay=label.departure.confirmedDelayMinutes(now);
             label.view.setText(DepartureCountdown.label(label.departure.when,now,delay));
+            applyLivePalette(label.view,delay);
+            applyLivePalette(label.liveState,delay);
             String description=delay==null?"Rozkładowo":
                 delay>0?"+"+delay+" min · LIVE":
                 delay<0?delay+" min · LIVE":"Bez opóźnienia · LIVE";
             label.liveState.setText(description);
         }
+        // Recompute the hero when departure times pass or an update expires.
+        refreshNearestFromVisible(now);
+    }
+    private void refreshNearestFromVisible(long now){
+        GtfsNearby.Departure best=null;long earliest=Long.MAX_VALUE;
+        for(List<DepartureCard> cards:modeCards.values())for(DepartureCard card:cards){
+            if(card.view.getVisibility()!=View.VISIBLE)continue;
+            long expected=DepartureQuickFilter.expectedTime(card.departure,now);
+            if(expected<now-60000L)continue;
+            if(expected<earliest){earliest=expected;best=card.departure;}
+        }
+        nearestDeparture=best;
+        refreshNearestPanel(now);
+    }
+    private void applyLivePalette(TextView view,Integer delay){
+        boolean dark=(getResources().getConfiguration().uiMode&
+            Configuration.UI_MODE_NIGHT_MASK)==Configuration.UI_MODE_NIGHT_YES;
+        int background=delay==null?(dark?0xFF353D48:0xFFF0F3F6):
+            delay>0?(dark?0xFF5A321C:0xFFFFE6D0):
+            (dark?0xFF19442C:0xFFDEF6E5);
+        int foreground=delay==null?(dark?0xFFEFF3F9:0xFF46515E):
+            delay>0?(dark?0xFFFFECD9:0xFF8C3706):
+            (dark?0xFFE5FFED:0xFF126035);
+        GradientDrawable drawable=new GradientDrawable();
+        drawable.setColor(background);
+        drawable.setCornerRadius(dp(10));
+        view.setBackground(drawable);
+        view.setTextColor(foreground);
     }
     private void stopCountdowns(){
         ui.removeCallbacks(countdownTick);
