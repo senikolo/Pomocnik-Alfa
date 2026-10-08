@@ -47,7 +47,8 @@ for provider,url in SOURCES.items():
                 rows[file]=list(read_rows(src,available[file]))
         for idx,trip in enumerate(read_rows(src,available["trips.txt"])):
             if trip.get("service_id") not in active:continue
-            trips[trip["trip_id"]]=str(len(trips)+1)
+            # Original MLD trip IDs must survive, otherwise GTFS-RT cannot match.
+            trips[trip["trip_id"]]=(trip["trip_id"] if provider=="mld" else str(len(trips)+1))
         print(provider,"filtered_trips",len(trips),flush=True)
         # Stream output ZIP to prevent multi-million-row data in RAM
         out=OUT/(provider+"-lite.zip")
