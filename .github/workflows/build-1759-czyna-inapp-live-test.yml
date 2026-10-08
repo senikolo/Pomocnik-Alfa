@@ -301,7 +301,7 @@ jobs:
           python helpers/pa-1758/test_deeplink.py
           python helpers/pa-1759/test_inapp_live.py
           grep -F 'LineDeparturesActivity' project/app/src/main/AndroidManifest.xml
-          grep -F 'CzynaczasLinks.forStop' project/app/src/main/java/com/ispina/lokalnie/LineDeparturesActivity.java
+          grep -F 'CzynaczasLinks.forStop' project/app/src/main/java/com/ispina/lokalnie/LiveMapActivity.java
           grep -F 'lineStopDepartures(Context ctx' project/app/src/main/java/com/ispina/lokalnie/transit/GtfsNearby.java
           python helpers/pa-1754/test_mld_realtime_java.py
           grep -F 'addModeFilters(warsaw)' project/app/src/main/java/com/ispina/lokalnie/NearbyDeparturesActivity.java
@@ -385,4 +385,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           ST: ${{ job.status }}
-        run: gh issue create --title "PA 1.7.59 GROUPS WEATHER RESULT $ST $GITHUB_RUN_ID" --body "Build $ST. Run $GITHUB_RUN_ID"
+        run: gh issue create --title "PA 1.7.59 INAPP LIVE RESULT $ST $GITHUB_RUN_ID" --body "Build $ST. Run $GITHUB_RUN_ID"
