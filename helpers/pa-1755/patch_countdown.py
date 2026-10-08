@@ -15,6 +15,6 @@ for token in [
     assert token in ui, "Missing countdown safeguard: "+token
 main=base/"MainActivity.java"
 s=main.read_text(encoding="utf-8")
-assert "POMOCNIK ALFA 1.7.54" in s
+assert "POMOCNIK ALFA 1.7.54" in s or "POMOCNIK ALFA 1.7.55" in s
 main.write_text(s.replace("POMOCNIK ALFA 1.7.54","POMOCNIK ALFA 1.7.55"),encoding="utf-8")
 print("PASS: foreground-only timer, 5-minute GPS reuse, abort-on-background, correct application label")
