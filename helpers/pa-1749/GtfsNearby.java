@@ -215,17 +215,23 @@ public final class GtfsNearby {
             }
             List<Stop> near=new ArrayList<>(allStops.values());
             near.sort(Comparator.comparingDouble(s->s.distance));
-            // Keep bus/tram platforms and SKM rail station nodes independently.
-            int cityPlatforms=0,railStations=0;
+            // Five nearby named stop complexes, up to four platforms within each.
+            // Rail stations are retained separately to keep SKM available.
+            Map<String,Integer> platformsByName=new LinkedHashMap<>();
+            int railStations=0;
             for(Stop stop:near){
-                boolean railNode=provider.equals("warsaw") && stop.id.matches("[0-9]{4}");
+                boolean railNode=provider.equals("warsaw")&&stop.id.matches("[0-9]{4}");
                 if(railNode){
-                    if(railStations>=5 || stop.distance>4300)continue;
+                    if(railStations>=4||stop.distance>4300)continue;
                     railStations++;
-                }else{
-                    if(cityPlatforms>=34 || stop.distance>1900)continue;
-                    cityPlatforms++;
+                    result.stops.add(stop);
+                    continue;
                 }
+                if(stop.distance>1900)continue;
+                String key=stop.name.toLowerCase(Locale.ROOT);
+                int posts=platformsByName.getOrDefault(key,0);
+                if(posts>=4 || (posts==0 && platformsByName.size()>=5))continue;
+                platformsByName.put(key,posts+1);
                 result.stops.add(stop);
             }
             if(result.stops.isEmpty()){result.note="Nie znaleziono przystanków tej sieci w promieniu 1,9 km.";return result;}
