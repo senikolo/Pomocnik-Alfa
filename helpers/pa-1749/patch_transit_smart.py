@@ -11,12 +11,8 @@ for file in ("NearbyDeparturesActivity.java","GtfsNearby.java","SmartOffer.java"
         (pkg/"deals"/file) if file=="SmartOffer.java" else pkg/file)
     dest.parent.mkdir(parents=True,exist_ok=True)
     shutil.copyfile(src,dest)
-# Ensure Java regex string contains exactly two source backslashes for one regex backslash.
-smart=pkg/"deals/SmartOffer.java"
-x=smart.read_text()
-x=x.replace("\\\\\\\\","\\\\")
-smart.write_text(x)
-assert 'Pattern.compile("(?i)' in x
+# Keep validated Java regex escaping from the source file unchanged.
+assert 'Pattern.compile("(?i)' in (pkg/"deals/SmartOffer.java").read_text()
 
 main=pkg/"MainActivity.java"
 s=main.read_text()
