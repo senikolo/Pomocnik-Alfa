@@ -1,0 +1,50 @@
+name: PA 1.7.54 GTFS-Realtime Source Probe
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+permissions:
+  contents: read
+jobs:
+  probe:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.issue.title == 'TRIGGER PA 1754 LIVE FEED PROBE' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - name: Verify public MLD GTFS-RT feed candidates
+        run: |
+          python3 - <<'PY'
+          import urllib.request,urllib.error,urllib.parse,json
+          roots=[
+            'https://www.kolejemalopolskie.com.pl',
+            'https://kolejemalopolskie.com.pl',
+          ]
+          suffixes=[
+            '/rozklady_jazdy/ald-gtfs.zip',
+            '/rozklady_jazdy/MLD/trip_updates.json',
+            '/rozklady_jazdy/mld/trip_updates.json',
+            '/rozklady_jazdy/trip_updates.json',
+            '/rozklady_jazdy/mld-trip_updates.json',
+            '/gtfs/mld/trip_updates.json',
+            '/gtfs-rt/mld/trip_updates.json',
+            '/gtfs/MLD/trip_updates.json',
+            '/mld/trip_updates.json',
+            '/GTFS/MLD/trip_updates.json'
+          ]
+          for root in roots:
+            for suffix in suffixes:
+              url=root+suffix
+              try:
+                req=urllib.request.Request(url,headers={'User-Agent':'PomocnikAlfa/1.7.54 GTFS-RT compatibility check','Range':'bytes=0-1024'})
+                with urllib.request.urlopen(req,timeout=7) as response:
+                  b=response.read(1500)
+                  typ=response.headers.get('content-type','')
+                  print('HTTP',response.status,typ,len(b),url,flush=True)
+                  if suffix.endswith('json'):
+                    try:
+                      v=json.loads(b.decode('utf-8'))
+                      print('VALID JSON HEAD',type(v).__name__,list(v)[:8] if isinstance(v,dict) else '',flush=True)
+                    except Exception:pass
+              except Exception as error:
+                print('UNAVAILABLE',type(error).__name__,str(error)[:60],url,flush=True)
+          PY
