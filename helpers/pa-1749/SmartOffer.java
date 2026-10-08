@@ -79,7 +79,7 @@ public final class SmartOffer {
         if(d==null||!d.unit.isEmpty()||d.price<=0||!Double.isFinite(d.price))return;
         String text=d.name+" "+d.description;
         // Avoid treating promotion "buy 2" as the pack's piece count.
-        Matcher m=Pattern.compile("(?i)(?:op(?:akowanie|ak\.?)?\s*(?:po|:)?\s*|zestaw\s*)(\d{1,3})\s*(?:szt\.?|sztuk|kapsułek|tabletek|rolek)\b|(\d{1,3})\s*(?:szt\.?|sztuk|kapsułek|tabletek|rolek)\s*(?:w\s*opakowaniu|opak\.?)").matcher(text);
+        Matcher m=Pattern.compile("(?i)(?:op(?:akowanie|ak\\\\.?)?\\\\s*(?:po|:)?\\\\s*|zestaw\\\\s*)(\\\\d{1,3})\\\\s*(?:szt\\\\.?|sztuk|kapsułek|tabletek|rolek)\\\\b|(\\\\d{1,3})\\\\s*(?:szt\\\\.?|sztuk|kapsułek|tabletek|rolek)\\\\s*(?:w\\\\s*opakowaniu|opak\\\\.?)").matcher(text);
         if(m.find()){
             int pieces=Integer.parseInt(m.group(1)!=null?m.group(1):m.group(2));
             if(pieces>=1&&pieces<=500){d.unit="szt.";d.unitPrice=d.price/pieces;}
