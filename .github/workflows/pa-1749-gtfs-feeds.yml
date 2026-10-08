@@ -1,0 +1,37 @@
+name: PA Compact GTFS Feeds
+on:
+  schedule:
+    - cron: '12 3 * * *'
+  issues:
+    types: [opened]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  update-feeds:
+    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1749 REFRESH FEEDS' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests
+      - name: Rebuild validated lite feeds
+        run: python helpers/pa-1749/build_gtfs_lite.py
+      - name: Commit latest schedules
+        run: |
+          set -euxo pipefail
+          git config user.name "PA GTFS Update"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/pa-gtfs/warsaw-lite.zip data/pa-gtfs/mld-lite.zip
+          if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+          git commit -m "Refresh compact Warsaw and MLD GTFS feeds"
+          git push
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pa-1749-compact-feeds
+          path: data/pa-gtfs/*.zip
+          retention-days: 2
