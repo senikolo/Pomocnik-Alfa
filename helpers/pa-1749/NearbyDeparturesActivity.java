@@ -24,6 +24,7 @@ import android.text.TextUtils;
 import android.util.TypedValue;
 
 import com.ispina.lokalnie.transit.GtfsNearby;
+import com.ispina.lokalnie.transit.DepartureCountdown;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -46,8 +47,25 @@ public class NearbyDeparturesActivity extends ThemedActivity {
     private Runnable timeout;
     private TextView status;
     private LinearLayout results;
-    private Button locate;
+    private Button locate,refresh;
     private ProgressBar progress;
+    private Location lastFix;
+    private long lastFixAt;
+    private boolean screenVisible;
+    private static final long FIX_REUSE_MS=5L*60L*1000L;
+    private final List<CountdownLabel> countdownLabels=new ArrayList<>();
+    private static class CountdownLabel {
+        final GtfsNearby.Departure departure;
+        final TextView view;
+        CountdownLabel(GtfsNearby.Departure d,TextView v){departure=d;view=v;}
+    }
+    private final Runnable countdownTick=new Runnable(){
+        @Override public void run(){
+            updateCountdowns();
+            if(screenVisible && !destroyed && !countdownLabels.isEmpty())
+                ui.postDelayed(this,30000L);
+        }
+    };
     private int generation;
     private boolean destroyed,locating;
     private static final int GPS_PERMISSION=1749;
@@ -72,6 +90,11 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         locate=NativeUi.button(this,"📍 Znajdź odjazdy z mojej okolicy",false);
         locate.setOnClickListener(v->begin());
         card.addView(locate,new LinearLayout.LayoutParams(-1,dp(55)));
+        NativeUi.addSpacer(card,this,8);
+        refresh=NativeUi.button(this,"↻ Odśwież odjazdy",true);
+        refresh.setOnClickListener(v->refreshDepartures());
+        refresh.setEnabled(false);
+        card.addView(refresh,new LinearLayout.LayoutParams(-1,dp(52)));
         NativeUi.addSpacer(card,this,6);
         status=NativeUi.muted(this,"Dotknij przycisku. Lokalizacja nie działa w tle.",14);
         status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);card.addView(status);root.addView(card);
@@ -105,6 +128,9 @@ public class NearbyDeparturesActivity extends ThemedActivity {
     }
     private void requestFix(){
         stopGps();locating=true;best=null;generation++;
+        stopCountdowns();
+        lastFix=null;lastFixAt=0L;
+        if(refresh!=null)refresh.setEnabled(false);
         results.removeAllViews();progress.setVisibility(View.VISIBLE);locate.setEnabled(false);
         status.setText("Szukam Twojego położenia…");
         manager=(LocationManager)getSystemService(LOCATION_SERVICE);
@@ -142,24 +168,47 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         if(!locating)return;
         Location fix=best;stopGps();
         if(fix==null){fail("Nie udało się pobrać aktualnej pozycji. Spróbuj przy oknie.");return;}
-        final int requestId=generation;
+        lastFix=new Location(fix);
+        lastFixAt=System.currentTimeMillis();
+        searchTimetable(fix,false);
+    }
+    private void refreshDepartures(){
+        if(locating || progress.getVisibility()==View.VISIBLE)return;
+        if(lastFix!=null && System.currentTimeMillis()-lastFixAt<=FIX_REUSE_MS){
+            searchTimetable(new Location(lastFix),true);
+        }else begin(); // After five minutes, obtain a fresh opt-in GPS fix.
+    }
+    private void searchTimetable(Location fix,boolean preserveResults){
+        final int requestId=++generation;
         progress.setVisibility(View.VISIBLE);
-        status.setText("Szukam pobliskich przystanków i sprawdzam aktualny rozkład…");
+        locate.setEnabled(false);
+        refresh.setEnabled(false);
+        if(!preserveResults)results.removeAllViews();
+        status.setText("Odświeżam pobliskie odjazdy i aktualność rozkładów…");
         work.execute(()->{
             GtfsNearby.Result value=null;String error=null;
             try{value=GtfsNearby.search(getApplicationContext(),fix.getLatitude(),fix.getLongitude());}
             catch(Exception e){error=e.getMessage();}
             GtfsNearby.Result found=value;String problem=error;
             ui.post(()->{
-                if(destroyed||requestId!=generation)return;
-                locate.setEnabled(true);progress.setVisibility(View.GONE);
-                if(problem!=null){renderError(problem,fix);return;}
+                if(destroyed||requestId!=generation || !screenVisible)return;
+                locate.setEnabled(true);
+                refresh.setEnabled(lastFix!=null);
+                progress.setVisibility(View.GONE);
+                if(problem!=null){
+                    if(preserveResults && results.getChildCount()>0)
+                        status.setText("Odświeżenie nieudane: "+problem+". Pokazuję poprzednie wyniki.");
+                    else renderError(problem,fix);
+                    return;
+                }
                 render(found,fix);
             });
         });
     }
     private void fail(String message){
-        stopGps();progress.setVisibility(View.GONE);locate.setEnabled(true);status.setText(message);
+        stopGps();progress.setVisibility(View.GONE);locate.setEnabled(true);
+        if(refresh!=null)refresh.setEnabled(lastFix!=null);
+        status.setText(message);
     }
     private String time(long value){
         SimpleDateFormat f=new SimpleDateFormat("HH:mm",new Locale("pl","PL"));
@@ -182,11 +231,14 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         return name+" · stanowisko "+code;
     }
     private void render(GtfsNearby.Result value,Location fix){
+        stopCountdowns();
         results.removeAllViews();
         SimpleDateFormat stamp=new SimpleDateFormat("dd.MM, HH:mm",new Locale("pl","PL"));
         stamp.setTimeZone(java.util.TimeZone.getTimeZone("Europe/Warsaw"));
         String age=stamp.format(new Date(value.downloadedAt));
-        status.setText(value.feedName+" · dane "+age+(value.oldData?" · UWAGA: starszy rozkład":""));
+        status.setText(value.feedName+" · rozkład z "+age+
+            " · sprawdzono "+time(System.currentTimeMillis())+
+            (value.oldData?" · UWAGA: starszy rozkład":""));
         NativeUi.addSpacer(results,this,9);
         LinearLayout liveState=NativeUi.card(this);
         liveState.addView(NativeUi.text(this,"Stan informacji LIVE",17,true));
@@ -259,6 +311,7 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         service.addView(NativeUi.muted(this,
             "To zewnętrzny serwis z własnymi danymi na żywo. PA nie pobiera jeszcze jego prognoz.",12));
         results.addView(service);
+        startCountdowns();
     }
     private void horizontalGap(LinearLayout layout,int dps){
         layout.addView(new View(this),new LinearLayout.LayoutParams(dp(dps),1));
@@ -361,13 +414,19 @@ public class NearbyDeparturesActivity extends ThemedActivity {
             bottom.addView(clock,new LinearLayout.LayoutParams(dp(92),-2));
             horizontalGap(bottom ,7);
             Integer delay=d.confirmedDelayMinutes(System.currentTimeMillis());
-            String liveLabel=delay==null?"Brak danych live":
+            String liveLabel=delay==null?"Rozkładowo":
                     delay>0?"+"+delay+" min · LIVE":
                     delay<0?delay+" min · LIVE":"Bez opóźnienia · LIVE";
             TextView status=liveChip(liveLabel,delay);
             status.setGravity(Gravity.CENTER);
             bottom.addView(status,new LinearLayout.LayoutParams(0,-2,1));
             panel.addView(bottom);
+            NativeUi.addSpacer(panel,this,5);
+            TextView countdown=liveChip(DepartureCountdown.label(d.when,System.currentTimeMillis(),delay),delay);
+            countdown.setGravity(Gravity.CENTER);
+            countdown.setTextSize(16);
+            panel.addView(countdown,new LinearLayout.LayoutParams(-1,-2));
+            countdownLabels.add(new CountdownLabel(d,countdown));
             panel.setContentDescription("Linia "+d.line+". Kierunek "+d.headsign+
                 ". Przystanek "+stopLabel(d.stop)+". Odjazd "+time(d.when)+". "+liveLabel);
             panel.setClickable(true);
@@ -376,6 +435,28 @@ public class NearbyDeparturesActivity extends ThemedActivity {
             section.addView(panel);
         }
         results.addView(section);
+    }
+    private void updateCountdowns(){
+        long now=System.currentTimeMillis();
+        for(CountdownLabel label:countdownLabels){
+            Integer delay=label.departure.confirmedDelayMinutes(now);
+            label.view.setText(DepartureCountdown.label(label.departure.when,now,delay));
+        }
+    }
+    private void stopCountdowns(){
+        ui.removeCallbacks(countdownTick);
+        countdownLabels.clear();
+    }
+    private void startCountdowns(){
+        ui.removeCallbacks(countdownTick);
+        updateCountdowns();
+        if(screenVisible && !destroyed && !countdownLabels.isEmpty())
+            ui.postDelayed(countdownTick,30000L);
+    }
+    @Override protected void onStart(){
+        super.onStart();
+        screenVisible=true;
+        startCountdowns();
     }
     private void route(GtfsNearby.Departure d){
         StringBuilder text=new StringBuilder();
@@ -394,6 +475,10 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         catch(Exception e){status.setText("Nie ma przeglądarki do otwarcia rozkładu.");}
     }
     @Override protected void onStop(){
+        screenVisible=false;
+        ui.removeCallbacks(countdownTick);
+        lastFix=null;lastFixAt=0L;
+        if(refresh!=null)refresh.setEnabled(false);
         boolean searching=locating || (progress!=null && progress.getVisibility()==View.VISIBLE);
         stopGps();
         if(searching){
@@ -404,5 +489,5 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         }
         super.onStop();
     }
-    @Override protected void onDestroy(){destroyed=true;generation++;stopGps();ui.removeCallbacksAndMessages(null);work.shutdownNow();super.onDestroy();}
+    @Override protected void onDestroy(){destroyed=true;generation++;stopCountdowns();stopGps();ui.removeCallbacksAndMessages(null);work.shutdownNow();super.onDestroy();}
 }
