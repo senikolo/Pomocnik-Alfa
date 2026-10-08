@@ -273,14 +273,34 @@ public class NearbyDeparturesActivity extends ThemedActivity {
             for(GtfsNearby.Stop st:platforms)
                 if(st.code!=null&&!st.code.trim().isEmpty())numbers.add(st.code.trim());
             LinearLayout stopPanel=NativeUi.card(this);
-            TextView stopName=NativeUi.text(this,closest.name,19,true);
+            // The nearest-stop summary uses exactly the same stop/platform palette
+            // as each departure row. Names are allowed two lines; directions are not.
+            TextView stopName=stopChip(closest.name);
+            stopName.setSingleLine(false);
+            stopName.setMaxLines(2);
+            stopName.setEllipsize(TextUtils.TruncateAt.END);
+            stopName.setTextSize(18);
             stopPanel.addView(stopName);
-            NativeUi.addSpacer(stopPanel,this,4);
+            NativeUi.addSpacer(stopPanel,this,6);
             String posts=numbers.isEmpty()?"Numer stanowiska: brak w danych":
-                "Stanowiska: "+android.text.TextUtils.join("  ·  ",numbers);
-            TextView postNumber=NativeUi.text(this,posts,numbers.isEmpty()?14:18,!numbers.isEmpty());
-            stopPanel.addView(postNumber);
-            NativeUi.addSpacer(stopPanel,this,3);
+                "Stanowiska: "+android.text.TextUtils.join(", ",numbers);
+            if(numbers.isEmpty()){
+                stopPanel.addView(NativeUi.muted(this,posts,14));
+            }else{
+                HorizontalScrollView scroller=new HorizontalScrollView(this);
+                scroller.setHorizontalScrollBarEnabled(false);
+                LinearLayout row=new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                int p=0;
+                for(String number:numbers){
+                    if(p++>0)horizontalGap(row,6);
+                    TextView chip=platformChip("Stan. "+number);
+                    row.addView(chip,new LinearLayout.LayoutParams(-2,-2));
+                }
+                scroller.addView(row);
+                stopPanel.addView(scroller);
+            }
+            NativeUi.addSpacer(stopPanel,this,4);
             stopPanel.addView(NativeUi.muted(this,Math.round(closest.distance)+" m w linii prostej",14));
             stopPanel.setContentDescription(closest.name+". "+posts+". "+Math.round(closest.distance)+" metrów.");
             stopCard.addView(stopPanel);
