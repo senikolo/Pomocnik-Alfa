@@ -56,8 +56,10 @@ public class NearbyDeparturesActivity extends ThemedActivity {
     private final List<CountdownLabel> countdownLabels=new ArrayList<>();
     private static class CountdownLabel {
         final GtfsNearby.Departure departure;
-        final TextView view;
-        CountdownLabel(GtfsNearby.Departure d,TextView v){departure=d;view=v;}
+        final TextView view,liveState;
+        CountdownLabel(GtfsNearby.Departure d,TextView v,TextView live){
+            departure=d;view=v;liveState=live;
+        }
     }
     private final Runnable countdownTick=new Runnable(){
         @Override public void run(){
@@ -426,7 +428,7 @@ public class NearbyDeparturesActivity extends ThemedActivity {
             countdown.setGravity(Gravity.CENTER);
             countdown.setTextSize(16);
             panel.addView(countdown,new LinearLayout.LayoutParams(-1,-2));
-            countdownLabels.add(new CountdownLabel(d,countdown));
+            countdownLabels.add(new CountdownLabel(d,countdown,status));
             panel.setContentDescription("Linia "+d.line+". Kierunek "+d.headsign+
                 ". Przystanek "+stopLabel(d.stop)+". Odjazd "+time(d.when)+". "+liveLabel);
             panel.setClickable(true);
@@ -441,6 +443,10 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         for(CountdownLabel label:countdownLabels){
             Integer delay=label.departure.confirmedDelayMinutes(now);
             label.view.setText(DepartureCountdown.label(label.departure.when,now,delay));
+            String description=delay==null?"Rozkładowo":
+                delay>0?"+"+delay+" min · LIVE":
+                delay<0?delay+" min · LIVE":"Bez opóźnienia · LIVE";
+            label.liveState.setText(description);
         }
     }
     private void stopCountdowns(){
