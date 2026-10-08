@@ -1,0 +1,388 @@
+name: Build PA 1.7.59 A10 Czynaczas In-App LIVE TEST
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+jobs:
+  build:
+    if: ${{ github.event.issue.title == 'TRIGGER PA 1.7.59 CZYNA INAPP LIVE BUILD' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Restore current source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          mkdir artifact
+          gh run download 37574069132 -R senikolo/Pomocnik-Alfa -n Pomocnik-Alfa-1.7.36-CZYTNIK-ALFA-SOURCE -D artifact
+          tar -xJf artifact/Pomocnik-Alfa-1.7.36-CZYTNIK-ALFA-SOURCE.tar.xz
+          test -d project
+          test -s project/app/src/main/res/raw/isrg_root_x1.pem
+
+      - name: Apply latest reader, radio and precise opt-in GPS
+        run: |
+          set -euxo pipefail
+          python helpers/czytnik-alfa/patch_modern_reader.py
+          python helpers/czytnik-alfa/patch_fullscreen_reader.py
+          python helpers/czytnik-alfa/patch_pdf_zoom_sepia.py
+
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          tv=Path('project/app/src/main/java/com/ispina/lokalnie/TvActivity.java')
+          s=tv.read_text()
+          repl={
+          'v -> startBroadcast("Россия 1", "1", true)':'v -> startDirectFallback("Россия 1", new String[]{"https://live.smotrim.ru/vgtrk/0/russia1-hd/index.m3u8","https://vgtrkregion-reg.cdnvideo.ru/vgtrk/0/russia1-hd/index.m3u8"})',
+          'v -> startBroadcast("Россия 24", "3", true)':'v -> startDirectFallback("Россия 24", new String[]{"https://live.smotrim.ru/vgtrk/0/russia24-hd/index.m3u8","https://vgtrkregion-reg.cdnvideo.ru/vgtrk/0/russia24-hd/720p.m3u8","https://vgtrkregion-reg.cdnvideo.ru/vgtrk/0/russia24-hd/1080p.m3u8"})',
+          'v -> startBroadcast("Россия Культура", "4", true)':'v -> startDirectFallback("Россия Культура", new String[]{"https://live.smotrim.ru/vgtrk/0/kultura-hd/index.m3u8","https://vgtrkregion-reg.cdnvideo.ru/vgtrk/0/kultura-hd/index.m3u8"})',
+          'v -> startBroadcast("НТВ Сериал", "ntvseries", true)':'v -> startDirectFallback("НТВ Сериал", new String[]{"https://cdn.ntv.ru/th_serial/playlist.m3u8"})',
+          'v -> startBroadcast("СТС / STS", "ctc_ext", true)':'v -> startDirectFallback("СТС / STS", new String[]{"https://zabava-htlive.cdn.ngenix.net/hls/CH_STS/variant.m3u8","https://zabava-htlive.cdn.ngenix.net/hls/CH_STS_2/variant.m3u8"})',
+          'v -> startBroadcast("НТВ / NTV", "ntv", true)':'v -> startDirectFallback("НТВ / NTV", new String[]{"https://cdn-dvr.ntv.ru/ntv0_hd/index.m3u8","https://cdn.ntv.ru/ntv-spb/index.m3u8","https://cdn.ntv.ru/vitrina/index.m3u8"})',
+          'v -> startBroadcast("World Fashion Channel Russia", "wfc", true)':'v -> startDirectFallback("World Fashion Channel Russia", new String[]{"https://cdn.wfc.tv/cdn/stream-rus.m3u8"})',
+          'v -> startBroadcast("НТВ Стиль / NTV Style", "ntvstyle", true)':'v -> startDirectFallback("НТВ Стиль / NTV Style", new String[]{"https://cdn.ntv.ru/th_style/playlist.m3u8"})'}
+          for a,b in repl.items():
+              if s.count(a)!=1:
+                  raise SystemExit(f'missing selector: {a}')
+              s=s.replace(a,b)
+          tv.write_text(s)
+
+          aviation = r'''package com.ispina.lokalnie;
+
+          import android.content.Intent;
+          import android.content.SharedPreferences;
+          import android.os.Bundle;
+          import android.os.Handler;
+          import android.os.Looper;
+          import android.view.Gravity;
+          import android.widget.Button;
+          import android.widget.LinearLayout;
+          import android.widget.ScrollView;
+          import android.widget.TextView;
+
+          import androidx.core.content.ContextCompat;
+
+          import com.ispina.lokalnie.radio.RadioService;
+
+          public class AviationActivity extends ThemedActivity {
+              private static final String EPKK_NAME = "Kraków Airport EPKK • Tower / Approach";
+              private static final String EPKK_URL  = "https://d.liveatc.net/epkk_app";
+              private static final String EPWA_NAME = "Warszawa Chopina EPWA • Approach";
+              private static final String EPWA_URL  = "https://d.liveatc.net/epwa_app";
+
+              private final Handler handler = new Handler(Looper.getMainLooper());
+              private TextView status;
+              private Button krkButton, wawButton, stopButton;
+
+              private final Runnable stateTick = new Runnable() {
+                  @Override public void run() {
+                      refreshState();
+                      handler.postDelayed(this, 1200);
+                  }
+              };
+
+              @Override protected void onCreate(Bundle state) {
+                  super.onCreate(state);
+                  buildUi();
+                  handler.post(stateTick);
+              }
+
+              private void buildUi() {
+                  ScrollView scroll = new ScrollView(this);
+                  scroll.setFillViewport(true);
+                  scroll.setBackgroundColor(NativeUi.bg(this));
+
+                  LinearLayout root = new LinearLayout(this);
+                  root.setOrientation(LinearLayout.VERTICAL);
+                  root.setPadding(NativeUi.dp(this,14), NativeUi.dp(this,14), NativeUi.dp(this,14), NativeUi.dp(this,28));
+                  scroll.addView(root);
+
+                  LinearLayout head = new LinearLayout(this);
+                  head.setGravity(Gravity.CENTER_VERTICAL);
+                  Button back = NativeUi.button(this,"‹",true);
+                  back.setTextSize(24);
+                  back.setOnClickListener(v -> finish());
+                  head.addView(back,new LinearLayout.LayoutParams(NativeUi.dp(this,48),NativeUi.dp(this,46)));
+                  TextView title = NativeUi.text(this,"Nasłuch pilotów",24,true);
+                  title.setPadding(NativeUi.dp(this,12),0,0,0);
+                  head.addView(title,new LinearLayout.LayoutParams(0,-2,1));
+                  root.addView(head);
+
+                  LinearLayout intro = NativeUi.card(this);
+                  intro.addView(NativeUi.text(this,"✈️ Wybierz lotnisko",19,true));
+                  NativeUi.addSpacer(intro,this,5);
+                  intro.addView(NativeUi.muted(this,
+                          "Nasłuch działa bez otwierania przeglądarki. Wybierz Kraków-Balice albo Warszawę-Chopina. Dźwięk może grać dalej w tle i jest sterowany z powiadomienia.",13));
+                  NativeUi.addSpacer(intro,this,10);
+                  status = NativeUi.muted(this,"Wybierz transmisję.",14);
+                  intro.addView(status);
+                  root.addView(intro);
+
+                  LinearLayout krk = NativeUi.card(this);
+                  krk.addView(NativeUi.text(this,"Kraków · EPKK",19,true));
+                  NativeUi.addSpacer(krk,this,4);
+                  krk.addView(NativeUi.muted(this,
+                          "LiveATC EPKK APP • Kraków-Balice.",13));
+                  NativeUi.addSpacer(krk,this,10);
+                  krkButton = NativeUi.button(this,"▶ Włącz Kraków EPKK",false);
+                  krkButton.setOnClickListener(v -> startListening(EPKK_NAME, EPKK_URL));
+                  krk.addView(krkButton,new LinearLayout.LayoutParams(-1,NativeUi.dp(this,52)));
+                  root.addView(krk);
+
+                  LinearLayout waw = NativeUi.card(this);
+                  waw.addView(NativeUi.text(this,"Warszawa · EPWA",19,true));
+                  NativeUi.addSpacer(waw,this,4);
+                  waw.addView(NativeUi.muted(this,
+                          "LiveATC EPWA APP • Warszawa-Chopina.",13));
+                  NativeUi.addSpacer(waw,this,10);
+                  wawButton = NativeUi.button(this,"▶ Włącz Warszawę EPWA",false);
+                  wawButton.setOnClickListener(v -> startListening(EPWA_NAME, EPWA_URL));
+                  waw.addView(wawButton,new LinearLayout.LayoutParams(-1,NativeUi.dp(this,52)));
+                  root.addView(waw);
+
+                  LinearLayout controls = NativeUi.card(this);
+                  controls.addView(NativeUi.text(this,"Sterowanie",17,true));
+                  NativeUi.addSpacer(controls,this,8);
+                  stopButton = NativeUi.button(this,"■ Zatrzymaj nasłuch",true);
+                  stopButton.setOnClickListener(v -> stopListening());
+                  controls.addView(stopButton,new LinearLayout.LayoutParams(-1,NativeUi.dp(this,50)));
+                  NativeUi.addSpacer(controls,this,8);
+                  controls.addView(NativeUi.muted(this,
+                          "Jeśli wybrany feed LiveATC ma chwilowo status DOWN, drugi może nadal działać. Między komunikatami w eterze mogą występować dłuższe chwile ciszy.",12));
+                  root.addView(controls);
+
+                  setContentView(scroll);
+              }
+
+              private void startListening(String name, String url) {
+                  if (status != null) status.setText("Łączenie z " + name + "…");
+                  Intent i = new Intent(this, RadioService.class)
+                          .setAction(RadioService.ACTION_PLAY)
+                          .putExtra("name", name)
+                          .putExtra("url", url);
+                  try {
+                      ContextCompat.startForegroundService(this, i);
+                  } catch (Throwable e) {
+                      if (status != null) status.setText("Nie udało się uruchomić nasłuchu.");
+                  }
+              }
+
+              private void stopListening() {
+                  try {
+                      startService(new Intent(this, RadioService.class).setAction(RadioService.ACTION_STOP));
+                  } catch (Throwable ignored) {}
+                  if (status != null) status.setText("Nasłuch zatrzymany.");
+                  refreshButtons("");
+              }
+
+              private void refreshState() {
+                  SharedPreferences p = getSharedPreferences("radio_state", MODE_PRIVATE);
+                  String name = p.getString("name", "");
+                  boolean playing = p.getBoolean("playing", false);
+                  boolean desired = p.getBoolean("desired", false);
+                  String error = p.getString("error", "");
+
+                  refreshButtons(name);
+
+                  if (playing && (EPKK_NAME.equals(name) || EPWA_NAME.equals(name))) {
+                      if (status != null) status.setText("🔴 " + name + " • nasłuch działa");
+                  } else if (error != null && !error.trim().isEmpty() && (EPKK_NAME.equals(name) || EPWA_NAME.equals(name))) {
+                      if (status != null) status.setText("Błąd połączenia. Wybierz transmisję ponownie albo spróbuj drugiego lotniska.");
+                  } else if (desired && (EPKK_NAME.equals(name) || EPWA_NAME.equals(name))) {
+                      if (status != null) status.setText("Łączenie z " + name + "…");
+                  }
+              }
+
+              private void refreshButtons(String name) {
+                  if (krkButton != null) krkButton.setText(EPKK_NAME.equals(name) ? "▶ Kraków EPKK • wybrany" : "▶ Włącz Kraków EPKK");
+                  if (wawButton != null) wawButton.setText(EPWA_NAME.equals(name) ? "▶ Warszawa EPWA • wybrana" : "▶ Włącz Warszawę EPWA");
+              }
+
+              @Override protected void onDestroy() {
+                  handler.removeCallbacksAndMessages(null);
+                  super.onDestroy();
+              }
+          }
+          '''
+          Path('project/app/src/main/java/com/ispina/lokalnie/AviationActivity.java').write_text(aviation)
+
+          p=Path('project/app/build.gradle')
+          x=p.read_text()
+          x=re.sub(r'\bminSdk\s+\d+','minSdk 29',x,count=1)
+          x=re.sub(r'\bversionCode\s+\d+','versionCode 10760',x,count=1)
+          x=re.sub(r"\bversionName\s+'[^']+'","versionName '1.7.59-A10'",x,count=1)
+          p.write_text(x)
+
+          m=Path('project/app/src/main/java/com/ispina/lokalnie/MainActivity.java')
+          m.write_text(re.sub(r'POMOCNIK ALFA 1\.7\.\d+','POMOCNIK ALFA 1.7.59 A10',m.read_text()))
+          PY
+          python helpers/pa-1745/patch_radio_menu.py
+          python helpers/pa-1745/patch_weather_gps.py
+          python helpers/pa-1746/patch_moscow_airport.py
+          python helpers/pa-1747/patch_precise_gps.py
+          python helpers/pa-1748/patch_reader.py
+          python helpers/pa-1748/patch_gps.py
+          python helpers/pa-1748/patch_safety.py
+          python helpers/pa-1749/patch_transit_smart.py
+          python helpers/pa-1750/patch_weather_names.py
+          python helpers/pa-1751/patch_weather_hero.py
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('project/app/src/main/java/com/ispina/lokalnie/MainActivity.java')
+          s=p.read_text()
+          assert 'POMOCNIK ALFA 1.7.51' in s
+          p.write_text(s.replace('POMOCNIK ALFA 1.7.51','POMOCNIK ALFA 1.7.55'))
+          PY
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('project/app/build.gradle')
+          s=p.read_text()
+          key="applicationId 'com.senikolo.pomocniknowy'"
+          assert s.count(key)==1
+          p.write_text(s.replace(key, "applicationId 'com.senikolo.pomocniknowy.preview1759'"))
+          p=Path('project/app/src/main/AndroidManifest.xml')
+          s=p.read_text()
+          key='android:label="Pomocnik Alfa"'
+          assert s.count(key)==1
+          p.write_text(s.replace(key,'android:label="Pomocnik Alfa 1.7.59 TEST"'))
+          PY
+
+          python helpers/pa-1754/patch_mld_realtime.py
+          python helpers/pa-1755/patch_countdown.py
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('project/app/src/main/java/com/ispina/lokalnie/MainActivity.java')
+          t=p.read_text(encoding='utf-8')
+          assert 'POMOCNIK ALFA 1.7.55' in t
+          p.write_text(t.replace('POMOCNIK ALFA 1.7.55','POMOCNIK ALFA 1.7.56'),encoding='utf-8')
+          PY
+          python helpers/pa-1757/patch_next_search.py
+          python helpers/pa-1758/patch_line_stop.py
+          python helpers/pa-1759/patch_inapp_live.py
+          grep -n "EPKK_URL\|EPWA_URL\|Włącz Kraków\|Włącz Warszawę" project/app/src/main/java/com/ispina/lokalnie/AviationActivity.java
+          grep -n "versionCode 10760" project/app/build.gradle
+          grep -n "minSdk 29" project/app/build.gradle
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Android SDK
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$(find /usr/local/lib/android/sdk/cmdline-tools -type f -name sdkmanager | head -1)"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+
+      - name: Static audit smoke tests
+        run: |
+          set -euxo pipefail
+          python helpers/pa-1749/test_smart_offer.py
+          python helpers/pa-1752/test_delays.py
+          python helpers/pa-1755/test_countdown.py
+          python helpers/pa-1756/test_transit_filters.py
+          python helpers/pa-1757/test_departure_search.py
+          python helpers/pa-1757/test_ui_search.py
+          python helpers/pa-1758/test_deeplink.py
+          python helpers/pa-1759/test_inapp_live.py
+          grep -F 'LineDeparturesActivity' project/app/src/main/AndroidManifest.xml
+          grep -F 'CzynaczasLinks.forStop' project/app/src/main/java/com/ispina/lokalnie/LineDeparturesActivity.java
+          grep -F 'lineStopDepartures(Context ctx' project/app/src/main/java/com/ispina/lokalnie/transit/GtfsNearby.java
+          python helpers/pa-1754/test_mld_realtime_java.py
+          grep -F 'addModeFilters(warsaw)' project/app/src/main/java/com/ispina/lokalnie/NearbyDeparturesActivity.java
+          grep -F 'if(!stopId.isEmpty()&&!stopId.equals(d.stop.id))continue;' project/app/src/main/java/com/ispina/lokalnie/transit/MldRealtime.java
+          grep -F 'DepartureCountdown.label(' project/app/src/main/java/com/ispina/lokalnie/NearbyDeparturesActivity.java
+          grep -F 'Odśwież odjazdy' project/app/src/main/java/com/ispina/lokalnie/NearbyDeparturesActivity.java
+          grep -F 'screenVisible && !destroyed' project/app/src/main/java/com/ispina/lokalnie/NearbyDeparturesActivity.java
+          grep -F 'MldRealtime.apply(ctx,result.departures)' project/app/src/main/java/com/ispina/lokalnie/transit/GtfsNearby.java
+          grep -F 'item.serviceDate=date.toString()' project/app/src/main/java/com/ispina/lokalnie/transit/GtfsNearby.java
+          grep -F 'public static String applyJson(' project/app/src/main/java/com/ispina/lokalnie/transit/MldRealtime.java
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          source=json.loads(Path('data/pa-gtfs/live.json').read_text())
+          assert source['schema']==1
+          assert not source['mld_gtfs_rt_json'], "LIVE must not be enabled before authorized endpoint verification"
+          print("PASS: safe disabled default and matching integration")
+          PY
+          grep -F 'Stanowisko '+ project/app/src/main/java/com/ispina/lokalnie/NearbyDeparturesActivity.java >/dev/null || true
+          grep -F 'setSingleLine(true)' project/app/src/main/java/com/ispina/lokalnie/NearbyDeparturesActivity.java
+          grep -F 'setAutoSizeTextTypeUniformWithConfiguration' project/app/src/main/java/com/ispina/lokalnie/NearbyDeparturesActivity.java
+          grep -F 'time4bus.com/' project/app/src/main/java/com/ispina/lokalnie/NearbyDeparturesActivity.java
+          grep -F 'Rozkładowo' project/app/src/main/java/com/ispina/lokalnie/NearbyDeparturesActivity.java
+          grep -F 'confirmedDelayMinutes' project/app/src/main/java/com/ispina/lokalnie/transit/GtfsNearby.java
+          grep -F 'stop_code' helpers/pa-1749/GtfsNearby.java
+          grep -F 'route_type' helpers/pa-1749/GtfsNearby.java
+          grep -F 'Pociągi SKM' project/app/src/main/java/com/ispina/lokalnie/NearbyDeparturesActivity.java
+          grep -F 'weatherPlaceLabel()' project/app/src/main/java/com/ispina/lokalnie/WeatherActivity.java
+          grep -F 'stanowiska:' project/app/src/main/java/com/ispina/lokalnie/NearbyDeparturesActivity.java
+          grep -F 'platformsByName.size()>=5' project/app/src/main/java/com/ispina/lokalnie/transit/GtfsNearby.java
+          grep -F 'String quick="Twoja okolica"' project/app/src/main/java/com/ispina/lokalnie/WeatherActivity.java
+          if grep -F 'GPS %.4f' project/app/src/main/java/com/ispina/lokalnie/GpsMicroArea.java; then exit 1; fi
+          grep -F 'NearbyDeparturesActivity' project/app/src/main/AndroidManifest.xml
+          grep -F 'SmartOferta' helpers/pa-1749/SmartOffer.java || true
+          grep -F 'Odjazdy stąd' project/app/src/main/java/com/ispina/lokalnie/MainActivity.java
+          grep -F 'MAX_EPUB_UNPACKED_BYTES' project/app/src/main/java/com/ispina/lokalnie/ReaderActivity.java
+          grep -F 'updatePdfFullscreenControls()' project/app/src/main/java/com/ispina/lokalnie/ReaderActivity.java
+          grep -F 'gpsRefineButton' project/app/src/main/java/com/ispina/lokalnie/WeatherActivity.java
+          grep -F 'lastRequestTimeMs<3000L' project/app/src/main/java/com/ispina/lokalnie/GpsMicroArea.java
+          grep -F 'ExistingWorkPolicy.REPLACE' project/app/src/main/java/com/ispina/lokalnie/deals/DealAlerts.java
+          python - <<'PY'
+          from pathlib import Path
+          m=Path('project/app/src/main/AndroidManifest.xml').read_text()
+          assert 'android:name=".radio.RadioService"\n            android:exported="false"' in m
+          s=Path('project/app/src/main/java/com/ispina/lokalnie/SubscriptionsActivity.java').read_text()
+          assert 'add.setOnClickListener(v->showAdd())' in s
+          assert 'restoreSubscriptionReminders()' in s
+          assert 'POMOCNIK ALFA 1.7.59' in Path('project/app/src/main/java/com/ispina/lokalnie/MainActivity.java').read_text()
+          print('PASS: static audit checks')
+          PY
+
+      - name: Build signed test APK
+        working-directory: project
+        run: |
+          set -euxo pipefail
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug -x lint --stacktrace
+          APK="$(find app/build/outputs/apk/debug -name '*.apk' | head -1)"
+          test -s "$APK"
+          cp "$APK" ../Pomocnik-Alfa-1.7.59-A10-CZYNA-INAPP-LIVE-TEST-SIGNED.apk
+
+      - name: Verify package
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.59-A10-CZYNA-INAPP-LIVE-TEST-SIGNED.apk | tee badging.txt
+          grep "versionCode='10760'" badging.txt
+          grep "sdkVersion:'29'" badging.txt
+          unzip -t Pomocnik-Alfa-1.7.59-A10-CZYNA-INAPP-LIVE-TEST-SIGNED.apk >/dev/null
+          "$BT/apksigner" verify --verbose --print-certs Pomocnik-Alfa-1.7.59-A10-CZYNA-INAPP-LIVE-TEST-SIGNED.apk
+          sha256sum Pomocnik-Alfa-1.7.59-A10-CZYNA-INAPP-LIVE-TEST-SIGNED.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.59-A10-CZYNA-INAPP-LIVE-TEST-SIGNED
+          path: Pomocnik-Alfa-1.7.59-A10-CZYNA-INAPP-LIVE-TEST-SIGNED.apk
+          retention-days: 7
+
+      - name: Report
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ST: ${{ job.status }}
+        run: gh issue create --title "PA 1.7.59 GROUPS WEATHER RESULT $ST $GITHUB_RUN_ID" --body "Build $ST. Run $GITHUB_RUN_ID"
