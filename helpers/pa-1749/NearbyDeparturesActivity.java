@@ -244,6 +244,14 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         disruptions.setOnClickListener(v->open(warsaw?
             "https://www.wtp.waw.pl/utrudnienia/":"https://kolejemalopolskie.com.pl/pl/utrudnienia"));
         service.addView(disruptions,new LinearLayout.LayoutParams(-1,dp(52)));
+        NativeUi.addSpacer(service,this,7);
+        Button externalLive=NativeUi.button(this,
+            warsaw?"Sprawdź odjazdy LIVE w Time4BUS":"Sprawdź LIVE w KiedyPrzyjedzie",true);
+        externalLive.setOnClickListener(v->open(warsaw?
+            "https://time4bus.com/":"https://kolejemalopolskie.kiedyprzyjedzie.pl/"));
+        service.addView(externalLive,new LinearLayout.LayoutParams(-1,dp(52)));
+        service.addView(NativeUi.muted(this,
+            "To zewnętrzny serwis z własnymi danymi na żywo. PA nie pobiera jeszcze jego prognoz.",12));
         results.addView(service);
     }
     /** Consistent meaning for each color, with separate high-contrast night variants. */
