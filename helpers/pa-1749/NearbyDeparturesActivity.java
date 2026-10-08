@@ -122,6 +122,16 @@ public class NearbyDeparturesActivity extends ThemedActivity {
         NativeUi.addSpacer(card,this,6);
         status=NativeUi.muted(this,"Dotknij przycisku. Lokalizacja nie działa w tle.",14);
         status.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);card.addView(status);root.addView(card);
+        NativeUi.addSpacer(root,this,9);
+        LinearLayout manual=NativeUi.card(this);
+        manual.addView(NativeUi.text(this,"🔎 Wybierz linię i przystanek",19,true));
+        manual.addView(NativeUi.muted(this,
+            "Wpisz numer, np. 517 albo A7, i wybierz dowolny przystanek z trasy. Działa bez lokalizacji GPS.",14));
+        NativeUi.addSpacer(manual,this,8);
+        Button findLine=NativeUi.button(this,"Wyszukaj linię bez GPS",true);
+        findLine.setOnClickListener(v->startActivity(new Intent(this,LineDeparturesActivity.class)));
+        manual.addView(findLine,new LinearLayout.LayoutParams(-1,dp(54)));
+        root.addView(manual);
         progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
         progress.setIndeterminate(true);progress.setVisibility(View.GONE);root.addView(progress,new LinearLayout.LayoutParams(-1,dp(4)));
         results=new LinearLayout(this);results.setOrientation(LinearLayout.VERTICAL);root.addView(results);
