@@ -11,7 +11,7 @@ checks=[
     "searchQuery=s.toString().trim();",
     "applyLivePalette(label.liveState,delay)",
     "refreshNearestFromVisible(now)",
-    "if(searching || localVisible<12)",
+    "(searching || localVisible<12)",
 ]
 for token in checks:
     assert token in ui, "Missing search/next safety: "+token
