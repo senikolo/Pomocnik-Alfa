@@ -32,5 +32,8 @@ jobs:
           done
           echo "--- AndroidManifest permissions ---"
           grep -n -E 'permission|WeatherActivity|RadioActivity|MainActivity|AviationActivity' project/app/src/main/AndroidManifest.xml || true
+          echo "--- START WeatherRepository ---"
+          nl -ba "$base/weather/WeatherRepository.java" | head -450
+          echo "--- END WeatherRepository ---"
           echo "--- app/build.gradle ---"
           head -70 project/app/build.gradle
