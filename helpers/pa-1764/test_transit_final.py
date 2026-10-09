@@ -25,7 +25,7 @@ assert 'estimate<now-10000L' in ui
 assert 'd.confirmedDelayMinutes(now)' in ui
 assert 'd.hasGpsEstimate(now)' in ui
 assert 'if(!TransitWowUi.shouldDisplay(d,now,wowOnlyLive))continue;' in near
-assert 'sorted.sort(Comparator.comparingLong(d->TransitWowUi.expected(d,now)))' in near
+assert 'sorted.sort(java.util.Comparator.comparingLong(d->TransitWowUi.expected(d,now)))' in near
 assert "wowOnlyLive" in near and "Tylko LIVE" in near
 assert "pa_transit_favourite" in near
 assert "requestGpsEstimates(data)" in near
