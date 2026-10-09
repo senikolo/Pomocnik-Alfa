@@ -247,7 +247,7 @@ s=once(s,'    private void addModeFilters(boolean warsaw){',
                     String label="Linia "+route.line+" · aktywne pojazdy: "+snapshot.vehicles;
                     if(snapshot.vehicles>0&&!Double.isNaN(snapshot.nearestMeters))
                         label+=" · najbliższy "+Math.round(snapshot.nearestMeters)+" m w linii prostej";
-                    live.setText(label+"\nŹródło: Miasto Stołeczne Warszawa · mkuran.pl.");
+                    live.setText(label+"\\nŹródło: Miasto Stołeczne Warszawa · mkuran.pl.");
                 }
             });
         });
