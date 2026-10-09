@@ -345,7 +345,7 @@ jobs:
           python /tmp/test-wow-1763.py
           sed -e 's/versionCode 10764/versionCode 10766/' -e 's/if(departure.hasGpsEstimate(now))/if(d.hasGpsEstimate(now))/' helpers/pa-1763/test_gps_eta.py > /tmp/test-gps-1764.py
           python /tmp/test-gps-1764.py
-          sed 's/versionCode 10765/versionCode 10766/' helpers/pa-1764/test_transit_final.py > /tmp/test-palette-1765.py
+          sed -e 's/versionCode 10765/versionCode 10766/' -e 's/1.7.64-A10/1.7.65-A10/' helpers/pa-1764/test_transit_final.py > /tmp/test-palette-1765.py
           python /tmp/test-palette-1765.py
           python helpers/pa-1765/test_accessibility_directions.py
           mkdir -p /tmp/pa-1760-javatest
