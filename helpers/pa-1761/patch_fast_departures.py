@@ -128,9 +128,9 @@ s=once(s,'        NativeUi.addSpacer(root,this,9);\n        LinearLayout manual=
 s=once(s,'        stopGps();locating=true;best=null;generation++;',
        '        usingSavedFix=false;stopGps();locating=true;best=null;generation++;',
        "clear manual fix flag")
-s=once(s,'        lastFix=null;lastFixAt=0L;\n        if(refresh!=null)refresh.setEnabled(false);',
-       '        if(refresh!=null)refresh.setEnabled(false);',
-       "keep previous result during indoor search")
+# First occurrence belongs to requestFix; keep the lifecycle teardown intact.
+s=s.replace('        lastFix=null;lastFixAt=0L;\n        if(refresh!=null)refresh.setEnabled(false);',
+            '        if(refresh!=null)refresh.setEnabled(false);',1)
 s=once(s,'        if(locating){timeout=this::finishFix;ui.postDelayed(timeout,16000);}',
        '        if(locating){timeout=this::finishFix;ui.postDelayed(timeout,6500);}',
        "short location wait")
