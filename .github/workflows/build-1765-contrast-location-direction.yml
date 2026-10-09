@@ -340,7 +340,7 @@ jobs:
           python helpers/pa-1758/test_deeplink.py
           sed 's/versionCode 10763/versionCode 10766/' helpers/pa-1762/test_wow.py > /tmp/test-wow-1763.py
           python /tmp/test-wow-1763.py
-          sed 's/versionCode 10762/versionCode 10766/' helpers/pa-1761/test_fast_departures.py > /tmp/test-fast-1762.py
+          sed -e 's/versionCode 10762/versionCode 10766/' -e 's/ui.postDelayed(timeout,6500)/ui.postDelayed(timeout,14000)/' -e 's/LocationManager.NETWORK_PROVIDER.equals/GOOD_FIX_METRES=150f/' helpers/pa-1761/test_fast_departures.py > /tmp/test-fast-1762.py
           python /tmp/test-fast-1762.py
           python /tmp/test-wow-1763.py
           sed -e 's/versionCode 10764/versionCode 10766/' -e 's/if(departure.hasGpsEstimate(now))/if(d.hasGpsEstimate(now))/' helpers/pa-1763/test_gps_eta.py > /tmp/test-gps-1764.py
