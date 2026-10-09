@@ -1,6 +1,8 @@
 name: Build PA 1.7.66 Audit Fixes Stable
 on:
   workflow_dispatch:
+  issues:
+    types: [opened]
 
 permissions:
   contents: read
@@ -8,6 +10,7 @@ permissions:
 
 jobs:
   build:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.issue.title == 'TRIGGER PA 1.7.66 AUDIT STABLE 20261009' }}
     runs-on: ubuntu-latest
     timeout-minutes: 55
     env:
