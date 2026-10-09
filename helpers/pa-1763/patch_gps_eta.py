@@ -36,6 +36,9 @@ change(fast,
         }
         try(BufferedReader reader=new BufferedReader(new InputStreamReader(
                 source,StandardCharsets.UTF_8))){''',"ACTUAL packaged index naming")
+change(fast,'import java.io.InputStreamReader;',
+    'import java.io.InputStreamReader;\\nimport java.io.InputStream;',
+    "stream import for plain Android asset")
 ui=root/"TransitWowUi.java"
 change(ui,'        public final TextView status;',
 '''        public final TextView status;
