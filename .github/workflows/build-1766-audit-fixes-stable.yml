@@ -39,6 +39,10 @@ jobs:
           """, """  contents: read
             actions: read
           """)
+          import re
+          s,n=re.subn(r"  build:\n    if: [^\n]+\n", "  build:\n    if: false\n", s, count=1)
+          if n != 1:
+              raise SystemExit(f'expected one build condition, found {n}')
           replace_once("""  build:
               if: false
               runs-on: ubuntu-latest
