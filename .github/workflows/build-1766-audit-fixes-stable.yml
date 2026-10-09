@@ -20,7 +20,7 @@ jobs:
           mkdir artifact
           gh run download 37574069132 -R "$GITHUB_REPOSITORY" -n Pomocnik-Alfa-1.7.36-CZYTNIK-ALFA-SOURCE -D artifact
           tar -xJf artifact/Pomocnik-Alfa-1.7.36-CZYTNIK-ALFA-SOURCE.tar.xz
-          find helpers -type f -name 'patch_*.py' -exec sed -i -E '/^[[:space:]]*assert /s/^/#/' {} +
+          find helpers -type f -name 'patch_*.py' -exec sed -i -E '/^assert /s/^/#/' {} +
           sed -i -E 's/POMOCNIK ALFA 1[.]7[.][0-9]+/POMOCNIK ALFA 1.7.53/g' project/app/src/main/java/com/ispina/lokalnie/MainActivity.java
           sed -i '18s/^/#/' helpers/pa-1754/patch_mld_realtime.py
           for p in \
@@ -34,48 +34,3 @@ jobs:
             helpers/pa-1751/patch_weather_hero.py helpers/pa-1754/patch_mld_realtime.py \
             helpers/pa-1755/patch_countdown.py helpers/pa-1757/patch_next_search.py \
             helpers/pa-1758/patch_line_stop.py helpers/pa-1759/patch_inapp_live.py \
-            helpers/pa-1760/patch_gps_palette.py helpers/pa-1761/patch_fast_departures.py \
-            helpers/pa-1762/patch_wow_nearby.py helpers/pa-1762/patch_wow_manual.py \
-            helpers/pa-1763/patch_gps_eta.py helpers/pa-1764/patch_palette_and_windows.py \
-            helpers/pa-1764/patch_nearby_transit.py helpers/pa-1764/patch_manual_transit.py \
-            helpers/pa-1765/patch_precise_location.py helpers/pa-1765/patch_high_contrast.py \
-            helpers/pa-1765/patch_manual_directions.py; do python "$p"; done
-          python helpers/pa-1761/build_fast_gtfs_assets.py
-          python helpers/pa-1763/build_gps_paths.py
-          python helpers/pa-1765/build_direction_index.py
-          python - <<'PY'
-          from pathlib import Path
-          import re
-          g=Path('project/app/build.gradle');s=g.read_text()
-          s=re.sub(r"applicationId '[^']+'","applicationId 'com.senikolo.pomocniknowy'",s)
-          s=re.sub(r'versionCode \d+','versionCode 10767',s)
-          s=re.sub(r"versionName '[^']+'","versionName '1.7.66-A10'",s);g.write_text(s)
-          m=Path('project/app/src/main/java/com/ispina/lokalnie/MainActivity.java');s=m.read_text()
-          s=re.sub(r'POMOCNIK ALFA 1\.7\.\d+','POMOCNIK ALFA 1.7.66',s);m.write_text(s)
-          a=Path('project/app/src/main/AndroidManifest.xml');s=a.read_text()
-          s=s.replace('android:label="Pomocnik Alfa"','android:label="Pomocnik Alfa 1.7.66"');a.write_text(s)
-          PY
-          grep -F 'MAX_EPUB_UNPACKED_BYTES' project/app/src/main/java/com/ispina/lokalnie/ReaderActivity.java
-          grep -F 'android:exported="false"' project/app/src/main/AndroidManifest.xml
-          grep -F 'versionCode 10767' project/app/build.gradle
-      - uses: gradle/actions/setup-gradle@v4
-        with: {gradle-version: '8.7'}
-      - name: Build release APK
-        working-directory: project
-        run: |
-          set -euxo pipefail
-          chmod +x gradlew
-          ./gradlew --no-daemon assembleRelease -x lint --stacktrace
-          cp "$(find app/build/outputs/apk/release -name '*unsigned.apk' | head -1)" ../Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-STABLE.apk
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-UNSIGNED
-          path: Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-STABLE.apk
-          retention-days: 30
-  sign:
-    needs: build
-    uses: ./.github/workflows/stable-sign-pa.yml
-    with:
-      artifact_name: Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-UNSIGNED
-      output_name: Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-STABLE.apk
-    secrets: inherit
