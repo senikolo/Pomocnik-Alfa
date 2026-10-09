@@ -40,7 +40,7 @@ jobs:
             actions: read
           """)
           replace_once("""  build:
-              if: ${{ github.event.issue.title == 'TRIGGER PA 1.7.65 PRECISE GPS DIRECTIONS BUILD' }}
+              if: false
               runs-on: ubuntu-latest
           """, """  build:
               runs-on: ubuntu-latest
