@@ -319,7 +319,7 @@ s=once(s,'    private void loadDepartures(){',
 '''    private static String folded(String name){
         String s=java.text.Normalizer.normalize(name==null?"":name,
             java.text.Normalizer.Form.NFD);
-        return s.replaceAll("\\p{M}+","").toLowerCase(Locale.ROOT).replace("ł","l");
+        return s.replaceAll("\\\\p{M}+","").toLowerCase(Locale.ROOT).replace("ł","l");
     }
     private void filterStops(){
         if(stops==null||stopFilter==null)return;
