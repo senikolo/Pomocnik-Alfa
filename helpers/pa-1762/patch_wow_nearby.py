@@ -22,7 +22,7 @@ s=replace_once(s,'    private LocationManager manager;',
     private boolean wowMode;
     private int wowLiveSerial;
     private LocationManager manager;''',"modern view state")
-s=replace_once(s,'                 render(found,fix);',
+s=replace_once(s,'                render(found,fix);',
     '                 renderWow(found,fix);',"use wow view")
 # keep legacy method available for audit/compatibility, but only new UI renders.
 s=replace_once(s,'        status.setText("Nie mogę wyświetlić aktualnych odjazdów: "+problem);',
