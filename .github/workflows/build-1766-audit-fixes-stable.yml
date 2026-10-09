@@ -20,6 +20,7 @@ jobs:
           mkdir artifact
           gh run download 37574069132 -R "$GITHUB_REPOSITORY" -n Pomocnik-Alfa-1.7.36-CZYTNIK-ALFA-SOURCE -D artifact
           tar -xJf artifact/Pomocnik-Alfa-1.7.36-CZYTNIK-ALFA-SOURCE.tar.xz
+          sed -i -E 's/POMOCNIK ALFA 1[.]7[.][0-9]+/POMOCNIK ALFA 1.7.53/g' project/app/src/main/java/com/ispina/lokalnie/MainActivity.java
           for p in \
             helpers/czytnik-alfa/patch_modern_reader.py \
             helpers/czytnik-alfa/patch_fullscreen_reader.py \
