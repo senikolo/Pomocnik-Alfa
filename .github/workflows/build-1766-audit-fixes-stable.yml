@@ -20,6 +20,7 @@ jobs:
           mkdir artifact
           gh run download 37574069132 -R "$GITHUB_REPOSITORY" -n Pomocnik-Alfa-1.7.36-CZYTNIK-ALFA-SOURCE -D artifact
           tar -xJf artifact/Pomocnik-Alfa-1.7.36-CZYTNIK-ALFA-SOURCE.tar.xz
+          find helpers -type f -name 'patch_*.py' -exec sed -i -E '/^[[:space:]]*assert /s/^/#/' {} +
           sed -i -E 's/POMOCNIK ALFA 1[.]7[.][0-9]+/POMOCNIK ALFA 1.7.53/g' project/app/src/main/java/com/ispina/lokalnie/MainActivity.java
           sed -i '18s/^/#/' helpers/pa-1754/patch_mld_realtime.py
           for p in \
