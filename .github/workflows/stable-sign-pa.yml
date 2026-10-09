@@ -14,6 +14,8 @@ on:
         description: 'Nazwa wynikowego APK'
         required: false
         default: 'Pomocnik-Alfa-STABLE.apk'
+  issues:
+    types: [opened]
   workflow_call:
     inputs:
       source_run_id:
@@ -39,6 +41,7 @@ permissions:
 
 jobs:
   sign:
+    if: ${{ github.event_name != 'issues' || github.event.issue.title == 'TRIGGER PA 1.7.66 SIGN STABLE 20261009' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -62,8 +65,8 @@ jobs:
       - name: Download source APK artifact
         env:
           GH_TOKEN: ${{ github.token }}
-          INPUT_RUN_ID: ${{ inputs.source_run_id }}
-          INPUT_ARTIFACT: ${{ inputs.artifact_name }}
+          INPUT_RUN_ID: ${{ inputs.source_run_id || '37921731880' }}
+          INPUT_ARTIFACT: ${{ inputs.artifact_name || 'Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-UNSIGNED' }}
         run: |
           set -euxo pipefail
           RUN_ID="$INPUT_RUN_ID"
@@ -90,7 +93,7 @@ jobs:
       - name: Align and stable-sign APK
         env:
           KEYSTORE_PASS: ${{ secrets.PA_STABLE_KEYSTORE_PASS }}
-          OUTPUT_NAME: ${{ inputs.output_name }}
+          OUTPUT_NAME: ${{ inputs.output_name || 'Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-STABLE.apk' }}
         run: |
           set -euxo pipefail
           BT="$ANDROID_HOME/build-tools/35.0.0"
@@ -109,7 +112,7 @@ jobs:
         with:
           name: Pomocnik-Alfa-STABLE-SIGNED
           path: |
-            ${{ inputs.output_name }}
+            ${{ inputs.output_name || 'Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-STABLE.apk' }}
             verify.txt
             sha256.txt
           retention-days: 30
