@@ -41,9 +41,13 @@ once('''        NativeUi.addSpacer(card,this,8);
         NativeUi.addSpacer(card,this,8);
         card.addView(TransitWowUi.type(this,"PRZYSTANEK I STANOWISKO",15,true,
             TransitWowUi.ink(this)));''',"direction spinner between line and stops")
-once('''        stations.clear();
+once('''        stations.clear();visibleStations.clear();
+        if(stopFilter!=null&&!stopFilter.getText().toString().isEmpty())
+            stopFilter.setText("");
         if(stops!=null){''',
-'''        stations.clear();
+'''        stations.clear();visibleStations.clear();
+        if(stopFilter!=null&&!stopFilter.getText().toString().isEmpty())
+            stopFilter.setText("");
         allStations.clear();
         directionOptions.clear();
         if(directions!=null){
@@ -53,7 +57,7 @@ once('''        stations.clear();
                 new String[]{"Najpierw wyszukaj linię"}));
         }
         if(stops!=null){''',"clear direction on line change")
-once('''        stops.setEnabled(!on&&!stations.isEmpty());''',
+once('''        stops.setEnabled(!on&&!visibleStations.isEmpty());''',
 '''        stops.setEnabled(!on&&!stations.isEmpty());
         if(directions!=null)directions.setEnabled(!on&&!directionOptions.isEmpty());''',
      "busy direction control")
@@ -72,22 +76,12 @@ once('''            List<GtfsNearby.LineStop> found=null;String error=null;
             final List<FastLineDirections.Direction> matching=headings;''',
      "load headings with line stops in same async worker")
 once('''                stations.addAll(data);
-                List<String> labels=new ArrayList<>();
-                for(GtfsNearby.LineStop stop:stations)labels.add(stop.label());
-                stops.setAdapter(new ArrayAdapter<String>(this,
-                    android.R.layout.simple_spinner_dropdown_item,labels));
-                stops.setEnabled(true);
-                show.setEnabled(true);
-                message.setText("Znaleziono "+stations.size()+" stanowisk. Wybierz właściwy przystanek.");''',
+                filterStops();''',
 '''                allStations.addAll(data);
                 if(matching!=null)directionOptions.addAll(matching);
                 if(directionOptions.isEmpty()){
                     stations.addAll(allStations);
-                    List<String> names=new ArrayList<>();
-                    for(GtfsNearby.LineStop stop:stations)names.add(stop.label());
-                    stops.setAdapter(new ArrayAdapter<String>(this,
-                        android.R.layout.simple_spinner_dropdown_item,names));
-                    stops.setEnabled(true);show.setEnabled(true);
+                    filterStops();
                     directions.setEnabled(false);
                     directions.setAdapter(new ArrayAdapter<String>(this,
                         android.R.layout.simple_spinner_dropdown_item,
@@ -116,22 +110,17 @@ once('    private void loadDepartures(){',
         stations.sort(java.util.Comparator
             .comparingInt((GtfsNearby.LineStop st)->choice.stops.get(st.id))
             .thenComparing(st->st.name,java.text.Collator.getInstance(new Locale("pl","PL"))));
-        List<String> names=new ArrayList<>();
-        for(GtfsNearby.LineStop st:stations)names.add(st.label());
-        stops.setAdapter(new ArrayAdapter<String>(this,
-            android.R.layout.simple_spinner_dropdown_item,
-            names.isEmpty()?java.util.Collections.singletonList("Brak przystanków w tym kierunku"):names));
-        stops.setEnabled(!stations.isEmpty());
-        show.setEnabled(!stations.isEmpty());
+        // Preserve instant diacritic-insensitive stop search from PA 1.7.61.
+        filterStops();
         departures.removeAllViews();
         stopCountdown();
         message.setText("Kierunek → "+choice.name+" · "+stations.size()+
             " stanowisk na trasie. Wybierz przystanek.");
     }
     private void loadDepartures(){''',"direction choice selects only valid stops")
-once('''        final String provider=provider(),line=enteredLine(),stopId=stations.get(position).id;''',
-'''        final String provider=provider(),line=enteredLine(),stopId=stations.get(position).id,
-            direction=selectedDirection();''',"snapshot selected direction")
+once('''        final String provider=provider(),line=enteredLine(),stopId=visibleStations.get(position).id,stopName=visibleStations.get(position).name;''',
+'''        final String provider=provider(),line=enteredLine(),stopId=visibleStations.get(position).id,
+            stopName=visibleStations.get(position).label(),direction=selectedDirection();''',"snapshot selected direction")
 once('''            try{result=GtfsNearby.lineStopDepartures(getApplicationContext(),provider,line,stopId);}
             catch(Exception e){error=e.getMessage();}''',
 '''            try{
