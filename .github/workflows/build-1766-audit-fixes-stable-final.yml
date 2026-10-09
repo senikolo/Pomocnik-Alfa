@@ -1,0 +1,81 @@
+name: Build PA 1.7.66 Audit Fixes Stable
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Rebuild audited PA source
+        run: |
+          set -euxo pipefail
+          python3 - <<'PY2'
+          from pathlib import Path
+          import base64
+          import gzip
+          blob = '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'
+          full = gzip.decompress(base64.b64decode(blob)).decode('utf-8')
+          def extract(label, target):
+              marker = '      - name: ' + label + '\n'
+              at = full.index(marker)
+              run_marker = '        run: |\n'
+              start = full.index(run_marker, at) + len(run_marker)
+              end = full.find('\n      - ', start)
+              if end < 0:
+                  raise SystemExit('next step not found: ' + label)
+              body = full[start:end]
+              lines = []
+              for line in body.splitlines():
+                  if not line.strip():
+                      lines.append('')
+                  elif line.startswith('          '):
+                      lines.append(line[10:])
+                  else:
+                      raise SystemExit('bad indentation in ' + label + ': ' + repr(line[:20]))
+              Path(target).write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          extract('Restore current source', '/tmp/pa-restore.sh')
+          extract('Apply latest reader, radio and precise opt-in GPS', '/tmp/pa-apply.sh')
+          extract('Android SDK', '/tmp/pa-sdk.sh')
+          extract('Static audit smoke tests', '/tmp/pa-audit.sh')
+          extract('Build unsigned release APK', '/tmp/pa-build.sh')
+          extract('Verify package content', '/tmp/pa-verify.sh')
+          PY2
+          bash /tmp/pa-restore.sh
+          bash /tmp/pa-apply.sh
+          bash /tmp/pa-sdk.sh
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          bash /tmp/pa-audit.sh
+          (cd project && bash /tmp/pa-build.sh)
+          bash /tmp/pa-verify.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-UNSIGNED
+          path: Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-UNSIGNED.apk
+          retention-days: 30
+
+  sign:
+    needs: build
+    uses: ./.github/workflows/stable-sign-pa.yml
+    with:
+      artifact_name: Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-UNSIGNED
+      output_name: Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-STABLE.apk
+    secrets: inherit
