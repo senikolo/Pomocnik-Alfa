@@ -1,0 +1,59 @@
+name: PA 1.7.66 Test Signed APK
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  sign-test:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.issue.title == 'TRIGGER PA 1.7.66 TEST SIGN 20261009' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Fetch verified unsigned PA 1.7.66 APK
+        run: |
+          set -euo pipefail
+          mkdir -p unsigned
+          gh run download 37921731880 -R "$GITHUB_REPOSITORY" -n Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-UNSIGNED -D unsigned
+          cp unsigned/Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-UNSIGNED.apk unsigned.apk
+          unzip -t unsigned.apk >/dev/null
+      - name: Sign as explicitly separate test certificate
+        run: |
+          set -euo pipefail
+          BT=/usr/local/lib/android/sdk/build-tools/35.0.0
+          test -x "$BT/apksigner" && test -x "$BT/zipalign" && test -x "$BT/aapt"
+          keytool -genkeypair -noprompt -storetype PKCS12 -keystore pa-test-signing.p12 \
+            -storepass android -keypass android -alias pa-test-1766 -keyalg RSA \
+            -keysize 3072 -validity 3650 -dname "CN=PA 1.7.66 TEST,OU=Test Build,O=PA"
+          "$BT/zipalign" -p -f 4 unsigned.apk aligned.apk
+          "$BT/apksigner" sign --ks pa-test-signing.p12 --ks-type PKCS12 \
+            --ks-key-alias pa-test-1766 --ks-pass pass:android --key-pass pass:android \
+            --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true \
+            --out Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-TEST-SIGNED.apk aligned.apk
+          "$BT/apksigner" verify --verbose --print-certs Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-TEST-SIGNED.apk > apk-verify.txt
+          "$BT/aapt" dump badging Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-TEST-SIGNED.apk > badging.txt
+          grep "package: name='com.senikolo.pomocniknowy'" badging.txt
+          grep "versionCode='10767'" badging.txt
+          grep "sdkVersion:'29'" badging.txt
+          unzip -t Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-TEST-SIGNED.apk > /dev/null
+          "$BT/zipalign" -c -v 4 Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-TEST-SIGNED.apk > /dev/null
+          sha256sum Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-TEST-SIGNED.apk > sha256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Pomocnik-Alfa-1.7.66-A10-TEST-SIGNED
+          path: |
+            Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-TEST-SIGNED.apk
+            apk-verify.txt
+            badging.txt
+            sha256.txt
+          retention-days: 30
