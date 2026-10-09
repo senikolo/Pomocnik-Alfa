@@ -106,7 +106,7 @@ once('''        int shown=0;
         GtfsNearby.Departure first=null;
         long now=System.currentTimeMillis();
         List<GtfsNearby.Departure> sorted=new ArrayList<>(wowData.departures);
-        sorted.sort(Comparator.comparingLong(d->TransitWowUi.expected(d,now)));
+        sorted.sort(java.util.Comparator.comparingLong(d->TransitWowUi.expected(d,now)));
         for(GtfsNearby.Departure d:sorted){''',"sort by estimated real departure")
 
 once('''            if(!q.isEmpty()&&!d.line.toLowerCase(Locale.ROOT).contains(q)&&
