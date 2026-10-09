@@ -228,7 +228,7 @@ s=replace_once(s,'    private void render(GtfsNearby.Result value,Location fix){
                     String text="Linia "+dep.line+" · pojazdy z aktualnym GPS: "+got.vehicles;
                     if(got.vehicles>0&&!Double.isNaN(got.nearestMeters))
                         text+=" · najbliższy "+Math.round(got.nearestMeters)+" m";
-                    state.setText(text+"\nDane miasta Warszawy · aktualne pozycje pojazdów.");
+                    state.setText(text+"\\nDane miasta Warszawy · aktualne pozycje pojazdów.");
                 }
             });
         });
