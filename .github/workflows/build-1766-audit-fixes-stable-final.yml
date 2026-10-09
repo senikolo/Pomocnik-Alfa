@@ -60,6 +60,12 @@ jobs:
           PY2
           bash /tmp/pa-restore.sh
           bash /tmp/pa-apply.sh
+          # The 1.7.65 regression suite is reused for 1.7.66.
+          # Keep its feature assertions, but verify the current versionCode.
+          TEST_FILE=helpers/pa-1765/test_accessibility_directions.py
+          grep -q 'assert "versionCode 10766"' "$TEST_FILE"
+          sed -i 's/assert "versionCode 10766"/assert "versionCode 10767"/' "$TEST_FILE"
+          grep -q 'assert "versionCode 10767"' "$TEST_FILE"
           bash /tmp/pa-sdk.sh
           export ANDROID_HOME=/usr/local/lib/android/sdk
           bash /tmp/pa-audit.sh
