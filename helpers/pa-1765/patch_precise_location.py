@@ -22,7 +22,7 @@ once('        status.setText("Szukam Twojego położenia…");',
 once('''        if(fix.getTime()>0&&Math.abs(System.currentTimeMillis()-fix.getTime())>30L*60000L) return;
         if(best==null|| (fix.hasAccuracy() && (!best.hasAccuracy()||fix.getAccuracy()<best.getAccuracy())))best=new Location(fix);
         if(best.hasAccuracy()&&(best.getAccuracy()<120f ||
-            (LocationManager.NETWORK_PROVIDER.equals(fix.getProvider())&&best.getAccuracy()<700f)))
+           (LocationManager.NETWORK_PROVIDER.equals(fix.getProvider())&&best.getAccuracy()<700f)))
             finishFix();''',
 '''        if(fix.getTime()<=0||Math.abs(System.currentTimeMillis()-fix.getTime())>MAX_POSITION_AGE)return;
         if(!fix.hasAccuracy()||!Float.isFinite(fix.getAccuracy())||fix.getAccuracy()<0f)return;
