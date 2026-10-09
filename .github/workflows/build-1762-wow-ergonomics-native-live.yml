@@ -316,7 +316,7 @@ jobs:
           python helpers/pa-1757/test_departure_search.py
           python helpers/pa-1760/test_ui_search.py
           python helpers/pa-1758/test_deeplink.py
-          python helpers/pa-1759/test_inapp_live.py
+          python helpers/pa-1762/test_wow.py # new manual result no longer opens the legacy map
           sed 's/versionCode 10762/versionCode 10763/' helpers/pa-1761/test_fast_departures.py > /tmp/test-fast-1762.py
           python /tmp/test-fast-1762.py
           python helpers/pa-1762/test_wow.py
