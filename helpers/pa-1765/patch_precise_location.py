@@ -52,7 +52,8 @@ once('''        if(fix==null){fail("Brak nowej pozycji. Wybierz „Użyj ostatni
         }
         lastFix=new Location(fix);''',"reject low precision or stale on finish")
 once('''        return at>0&&System.currentTimeMillis()-at<24L*3600000L;''',
-'''        return at>0 && System.currentTimeMillis()-at<MAX_SAVED_FIX_AGE &&
+'''        return at>0 && at<=System.currentTimeMillis() &&
+            System.currentTimeMillis()-at<MAX_SAVED_FIX_AGE &&
             getSharedPreferences("pa_last_transit_fix",MODE_PRIVATE).getFloat("accuracy",999f)<=GOOD_FIX_METRES;''',
      "strict saved-fix validity")
 once('''            status.setText("Brak lokalizacji z ostatnich 24 godzin. Skorzystaj z numeru linii.");''',
@@ -65,6 +66,7 @@ once('''        if(lastFix!=null){
 '''        if(lastFix!=null && lastFix.hasAccuracy() &&
             lastFix.getAccuracy()<=GOOD_FIX_METRES &&
             lastFix.getTime()>0 &&
+            lastFix.getTime()<=System.currentTimeMillis() &&
             System.currentTimeMillis()-lastFix.getTime()<MAX_SAVED_FIX_AGE){
             searchTimetable(new Location(lastFix),true);
         }else begin();''',
