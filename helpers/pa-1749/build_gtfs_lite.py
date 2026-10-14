@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """Daily compact rolling GTFS: preserve rider-facing stop codes and route types."""
 from __future__ import annotations
-import csv,io,zipfile,requests,datetime
+import csv,io,zipfile,requests,datetime,time
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 SOURCES={
     "warsaw":"https://mkuran.pl/gtfs/warsaw.zip",
     "mld":"https://www.kolejemalopolskie.com.pl/rozklady_jazdy/ald-gtfs.zip",
 }
 OUT=Path("data/pa-gtfs");OUT.mkdir(parents=True,exist_ok=True)
-now=datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=2))).date()
+now=datetime.datetime.now(ZoneInfo("Europe/Warsaw")).date()
 dates={(now+datetime.timedelta(days=d)).strftime("%Y%m%d") for d in (-1,0,1,2)}
 HEADERS={
  "stops.txt":["stop_id","stop_code","stop_name","stop_lat","stop_lon"],
@@ -23,12 +24,34 @@ def read_rows(z,name):
     if name not in z.namelist():return iter(())
     raw=io.TextIOWrapper(z.open(name),encoding="utf-8-sig",newline="")
     return csv.DictReader(raw)
+
+def fetch_feed(url, provider, attempts=4):
+    headers={"User-Agent":"PomocnikAlfa/1.7.66 (+https://github.com/senikolo/Pomocnik-Alfa)"}
+    for attempt in range(1, attempts+1):
+        try:
+            response=requests.get(url,timeout=(20,105),headers=headers)
+            response.raise_for_status()
+            content=response.content
+            if not zipfile.is_zipfile(io.BytesIO(content)):
+                raise ValueError("response is not a valid ZIP archive")
+            return content
+        except (requests.RequestException, ValueError) as error:
+            print(f"WARNING {provider}: download attempt {attempt}/{attempts} failed: {error}",flush=True)
+            if attempt < attempts:
+                time.sleep(min(3*attempt,9))
+    return None
+
 for provider,url in SOURCES.items():
     print("FETCH",provider,url,flush=True)
-    response=requests.get(url,timeout=105,headers={"User-Agent":"PomocnikAlfa/1.7.49 (+https://github.com/senikolo/Pomocnik-Alfa)"})
-    response.raise_for_status()
-    assert response.content[:2]==b"PK",(provider,response.content[:100])
-    with zipfile.ZipFile(io.BytesIO(response.content)) as src:
+    content=fetch_feed(url,provider)
+    if content is None:
+        previous=OUT/(provider+"-lite.zip")
+        if (previous.is_file() and previous.stat().st_size>5000
+                and zipfile.is_zipfile(previous)):
+            print(f"WARNING {provider}: keeping last valid GTFS ZIP, source unavailable",flush=True)
+            continue
+        raise RuntimeError(f"No valid GTFS source or fallback for {provider}")
+    with zipfile.ZipFile(io.BytesIO(content)) as src:
         available={Path(x).name:x for x in src.namelist()}
         assert set(["stops.txt","routes.txt","trips.txt","stop_times.txt"]).issubset(available)
         calendarrows=list(read_rows(src,available["calendar.txt"])) if "calendar.txt" in available else []
@@ -52,7 +75,8 @@ for provider,url in SOURCES.items():
         print(provider,"filtered_trips",len(trips),flush=True)
         # Stream output ZIP to prevent multi-million-row data in RAM
         out=OUT/(provider+"-lite.zip")
-        with zipfile.ZipFile(out,"w",compression=zipfile.ZIP_DEFLATED,compresslevel=8,allowZip64=True) as target:
+        temp=OUT/(provider+"-lite.zip.tmp")
+        with zipfile.ZipFile(temp,"w",compression=zipfile.ZIP_DEFLATED,compresslevel=8,allowZip64=True) as target:
             for file in ("stops.txt","routes.txt","calendar.txt","calendar_dates.txt"):
                 if file not in available:continue
                 buf=io.StringIO(newline="");w=csv.DictWriter(buf,fieldnames=HEADERS[file],lineterminator="\n")
@@ -77,14 +101,15 @@ for provider,url in SOURCES.items():
                     numeric=trips.get(stop.get("trip_id",""))
                     if numeric is None or stop.get("pickup_type","")=="1":continue
                     line=[numeric,stop.get("stop_id",""),stop.get("stop_sequence",""),stop.get("departure_time","")]
-                    if provider=="mld":
-                        # Preserve original arbitrary IDs and their CSV escaping.
-                        buffer=io.StringIO(newline="")
-                        csv.writer(buffer,lineterminator="\n").writerow(line)
-                        dst.write(buffer.getvalue().encode("utf-8"))
-                    else:
-                        dst.write((",".join(line)+"\n").encode("utf-8"))
+                    # Both sources can contain commas or quotes in GTFS fields.
+                    buffer=io.StringIO(newline="")
+                    csv.writer(buffer,lineterminator="\n").writerow(line)
+                    dst.write(buffer.getvalue().encode("utf-8"))
                     n+=1
                     if n%1000000==0:print(provider,"stop_times_kept",n,flush=True)
-        print(provider,"selected_stop_times",n,"compressed_bytes",out.stat().st_size,flush=True)
-        assert out.stat().st_size>5000 and out.stat().st_size<29_000_000,(provider,out.stat().st_size)
+        size=temp.stat().st_size
+        print(provider,"selected_stop_times",n,"compressed_bytes",size,flush=True)
+        assert 5000<size<29_000_000,(provider,size)
+        if not zipfile.is_zipfile(temp):
+            raise RuntimeError(f"Generated GTFS ZIP is corrupt: {provider}")
+        temp.replace(out)  # Atomic replacement: never destroy previous good feed
