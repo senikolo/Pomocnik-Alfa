@@ -11,6 +11,8 @@ cls=(root/"transit/FastLineDirections.java").read_text(encoding="utf-8")
 assert "GOOD_FIX_METRES=150f" in near
 assert "MAX_POSITION_AGE=90000L" in near
 assert "MAX_SAVED_FIX_AGE=45L*60000L" in near
+assert "at<=System.currentTimeMillis()" in near  # Do not reuse future-dated saved fixes
+assert "lastFix.getTime()<=System.currentTimeMillis()" in near
 assert 'fix.getAccuracy()<700f' not in near.split("private void consider(Location fix)",1)[1].split("private void stopGps()",1)[0]
 assert "fix.getAccuracy()>GOOD_FIX_METRES" in near
 assert "if(inWarsaw && stop.distance>1200)continue;" in near
