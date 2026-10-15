@@ -37,6 +37,13 @@ public class PAProbe extends Instrumentation {
   js(planner,"document.querySelector('#osmProbe .osm-buttons button').click();true");
   require(!zoomBefore.equals(js(planner,"document.querySelector('#osmProbe .osm-layer img').src")),"OpenStreetMap zoom control did not update tiles");
   screenshot("where-is-my-bus");record("PASS interactive OSM tile viewport, controls, stops, icons and vehicle markers");
+  js(planner,"document.getElementById('busStop').value='Rondo ONZ';document.getElementById('busStop').dispatchEvent(new Event('input'));true");
+  waitJs(planner,"Array.from(document.querySelectorAll('#busStops button')).some(b=>b.innerText.toLowerCase().includes('rondo onz'))",12000);
+  js(planner,"Array.from(document.querySelectorAll('#busStops button')).find(b=>b.innerText.toLowerCase().includes('rondo onz')).click();true");
+  waitJs(planner,"Array.from(document.getElementById('busLine').options).some(o=>o.textContent.includes('Tramwaj'))",12000);
+  js(planner,"document.getElementById('busLine').selectedIndex=Array.from(document.getElementById('busLine').options).findIndex(o=>o.textContent.includes('Tramwaj'));document.getElementById('busLine').dispatchEvent(new Event('change'));true");
+  waitJs(planner,"document.getElementById('busDirection').options.length>1 && !document.getElementById('busDirection').disabled",30000);
+  record("PASS Warsaw Rondo ONZ: tram line choice and directions loaded from route patterns even without imminent departures");
   js(planner,"document.getElementById('tabAssistant').click();document.getElementById('chatInput').value='Chcę jutro po 9 jechać z Ispiny do Bochni';document.getElementById('ask').click();true");
   waitJs(planner,"document.getElementById('messages').innerText.includes('09:00')",20000);record("PASS chat retains requested date/time while clarifying Bochnia stop");
   js(planner,"document.getElementById('chatInput').value='Bochnia Dworzec PKP';document.getElementById('ask').click();true");
