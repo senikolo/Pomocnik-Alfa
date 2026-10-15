@@ -1,8 +1,8 @@
-name: PA 2.0 alpha.3 LIVE + icons build
+name: PA 2.0 alpha.4 cat and map build
 on:
   workflow_dispatch:
   push:
-    branches: ['work/pa2-live-icons-alpha3-20261015']
+    branches: ['work/pa2-alpha4-cat-osm-eta-20261015']
     paths: ['helpers/pa2/**', '.github/workflows/pa2-alpha.yml']
 permissions:
   contents: write
@@ -43,6 +43,7 @@ jobs:
           python3 helpers/pa2/test_data.py
           node --check helpers/pa2/backend/worker.mjs
           node --check helpers/pa2/app.js
+          node --check helpers/pa2/osm-map.js
           node --check helpers/pa2/conversation.js
       - name: Rebuild existing project and new native module
         run: |
