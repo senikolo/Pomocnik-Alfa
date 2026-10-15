@@ -1,6 +1,9 @@
 name: PA2 independent timetable refresh
 on:
   workflow_dispatch:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/pa2-data-update.yml', 'helpers/pa2/fetch_data.py', 'helpers/pa2/build_data.py']
   schedule:
     - cron: '20 3 * * *'
 permissions:
@@ -23,3 +26,4 @@ jobs:
           (cd data2 && zip -q -r ../pa2-data.zip .)
           gh release view pa2-data >/dev/null 2>&1 || gh release create pa2-data --prerelease --title 'Aktualizacje danych Planera PA 2.0' --notes 'Przetworzone GTFS; źródła, daty i uznanie autorstwa w paczce.'
           gh release upload pa2-data pa2-data.zip --clobber
+
