@@ -37,6 +37,8 @@ b=s.index('    const/high16 v3, 0x41b00000',a)
 s=s[:a]+'    invoke-static {p1}, Lcom/ispina/lokalnie/PAIcons;->glyph(Ljava/lang/String;)Ljava/lang/String;\n\n    move-result-object p2\n\n'+s[b:]
 s=re.sub(r'POMOCNIK ALFA 1[^"\n]*','POMOCNIK ALFA 2.0',s)
 s=s.replace('Planer, Autobus LIVE i Alfa','Planer i Alfa').replace('Warszawa, Małopolska i kolej. Planer, autobus LIVE i asystent Alfa.','Trasy, autobusy i tramwaje na mapie. Warszawa, Małopolska i kolej.')
+assert s.count('const-string v1, "Przystanki w pobliżu"')==1, 'Duplicate or missing nearby-stop tile'
+assert s.count('const-string v1, "Planer i Alfa"')==1, 'Duplicate or missing PA2 regional planner'
 main.write_text(s)
 p=root/'AndroidManifest.xml';m=p.read_text()
 m=m.replace('com.senikolo.pomocniknowy.regionspreview','com.senikolo.pomocniknowy')
