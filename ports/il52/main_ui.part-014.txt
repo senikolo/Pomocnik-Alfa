@@ -1,0 +1,850 @@
+  var pres=q('#pres');if(pres&&window.MutationObserver){resultsObserver=new MutationObserver(function(){decorateResults()});resultsObserver.observe(pres,{childList:true,subtree:true})}
+  d.addEventListener('click',function(event){var btn=event.target.closest&&event.target.closest('#vplan .il20-traffic-btn.primary');if(btn){setTimeout(function(){watchTraffic();var panel=q('#il20-traffic-panel');if(panel&&panel.classList.contains('il20v5-trip-active'))panel.scrollIntoView({block:'start',behavior:'smooth'})},80)}},true);
+  window.IL20_MODERN_CLASSIC={version:'full-preview-5',refresh:decorateResults};
+  return true;
+ }
+ var css=create('style');css.id='il20v5-styles';css.textContent=`
+ /* Calm classic-blue layout, predictable keyboard/focus behavior */
+ #vplan.il20v5{--il20v5-ink:#173c64;--il20v5-blue:#1b5c9d;--il20v5-edge:#d7e5f5;--il20v5-soft:#f2f7fd}
+ #vplan.il20v5 #ilR14Marker{display:none!important;font-size:11px!important;line-height:1.45!important;margin:5px 5px 9px!important;padding:8px 10px!important;border-left:3px solid #4192c7!important;border-radius:8px!important;color:#3d607e!important;background:#f4f8ff!important}
+ #vplan.il20v5 .plhero{border-radius:18px!important;padding:13px 17px!important;margin-bottom:10px!important;box-shadow:0 4px 16px rgba(23,67,113,.15)!important}
+ #vplan.il20v5 .plhero .h{font-size:20px!important;font-weight:900!important;letter-spacing:-.4px}
+ #vplan.il20v5 .plhero .p{font-size:12px!important;line-height:1.4}
+ #vplan.il20v5 .plcard{padding:13px!important;border-radius:18px!important;box-shadow:0 4px 16px rgba(18,54,103,.07)!important}
+ #vplan.il20v5 .plfield{min-height:54px!important;border-radius:14px!important;padding:4px 9px!important}
+ #vplan.il20v5 .plfield input{font-size:16px!important;min-width:0!important}
+ #vplan.il20v5 .pllabel{font-size:11px!important;letter-spacing:.6px!important;margin:8px 4px 5px!important;color:#41658b!important}
+ #vplan.il20v5 .il-r12-accept,#vplan.il20v5 .il-r15-change{min-height:48px!important;border-radius:12px!important}
+ #vplan.il20v5 .plswap{width:44px!important;height:44px!important;margin:4px auto -1px!important}
+ #vplan.il20v5 .plwhen{margin-top:6px!important}
+ #vplan.il20v5 .pldate{border-radius:12px!important;background:#f6f9ff!important;border-color:#d7e6f6!important}
+ #vplan.il20v5 .plactions{margin-top:10px!important}
+ #vplan.il20v5 .plgo{font-size:15px!important;min-height:50px!important}
+ #vplan.il20v5 .plnow{min-height:50px!important}
+ #vplan.il20v5 .plhome{min-height:48px!important;margin-top:9px!important}
+ #vplan.il20v5 .plhint{font-size:11px!important;line-height:1.5!important;color:#567390!important}
+ #vplan.il20v5 .il20v5-shortcuts,#vplan.il20v5 .il20v5-favorites,#vplan.il20v5 .il20v5-advanced{border:1px solid #d8e6f5;border-radius:13px;margin-top:11px;background:#f7faff;overflow:visible}
+ #vplan.il20v5 .il20v5-summary{display:list-item;cursor:pointer;min-height:47px;box-sizing:border-box;padding:13px 13px 11px;color:#205583;font-size:13px;font-weight:850;list-style-position:inside}
+ #vplan.il20v5 .il20v5-summary:focus-visible,#vplan.il20v5 button:focus-visible,#vdash button:focus-visible{outline:3px solid #70aee1!important;outline-offset:2px}
+ #vplan.il20v5 .il20v5-shortcuts .plquick{padding:5px 10px 12px!important;gap:8px!important}
+ #vplan.il20v5 .plchip{font-size:12px!important;min-height:48px!important;border-radius:11px!important}
+ #vplan.il20v5 .il20v5-when-mode{margin-top:12px!important;border-top:1px solid #e4edf8!important;padding-top:11px!important}
+ #vplan.il20v5 .il20v5-mini-head{font-size:13px;font-weight:900;color:#1b4979;margin:0 0 8px}
+ #vplan.il20v5 .il20-options{display:flex!important;flex-wrap:nowrap!important;gap:6px!important}
+ #vplan.il20v5 .il20-toggle{flex:1 1 0!important;min-width:0!important;padding:10px 5px!important;min-height:48px!important;font-size:12px!important;border-radius:11px!important;line-height:1.3!important}
+ #vplan.il20v5 #il20-arrive-hint{font-size:11px!important;margin:7px 2px 3px!important;line-height:1.4!important;color:#516e89!important}
+ #vplan.il20v5 .il20v5-favorites{padding-bottom:4px}
+ #vplan.il20v5 .il20v5-favorites .il20-fav-title{display:none}
+ #vplan.il20v5 .il20v5-favorites .il20-fav-list,#vplan.il20v5 .il20v5-favorites .il20-save-route,#vplan.il20v5 .il20v5-favorites .il20-fav-msg{margin-left:11px!important;margin-right:11px!important}
+ #vplan.il20v5 .il20-fav-open{min-height:48px!important;font-size:13px!important}
+ #vplan.il20v5 .il20-fav-remove{min-width:48px!important;min-height:48px!important}
+ #vplan.il20v5 .il20-save-route{min-height:48px!important;font-size:13px!important}
+ #vplan.il20v5 .il20v5-advanced .il-transfer-options{padding:4px 12px 14px!important;margin:0!important;border:0!important;box-shadow:none!important;background:transparent!important}
+ #vplan.il20v5 .il20v5-advanced .il-transfer-options select{min-height:48px!important}
+ #vplan.il20v5 #pres{padding-top:5px}
+ #vplan.il20v5 #pres h3{font-weight:900!important;color:#173f6b!important;font-size:16px!important;margin-top:16px!important}
+ #vplan.il20v5 #pres .pr.il20v5-result{background:#fff!important;border:1px solid var(--il20v5-edge)!important;border-radius:17px!important;padding:13px!important;margin-top:11px!important;box-shadow:0 5px 17px rgba(16,56,103,.065)!important;position:relative}
+ #vplan.il20v5 #pres .pr.il20v5-recommended{background:linear-gradient(150deg,#f0f7ff,#fff 65%)!important;border-color:#92bce2!important;border-left:4px solid #2876bd!important}
+ #vplan.il20v5 #pres .prtop{margin:0 0 5px!important;display:flex!important;align-items:center!important}
+ #vplan.il20v5 #pres .il20v5-result .prtop .prtime,#vplan.il20v5 #pres .il20v5-result .prtop .prarr{display:none!important}
+ #vplan.il20v5 #pres .il20v5-result .prline{font-size:13px!important;padding:6px 10px!important;border-radius:9px!important}
+ #vplan.il20v5 #pres .il20-recommend{font-size:11px!important;padding:8px 10px!important;border-radius:10px!important;margin-bottom:9px!important;background:#dfefff!important;color:#1a578b!important;line-height:1.35!important}
+ #vplan.il20v5 .il20v5-timegrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;padding:7px 0 8px;border-bottom:1px solid #e5edf7}
+ #vplan.il20v5 .il20v5-timecell{display:flex;flex-direction:column;min-width:0;gap:3px}
+ #vplan.il20v5 .il20v5-timecell:last-child{padding-left:13px;border-left:1px solid #dfeaf7}
+ #vplan.il20v5 .il20v5-time-title{font-size:10px;color:#57718f;font-weight:900;letter-spacing:.65px}
+ #vplan.il20v5 .il20v5-clock{font-size:28px;letter-spacing:-.9px;font-variant-numeric:tabular-nums;color:#173e68;line-height:1.1;font-weight:950}
+ #vplan.il20v5 .il20v5-stopname{font-size:12px;line-height:1.32;font-weight:750;color:#264e76;overflow-wrap:anywhere}
+ #vplan.il20v5 .il20v5-result .prroute{display:none!important}
+ #vplan.il20v5 .il20v5-result .prmeta{margin:9px 0 2px!important;font-size:11px!important;line-height:1.5!important;color:#597590!important}
+ #vplan.il20v5 .il20v5-result .ilLiveCourse{font-size:12px}
+ #vplan.il20v5 .il20v5-result .il20-traffic-choose{display:flex!important;gap:8px!important;flex-wrap:wrap!important;margin-top:11px!important}
+ #vplan.il20v5 .il20v5-result .il20-traffic-btn,#vplan.il20v5 .il20v5-result .il20-traffic-card-link{min-height:48px!important;box-sizing:border-box!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:1 1 130px!important;line-height:1.35!important;text-align:center!important;padding:9px!important;border-radius:11px!important}
+ #vplan.il20v5 .il20v5-result .il20-traf-mini{display:block!important;margin-top:7px!important;font-size:11px!important}
+ #vplan.il20v5 #il20-traffic-panel:not(.il20v5-trip-active){display:none!important}
+ #vplan.il20v5 #il20-traffic-panel.il20v5-trip-active{border:2px solid #a6c8eb!important;box-shadow:0 12px 28px rgba(18,64,117,.13)!important;scroll-margin-top:84px!important}
+ #vdash #ilDashQuick1843 button{min-height:72px!important;border-radius:13px!important}
+ #vdash #ilDashQuick1843 #ilServicesTile1896{height:60px!important;max-height:60px!important;min-height:60px!important;box-sizing:border-box!important;grid-column:1/-1!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:10px!important;padding:7px 10px!important;border-radius:12px!important}
+ #vdash #ilServicesTile1896 .ildq-icon{margin:0!important;font-size:18px!important}
+ #vdash #ilServicesTile1896 .ildq-main{font-size:13px!important}
+ #vdash #ilServicesTile1896 .ildq-sub{font-size:10px!important}
+ #vdash #il20-freshness[data-il20v5]{padding:11px 13px!important;border-radius:15px!important;margin:10px 0!important}
+ #vdash #il20-freshness .il20-top{margin:0!important}
+ #vdash #il20-freshness .il20v5-sync-details{margin-top:5px;border-top:1px solid #e8eff9}
+ #vdash #il20-freshness .il20v5-sync-details summary{font-weight:750;font-size:11px;color:#496b8c;padding:8px 2px 2px;min-height:38px;cursor:pointer}
+ #vdash #il20-freshness .il20v5-sync-details .il20-rows{margin-top:7px}
+ html.il20-senior #vdash #ilDashQuick1843 #ilServicesTile1896{height:84px!important;max-height:84px!important;min-height:84px!important}
+ html.il20-senior #vplan.il20v5 .il20v5-clock{font-size:32px!important}
+ html.il20-senior #vplan.il20v5 .il20v5-stopname{font-size:16px!important}
+ html.il20-senior #vplan.il20v5 .il20v5-summary{min-height:56px!important;font-size:17px!important}
+ html.il20-senior #vplan.il20v5 .il20-toggle{min-height:58px!important;font-size:16px!important}
+ @media(max-width:355px){#vplan.il20v5 .plcard{padding:10px!important}#vplan.il20v5 .il20v5-clock{font-size:24px}#vplan.il20v5 .il20-toggle{font-size:11px!important}#vdash #ilDashQuick1843 .ildq-sub{display:none!important}#vdash #ilDashQuick1843 button{min-height:65px!important}#vdash #ilServicesTile1896 .ildq-sub{display:block!important}}
+ @media(prefers-reduced-motion:reduce){#vplan.il20v5 *,#vdash #ilDashQuick1843 button{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+ `;
+ (d.head||d.documentElement).appendChild(css);
+ if(d.readyState==='loading')d.addEventListener('DOMContentLoaded',initial,{once:true});else initial();
+})();
+
+/* Ispina Lokalnie 2.0 — Mint & Navy unified visual layer.
+ * Only visual rules: no route/search/business logic overridden.
+ * Theme follows user's screenshot; restores legible text on pale surfaces.
+ */
+;(function(){
+ 'use strict';
+ if(typeof document==='undefined'||window.IL20_MINT_BLUE_THEME)return;
+ window.IL20_MINT_BLUE_THEME={version:'preview.6',scope:'all-native-views'};
+ var css=`
+ :root{--il-bg:#eaf4f9!important;--il-soft:#eefaf7!important;--il-text:#163b58!important;--il-muted:#4a6575!important;--il-border:#c6dfe2!important;--il-primary:#176b95!important;--il-primary2:#138f86!important;--il-shadow:0 7px 22px rgba(20,67,99,.10)!important}
+ #iaP{background:linear-gradient(180deg,#e8f2fb 0%,#f2f9fc 45%,#e9f7f2 100%)!important;color:#163b58!important}
+ #iaBar,#iaD .dh{background:linear-gradient(115deg,#143b70 0%,#1b5c98 62%,#267fb9 100%)!important;color:#fff!important}
+ #iaBar .B,#iaBar .S,#iaBar .h,#iaBar button{color:#fff!important}
+ #iaD{background:linear-gradient(180deg,#f5fbff,#eaf6f3)!important}
+ #iaD .nb{color:#18435f!important}
+ #iaD .nb.on{background:#d8edf7!important;color:#124c7d!important}
+ #iaP .view{color:#193f58}
+ #iaP .view>.card,#iaP .view .card,#iaP .view .hour,#iaP .view .day,#iaP .view .met{background:#fff!important;border-color:#cde2e8!important;box-shadow:0 6px 20px rgba(16,65,93,.075)!important;border-radius:19px!important}
+ #iaP .view .h,#iaP .view .sectitle{color:#183e68!important;letter-spacing:-.2px}
+ #iaP .view .p,#iaP .view .hint{color:#466b76!important}
+ #iaP .view button{touch-action:manipulation}
+ #iaP .view .btn,#iaP .view .plgo{background:linear-gradient(125deg,#16537e,#187c9c)!important;color:#fff!important;border-color:transparent!important;border-radius:13px!important}
+ #iaP .view .btn2,#iaP .view .sel,#iaP .view select,#iaP .view input[type=text],#iaP .view input[type=search]{border-color:#bfd9e4!important;color:#1a475f!important}
+ #iaP .view input:focus-visible,#iaP .view select:focus-visible,#iaP .view button:focus-visible,#iaD button:focus-visible{outline:3px solid #2f8eb7!important;outline-offset:2px!important}
+ /* Primary mint hero taken from the reference screen. Replace hard-to-read white text. */
+ #vdash #ilDashHero1843{background:linear-gradient(135deg,#e2f5ef 0%,#d0ede5 55%,#c9e8e0 100%)!important;color:#153f5b!important;border:1px solid #b4d7cf!important;border-radius:28px!important;box-shadow:0 10px 27px rgba(25,93,93,.10)!important;padding:20px 18px!important}
+ #vdash #ilDashHero1843:after{background:rgba(54,151,160,.075)!important;box-shadow:-46px 86px 0 8px rgba(53,141,152,.045)!important;pointer-events:none!important}
+ #vdash #ilDashHero1843 .ildh-top,#vdash #ilDashHero1843 .ildh-sync{position:relative!important;z-index:2!important}
+ #vdash #ilDashHero1843 .ildh-greet{color:#123f5a!important;text-shadow:none!important;font-size:clamp(18px,4.7vw,23px)!important;line-height:1.22!important;opacity:1!important}
+ #vdash #ilDashHero1843 .ildh-date{color:#345e70!important;text-shadow:none!important;font-size:13px!important;opacity:1!important;margin-top:5px!important}
+ #vdash #ilDashHero1843 .ildh-sync{color:#355f70!important;text-shadow:none!important;line-height:1.45!important;font-size:12px!important;margin-top:11px!important;opacity:1!important}
+ #vdash #ilDashHero1843 .ildh-state{color:#12495f!important;background:rgba(255,255,255,.81)!important;border:1px solid #add4d5!important}
+ #vdash #ilDashQuick1843{position:relative!important;z-index:2!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;margin-top:17px!important}
+ #vdash #ilDashQuick1843 button{min-height:95px!important;max-height:none!important;height:auto!important;padding:13px 8px!important;border-radius:20px!important;border:1px solid rgba(255,255,255,.35)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.17),0 7px 17px rgba(20,70,96,.13)!important;color:#fff!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:2px!important;text-align:center!important}
+ #vdash #ilDashQuick1843 button:nth-child(1){background:linear-gradient(130deg,#0a7774,#0d766b)!important}
+ #vdash #ilDashQuick1843 button:nth-child(2){background:linear-gradient(130deg,#234d77,#396891)!important}
+ #vdash #ilDashQuick1843 button:nth-child(3){background:linear-gradient(130deg,#1c677f,#246c7c)!important}
+ #vdash #ilDashQuick1843 button:nth-child(4){background:linear-gradient(130deg,#325a79,#3e6f84)!important}
+ #vdash #ilDashQuick1843 button .ildq-main{font-size:15px!important;font-weight:900!important;color:#fff!important;line-height:1.24!important}
+ #vdash #ilDashQuick1843 button .ildq-sub{font-size:11.5px!important;color:#fff!important;opacity:.97!important;line-height:1.33!important;white-space:normal!important;display:block!important}
+ #vdash #ilDashQuick1843 button .ildq-icon{display:flex!important;justify-content:center!important;align-items:center!important;margin:0 0 6px!important;height:28px!important;color:#fff!important}
+ #vdash #ilDashQuick1843 button .ildq-icon svg{stroke:#fff!important;opacity:1!important;width:25px!important;height:25px!important}
+ #vdash #ilDashQuick1843 #ilServicesTile1896{grid-column:1/-1!important;height:auto!important;max-height:none!important;min-height:69px!important;flex-direction:row!important;gap:15px!important;padding:12px 14px!important;background:linear-gradient(110deg,#173f78,#2569a4)!important;border-radius:17px!important;box-sizing:border-box!important}
+ #vdash #ilDashQuick1843 #ilServicesTile1896 .ildq-main{font-size:17px!important}
+ #vdash #ilDashQuick1843 #ilServicesTile1896 .ildq-sub{font-size:12px!important}
+ #vdash #ilDashHero1843 #ilDashRefresh1844{position:relative!important;z-index:2!important;border-top:1px solid rgba(53,119,122,.19)!important;display:grid!important;grid-template-columns:1fr!important;gap:10px!important;padding-top:15px!important;margin-top:18px!important}
+ #vdash #ilDashRefresh1844 .ilr-meta{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;align-items:center!important;gap:8px 12px!important;min-height:38px!important;border-radius:999px!important;padding:8px 11px!important;background:rgba(255,255,255,.74)!important;color:#205366!important;line-height:1.45!important;font-size:12px!important;box-sizing:border-box!important}
+ #vdash #ilDashRefresh1844 .ilr-meta b{color:#184957!important;font-size:12px!important}
+ #vdash #ilDashRefresh1844 .ilr-meta #ilFresh1845{color:#8a513c!important;background:#fff5e9!important;border:1px solid #efd8c3!important;border-radius:99px!important;padding:4px 8px!important;opacity:1!important;white-space:normal!important;text-align:center!important;overflow-wrap:anywhere!important;font-size:11px!important}
+ #vdash #ilDashRefresh1844 #ilDashRefreshBtn1844{width:100%!important;min-height:48px!important;border-radius:14px!important;padding:12px!important;background:rgba(255,255,255,.83)!important;color:#175260!important;border:1px solid #bededb!important;font-size:13px!important;font-weight:900!important;box-sizing:border-box!important}
+ #vdash #il20-freshness{background:linear-gradient(145deg,#fff,#f8fcfd)!important;border-color:#c9dee7!important;border-radius:22px!important;padding:16px!important;box-shadow:0 6px 18px rgba(21,70,104,.07)!important}
+ #vdash #il20-freshness h3{color:#153e69!important}
+ #vdash #il20-freshness .il20-pill{background:#e6f2fc!important;color:#185983!important}
+ #vdash #il20-freshness .il20v5-sync-details summary{color:#315d77!important;font-size:12px!important}
+ /* Unified, but lighter, content panels in other screens */
+ #vplan .plhero{background:linear-gradient(125deg,#173e74,#2580b3)!important;border:1px solid rgba(255,255,255,.20)!important;border-radius:21px!important}
+ #vplan .plcard,#vplan .il20-extras,#vplan .il20-traffic-panel{background:linear-gradient(150deg,#ffffff,#f8fdfc)!important;border-color:#c5dfe4!important;border-radius:22px!important;box-shadow:0 8px 23px rgba(20,75,97,.08)!important}
+ #vplan .plfield{background:#f1f9f9!important;border-color:#bddcde!important}
+ #vplan .pllabel{color:#345f73!important}
+ #vplan .plfield input{color:#143f59!important}
+ #vplan.il20v5 .il20v5-summary{color:#155e76!important}
+ #vplan.il20v5 .il20v5-accordion,#vplan.il20v5 .il20v5-when-mode{border-color:#cde2e6!important}
+ #vplan.il20v5 #pres .pr.il20v5-result{background:linear-gradient(150deg,#fff 0%,#f4fbfa 100%)!important;border-color:#cadddf!important;border-radius:19px!important;box-shadow:0 6px 17px rgba(20,76,104,.085)!important}
+ #vplan.il20v5 #pres .pr.il20v5-recommended{background:linear-gradient(140deg,#e7f7f2,#f5fbfe 75%)!important;border-left:4px solid #128d83!important}
+ #vplan.il20v5 .il20v5-clock{color:#143e66!important}
+ #vplan.il20v5 .il20v5-stopname{color:#24536d!important}
+ #vplan .il20-toggle.selected{background:#166c88!important;color:#fff!important}
+ #vplan .il20-traffic-btn:not(.secondary):not(.danger){background:linear-gradient(120deg,#174c7e,#187c94)!important;color:#fff!important}
+ #vwx .hero{background:linear-gradient(135deg,#15477c,#1b8c9c)!important;color:#fff!important;box-shadow:0 8px 19px rgba(21,91,117,.14)!important}
+ #vwx .hero .wh,#vwx .hero .wt,#vwx .hero .wd,#vwx .hero .wm{color:#fff!important}
+ #vwx .hours .hour,#vwx .days .day{background:linear-gradient(145deg,#f6fcfb,#fff)!important}
+ #vdep .card{background:linear-gradient(160deg,#ffffff,#f7fcfb)!important}
+ #vdep .tab{background:#eef7f9!important;color:#245e73!important;border-color:#c1dee1!important;min-height:43px!important}
+ #vdep .tab.on{background:#166b88!important;color:#fff!important;border-color:#166b88!important}
+ #vdep .dep{background:#fff!important;border:1px solid #d1e4e8!important;border-radius:15px!important;padding:11px!important;margin-bottom:8px!important}
+ #vdep .time{color:#15466c!important}
+ #vdep .rt{background:#e5f5f1!important;color:#265c64!important}
+ #vdep #ilAuditScheduleNote{color:#654d28!important;background:#fff8e7!important;border-color:#eedcb6!important;border-radius:12px!important}
+ #vset #ilSettingsQuick1843,#vset #ilSettingsSearch1844,#vset .card{background:linear-gradient(145deg,#ffffff,#f5fbf9)!important;border-color:#cddfe4!important}
+ #vset #ilSettingsQuick1843 button{background:#eaf6f4!important;color:#245576!important;border-color:#c5e2df!important;min-height:48px!important}
+ #vset .sectitle,#vset .ilsq-title{color:#174871!important}
+ #vilNews1842 .ilnf-hero,#vilPage1851 .ilp-head1851{background:linear-gradient(130deg,#e4f6f0,#eaf5fc)!important;color:#173f62!important;border:1px solid #c5dfe3!important;border-radius:21px!important}
+ #vilNews1842 .ilnf-title,#vilPage1851 .ilp-head1851 h1{color:#174b70!important}
+ #vilNews1842 .ilnf-post{background:#fff!important;border-color:#cee3e7!important;border-radius:18px!important}
+ #voff>.card,#vsenior>.card,#vseniorWaste>.card{background:linear-gradient(140deg,#fff,#f5fbf9)!important}
+ #ilDayBottom{background:rgba(247,252,252,.97)!important;border-top:1px solid #bfdadf!important;box-shadow:0 -4px 18px rgba(23,71,104,.085)!important}
+ #ilDayBottom button{color:#365e68!important}
+ #ilDayBottom button.kd-active{background:#e1f0f7!important;color:#155889!important;border:1px solid #c0dae6!important}
+ body.senior #vdash #ilDashHero1843 .ildh-greet{font-size:28px!important}
+ body.senior #vdash #ilDashQuick1843 button{min-height:110px!important}
+ body.senior #vdash #ilDashQuick1843 .ildq-main{font-size:19px!important}
+ body.senior #vdash #ilDashQuick1843 .ildq-sub{font-size:14px!important}
+ /* Dark planner header is a deliberate exception to the dark text of light cards. */
+ html #iaP #vplan .plhero .h{color:#fff!important;text-shadow:none!important}
+ html #iaP #vplan .plhero .p{color:#eef9ff!important;text-shadow:none!important;opacity:1!important}
+ html #iaP #vplan .plhero{color:#fff!important}
+ /* Increase separation between the two rows of dashboard tiles. */
+ #vdash #ilDashQuick1843{row-gap:12px!important;column-gap:11px!important}
+ /* Explicitly outrank older html-scoped accessibility rules that forced white type. */
+ html #iaP #vdash #ilDashHero1843 .ildh-greet{color:#123f5a!important;text-shadow:none!important;opacity:1!important}
+ html #iaP #vdash #ilDashHero1843 .ildh-date{color:#345e70!important;text-shadow:none!important;opacity:1!important}
+ html #iaP #vdash #ilDashHero1843 .ildh-sync{color:#355f70!important;text-shadow:none!important;opacity:1!important}
+ html #iaP #vdash #ilDashHero1843 .ildh-state{color:#12495f!important;text-shadow:none!important}
+ @media(max-width:355px){#vdash #ilDashQuick1843 button{min-height:84px!important}#vdash #ilDashQuick1843 .ildq-main{font-size:13px!important}#vdash #ilDashQuick1843 .ildq-sub{font-size:10.5px!important}#vdash #ilDashHero1843{padding:15px 12px!important}#vdash #ilDashRefresh1844 .ilr-meta{gap:5px!important}#vdep .dep{padding:7px!important}}
+ @media(prefers-reduced-motion:reduce){#iaP *,#ilDayBottom *{transition:none!important;animation-duration:.01ms!important}}
+ `;
+ function inject(){
+  if(!document.head)return false;
+  var style=document.getElementById('il20MintBlueTheme6');
+  if(!style){style=document.createElement('style');style.id='il20MintBlueTheme6';style.textContent=css;document.head.appendChild(style)}
+  else if(document.head.lastElementChild!==style)document.head.appendChild(style);
+  return true;
+ }
+ function boot(){inject();
+  // Other feature modules append styles asynchronously. Keep design tokens last.
+  var head=document.head;
+  if(head&&typeof MutationObserver==='function'){
+   var observer=new MutationObserver(function(list){
+    for(var i=0;i<list.length;i++)if(list[i].addedNodes&&list[i].addedNodes.length){inject();break}
+   });observer.observe(head,{childList:true});
+  }
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
+
+/* IL 2.0 Preview 7 — Mint & Navy UX Polish
+ * Purely progressive UX layer; the schedule parser and native services are unchanged.
+ * No invented live status and no automatic choice of a stop.
+ */
+;(function(){
+ 'use strict';
+ if(window.IL20_PREVIEW7 || typeof document==='undefined')return;
+ var d=document, resultObserver=null, weatherObserver=null, newsObserver=null;
+ var pendingJump=false,jumpTimer=0;
+ function one(sel,root){return (root||d).querySelector(sel)}
+ function make(tag,cls,text){var el=d.createElement(tag);if(cls)el.className=cls;if(text!==undefined)el.textContent=text;return el}
+ function show(el,on){if(el&&el.hidden===on)el.hidden=!on}
+ function enhanceCard(card){
+   if(card.hasAttribute('data-il7'))return;
+   var time=one('.il20v5-timegrid',card);if(!time)return;
+   card.setAttribute('data-il7','1');
+   var label=one('.il20-recommend',card);
+   if(label && /Najwcześniejszy przyjazd/.test(label.textContent))label.textContent='★ Najwcześniejszy przyjazd';
+   var extended=make('div','il7-extra');extended.hidden=true;extended.id='il7-details-'+(card.getAttribute('data-direct-index')||Math.random().toString(36).slice(2,6));
+   ['.ilLiveCourse','.il20-traffic-choose','.il20-traf-mini'].forEach(function(sel){var el=one(sel,card);if(el)extended.appendChild(el)});
+   var footer=make('div','il7-result-footer');
+   footer.appendChild(make('span','il7-status','Rozkład'));
+   var button=make('button','il7-detail-btn','Szczegóły ▾');button.type='button';button.setAttribute('aria-controls',extended.id);button.setAttribute('aria-expanded','false');
+   footer.appendChild(button);card.appendChild(footer);card.appendChild(extended);
+   // Original article was a big role=button with nested action buttons. Use a real explicit details button.
+   var liveHandler=card.onclick;card.onclick=null;card.onkeydown=null;card.removeAttribute('role');card.removeAttribute('tabindex');
+   button.addEventListener('click',function(e){e.stopPropagation();var open=extended.hidden;extended.hidden=!open;button.textContent=open?'Zwiń szczegóły ▴':'Szczegóły ▾';button.setAttribute('aria-expanded',String(open));
+     if(open && typeof liveHandler==='function')liveHandler.call(card,e);
+   });
+ }
+ function enhanceResults(){
+   var pres=one('#pres');if(!pres)return false;
+   pres.querySelectorAll('article.pr.il20v5-result').forEach(enhanceCard);
+   var hasResults=!!pres.querySelector('article.pr');
+   var back=one('.il7-back-to-form',pres);
+   if(hasResults && !back){back=make('button','il7-back-to-form','↑ Zmień trasę lub godzinę');back.type='button';back.addEventListener('click',function(){var f=one('#vplan .plcard');if(f)f.scrollIntoView({block:'start',behavior:'auto'})});pres.insertBefore(back,pres.firstChild)}
+   else if(!hasResults && back)back.remove();
+   return hasResults;
+ }
+ function jumpToResults(){
+   if(!pendingJump || !one('#vplan.on'))return;
+   var pres=one('#pres');if(!pres)return;
+   var h=one('article.pr',pres);
+   if(!h)return;
+   pendingJump=false;
+   var scroll=one('#iaP');
+   if(scroll&&scroll.scrollHeight>scroll.clientHeight){var delta=h.getBoundingClientRect().top-scroll.getBoundingClientRect().top-78;scroll.scrollTop=Math.max(0,scroll.scrollTop+delta)}
+   else h.scrollIntoView({block:'start',behavior:'auto'});
+ }
+ function journeyChanged(e){
+   var btn=e.target.closest&&e.target.closest('#pgo,#pto-review .il-r12-accept,#vplan .il20-fav-open');
+   if(!btn)return;
+   pendingJump=true;clearTimeout(jumpTimer);
+   jumpTimer=setTimeout(function(){enhanceResults();jumpToResults()},420);
+ }
+ function fieldStates(){
+   ['pfrom','pto'].forEach(function(id){var input=one('#'+id),review=one('#'+id+'-review');if(!input||!review)return;
+     var accept=one('.il-r12-accept',review),change=one('.il-r15-change',review);
+     // Hide the acceptance row only after an explicit acceptance; never approve an unconfirmed name.
+     var accepted=!!(change&&!change.disabled&&input.readOnly);
+     if(review.classList.contains('il7-confirmed')!==accepted)review.classList.toggle('il7-confirmed',accepted);
+     if(accept&&accept.getAttribute('aria-hidden')!==(accepted?'true':'false'))accept.setAttribute('aria-hidden',accepted?'true':'false');
+   });
+ }
+ function dashboard(){
+   var hero=one('#ilDashHero1843'),refresh=one('#ilDashRefresh1844'),fresh=one('#il20-freshness');if(!hero||!refresh||!fresh)return;
+   var summary=one('.il20v5-sync-details',fresh);
+   if(summary && summary.parentElement!==refresh){refresh.appendChild(summary);fresh.classList.add('il7-moved')}
+   var icon=one('#ilDashQuick1843 button[data-r=":plan"] .ildq-icon');
+   if(icon&&!icon.dataset.il7Icon){icon.dataset.il7Icon='true';icon.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="6" r="2.5"/><circle cx="19" cy="18" r="2.5"/><path d="M7.5 6h5a4 4 0 0 1 0 8H11a4 4 0 0 0-4 4h9"/></svg>'}
+ }
+ function weatherState(){
+   var root=one('#vwx');if(!root)return;
+   var temp=one('#wtemp'),hr=one('#hours'),dy=one('#days'),metrics=one('#metrics');
+   var empty=(!temp || /^\s*(--|—)/.test(temp.textContent));
+   var hcard=hr&&hr.closest('.card'),dcard=dy&&dy.closest('.card');
+   // Empty containers are omitted; live results remain available once received.
+   if(hcard)hcard.hidden=!(hr&&hr.children.length);
+   if(dcard)dcard.hidden=!(dy&&dy.children.length);
+   if(metrics)metrics.hidden=!(metrics.children.length || metrics.textContent.trim());
+   var panel=one('#il7-weather-empty');
+   if(!panel){panel=make('div','il7-no-data');panel.id='il7-weather-empty';panel.setAttribute('role','status');panel.textContent='Nie udało się jeszcze pobrać pogody. Połącz się z internetem i otwórz ten ekran ponownie.';var hero=one('.hero',root);if(hero)hero.insertAdjacentElement('afterend',panel)}
+   panel.hidden=!empty;
+   if(temp)temp.classList.toggle('il7-temp-unavailable',empty);
+ }
+ function newsState(){
+   var root=one('#vilNews1842'),label=one('#ilNfState1842'),list=one('#ilNfList1842');if(!root||!label||!list)return;
+   var any=!!list.querySelector('.ilnf-post,.ilnf-article,article,a[href]');
+   var offline=navigator.onLine===false;
+   var desired=offline?'Offline':any?'Zapisane wpisy':'Brak wpisów';
+   if(label.textContent!==desired)label.textContent=desired;
+ }
+ function boot(){
+   var css=make('style');css.id='il20Preview7Styles';css.textContent=`
+/* Preview 7: one compact hierarchy; keep Mint & Navy and predictable keyboard navigation */
+#iaP #vplan.il20v5 .plhero{padding:10px 14px!important;margin-bottom:7px!important;border-radius:14px!important}
+#iaP #vplan.il20v5 .plhero .h{font-size:19px!important;line-height:1.2!important}
+#iaP #vplan.il20v5 .plhero .p{font-size:12px!important;margin-top:2px!important;line-height:1.3!important}
+#iaP #vplan.il20v5 .plcard{padding:11px!important;scroll-margin-top:68px!important}
+#iaP #vplan.il20v5 .pllabel{margin:5px 3px 3px!important;font-size:12px!important}
+#iaP #vplan.il20v5 .plfield{min-height:49px!important;padding:3px 8px!important}
+#iaP #vplan.il20v5 .plfield input{min-height:44px!important;font-size:16px!important}
+#iaP #vplan.il20v5 .plswap{min-height:48px!important;min-width:48px!important;width:48px!important;height:48px!important;margin:0 auto!important}
+#iaP #vplan.il20v5 .il-r8-clear,#iaP #vplan.il20v5 .il-r12-tick{min-width:48px!important;min-height:48px!important;box-sizing:border-box!important}
+#iaP #vplan.il20v5 .il-r15-review{margin:3px 0 4px!important;min-height:0!important}
+#iaP #vplan.il20v5 .il-r15-review.il7-confirmed{display:flex!important;justify-content:flex-end!important}
+#iaP #vplan.il20v5 .il-r15-review.il7-confirmed .il-r12-accept{display:none!important}
+#iaP #vplan.il20v5 .il-r15-review.il7-confirmed .il-r15-change{min-height:48px!important;min-width:80px!important;display:inline-flex!important}
+#iaP #vplan.il20v5 .il20v5-when-mode{margin-top:7px!important;padding-top:7px!important}
+#iaP #vplan.il20v5 .il20v5-mini-head{margin-bottom:5px!important;font-size:14px!important}
+#iaP #vplan.il20v5 .plwhen{margin-top:5px!important;gap:6px!important}
+#iaP #vplan.il20v5 .il20v5-shortcuts,#iaP #vplan.il20v5 .il20v5-favorites,#iaP #vplan.il20v5 .il20v5-advanced{margin-top:7px!important}
+#iaP #vplan.il20v5 .il20v5-summary{min-height:48px!important;padding:12px!important;font-size:14px!important}
+#iaP #vplan.il20v5 #pres{scroll-margin-top:78px!important}
+#iaP #vplan.il20v5 #pres h3{scroll-margin-top:77px!important}
+#iaP #vplan.il20v5 #pres .pr.il20v5-result{padding:11px!important;margin:8px 0!important}
+#iaP #vplan.il20v5 #pres .il20-recommend{display:inline-block!important;margin:0 0 4px!important;padding:4px 8px!important;font-size:11px!important}
+#iaP #vplan.il20v5 .il20v5-timegrid{padding:3px 0 5px!important}
+#iaP #vplan.il20v5 .il20v5-clock{font-size:28px!important}
+#iaP #vplan.il20v5 .il20v5-stopname{font-size:13px!important}
+#iaP #vplan.il20v5 #pres .prmeta{margin:6px 0 3px!important;font-size:12px!important;color:#365d75!important}
+#iaP #vplan.il20v5 .il7-result-footer{display:flex;align-items:center;justify-content:space-between;gap:7px;margin-top:7px;border-top:1px solid #dbe9e9;padding-top:7px}
+#iaP #vplan.il20v5 .il7-status{font-size:12px;line-height:1.35;color:#385a6a;max-width:56%;overflow-wrap:anywhere;background:#ecf4f6;border:1px solid #d7e6e9;border-radius:9px;padding:5px 9px;font-weight:700}
+#iaP #vplan.il20v5 .il7-detail-btn,#iaP #vplan.il20v5 .il7-back-to-form{border:1px solid #bed7df;background:#e8f5f5;color:#134e6a;font-weight:800;font-size:13px;border-radius:11px;min-height:48px;min-width:48px;padding:8px 12px;cursor:pointer}
+#iaP #vplan.il20v5 .il7-detail-btn:focus-visible,#iaP #vplan.il20v5 .il7-back-to-form:focus-visible{outline:3px solid #246eaa;outline-offset:2px}
+#iaP #vplan.il20v5 .il7-extra[hidden],#iaP #vwx [hidden]{display:none!important}
+#iaP #vplan.il20v5 .il7-extra{margin-top:10px;padding-top:5px;border-top:1px solid #dce9ed}
+#iaP #vplan.il20v5 .il7-back-to-form{display:block;width:100%;text-align:center;margin:6px 0 8px;box-sizing:border-box}
+#iaP #vplan.il20v5 .il7-extra .ilLiveCourse{font-size:13px!important}
+#iaP #vplan.il20v5 .il7-extra .il20-traf-mini{font-size:12px!important}
+#iaP #vdep .star{min-width:48px!important;width:48px!important;height:48px!important;min-height:48px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;font-size:23px!important;border-radius:12px!important;touch-action:manipulation}
+#iaP #vdep .tab{min-height:48px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;padding:10px 13px!important}
+#iaP #vdep .dep{align-items:center!important}
+#iaP #vdep .star:focus-visible,#iaP #vdep .tab:focus-visible{outline:3px solid #207db1!important;outline-offset:2px}
+#iaP #vdash .ildh-sync{display:none!important}
+#iaP #vdash #il20-freshness.il7-moved{display:none!important}
+#iaP #vdash #ilDashRefresh1844 .il20v5-sync-details{grid-column:1/-1;width:100%;margin:0!important;border-top:1px solid rgba(30,101,112,.18);padding-top:3px}
+#iaP #vdash #ilDashRefresh1844 .il20v5-sync-details summary{min-height:48px;padding:12px 6px;color:#144e69!important;font-size:13px!important;font-weight:750}
+#iaP #vdash #ilDashHero1843{padding:17px 16px!important}
+#iaP #vdash #ilDashQuick1843{margin-top:12px!important}
+#iaP #vdash #ilDashQuick1843 button{min-height:78px!important}
+#iaP #vdash #ilDashRefresh1844{margin-top:13px!important;padding-top:10px!important}
+#iaP #vwx .il7-no-data{background:#f5fbfc;border:1px solid #b8d9e1;color:#174d65;border-radius:15px;margin:12px 0;padding:16px;font-size:15px;line-height:1.5}
+#iaP #vwx .il7-temp-unavailable{font-size:27px!important;opacity:.75}
+#iaP #vilNews1842 .ilnf-state{min-width:80px;text-align:center}
+#iaP #vset .card .p,#iaP #vset .card p{font-size:14px!important;line-height:1.5!important}
+html.il20-senior #iaP #vplan.il20v5 .il7-status{font-size:15px}
+html.il20-senior #iaP #vplan.il20v5 .il7-detail-btn{font-size:16px;min-height:56px}
+html.il20-senior #iaP #vplan.il20v5 .il20v5-stopname{font-size:16px!important}
+@media(max-width:355px){#iaP #vplan.il20v5 .il20v5-timegrid{gap:4px}#iaP #vplan.il20v5 .il20v5-clock{font-size:25px!important}#iaP #vplan.il20v5 .il7-detail-btn{font-size:12px;padding:7px}#iaP #vplan.il20v5 .il7-status{font-size:11px}}
+@media(prefers-reduced-motion:reduce){#iaP #vplan *{scroll-behavior:auto!important;transition:none!important}}
+`;
+   (d.head||d.documentElement).appendChild(css);
+   var planner=one('#vplan');if(!planner)return;
+   planner.addEventListener('click',journeyChanged,true);
+   enhanceResults();fieldStates();dashboard();weatherState();newsState();
+   var pres=one('#pres');if(pres&&window.MutationObserver)resultObserver=new MutationObserver(function(){enhanceResults();if(pendingJump){clearTimeout(jumpTimer);jumpTimer=setTimeout(jumpToResults,120)}}),resultObserver.observe(pres,{childList:true,subtree:true});
+   ['pfrom-review','pto-review'].forEach(function(id){var el=one('#'+id);if(el&&window.MutationObserver)new MutationObserver(fieldStates).observe(el,{childList:true,attributes:true,subtree:true})});
+   var weather=one('#vwx');if(weather&&window.MutationObserver)weatherObserver=new MutationObserver(weatherState),weatherObserver.observe(weather,{childList:true,subtree:true,characterData:true});
+   var news=one('#ilNfList1842');if(news&&window.MutationObserver)newsObserver=new MutationObserver(newsState),newsObserver.observe(news,{childList:true,subtree:true});
+   window.IL20_PREVIEW7={version:'7',refresh:function(){enhanceResults();fieldStates();dashboard();weatherState();newsState()}};
+ }
+ if(d.readyState==='loading')d.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
+
+/* Ispina Lokalnie 2.0 Preview 8 — Mint & Navy visual refinement and Gallery UX.
+ * Progressive changes only: original transport, TTS, radio/TV and WebView stay intact.
+ */
+;(function(){
+ 'use strict';
+ if(window.IL20_PREVIEW8||!document.body)return;
+ var d=document, gallery=d.getElementById('vilPage1851'),body=d.getElementById('ilpBody1851'),viewer=d.getElementById('ilGalleryViewer1861');
+ function one(s,r){return (r||d).querySelector(s)}
+ function node(t,c,v){var el=d.createElement(t);if(c)el.className=c;if(v!==undefined)el.textContent=v;return el}
+ var css=node('style');css.id='il20Preview8Style';css.textContent=`
+ /* Common Mint & Navy language: preserve contrast on pale panels. */
+ #iaP #vdash .ildh-greet,#iaP #vdash .ildh-date{color:#173a57!important;text-shadow:none!important}
+ #iaP #vdash #ilDashQuick1843 button{box-shadow:0 5px 18px rgba(19,67,105,.12)!important}
+ #iaP #vdash #ilDashQuick1843 button:focus-visible,#iaP #vplan button:focus-visible{outline:3px solid #155c99!important;outline-offset:2px!important}
+ #iaBar .ct{width:64px!important;height:39px!important;margin:2px 0 1px!important;filter:drop-shadow(0 1px 1px rgba(0,0,0,.12))}
+ #iaP #vdash #ilDashQuick1843 button .ildq-icon svg{width:28px!important;height:28px!important}
+ #iaP #vdep .star{font-size:28px!important;color:#19597b!important}
+ #iaP #vdep .star.on,#iaP #vdep .star[aria-pressed=true]{color:#ab6b09!important}
+ #iaP #vwx .il7-no-data{box-shadow:0 3px 11px rgba(23,77,98,.06)!important}
+ /* Gallery: airy thumbnail wall, legible captions, balanced top bar. */
+ #vilPage1851.il-gallery1861 .ilp-head1851{border-radius:20px!important;margin-bottom:10px!important}
+ #vilPage1851.il-gallery1861 .ilp-card1851{padding:8px 3px 15px!important}
+ #vilPage1851.il-gallery1861 #ilpMeta1851{color:#285977!important;font-size:12px!important;font-weight:650!important}
+ #vilPage1851.il-gallery1861 .ilg-intro1861{border:1px solid #c5dfe4!important;border-radius:18px!important;background:linear-gradient(133deg,#edfcf6,#e7f2fd)!important;padding:14px!important;box-shadow:0 6px 18px rgba(27,74,99,.07)!important;align-items:center!important;gap:10px!important}
+ #vilPage1851.il-gallery1861 .ilg-intro1861 b{color:#174665!important;font-size:18px!important;line-height:1.3!important}
+ #vilPage1851.il-gallery1861 .ilg-intro1861 span{font-size:13px!important;line-height:1.45!important;color:#365d70!important}
+ #vilPage1851.il-gallery1861 .ilg-show1861{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:48px!important;min-width:104px!important;font-size:13px!important;line-height:1.25!important;background:linear-gradient(120deg,#115c80,#237ea2)!important;box-shadow:0 4px 12px rgba(23,88,115,.16)!important}
+ #vilPage1851.il-gallery1861 .ilg-grid1861{gap:10px!important;padding:3px 1px!important}
+ #vilPage1851.il-gallery1861 .ilg-item1861{border-radius:17px!important;background:#dcecf0!important;box-shadow:0 5px 15px rgba(20,70,91,.12)!important;border:1px solid #d4e8eb!important}
+ #vilPage1851.il-gallery1861 .ilg-item1861:focus-visible{outline:3px solid #2579a9!important;outline-offset:3px!important}
+ #vilPage1851.il-gallery1861 .ilg-item1861 img{transition:transform .35s ease!important;object-position:center!important}
+ #vilPage1851.il-gallery1861 .ilg-cap1861{font-size:12px!important;line-height:1.35!important;padding:24px 11px 10px!important;background:linear-gradient(transparent,rgba(6,29,48,.83))!important;text-wrap:pretty!important}
+ #vilPage1851.il-gallery1861 .ilg-cap1861{display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important;overflow:hidden!important}
+ #vilPage1851.il-gallery1861 .il8-image-error{position:absolute;inset:auto 0 0;display:block;background:#22445b;color:white;padding:8px 10px;font-size:13px;font-weight:700;text-align:center}
+ #vilPage1851.il-gallery1861 .il8-image-failed img{opacity:.22!important}
+ #vilPage1851.il-gallery1861 .ilg-num1861{font-size:12px!important;min-width:30px!important;padding:5px 8px!important;background:rgba(15,51,75,.76)!important}
+ #vilPage1851.il-gallery1861 .il8-gallery-help{color:#365d70;font-size:12px;line-height:1.45;margin:9px 5px 0}
+ #vilPage1851.il-gallery1861 .il8-gallery-empty{background:#f2faf9;border:1px solid #b8d9dd;padding:22px 15px;border-radius:18px;margin:10px 0;color:#1d556c;line-height:1.5;font-size:15px;text-align:center}
+ #vilPage1851.il-gallery1861 .il8-gallery-empty button{border:0;border-radius:12px;background:#136a8b;color:white;padding:12px 20px;margin-top:9px;min-height:48px;font-size:15px;font-weight:700}
+ /* Viewer has a dark navy background to focus attention on the photograph. */
+ #ilGalleryViewer1861{background:radial-gradient(ellipse at center,#1d344a 0,#0b1829 65%,#07111f 100%)!important}
+ #ilGalleryViewer1861 .ilgv-top1861{background:linear-gradient(180deg,rgba(5,20,39,.96),rgba(5,20,39,.25))!important;padding-left:12px!important;padding-right:12px!important}
+ #ilGalleryViewer1861 .ilgv-bottom1861{background:linear-gradient(0deg,rgba(5,20,39,.97),rgba(5,20,39,.47))!important;padding:10px 10px max(12px,env(safe-area-inset-bottom))!important;gap:9px!important}
+ #ilGalleryViewer1861 .ilgv-title1861 b{font-size:16px!important}
+ #ilGalleryViewer1861 .ilgv-title1861 span{font-size:13px!important}
+ #ilGalleryViewer1861 .ilgv-btn1861{min-height:48px!important;height:48px!important;min-width:48px!important;border-radius:13px!important;font-size:17px!important;background:rgba(233,245,255,.15)!important;border:1px solid rgba(233,245,255,.26)!important;color:#fff!important}
+ #ilGalleryViewer1861 .ilgv-btn1861:focus-visible,#ilGalleryViewer1861 .ilgv-nav1861:focus-visible{outline:3px solid #86dced!important;outline-offset:2px!important}
+ #ilGalleryViewer1861 .ilgv-close1861{font-size:26px!important}
+ #ilGalleryViewer1861 .ilgv-controls1861{flex-wrap:wrap!important;gap:7px!important;justify-content:center!important}
+ #ilGalleryViewer1861 .ilgv-controls1861 .ilgv-btn1861{height:48px!important;min-height:48px!important}
+ #ilGalleryViewer1861 .ilgv-fx1862{font-size:12px!important;min-width:130px!important;max-width:100%!important}
+ #ilGalleryViewer1861 .ilgv-zoom1861{font-size:13px!important}
+ #ilGalleryViewer1861 .ilgv-play1861{min-width:104px!important}
+ #ilGalleryViewer1861 .ilgv-nav1861{width:48px!important;height:60px!important;background:rgba(9,33,57,.65)!important}
+ #ilGalleryViewer1861 .ilgv-caption1861{font-size:14px!important;line-height:1.42!important;white-space:normal!important;overflow:auto!important;max-height:5em!important;text-overflow:clip!important;padding:0 14px!important;min-height:20px!important;overflow-wrap:anywhere!important}
+ #ilGalleryViewer1861 .ilgv-stage1861{min-height:120px!important}
+ #ilGalleryViewer1861 .il8-duration{font-weight:750!important;min-width:65px!important;font-size:13px!important}
+ #ilGalleryViewer1861 .il8-retry{font-size:14px!important;display:none!important}
+ #ilGalleryViewer1861 .il8-retry.il8-on{display:inline-grid!important}
+ body.senior #ilGalleryViewer1861 .ilgv-caption1861{font-size:18px!important}
+ body.senior #vilPage1851.il-gallery1861 .ilg-cap1861{font-size:15px!important}
+ @media(max-width:355px){#vilPage1851.il-gallery1861 #ilpMeta1851{color:#285977!important;font-size:12px!important;font-weight:650!important}
+ #vilPage1851.il-gallery1861 .ilg-intro1861{flex-wrap:wrap!important}#vilPage1851.il-gallery1861 .ilg-show1861{width:100%!important}#ilGalleryViewer1861 .ilgv-controls1861{gap:5px!important}#ilGalleryViewer1861 .ilgv-fx1862{font-size:11px!important}}
+ @media(prefers-reduced-motion:reduce){#vilPage1851.il-gallery1861 .ilg-item1861 img{transition:none!important}}
+ `;(d.head||d.documentElement).appendChild(css);
+
+ // Deterministic menu ordering. If another module redraws the menu, restore the preferred order.
+ function menu(){var n=one('#nav');if(!n)return false;var about=Array.prototype.find.call(n.querySelectorAll('button.nb'),function(x){return /\/o-mnie\//.test(x.getAttribute('data-u')||'')});if(!about)return false;
+   if(n.lastElementChild!==about)n.appendChild(about);
+   about.setAttribute('aria-label','O mnie. Ostatnia pozycja menu');return true;
+ }
+ // Do not invent or shorten stop names in the result cards: preserve names from the route data.
+ function resultStops(){var r=one('#pres');if(!r)return;Array.prototype.forEach.call(r.querySelectorAll('.il20v5-timegrid'),function(group){var el=one('.il20v5-stopname',group);if(!el)return;
+   var s=(el.textContent||'').trim();if(s==='Ispina'){
+     var input=one('#pfrom');var val=input&&input.value?input.value.trim():'';
+     if(/^Ispina\s+(Most|Dom Ludowy|Przedszkole|Leśniczówka|Wiślisko)$/i.test(val)){el.textContent=val;el.title=val}
+   }
+ });}
+ function enhanceGallery(){
+   if(!gallery||!body||!gallery.classList.contains('on')||!/galeria/i.test((one('#ilpTitle1851')||{}).textContent||''))return;
+   var grid=one('#ilGalleryGrid1861',body),intro=one('.ilg-intro1861',body);
+   if(!grid||!intro){var empty=one('.il8-gallery-empty',body);if(empty)return;
+     if(!body.querySelector('img,.ilp-skeleton1851,.ilp-error1851') && !body.querySelector('[role=progressbar]')){
+       var note=node('div','il8-gallery-empty');note.textContent='Galeria chwilowo nie zawiera dostępnych zdjęć. Możesz spróbować odświeżyć tę sekcję.';var retry=node('button','','Odśwież galerię');retry.type='button';retry.addEventListener('click',function(){var original=one('#ilpRefresh1851');if(original)original.click()});note.appendChild(d.createElement('br'));note.appendChild(retry);body.appendChild(note);
+     }return;}
+   if(!one('.il8-gallery-help',body)){var help=node('div','il8-gallery-help','Przesuń zdjęcie palcem, dotknij dwa razy, aby powiększyć. W pokazie slajdów możesz zmienić tempo.');intro.insertAdjacentElement('afterend',help)}
+   var n=grid.querySelectorAll('.ilg-item1861').length;
+   var plural=n===1?'zdjęcie':(n%10>=2&&n%10<=4&&(n%100<12||n%100>14)?'zdjęcia':'zdjęć');
+   var introLabel=one('.ilg-intro1861 b',intro);if(introLabel)introLabel.textContent=n+' '+plural+' z Ispiny';
+   var sub=one('.ilg-intro1861 span',intro);if(sub)sub.textContent='Otwórz wybrane zdjęcie albo włącz pokaz slajdów.';
+   var btn=one('.ilg-show1861',intro);if(btn)btn.textContent='▶ Pokaz';
+   var meta=one('#ilpMeta1851');if(meta)meta.textContent=n+' '+plural+' · dotknij, aby oglądać';
+   Array.prototype.forEach.call(grid.querySelectorAll('.ilg-item1861'),function(b){
+     if(b.dataset.il8==='1')return;b.dataset.il8='1';var im=one('img',b);if(!im)return;
+     im.addEventListener('error',function(){b.classList.add('il8-image-failed');if(!one('.il8-image-error',b)){var x=node('span','il8-image-error','Zdjęcie niedostępne');x.setAttribute('role','status');b.appendChild(x)}});
+   });
+ }
+ function viewerTweaks(){
+   if(!viewer)return;var controls=one('.ilgv-controls1861',viewer),play=one('#ilgvPlay1861',viewer);
+   if(!controls||!play||one('#il8SlideDuration',viewer))return;
+   var dur=node('button','ilgv-btn1861 il8-duration','8 s');dur.type='button';dur.id='il8SlideDuration';dur.setAttribute('aria-label','Zmień czas wyświetlania zdjęcia');dur.title='Czas wyświetlania jednego zdjęcia';controls.insertBefore(dur,play);
+   var settings=[5,8,12];dur.addEventListener('click',function(){var api=window.IL20_GALLERY_CONFIG;if(!api)return;var v=api.getIntervalSeconds(),n=settings[(settings.indexOf(v)+1)%settings.length];api.setIntervalSeconds(n);dur.textContent=n+' s';dur.setAttribute('aria-label','Czas zdjęcia '+n+' sekund. Dotknij, aby zmienić')});
+   var retry=node('button','ilgv-btn1861 il8-retry','Ponów zdjęcie');retry.type='button';retry.id='il8GalleryRetry';retry.setAttribute('aria-label','Ponów wczytywanie zdjęcia');controls.appendChild(retry);
+   retry.addEventListener('click',function(){retry.classList.remove('il8-on');if(window.IL20_GALLERY_CONFIG)window.IL20_GALLERY_CONFIG.retry()});
+   var img=one('#ilgvImg1861',viewer);if(img){img.addEventListener('error',function(){retry.classList.add('il8-on')});img.addEventListener('load',function(){retry.classList.remove('il8-on')})}
+   var count=one('#ilgvCount1861',viewer);if(count)count.setAttribute('aria-live','polite');
+   var cap=one('#ilgvCap1861',viewer);if(cap)cap.setAttribute('aria-live','polite');
+   var back=null;
+   var observeViewer=new MutationObserver(function(){if(viewer.classList.contains('on')){back=back||d.activeElement;dur.textContent=(window.IL20_GALLERY_CONFIG?window.IL20_GALLERY_CONFIG.getIntervalSeconds():8)+' s';}
+      else if(back){var target=back;back=null;if(target&&target.isConnected&&typeof target.focus==='function')target.focus({preventScroll:true})}});
+   observeViewer.observe(viewer,{attributes:true,attributeFilter:['class']});
+   viewer.addEventListener('keydown',function(e){if(e.key!=='Tab'||!viewer.classList.contains('on'))return;var focusable=Array.from(viewer.querySelectorAll('button:not([disabled])')).filter(function(x){return getComputedStyle(x).display!=='none'});
+     if(!focusable.length)return;var first=focusable[0],last=focusable[focusable.length-1];if(e.shiftKey&&d.activeElement===first){last.focus();e.preventDefault()}else if(!e.shiftKey&&d.activeElement===last){first.focus();e.preventDefault()}
+   });
+   // When application is backgrounded, suspend playback and associated interval requests.
+   d.addEventListener('visibilitychange',function(){if(d.hidden&&window.IL20_GALLERY_CONFIG)window.IL20_GALLERY_CONFIG.pause()});
+ }
+ function boot(){menu();viewerTweaks();enhanceGallery();resultStops();
+   if(body&&window.MutationObserver)new MutationObserver(function(){enhanceGallery()}).observe(body,{childList:true,subtree:false});
+   var title=one('#ilpTitle1851');if(title&&window.MutationObserver)new MutationObserver(function(){setTimeout(enhanceGallery,40)}).observe(title,{childList:true,characterData:true,subtree:true});
+   var nav=one('#nav');if(nav&&window.MutationObserver)new MutationObserver(function(){if(nav.lastElementChild && nav.lastElementChild.getAttribute('data-u')!=='https://ispinalokalnie.wordpress.com/o-mnie/')menu()}).observe(nav,{childList:true});
+   var pres=one('#pres');if(pres&&window.MutationObserver)new MutationObserver(resultStops).observe(pres,{childList:true,subtree:false});
+   d.addEventListener('click',function(){setTimeout(function(){menu();enhanceGallery();resultStops()},80)},true);
+   window.IL20_PREVIEW8={version:'8',refresh:function(){menu();viewerTweaks();enhanceGallery();resultStops()}};
+ }
+ if(d.readyState==='loading')d.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
+
+/* Ispina Lokalnie Live 2.0 Preview 9: readable header, archive paper and soft home entrance.
+ * Presentation-only layer; existing Planner, routes, gallery and media are preserved.
+ */
+;(function(){
+  'use strict';
+  if(window.IL20_PREVIEW9 || !document.body) return;
+  var d=document,bar=d.getElementById('iaBar'),panel=d.getElementById('iaP'),
+      home=d.getElementById('vdash'),page=d.getElementById('vilPage1851'),
+      title=d.getElementById('ilpTitle1851');
+  function q(sel,root){return (root||d).querySelector(sel)}
+  function addStyles(){
+    var st=d.createElement('style');st.id='il20Preview9Style';
+    st.textContent=`
+/* 9.1 Header: logo and labels have separate cells, never three stacked rows in 70px. */
+#iaBar{height:calc(96px + env(safe-area-inset-top))!important;min-height:calc(96px + env(safe-area-inset-top))!important;
+ padding:calc(7px + env(safe-area-inset-top)) 11px 7px!important;gap:8px!important;align-items:center!important;
+ background:linear-gradient(115deg,#123765,#1c5b96 63%,#227aaf)!important;
+ overflow:visible!important;box-shadow:0 4px 14px rgba(18,54,88,.17)!important}
+#iaSp{height:calc(96px + env(safe-area-inset-top))!important}
+html:not(.il9-senior-home) #iaP{inset:calc(96px + env(safe-area-inset-top)) 0 0!important}
+#iaBar > div{display:grid!important;grid-template-columns:minmax(0,1fr) 50px!important;
+ grid-template-rows:min-content min-content!important;column-gap:8px!important;align-content:center!important;align-items:center!important;
+ flex:1 1 auto!important;min-width:0!important;max-height:100%!important;overflow:visible!important}
+#iaBar .B{grid-column:1!important;grid-row:1!important;color:#fff!important;font-size:20px!important;
+ line-height:1.2!important;font-weight:850!important;margin:0!important;padding:0!important;
+ text-shadow:0 1px 2px rgba(0,0,0,.12)!important;white-space:normal!important;overflow-wrap:break-word!important}
+#iaBar .S{grid-column:1!important;grid-row:2!important;color:#f4faff!important;opacity:1!important;
+ font-size:12.5px!important;line-height:1.32!important;font-weight:550!important;
+ text-shadow:0 1px 2px rgba(0,0,0,.15)!important;overflow-wrap:break-word!important;max-width:100%!important}
+#iaBar svg.ct{grid-column:2!important;grid-row:1 / 3!important;width:50px!important;height:40px!important;
+ margin:0!important;display:block!important;align-self:center!important;justify-self:center!important;
+ max-width:none!important;max-height:none!important;overflow:visible!important;filter:drop-shadow(0 1px 2px rgba(8,34,67,.22))!important}
+#iaBar #iaM,#iaBar #ilBack1846{flex:0 0 44px!important;min-width:44px!important;
+ width:44px!important;height:48px!important;align-self:center!important;color:#fff!important}
+html.il9-senior:not(.il9-senior-home) #iaBar{height:calc(112px + env(safe-area-inset-top))!important;
+ min-height:calc(112px + env(safe-area-inset-top))!important}
+html.il9-senior:not(.il9-senior-home) #iaP{inset:calc(112px + env(safe-area-inset-top)) 0 0!important}
+html.il9-senior:not(.il9-senior-home) #iaBar .B{font-size:23px!important}
+html.il9-senior:not(.il9-senior-home) #iaBar .S{font-size:15px!important}
+html.il9-senior:not(.il9-senior-home) #iaBar svg.ct{height:47px!important;width:55px!important}
+html.il9-senior:not(.il9-senior-home) #iaSp{height:calc(112px + env(safe-area-inset-top))!important}
+@media(max-width:355px){#iaBar{gap:6px!important;padding-left:8px!important;padding-right:8px!important}
+ #iaBar > div{grid-template-columns:minmax(0,1fr) 42px!important;column-gap:3px!important}
+ #iaBar svg.ct{width:42px!important;height:37px!important}
+ #iaBar .S{font-size:11.5px!important}
+ #iaBar #iaM,#iaBar #ilBack1846{flex-basis:42px!important;min-width:42px!important;width:42px!important}}
+/* 9.2 Archive style: paper is confined to the story card, never applied to controls or other sections. */
+#vilPage1851.il9-archive .ilp-head1851{background:linear-gradient(125deg,#153e70,#24729f)!important}
+#vilPage1851.il9-archive #ilpMeta1851{color:#e4f1fa!important;opacity:1!important}
+#iaP #vilPage1851.il9-archive .ilp-head1851 h2{color:#ffffff!important;text-shadow:0 1px 2px rgba(8,34,68,.18)!important}
+#iaP #vilPage1851.il9-archive .ilp-head1851 .ilp-badge1851{color:#f1f7fd!important;border:1px solid rgba(255,255,255,.12)!important}
+#iaP #vilPage1851 .ilp-head1851 .btn{color:#ffffff!important}
+html.il9-senior-home #iaBar,html.il9-senior-home #iaSp{display:none!important}
+html.il9-senior-home #iaP{inset:0 0 calc(78px + env(safe-area-inset-bottom)) 0!important}
+html #iaP #vilPage1851.il9-archive .card.ilp-card1851{
+ background:radial-gradient(ellipse at 15% 9%,rgba(255,255,255,.55),transparent 42%),
+ radial-gradient(ellipse at 88% 92%,rgba(172,121,64,.06),transparent 50%),
+ repeating-linear-gradient(0deg,transparent 0px,rgba(121,87,46,.018) 1px,transparent 3px,transparent 7px),
+ linear-gradient(160deg,#fffaf0 0%,#f7ecd7 100%)!important;
+ background-color:#faf0dc!important;
+ border:1px solid #e2d0ae!important;border-radius:21px!important;
+ box-shadow:0 8px 27px rgba(83,61,35,.11)!important}
+#vilPage1851.il9-archive .ilp-body1851{color:#403a32!important;
+ font-family:Georgia,'Times New Roman',serif!important;line-height:1.78!important;
+ letter-spacing:.005em!important;overflow-wrap:break-word!important}
+#vilPage1851.il9-archive .ilp-body1851 p,#vilPage1851.il9-archive .ilp-body1851 li{
+ color:#403a32!important;font-family:Georgia,'Times New Roman',serif!important;
+ line-height:1.78!important;font-size:clamp(16px,4.15vw,19px)!important}
+#vilPage1851.il9-archive .ilp-body1851 h1,
+#vilPage1851.il9-archive .ilp-body1851 h2,
+#vilPage1851.il9-archive .ilp-body1851 h3,
+#vilPage1851.il9-archive .ilp-body1851 h4{
+ color:#354a58!important;font-family:Georgia,'Times New Roman',serif!important;
+ line-height:1.28!important;letter-spacing:-.015em!important;overflow-wrap:break-word!important}
+#vilPage1851.il9-archive .ilp-body1851 h1{font-size:clamp(25px,6.2vw,38px)!important}
+#vilPage1851.il9-archive .ilp-body1851 h2{font-size:clamp(22px,5.2vw,30px)!important}
+#vilPage1851.il9-archive .ilp-body1851 h3{font-size:clamp(20px,4.8vw,25px)!important}
+#vilPage1851.il9-archive .ilp-body1851 a{color:#17647b!important;
+ border-bottom:1px solid rgba(23,100,123,.28)!important;text-decoration:none!important}
+#vilPage1851.il9-archive .ilp-body1851 blockquote{
+ background:rgba(248,237,214,.72)!important;border-left:3px solid #b88a51!important;
+ padding:12px 15px!important;border-radius:0 10px 10px 0!important;color:#3f3930!important}
+#vilPage1851.il9-archive .ilp-body1851 img{box-shadow:0 3px 14px rgba(76,51,20,.14)!important;
+ border:4px solid rgba(255,252,245,.93)!important;border-radius:7px!important}
+#vilPage1851.il9-archive .ilp-body1851 figcaption{color:#625843!important;font-size:13px!important;line-height:1.5!important}
+#vilPage1851.il9-archive .ilp-actions1851{border-top:1px solid #e0cfad!important;margin-top:16px!important;padding-top:12px!important}
+#vilPage1851.il9-archive .ilp-body1851 h1:first-child{margin-top:.2em!important}
+html.il9-senior #vilPage1851.il9-archive .ilp-body1851 p,
+html.il9-senior #vilPage1851.il9-archive .ilp-body1851 li{font-size:21px!important;line-height:1.85!important}
+/* 9.3 One-time transition when the dashboard becomes active. */
+@keyframes il9-home-enter{from{opacity:.15;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+@keyframes il9-tile-enter{from{opacity:.25;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#vdash.il9-entrance{animation:il9-home-enter 270ms ease-out both!important;will-change:transform,opacity}
+#vdash.il9-entrance #ilDashQuick1843 button{animation:il9-tile-enter 290ms ease-out both!important}
+#vdash.il9-entrance #ilDashQuick1843 button:nth-child(1){animation-delay:30ms!important}
+#vdash.il9-entrance #ilDashQuick1843 button:nth-child(2){animation-delay:65ms!important}
+#vdash.il9-entrance #ilDashQuick1843 button:nth-child(3){animation-delay:100ms!important}
+#vdash.il9-entrance #ilDashQuick1843 button:nth-child(4){animation-delay:130ms!important}
+@media(prefers-reduced-motion:reduce){#vdash.il9-entrance,#vdash.il9-entrance #ilDashQuick1843 button{
+ animation:none!important;transform:none!important;opacity:1!important;will-change:auto!important}}
+`;
+    d.head.appendChild(st);
+  }
+  var archiveSlug='';
+  function fromText(v){
+    v=String(v||'').toLowerCase();
+    if(/ciekawostki.historyczne/.test(v))return 'ciekawostki';
+    if(/historia.ispiny|ispina\.? historia|historia.wsi/.test(v))return 'historia';
+    return '';
+  }
+  function fromRoute(v){
+    v=String(v||'').toLowerCase();
+    if(v.indexOf('/ciekawostki-historyczne/')!==-1)return 'ciekawostki';
+    if(v.indexOf('/historia-ispiny/')!==-1)return 'historia';
+    return '';
+  }
+  function applyArchive(){if(page){page.classList.toggle('il9-archive',!!archiveSlug);page.dataset.il9Archive=archiveSlug||''}}
+  function syncTitle(){if(!title)return;var name=String(title.textContent||'');var matched=fromText(name);
+    if(matched){archiveSlug=matched;applyArchive()}
+    else if(/Galeria|O mnie|O projekcie|Usługi|Kontakt|Dane o Ispinie|Opis komunikacji/i.test(name)){
+      archiveSlug='';applyArchive();
+    }
+  }
+  var homeEntered=true; // Preview 11 owns the first visible dashboard transition.
+  function enterHome(){
+    if(homeEntered || !home || !panel || !home.classList.contains('on') || !panel.classList.contains('on'))return;
+    homeEntered=true;
+    if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    home.classList.add('il9-entrance');
+    home.addEventListener('animationend',function(e){if(e.target===home)home.classList.remove('il9-entrance')});
+  }
+  function syncSenior(){d.documentElement.classList.toggle('il9-senior',d.body.classList.contains('senior'));d.documentElement.classList.toggle('il9-senior-home',d.body.classList.contains('senior-home'))}
+  function init(){
+    addStyles();syncSenior();
+    if(window.MutationObserver)new MutationObserver(syncSenior).observe(d.body,{attributes:true,attributeFilter:['class']});
+    syncTitle();
+    d.addEventListener('click',function(e){
+      var target=e.target.closest && e.target.closest('[data-u],a[href]');
+      if(!target)return;var u=target.getAttribute('data-u')||target.getAttribute('href')||'';
+      var v=fromRoute(u);
+      if(v){archiveSlug=v;applyArchive()}
+      else if(/^(?:\:|https?:)/.test(u) && !u.includes('/historia-ispiny/') && !u.includes('/ciekawostki-historyczne/')){
+        archiveSlug='';applyArchive();
+      }
+    },true);
+    if(title && window.MutationObserver){new MutationObserver(syncTitle).observe(title,{childList:true,characterData:true,subtree:true})}
+    if(panel && window.MutationObserver){new MutationObserver(enterHome).observe(panel,{attributes:true,attributeFilter:['class']})}
+    if(home && window.MutationObserver){new MutationObserver(enterHome).observe(home,{attributes:true,attributeFilter:['class']})}
+    requestAnimationFrame(enterHome);
+    window.IL20_PREVIEW9={version:'9',refreshArchive:syncTitle,setArchive:function(s){archiveSlug=(s==='historia'||s==='ciekawostki')?s:'';applyArchive()},getArchive:function(){return archiveSlug},hasEntered:function(){return homeEntered}};
+  }
+  if(d.readyState==='loading')d.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
+
+/* Ispina Lokalnie 2.0 Preview 10: explicit high-contrast states.
+   Restores nonarchive page headings and radio hero. Does not touch native DEX. */
+;(function(){
+  'use strict';
+  if(window.IL20_PREVIEW10 || !document.documentElement)return;
+  var d=document, st=d.createElement('style');
+  st.id='il20Preview10Contrast';
+  st.textContent=`
+/* P10: The paper/archive header is an exception; Mint & Navy pages keep dark ink on pale panels. */
+html #iaP #vilPage1851:not(.il9-archive) .ilp-head1851{
+ background:linear-gradient(130deg,#e4f6f0,#eaf5fc)!important;color:#193f61!important;
+ border-color:#c5dfe3!important}
+html #iaP #vilPage1851:not(.il9-archive) .ilp-head1851 h2,
+html #iaP #vilPage1851:not(.il9-archive) .ilp-head1851 #ilpTitle1851{
+ color:#183c61!important;text-shadow:none!important;opacity:1!important}
+html #iaP #vilPage1851:not(.il9-archive) .ilp-head1851 .ilp-badge1851{
+ color:#204b69!important;background:#f6fcfc!important;border:1px solid #d1e5e9!important;
+ text-shadow:none!important;opacity:1!important}
+html #iaP #vilPage1851:not(.il9-archive) .ilp-head1851 #ilpMeta1851{
+ color:#355b72!important;text-shadow:none!important;opacity:1!important;font-weight:650!important}
+html #iaP #vilPage1851:not(.il9-archive) .ilp-head1851 #ilpBack1851{
+ color:#fff!important;background:linear-gradient(115deg,#155479,#187aa3)!important;
+ border:1px solid rgba(13,82,118,.35)!important}
+/* Radio / TV banner: teal background needs a white title AND subtitle. */
+html #iaP #vmedia .rtv-head{
+ background:linear-gradient(120deg,#125770,#167b88 65%,#278995)!important;color:#fff!important}
+html #iaP #vmedia .rtv-head .h{color:#fff!important;opacity:1!important;
+ text-shadow:0 1px 2px rgba(0,31,50,.22)!important;font-weight:850!important}
+html #iaP #vmedia .rtv-head .p{color:#f0ffff!important;opacity:1!important;
+ text-shadow:0 1px 1px rgba(0,31,50,.25)!important;line-height:1.45!important}
+/* Contact: keep the email intact; never strand "om" on its own line. */
+html #iaP #vilPage1851 .ilp-body1851 a[href^="mailto:"]{
+ display:inline-block!important;max-width:100%!important;
+ font-size:clamp(13px,4.3vw,18px)!important;letter-spacing:-.025em!important;
+ white-space:nowrap!important;overflow-wrap:normal!important;word-break:normal!important;
+ line-height:1.45!important}
+html #iaP #vilPage1851 .ilp-body1851 a[href^="mailto:"] *{
+ font-size:inherit!important;white-space:nowrap!important;overflow-wrap:normal!important}
+html #iaP #vilPage1851 .ilp-body1851 a[href^="mailto:"]:focus-visible,
+html #iaP #vilPage1851 .ilp-head1851 button:focus-visible{
+ outline:3px solid #166eae!important;outline-offset:3px!important}
+@media(max-width:355px){
+ html #iaP #vilPage1851 .ilp-body1851 a[href^="mailto:"]{
+ font-size:13px!important;letter-spacing:-.04em!important}
+}
+/* Preserve paper effect only in History/Curiosities, unchanged. */
+`;
+  (d.head||d.documentElement).appendChild(st);
+  window.IL20_PREVIEW10={version:'10',contrastFix:true};
+})();
+
+/* IL 2.0 Preview 11 — Smooth Motion, progressive visual enhancements.
+ * Browser/WebView presentation layer. No live transit or media behavior altered.
+ * A separate, short, WebView-side welcome bridge is used because the native
+ * Android splash lifecycle cannot be controlled without the native source.
+ */
+;(function(){
+ 'use strict';
+ if(window.IL20_PREVIEW11)return;
+ var d=document, w=window, media=w.matchMedia&&w.matchMedia('(prefers-reduced-motion: reduce)');
+ var views=['vdash','vplan','vdep','vwx','vmedia','vilPage1851','vset','vday','vnews','vservices','vgal'];
+ var seenResults=new WeakSet(), lastViewId="", classTimers=new WeakMap();
+ var bridgeDone=false, welcome=null, timers=[];
+ function one(sel,ctx){return (ctx||d).querySelector(sel)}
+ function active(){return !d.hidden && d.visibilityState!=='hidden'}
+ function allowMotion(){return !(media&&media.matches) && !d.body.classList.contains('noanim') && !d.body.classList.contains('reduce-motion')}
+ function later(cb,ms){var id=w.setTimeout(cb,ms);timers.push(id);return id}
+ function animateOnce(el,cls,ms){if(!el||!allowMotion())return;var prev=classTimers.get(el);if(prev)clearTimeout(prev);el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);var t=later(function(){if(el.isConnected)el.classList.remove(cls);classTimers.delete(el)},ms);classTimers.set(el,t)}
+ var css=d.createElement('style');css.id='il20SmoothMotion11';css.textContent=`
+/* Motion has distinct short durations and never controls data loading. */
+@keyframes il11-appear{from{opacity:.44;transform:translate3d(0,8px,0)}to{opacity:1;transform:translate3d(0,0,0)}}
+@keyframes il11-result{from{opacity:.55;transform:translate3d(0,9px,0)}to{opacity:1;transform:translate3d(0,0,0)}}
+@keyframes il11-check{0%{transform:scale(.55);opacity:.1}70%{transform:scale(1.1);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes il11-spin{to{transform:rotate(360deg)}}
+#iaP .view.il11-view-in{animation:il11-appear 220ms cubic-bezier(.18,.68,.3,1) both!important}
+#iaP #vplan #pres .pr.il11-result-in{animation:il11-result 245ms ease-out both!important}
+#iaP #vdash #ilDashQuick1843 button,#iaP #vdash #ilServicesTile1896,
+#iaP #vplan .plgo,#iaP #vplan .il7-detail-btn,#iaP #vdep .dep button{
+ transition:transform 120ms ease-out,box-shadow 120ms ease-out!important;transform-origin:center!important;touch-action:manipulation}
+#iaP #vdash #ilDashQuick1843 button:active,#iaP #vdash #ilServicesTile1896:active,
+#iaP #vplan .plgo:active,#iaP #vplan .il7-detail-btn:active,#iaP #vdep .dep button:active{transform:scale(.982)!important}
+#iaP #vplan .il7-detail-btn[aria-expanded="true"]{box-shadow:0 4px 12px rgba(19,93,119,.13)!important}
+#iaP #vilPage1851.il9-archive.il11-archive-in .ilp-card1851{animation:il11-appear 260ms ease-out both!important}
+#ilGalleryViewer1861.il11-viewer-in #ilgvImg1861{animation:il11-appear 240ms ease-out both!important}
+#il11-welcome-bridge{position:absolute;z-index:900;inset:0;background:linear-gradient(135deg,#d7efe8,#eaf6fb 70%,#daeaf9);
+ display:flex;align-items:center;justify-content:center;opacity:1;visibility:visible;transition:opacity 330ms ease-out,visibility 0ms linear 330ms;
+ pointer-events:none;color:#184b6c;overflow:hidden}
+#il11-welcome-bridge.il11-fade{opacity:0;visibility:hidden}
+#il11-welcome-bridge .il11-welcome-content{background:rgba(255,255,255,.73);border:1px solid rgba(115,179,179,.35);border-radius:23px;
+ padding:25px 23px;max-width:calc(100% - 38px);text-align:center;box-shadow:0 12px 30px rgba(32,77,98,.09);box-sizing:border-box}
+#il11-welcome-bridge .il11-logo{display:block;width:74px;height:55px;max-width:100%;margin:0 auto 10px;filter:drop-shadow(0 2px 3px rgba(14,72,82,.13))}
+#il11-welcome-bridge .il11-brand{font-size:12px;letter-spacing:.06em;text-transform:uppercase;font-weight:850;color:#34788d;margin-bottom:9px}
+#il11-welcome-bridge .il11-greet{font-size:clamp(19px,5vw,26px);line-height:1.32;font-weight:850;color:#16466e}
+#iaP #vdash.il11-home-reveal{animation:il11-appear 320ms ease-out both!important}
+#iaP #vdash.il11-home-reveal #ilDashQuick1843 button{animation:il11-result 290ms ease-out both!important}
+#iaP #vdash.il11-home-reveal #ilDashQuick1843 button:nth-child(2){animation-delay:35ms!important}
+#iaP #vdash.il11-home-reveal #ilDashQuick1843 button:nth-child(3){animation-delay:70ms!important}
+#iaP #vdash.il11-home-reveal #ilDashQuick1843 button:nth-child(4){animation-delay:105ms!important}
+#iaP #vdash #ilDashGreeting1843.il11-morning::before,#iaP #vdash #ilDashGreeting1843.il11-day::before,#iaP #vdash #ilDashGreeting1843.il11-evening::before{content:'';display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:middle;margin-right:8px;background:#71b3a2}
+#iaP #vdash #ilDashGreeting1843.il11-morning::before{background:#e1af62}
+#iaP #vdash #ilDashGreeting1843.il11-evening::before{background:#b0a4d6}
+#iaP #vdash .il11-sync-spin{display:inline-block;animation:il11-spin 700ms linear infinite!important}
+#iaP #vdash .il11-sync-ok{animation:il11-check 270ms ease-out!important}
+@media(prefers-reduced-motion:reduce){#iaP .view.il11-view-in,#iaP #vplan #pres .pr.il11-result-in,
+ #iaP #vilPage1851.il9-archive.il11-archive-in .ilp-card1851,#ilGalleryViewer1861.il11-viewer-in #ilgvImg1861,
+ #iaP #vdash.il11-home-reveal,#iaP #vdash.il11-home-reveal #ilDashQuick1843 button,
+ #iaP #vdash .il11-sync-spin,#iaP #vdash .il11-sync-ok{animation:none!important}
+ #iaP #vdash #ilDashQuick1843 button,#iaP #vplan .plgo{transition:none!important;transform:none!important}
+ #il11-welcome-bridge{display:none!important}}
+body.noanim #iaP .il11-view-in,body.noanim #iaP .il11-result-in,body.noanim #iaP .il11-home-reveal,
+body.noanim #iaP .il11-archive-in{animation:none!important}
+body.noanim #il11-welcome-bridge{display:none!important}
+`;
+ (d.head||d.documentElement).appendChild(css);
+ function homeActive(){var home=one('#vdash'),p=one('#iaP');return !!(home&&p&&home.classList.contains('on')&&p.classList.contains('on'))}
+ function greeting(){var x=one('#ilDashGreeting1843');return (x&&x.textContent.trim())||'Miło Cię widzieć!'}
+ function leaveBridge(){if(!welcome)return;welcome.classList.add('il11-fade');var home=one('#vdash');animateOnce(home,'il11-home-reveal',650);later(function(){if(welcome){welcome.remove();welcome=null}},430)}
+ function bridge(){
+   if(bridgeDone||!homeActive()||!active())return false;
+   bridgeDone=true;
+   // Prevent Preview 9's earlier (often invisible) animation from preempting ours.
+   var home=one('#vdash');if(home)home.classList.remove('il9-entrance');
+   if(!allowMotion())return true;
+   var panel=one('#iaP');if(!panel)return true;
+   welcome=d.createElement('div');welcome.id='il11-welcome-bridge';welcome.setAttribute('aria-hidden','true');
+   var content=d.createElement('div');content.className='il11-welcome-content';
+   var logo=one('#iaBar svg.ct');if(logo){var mark=logo.cloneNode(true);mark.removeAttribute('id');mark.classList.add('il11-logo');content.appendChild(mark)}
+   var brand=d.createElement('div');brand.className='il11-brand';brand.textContent='Ispina Lokalnie';
+   var msg=d.createElement('div');msg.className='il11-greet';msg.textContent=greeting();
+   content.appendChild(brand);content.appendChild(msg);welcome.appendChild(content);panel.appendChild(welcome);
+   // Two painted frames + small hold: animation happens visibly after WebView DOM is ready.
+   w.requestAnimationFrame(function(){w.requestAnimationFrame(function(){later(leaveBridge,480)})});
+   return true;
+ }
+ function onViewChange(){
+   if(!active())return;
+   if(!bridgeDone&&homeActive()){bridge();return}
+   var now=one('#iaP .view.on');
+   if(now&&now.id!==lastViewId){lastViewId=now.id;
+     if(now.id!=='vdash')animateOnce(now,'il11-view-in',420);
+   }
+ }
+ var lastArchiveName='';
+ function archiveChange(){var page=one('#vilPage1851'),title=one('#ilpTitle1851');var key=page&&page.classList.contains('il9-archive')&&page.classList.contains('on')?String(title&&title.textContent||''):'';
+   if(key&&key!==lastArchiveName){lastArchiveName=key;animateOnce(page,'il11-archive-in',390)}else if(!key)lastArchiveName='';
+ }
+ function resultChange(){var results=one('#pres');if(!results)return;Array.prototype.forEach.call(results.querySelectorAll('article.pr,.pr.il20v5-result'),function(el){
+   if(seenResults.has(el))return;seenResults.add(el);
+   // Results that exist during initial script boot must not flash.
+   if(one('#vplan')&&one('#vplan').classList.contains('on'))animateOnce(el,'il11-result-in',380);
+ });}
+ function galleryChange(){var e=one('#ilGalleryViewer1861');if(e&&e.classList.contains('on'))animateOnce(e,'il11-viewer-in',390)}
+ function syncMotion(){var wrap=one('#ilDashRefresh1844');if(!wrap)return;
+   var btn=one('button',wrap)||wrap;if(btn.dataset.il11sync==='1')return;btn.dataset.il11sync='1';
+   btn.addEventListener('click',function(){if(!allowMotion())return;
+     var old=btn.textContent;btn.classList.add('il11-sync-pending');var state=one('#il20-freshness')||one('#ilDashState1843');var before=state?state.textContent:'';
+     var ic=d.createElement('span');ic.className='il11-sync-spin';ic.textContent=' ↻';ic.setAttribute('aria-hidden','true');btn.appendChild(ic);
+     later(function(){if(ic.isConnected)ic.remove();btn.classList.remove('il11-sync-pending');
+       if(state&&state.textContent!==before){animateOnce(btn,'il11-sync-ok',390)}
+     },1000);
+   },false);
+ }
+ function daypart(){var e=one('#ilDashGreeting1843');if(!e)return;var h=new Date().getHours(),name=h<10?'morning':h<18?'day':'evening';e.classList.remove('il11-morning','il11-day','il11-evening');e.classList.add('il11-'+name);}
+ function install(){
+   var p=one('#iaP'),home=one('#vdash'),pres=one('#pres'),viewer=one('#ilGalleryViewer1861'),page=one('#vilPage1851');
+   if(p&&window.MutationObserver)new MutationObserver(function(){onViewChange();archiveChange()}).observe(p,{subtree:true,attributes:true,attributeFilter:['class']});
+   if(pres&&window.MutationObserver)new MutationObserver(resultChange).observe(pres,{childList:true,subtree:true});
+   if(viewer&&window.MutationObserver){var last=false;new MutationObserver(function(){var now=viewer.classList.contains('on');if(now&&!last)galleryChange();last=now}).observe(viewer,{attributes:true,attributeFilter:['class']});}
+   if(page&&window.MutationObserver)new MutationObserver(archiveChange).observe(page,{attributes:true,attributeFilter:['class']});
+   if(home&&window.MutationObserver)new MutationObserver(syncMotion).observe(home,{subtree:true,childList:true});
+   d.addEventListener('visibilitychange',onViewChange);w.addEventListener('focus',onViewChange);w.addEventListener('pageshow',onViewChange);
+   daypart();syncMotion();resultChange();onViewChange();
+   window.IL20_PREVIEW11={version:'11',features:['welcomeBridge','tilePress','viewTransitions','plannerResults','gallery','archive'],
+      motionEnabled:allowMotion,bridgeStarted:function(){return bridgeDone},replayWelcome:function(){bridgeDone=false;if(welcome){welcome.remove();welcome=null}return bridge()},
+      runChecks:function(){return {home:!!home,planner:!!one('#vplan'),gallery:!!viewer,styles:!!one('#il20SmoothMotion11'),bridgeDone:bridgeDone}}};
+ }
+ if(d.readyState==='loading')d.addEventListener('DOMContentLoaded',install,{once:true});else install();
+})();
+
+/* Ispina Lokalnie 2.0 Preview 12: Easy Touch
+   Progressive enhancements of the existing full 1.83.20 UI and Preview 11.
+   No reimplementation of transit, gallery media decoding, audio streaming or routing. */
+;(function(){
+ 'use strict';
+ if(window.IL20_PREVIEW12 || !document.body)return;
+ var d=document,w=window, q=function(sel,ctx){return (ctx||d).querySelector(sel)};
+ function make(tag,cls,txt){var e=d.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
+ function reduced(){return (w.matchMedia&&w.matchMedia('(prefers-reduced-motion: reduce)').matches)||d.body.classList.contains('noanim')}
+ var css=make('style');css.id='il12-easytouch-css';css.textContent=`
+/* A compact but safe header: titles, subtitle, and Ispina logo must not overlap. */
+#iaBar{height:calc(82px + env(safe-area-inset-top))!important;min-height:calc(82px + env(safe-area-inset-top))!important;
