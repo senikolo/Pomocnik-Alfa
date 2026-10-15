@@ -46,7 +46,7 @@ final class PALive {
     String stop=c.optString("stopId");int colon=stop.indexOf(':');if(colon>=0)stop=stop.substring(colon+1);
     for(Msg s:u.all(2)){if(!s.text(4).equals(stop))continue;if(s.number(5,0)==1){result.put("skipped",true);live=true;break;}Msg event=s.one(3)!=null?s.sub(3):s.sub(2);long eta=event.number(2,0);if(eta>=now-30&&eta<now+86400){result.put("eta",eta);result.put("liveTimestamp",stamp);live=true;}break;}
    }
-   result.put("live",live);result.put("provenance",source.startsWith("krakow")?"ZTP Kraków • GTFS-RT":source.equals("warsaw")?"Miasto Stołeczne Warszawa • api.um.warszawa.pl • GTFS-RT: Mikołaj Kuranowski":"GTFS-RT: Mikołaj Kuranowski / dane przewoźników");results.put(result);
+   result.put("live",live);result.put("provenance",source.startsWith("krakow")?"ZTP Kraków • GTFS-RT":source.equals("warsaw")?"Miasto Stołeczne Warszawa • https://api.um.warszawa.pl • GTFS-RT: Mikołaj Kuranowski"+(stamps.containsKey(source)?" • czas źródła: "+java.time.Instant.ofEpochSecond(stamps.get(source)).toString():""):"GTFS-RT: Mikołaj Kuranowski / dane przewoźników");results.put(result);
   }
   return new JSONObject().put("results",results).put("checkedAt",now).put("notice","Brak zgodnego i świeżego pomiaru oznacza odjazd rozkładowy. Pozycja GPS nie jest prognozą przyjazdu.");
  }

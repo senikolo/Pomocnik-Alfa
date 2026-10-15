@@ -48,7 +48,7 @@ class Engine{
      let boarded=[];
      for(let pi=0;pi<run.pattern.length;pi++){
       const p=run.pattern[pi],sid=p[0],arr=run.base+p[2],dep=run.base+p[1];
-      if(p[4]!==1&&p[4]!==2&&p[4]!==3)for(const b of boarded){if(pi<=b.pi||arr<b.departure)continue;const leg={line:this.idx.routes[rid][1],mode:this.idx.routes[rid][3],agency:this.idx.routes[rid][4],source:this.idx.routes[rid][5],trip:run.id,serviceDay:run.day,headsign:run.headsign,train:run.short,fromId:b.sid,toId:sid,dep:b.departure,arr,from:this.idx.stops[b.sid][1],to:this.idx.stops[sid][1],platformFrom:this.idx.stops[b.sid][2],platformTo:this.idx.stops[sid][2]};this.add(next,sid,{arr,dep:b.previous.path.length?b.previous.dep:b.departure,walked:b.previous.walked,path:b.previous.path.concat(leg)})}
+      if(p[4]!==1&&p[4]!==2&&p[4]!==3)for(const b of boarded){if(pi<=b.pi||arr<b.departure)continue;const leg={line:this.idx.routes[rid][1],mode:this.idx.routes[rid][3],agency:this.idx.routes[rid][4],source:this.idx.routes[rid][5],trip:run.id,serviceDay:run.day,headsign:run.headsign,train:run.short,fromId:b.sid,toId:sid,dep:b.departure,arr,from:this.idx.stops[b.sid][1],to:this.idx.stops[sid][1],platformFrom:this.idx.stops[b.sid][2],platformTo:this.idx.stops[sid][2]};this.add(next,sid,{arr,dep:b.previous.path.some(x=>!x.walk)?b.previous.dep:b.departure-b.previous.path.reduce((sum,x)=>sum+x.arr-x.dep,0),walked:b.previous.walked,path:b.previous.path.concat(leg)})}
       if(p[3]===1||p[3]===2||p[3]===3)continue;
       for(const l of prev.get(sid)||[]){const rides=l.path.filter(x=>!x.walk),last=rides.at(-1);if(last&&last.trip===run.id&&last.source===this.idx.routes[rid][5])continue;let wait=rides.length?minWait:0;const lastStep=l.path.at(-1);if(lastStep&&lastStep.walk&&rides.length)wait=Math.max(0,minWait-(lastStep.arr-lastStep.dep));if(dep>=l.arr+wait&&dep<=horizon){const b={pi,sid,departure:dep,previous:l};if(!boarded.some(x=>x.previous.dep>=l.dep&&x.departure>=dep))boarded.push(b);if(boarded.length>5)boarded.shift()}}
      }
@@ -57,7 +57,7 @@ class Engine{
     await new Promise(r=>setTimeout(r,0));
    }
    const reached=maxWalk?this.walk(next,maxWalk):next;
-   for(const sid of targets)for(const l of reached.get(sid)||[]){const legs=l.path.filter(x=>!x.walk);if(!legs.length)continue;const first=l.path[0],dep=first.walk?legs[0].dep-(first.arr-first.dep):legs[0].dep;found.push({legs:l.path,dep,arr:l.arr,transfers:legs.length-1,duration:l.arr-dep,wait:l.path.reduce((a,x,i,p)=>a+(i?Math.max(0,x.dep-p[i-1].arr):0),0),date:when.slice(0,10)})}
+   for(const sid of targets)for(const l of reached.get(sid)||[]){const legs=l.path.filter(x=>!x.walk);if(!legs.length)continue;const path=l.path.map(x=>({...x})),firstRide=path.findIndex(x=>!x.walk),access=path.slice(0,firstRide).reduce((sum,x)=>sum+x.arr-x.dep,0),dep=legs[0].dep-access;let cursor=dep;for(let i=0;i<firstRide;i++){const span=path[i].arr-path[i].dep;path[i].dep=cursor;path[i].arr=cursor+span;cursor+=span}found.push({legs:path,dep,arr:l.arr,transfers:legs.length-1,duration:l.arr-dep,wait:path.reduce((a,x,i,p)=>a+(i?Math.max(0,x.dep-p[i-1].arr):0),0),date:when.slice(0,10)})}
    prev=reached;if(!prev.size)break;
   }
   const unique=new Map();for(const r of found){const key=r.legs.map(l=>l.walk?'w'+l.fromId+':'+l.toId:l.source+':'+l.trip+':'+l.dep+':'+l.fromId+':'+l.toId).join('|');if(!unique.has(key))unique.set(key,r)}return this.sort([...unique.values()].filter(r=>!opts.mustLine||r.legs.some(l=>!l.walk&&norm(l.line)===norm(opts.mustLine))),opts.sort).slice(0,24)
