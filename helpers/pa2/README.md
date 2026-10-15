@@ -52,3 +52,27 @@ older native dependencies; minSdk is not lowered by editing the manifest alone.
 ## Alpha.6 repairs
 
 Journey buttons retain immutable trips; Polish dates, dot-times and follow-ups are supported. Live candidates include a bounded past window while normal scheduled departures exclude past trips. GPS and ETA expire by timestamp; visible vehicle screens refresh every 30 seconds and pause in background. Tram/map/dashboard icons match their function. Native modules and the original cat launcher are preserved. The package uses the retained PA2 preview key, signed locally; CI receives only exact-build public signing deltas.
+
+## Continued UX stage: dashboard icon and tile audit
+
+The native dashboard uses Polish, diacritic-insensitive semantic tile icons.
+`PAIconsTest.java.test` has 24 icon cases; the build compiles and runs them.
+The previous nearby-stop shortcut remains functional as `Przystanki w pobliżu`.
+The full regional planner is `Planer i Alfa`; the dashboard smoke test asserts
+there is exactly one of each. The Favorites page no longer copies the native
+Radio/TV/Weather/Notes/Reminders cards and instead returns to the full dashboard.
+
+The normal installed Pomocnik Alfa package is not changed. The preview uses
+`com.senikolo.pomocniknowy.pa2preview` and needs Android 10+.
+The alpha workflow now additionally produces
+`PA2-installable-debug-alpha6` with an installable, **temporary-key signed**
+APK and an Android 10/11 emulator smoke check. The temporary key changes for
+each CI run, so this APK **cannot update an older separately signed preview**
+in place: uninstall only the older `Pomocnik Alfa 2.0 TEST` first if Android
+reports a signing conflict. Uninstalling that preview may clear its saved
+test-only settings. Never uninstall the normal PA application to install this
+preview. The normal long-term signing key is not in CI.
+
+Do not call a build tested or usable until both emulator checks and APK
+signature verification complete in GitHub Actions; real carrier GPS and
+playback on physical devices still require field testing.
