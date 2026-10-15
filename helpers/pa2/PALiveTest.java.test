@@ -1,0 +1,13 @@
+package com.ispina.lokalnie;
+public class PALiveTest{
+ public static void main(String[] args)throws Exception{
+  long now=1770000000L;
+  if(!PALive.fresh(now-120,now)||PALive.fresh(now-121,now)||PALive.fresh(now+21,now)||PALive.fresh(0,now))throw new AssertionError("Freshness bounds");
+  // GTFS-RT-like nested message with original trip ID and start_date.
+  byte[] trip=new byte[]{10,3,'A','4','x',26,8,'2','0','2','6','1','0','1','5'};
+  PALive.Msg m=new PALive.Msg(trip);
+  if(!m.text(1).equals("A4x")||!m.text(3).equals("20261015"))throw new AssertionError("Trip descriptor");
+  for(byte[] bad:new byte[][]{{0},{10,100,1},{8,(byte)128}}){boolean rejected=false;try{new PALive.Msg(bad);}catch(java.io.IOException e){rejected=true;}if(!rejected)throw new AssertionError("Malformed protobuf accepted");}
+  System.out.println("PASS GPS freshness, future/stale/no timestamp rejection, original trip/date parsing, malformed protobuf rejection");
+ }
+}

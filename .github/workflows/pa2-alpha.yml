@@ -40,6 +40,8 @@ jobs:
           python3 helpers/pa2/build_data.py feeds build/data | tee output/data-build.txt
           TZ=Europe/Warsaw node helpers/pa2/test.cjs build/data | tee output/logic-tests.txt
           python3 -m py_compile helpers/pa2/*.py
+          python3 helpers/pa2/test_data.py
+          node --check helpers/pa2/backend/worker.mjs
       - name: Rebuild existing project and new native module
         run: |
           java -Xmx4g -jar tools/apktool_2.12.1.jar d -f -o decoded baseline.apk
@@ -62,9 +64,10 @@ jobs:
         run: |
           mkdir -p testsrc testclasses testdex
           cp helpers/pa2/PAProbe.java.test testsrc/PAProbe.java
+          cp helpers/pa2/test-manifest.xml testsrc/AndroidManifest.xml
           javac -source 8 -target 8 -cp "$ANDROID_HOME/platforms/android-35/android.jar" -d testclasses testsrc/PAProbe.java
           find testclasses -name '*.class' -print0 | xargs -0 "$ANDROID_HOME/build-tools/35.0.0/d8" --min-api 29 --lib "$ANDROID_HOME/platforms/android-35/android.jar" --output testdex
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" package -f -M helpers/pa2/test-manifest.xml -I "$ANDROID_HOME/platforms/android-35/android.jar" -F output/test-raw.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" package -f -M testsrc/AndroidManifest.xml -I "$ANDROID_HOME/platforms/android-35/android.jar" -F output/test-raw.apk
           (cd testdex && zip -q -0 ../output/test-raw.apk classes.dex)
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -p -f 4 output/test-raw.apk output/test-aligned.apk
           cp output/test-aligned.apk output/PA2-instrumentation-unsigned.apk
