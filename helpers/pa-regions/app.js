@@ -15,6 +15,11 @@ $("tabPlanner").onclick=()=>tab("planner");$("tabAssistant").onclick=()=>tab("as
 function groupIndex(idx){
  let map=new Map();
  idx.stops.forEach((s,i)=>{const k=norm(s[1]);if(!k)return;let g=map.get(k);if(!g){g={key:k,name:s[1],stops:[],routes:new Set()};map.set(k,g)}g.stops.push(i);(s[5]||[]).forEach(v=>g.routes.add(v))});
+ if(idx.source==="mld" && map.has("ispina")){
+   const most=map.get("ispina");
+   most.name="Ispina Most"; // The operator's "Ispina" stop is Ispina Most.
+   for(const alias of ["ispina most","ispiny most","ispiny","ispini"])map.set(alias,most);
+ }
  for(const [alias,to] of Object.entries(aliases[idx.source]||{})){if(!map.has(alias)&&map.has(to))map.set(alias,map.get(to))}
  idx.groups=map;return idx;
 }
@@ -191,52 +196,80 @@ function extractStop(idx,text){
  }
  return null;
 }
+const dialogue={from:null,to:null,when:null,fromHint:"",toHint:""};
+function segmentKey(value){
+ let k=norm(value);
+ k=k.replace(/^ispiny\b/,"ispina").replace(/^ispini\b/,"ispina");
+ k=k.replace(/^bochni\b/,"bochnia").replace(/^warszawy\b/,"warszawa");
+ k=k.replace(/^krakowa\b/,"krakow").replace(/^niepolomic\b/,"niepolomice");
+ k=k.replace(/^nowego brzeska\b/,"nowe brzesko");
+ return k;
+}
+function identifyStop(idx,text){
+ const k=segmentKey(text),canonicalKey=canonical(k);
+ let g=idx.groups.get(canonicalKey)||idx.groups.get(k);
+ if(g)return {group:g,candidates:[]};
+ const options=[...new Set(idx.groups.values())].filter(x=>x.key.startsWith(k+" ")||x.key===k);
+ if(options.length===1)return {group:options[0],candidates:[]};
+ return {group:null,candidates:options.slice(0,8).map(x=>x.name)};
+}
+function parseRequestDate(query){
+ const lower=norm(query);
+ let date=dialogue.when?new Date(dialogue.when):new Date($("departAt").value);
+ if(/\bjutro\b/.test(lower)){date=new Date();date.setDate(date.getDate()+1);}
+ else if(/\b(dzis|dzisiaj)\b/.test(lower))date=new Date();
+ const m=query.match(/(?:\bpo\b|\bo\b|\bokoło\b|\bokolo\b)\s*(\d{1,2})(?:[:.](\d{2}))?/i);
+ if(m){let h=Number(m[1]),min=Number(m[2]||0);if(h<=23&&min<=59)date.setHours(h,min,0,0)}
+ return date;
+}
 async function assistant(){
- const input=$("chatInput").value.trim();if(!input)return;
- bubble(input,"user");$("chatInput").value="";
- const lowered=norm(input);
- const wantsMld=/\b(mld|malopols\w*|krakow\w*|ispin\w*|bochn\w*|niepolomic\w*|a4|a7|a65)\b/.test(lowered);
- const wantsWarsaw=/\b(warszaw\w*|ztm|z(p|t)m|m[12]|waw)\b/.test(lowered);
- if(wantsMld&&!wantsWarsaw&&network!=="mld"){$("network").value="mld";$("network").onchange()}
- else if(wantsWarsaw&&!wantsMld&&network!=="warsaw"){$("network").value="warsaw";$("network").onchange()}
+ const question=$("chatInput").value.trim();if(!question)return;
+ bubble(question,"user");$("chatInput").value="";
+ const lower=norm(question);
+ const isMld=/\b(mld|malopols\w*|krakow\w*|ispin\w*|bochn\w*|niepolomic\w*|a4|a7|a65)\b/.test(lower);
+ const isWarsaw=/\b(warszaw\w*|ztm|z(p|t)m|m[12]|waw)\b/.test(lower);
+ if(isMld&&!isWarsaw&&network!=="mld"){$("network").value="mld";$("network").onchange();dialogue.from=dialogue.to=null}
+ else if(isWarsaw&&!isMld&&network!=="warsaw"){$("network").value="warsaw";$("network").onchange();dialogue.from=dialogue.to=null}
+ const date=parseRequestDate(question);dialogue.when=date;
  let idx;
- try{idx=await getData(network)}catch(e){bubble("Nie mogę wczytać rozkładu. "+e.message,"assistant");return;}
- if(/gdzie.*(autobus|bus)|pozycja.*(autobus|bus)|gps/.test(lowered)){
-  lastAnswer="Mogę sprawdzić planowy odjazd. Dokładna pozycja GPS wymaga świeżych danych pojazdu; nie będę jej zgadywać. Podaj linię, kierunek i przystanek.";
+ try{idx=await getData(network)}catch(e){lastAnswer="Nie udało się wczytać rozkładów: "+e.message;bubble(lastAnswer,"assistant");return}
+ if(/gdzie.*(autobus|bus)|pozycja.*(autobus|bus)|gps/.test(lower)){
+  lastAnswer="W tym Planerze pokazuję godziny rozkładowe. Lokalizację LIVE mogę potwierdzić tylko, gdy dostępny jest świeży pomiar GPS konkretnego autobusu. Napisz, o którą linię, kierunek i przystanek chodzi.";
   bubble(lastAnswer,"assistant");return;
  }
  let from=null,to=null;
- const originMatch=input.match(/(?:\bz\s+|\bze\s+)(.+?)\s+(?:do|na)\s+(.+?)(?:\s+(?:jutro|dzisiaj|dziś|po\s+\d|o\s+\d|około\s+\d)|[.,!?]|$)/i);
- if(originMatch){
-  const choose=(segment)=>{let key=norm(segment);if(idx.groups.has(key))return idx.groups.get(key);
-   const c=[...new Set(idx.groups.values())].filter(g=>key.includes(g.key)||g.key.includes(key));
-   return c.sort((a,b)=>Math.abs(a.key.length-key.length)-Math.abs(b.key.length-key.length))[0]||null;};
-  from=choose(originMatch[1]);to=choose(originMatch[2]);
+ const pair=question.match(/(?:^|\s)(?:z|ze)\s+(.+?)\s+(?:do|na)\s+(.+?)(?=\s+(?:jutro|dzisiaj|dziś|dzis|po\s+\d|o\s+\d|około\s+\d|okolo\s+\d)|[.!?]|$)/i);
+ if(pair){
+  const a=identifyStop(idx,pair[1]),b=identifyStop(idx,pair[2]);
+  dialogue.fromHint=pair[1];dialogue.toHint=pair[2];
+  dialogue.from=a.group;dialogue.to=b.group;
+  dialogue.fromCandidates=a.candidates;dialogue.toCandidates=b.candidates;
+ }else{
+  const identified=identifyStop(idx,question);
+  if(identified.group){
+   if(!dialogue.from)dialogue.from=identified.group;
+   else if(!dialogue.to)dialogue.to=identified.group;
+  }
  }
- if(!from)from=start;
- if(!to)to=end;
- if(!from&&!to){
-  lastAnswer="Powiedz mi, skąd i dokąd chcesz jechać w "+(network==="warsaw"?"Warszawie":"Małopolsce")+". Przykład: „Z Ispiny Most do Bochni jutro po 9”. Nie zakładam Twojej lokalizacji.";
-  bubble(lastAnswer,"assistant");return;
- }
+ from=dialogue.from||start;to=dialogue.to||end;
  if(!from||!to){
-  lastAnswer="Rozumiem "+(from?"start: "+from.name:"cel: "+to.name)+". Podaj jeszcze dokładny "+(!from?"przystanek początkowy.":"przystanek docelowy.")+" Daty i godziny nie będę pytać ponownie, jeżeli już ją podałeś.";
-  bubble(lastAnswer,"assistant");return;
+  let lines=[];
+  if(!from)lines.push("Podaj konkretny przystanek początkowy"+(dialogue.fromHint?" dla „"+dialogue.fromHint+"”":"")+".");
+  if(!to)lines.push("Podaj konkretny przystanek docelowy"+(dialogue.toHint?" dla „"+dialogue.toHint+"”":"")+".");
+  const suggestions=[...new Set([...(dialogue.fromCandidates||[]),...(dialogue.toCandidates||[])])].slice(0,8);
+  if(suggestions.length)lines.push("Dostępne przystanki: "+suggestions.join(", ")+".");
+  if(dialogue.when)lines.push("Datę i godzinę już zapamiętałem: "+localInput(dialogue.when).replace("T"," ")+".");
+  lastAnswer=lines.join("\n");bubble(lastAnswer,"assistant");return;
  }
- let dep=new Date($("departAt").value);
- if(/\bjutro\b/.test(lowered)){dep=new Date();dep.setDate(dep.getDate()+1);}
- else if(/\b(dzi(s|siaj)|dzis)\b/.test(lowered))dep=new Date();
- const time=input.match(/(?:\bpo\b|\bo\b|\bokoło\b|\bokolo\b)\s*(\d{1,2})(?:[:.](\d{2}))?/i);
- if(time){dep.setHours(Number(time[1]),Number(time[2]||0),0,0);}
- $("departAt").value=localInput(dep);
  start=from;end=to;$("from").value=from.name;$("to").value=to.name;
  $("statusFrom").textContent="✓ "+from.name+" – zatwierdzono";$("statusTo").textContent="✓ "+to.name+" – zatwierdzono";
+ $("departAt").value=localInput(date);
  try{
-  const results=await findTrips(idx,from,to,dep);
-  const fmt=r=>r.legs.map(l=>"linia "+l.line+" ("+minuteFormat(l.dep)+"–"+minuteFormat(l.arr)+", "+l.from+" → "+l.to+")").join("; ");
+  const results=await findTrips(idx,from,to,date);
+  const describe=r=>r.legs.map(l=>"linia "+l.line+" ("+minuteFormat(l.dep)+"–"+minuteFormat(l.arr)+", "+l.from+" → "+l.to+")").join("; ");
   lastAnswer=results.length
-   ?"Z "+from.name+" do "+to.name+" od "+pad(dep.getHours())+":"+pad(dep.getMinutes())+":\n"+results.slice(0,3).map((r,i)=>(i+1)+". "+fmt(r)+(r.kind==="transfer"?", przesiadka "+r.wait+" min":" bez przesiadki")).join("\n")+"\nTo godziny planowe GTFS. Sprawdź ewentualne opóźnienia osobno."
-   :"Nie znalazłem potwierdzonego kursu z "+from.name+" do "+to.name+" o podanej porze. Sprawdź datę lub wybierz inny pobliski przystanek.";
+   ?"Z "+from.name+" do "+to.name+" od "+pad(date.getHours())+":"+pad(date.getMinutes())+":\n"+results.slice(0,3).map((r,i)=>(i+1)+". "+describe(r)+(r.kind==="transfer"?", przesiadka "+r.wait+" min":" bez przesiadki")).join("\n")+"\nTo godziny planowe GTFS. Nie są to odjazdy GPS LIVE."
+   :"Nie znalazłem potwierdzonego kursu między tymi przystankami w wybranym czasie. Sprawdź inną datę lub pobliski przystanek.";
   bubble(lastAnswer,"assistant");
  }catch(e){lastAnswer=e.message;bubble(lastAnswer,"assistant")}
 }
