@@ -1,0 +1,32 @@
+name: PA 2.0 — conversational context checks
+on:
+  push:
+    branches: ['work/pa2-smarter-context-20261015']
+    paths:
+      - 'helpers/pa2/conversation.js'
+      - 'helpers/pa2/transit-core.js'
+      - 'helpers/pa2/test-context.cjs'
+      - '.github/workflows/pa2-context-checks.yml'
+  pull_request:
+    branches: ['work/pa2-alpha6-fixes-ux-20261015']
+    paths:
+      - 'helpers/pa2/conversation.js'
+      - 'helpers/pa2/transit-core.js'
+      - 'helpers/pa2/test-context.cjs'
+permissions:
+  contents: read
+jobs:
+  conversation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: JavaScript syntax
+        run: |
+          node --check helpers/pa2/conversation.js
+          node --check helpers/pa2/test-context.cjs
+      - name: Context and follow-up tests
+        run: TZ=Europe/Warsaw node helpers/pa2/test-context.cjs

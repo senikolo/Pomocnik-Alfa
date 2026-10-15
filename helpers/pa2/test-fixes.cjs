@@ -10,6 +10,30 @@ check('start, linia i kierunek w jednym pytaniu',()=>{const r=new Assistant(e).p
 check('odmiana Nowodworów',()=>{const r=new Assistant(e).parse('Z Tarchomina do Nowodworów jutro o 9');assert.equal(r.type,'route');assert.equal(r.to.name,'Nowodwory')});
 check('kontynuacja zmienia dzień i zachowuje godzinę',()=>{const a=new Assistant(e);a.parse('Z Ispiny do Bochni Dworzec PKP dzisiaj o 9');let r=a.parse('A jutro?');assert.equal(r.type,'route');assert(r.when.endsWith('T09:00'));r=a.parse('A pojutrze o tej samej godzinie?');assert.equal(r.type,'route');assert(r.when.endsWith('T09:00'))});
 check('zmiana regionu nie przenosi A4',()=>{const a=new Assistant(e);a.parse('Z Ispiny do Bochni Dworzec PKP jutro o 9');a.parse('Kiedy następna A4?');const r=a.parse('Z Tarchomina');assert.notEqual(r.line,'A4');assert.equal(a.state.direction,null)});
+check('asystent: przystanek podany naturalnie bez z Tarchomina',()=>{
+ const a=new Assistant(e);
+ const r=a.parse('Gdzie jest autobus 186 na przystanku Tarchomin w kierunku Szczęśliwice?');
+ assert.equal(r.type,'vehicle');assert.equal(r.from.name,'Tarchomin');
+ assert.equal(r.line,'186');assert.equal(r.direction,'Szczęśliwice');
+});
+check('asystent: nowa linia nie dziedziczy starego kierunku',()=>{
+ const a=new Assistant(e);
+ a.parse('Gdzie jest autobus 186 z Tarchomina w kierunku Szczęśliwice?');
+ const r=a.parse('A gdzie jest tramwaj 17?');
+ assert.equal(r.type,'vehicle');assert.equal(r.line,'17');
+ assert.equal(r.direction,null);assert.equal(r.from.name,'Tarchomin');
+});
+check('asystent: po sprawdzaniu autobusu można od razu zmienić cel',()=>{
+ const a=new Assistant(e);
+ a.parse('Gdzie jest autobus 186 z Tarchomina w kierunku Szczęśliwice?');
+ const r=a.parse('A do Nowodworów?');
+ assert.equal(r.type,'route');assert.equal(r.from.name,'Tarchomin');
+ assert.equal(r.to.name,'Nowodwory');assert.equal(r.line,null);
+});
+check('asystent: pół godziny i półtorej godziny są relatywne',()=>{
+ assert.equal(parseTime('Pół godziny później','2026-10-15T10:00').when,'2026-10-15T10:30');
+ assert.equal(parseTime('Półtorej godziny wcześniej','2026-10-15T10:00').when,'2026-10-15T08:30');
+});
 const now=Date.parse('2026-10-15T13:00:00Z')/1000,d={queryDay:'2026-10-15',serviceDay:'2026-10-15',dep:15*3600+300};
 check('GPS wygasa po 120 sekundach',()=>{const a={live:true,position:{timestamp:now,latitude:52,longitude:21}};assert(live.assess(d,a,now,now).gpsFresh);assert(!live.assess(d,a,now,now+121).gpsFresh)});
 check('ETA i odliczanie wygasają oraz zmieniają się z czasem',()=>{const a={live:true,eta:now+300,liveTimestamp:now};assert.equal(live.assess(d,a,now,now).etaMinutes,5);assert.equal(live.assess(d,a,now,now+60).etaMinutes,4);assert(!live.assess(d,a,now,now+121).etaFresh)});
