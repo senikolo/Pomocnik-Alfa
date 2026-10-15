@@ -63,8 +63,8 @@ const ask = async q => {
 };
 (async () => {
   let answer=await ask("Chcę jechać do Bochni z Ispiny jutro po 9");
-  assert.match(answer,/Podaj konkretny przystanek docelowy/);
-  assert.doesNotMatch(answer,/Podaj konkretny przystanek początkowy/);
+  assert.match(answer,/Na którym dokładnie przystanku/);
+  assert.doesNotMatch(answer,/Z którego dokładnie przystanku/);
   assert.match(answer,/09:00/);
   answer=await ask("Bochnia Dworzec PKP");
   assert.match(answer,/linia A4/);
@@ -73,7 +73,7 @@ const ask = async q => {
   answer=await ask("Z Ispiny Most do Bochni Dworzec PKP jutro po 9");
   assert.match(answer,/linia A4/);
   answer=await ask("Z Ispiny do Bochni jutro po 9");
-  assert.match(answer,/Podaj konkretny przystanek docelowy/);
+  assert.match(answer,/Na którym dokładnie przystanku/);
   assert.doesNotMatch(answer,/linia A4/);
   answer=await ask("Dzięki");
   assert.match(answer,/Nie ma za co/);
