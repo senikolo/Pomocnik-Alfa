@@ -99,6 +99,7 @@ $('update').onclick=async()=>{$('update').disabled=true;$('updateStatus').textCo
    No GPS invented from a published timetable, no street-distance-based ETA. */
 const busState={stop:null,departures:[],seq:0,lastQuery:null};
 const busModes=new Set([3,700,701,702,704,714]);
+if(typeof Element!=='undefined'&&!Element.prototype.replaceChildren){Element.prototype.replaceChildren=function(...items){while(this.firstChild)this.removeChild(this.firstChild);for(const item of items)this.appendChild(item)}}
 const busOpt=(value,label)=>{const o=document.createElement('option');o.value=value;o.textContent=label;return o};
 function busResetResults(message=''){busState.seq++;$('busResult').innerHTML='';$('busLoading').textContent=message;$('busRefresh').disabled=true}
 function busStopList(){
