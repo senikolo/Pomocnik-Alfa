@@ -163,7 +163,7 @@ jobs:
           disable-animations: true
           emulator-boot-timeout: 700
           script: |
-            set -euo pipefail
+            set -eu  # android-emulator-runner invokes this script with /bin/sh (dash)
             mkdir -p results
             adb install build/Pomocnik-Alfa-2.0.0-alpha.6-UX-DEBUG.apk
             adb install build/PA2-instrumentation-debug.apk
