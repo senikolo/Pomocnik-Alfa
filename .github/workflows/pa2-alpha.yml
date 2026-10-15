@@ -1,0 +1,147 @@
+name: PA 2.0 alpha real build and Android tests
+on:
+  workflow_dispatch:
+  push:
+    branches: ['work/pa2-20261015']
+    paths: ['helpers/pa2/**', '.github/workflows/pa2-alpha.yml']
+permissions:
+  contents: write
+  actions: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore existing full PA base without dropping modules
+        run: |
+          mkdir -p baseline tools output
+          if gh release download pa2-source-base -p pa-base.zip -D baseline; then
+            unzip -q baseline/pa-base.zip -d baseline
+          else
+            gh run download 37921731880 -n Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-UNSIGNED -D baseline
+          fi
+          find baseline -name '*.apk' -print -quit | xargs -I{} cp '{}' baseline.apk
+          test -s baseline.apk
+          sha256sum baseline.apk > output/base-sha256.txt
+          gh release download v2.12.1 -R iBotPeaches/Apktool -p apktool_2.12.1.jar -D tools
+      - name: Fetch real eight-source transport coverage and validate calendars
+        run: |
+          python3 helpers/pa2/fetch_data.py feeds
+          python3 helpers/pa2/build_data.py feeds build/data | tee output/data-build.txt
+          TZ=Europe/Warsaw node helpers/pa2/test.cjs build/data | tee output/logic-tests.txt
+          python3 -m py_compile helpers/pa2/*.py
+      - name: Rebuild existing project and new native module
+        run: |
+          java -Xmx4g -jar tools/apktool_2.12.1.jar d -f -o decoded baseline.apk
+          python3 helpers/pa2/patch_project.py decoded build/data
+          node helpers/pa2/prepare_js.cjs decoded/assets/pa_regions
+          SDK="$ANDROID_HOME"
+          mkdir -p classes native
+          javac -source 8 -target 8 -encoding UTF-8 -cp "$SDK/platforms/android-35/android.jar" -d classes helpers/pa2/*.java
+          find classes -name '*.class' -print0 | xargs -0 "$SDK/build-tools/35.0.0/d8" --min-api 29 --lib "$SDK/platforms/android-35/android.jar" --output native
+          java -Xmx4g -jar tools/apktool_2.12.1.jar b decoded -o output/rebuilt.apk
+          cp native/classes.dex output/classes5.dex
+          (cd output && zip -q -0 rebuilt.apk classes5.dex)
+          "$SDK/build-tools/35.0.0/zipalign" -p -f 4 output/rebuilt.apk output/aligned.apk
+      - name: Restore existing permanent PA signing key; no replacement keys
+        env:
+          KEY_B64: ${{ secrets.PA_STABLE_KEYSTORE_B64 }}
+          KEY_PASS: ${{ secrets.PA_STABLE_KEYSTORE_PASS }}
+        run: |
+          test -n "$KEY_B64" -a -n "$KEY_PASS"
+          printf '%s' "$KEY_B64" | base64 -d > stable.p12
+          CERT="$(keytool -list -v -storetype PKCS12 -keystore stable.p12 -storepass "$KEY_PASS" -alias pomocnik-alfa-stable | awk -F': ' '/SHA256:/{print $2;exit}')"
+          test "$CERT" = '36:14:42:C8:98:55:22:36:A7:D4:29:9E:ED:A5:C3:DC:27:5B:A1:F3:68:C0:11:29:2D:C0:7D:44:B2:E8:AC:E1'
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks stable.p12 --ks-type PKCS12 --ks-pass env:KEY_PASS --ks-key-alias pomocnik-alfa-stable --out output/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk output/aligned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs output/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk > output/signature.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging output/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk > output/badging.txt
+          sha256sum output/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk > output/SHA256SUMS.txt
+          unzip -t output/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk > output/zip-integrity.txt
+      - name: Compile independently signed instrumentation for the same target
+        env:
+          KEY_PASS: ${{ secrets.PA_STABLE_KEYSTORE_PASS }}
+        run: |
+          mkdir -p testsrc testclasses testdex
+          cp helpers/pa2/PAProbe.java.test testsrc/PAProbe.java
+          javac -source 8 -target 8 -cp "$ANDROID_HOME/platforms/android-35/android.jar" -d testclasses testsrc/PAProbe.java
+          find testclasses -name '*.class' -print0 | xargs -0 "$ANDROID_HOME/build-tools/35.0.0/d8" --min-api 29 --lib "$ANDROID_HOME/platforms/android-35/android.jar" --output testdex
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" package -f -M helpers/pa2/test-manifest.xml -I "$ANDROID_HOME/platforms/android-35/android.jar" -F output/test-raw.apk
+          (cd testdex && zip -q -0 ../output/test-raw.apk classes.dex)
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -p -f 4 output/test-raw.apk output/test-aligned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks stable.p12 --ks-type PKCS12 --ks-pass env:KEY_PASS --ks-key-alias pomocnik-alfa-stable --out output/PA2-instrumentation.apk output/test-aligned.apk
+          rm -f stable.p12
+      - name: Preserve complete reconstructed project and updateable data
+        run: |
+          cp -r helpers/pa2 decoded/pa2-build-sources
+          cp -r native decoded/pa2-native-dex
+          (cd decoded && zip -q -r ../output/PA2-Reconstructed-Project.zip . -x 'build/*' 'dist/*')
+          (cd build/data && zip -q -r ../../output/pa2-data.zip .)
+          cp baseline.apk pa-base.apk
+          zip -q output/pa-base.zip pa-base.apk
+          gh release view pa2-source-base >/dev/null 2>&1 || gh release create pa2-source-base --prerelease --title 'PA: archiwum bazy projektu do odtworzenia kompilacji' --notes 'Techniczna baza pełnej aplikacji. Nie jest wydaniem dla użytkowników.'
+          gh release upload pa2-source-base output/pa-base.zip --clobber
+          gh release view pa2-data >/dev/null 2>&1 || gh release create pa2-data --prerelease --title 'Aktualizacje danych Planera PA 2.0' --notes 'Dane GTFS przetworzone z datami ważności. Źródła i uznanie autorstwa w paczce.'
+          gh release upload pa2-data output/pa2-data.zip --clobber
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PA2-real-build
+          path: |
+            output/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk
+            output/PA2-instrumentation.apk
+            output/PA2-Reconstructed-Project.zip
+            output/*.txt
+          retention-days: 60
+  android:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [29,30]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: PA2-real-build
+          path: build
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install and exercise real app and preserved modules
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          arch: x86_64
+          target: google_apis
+          profile: pixel_2
+          disable-animations: true
+          emulator-boot-timeout: 700
+          script: |
+            mkdir -p results
+            adb install -r build/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk
+            adb install -r build/PA2-instrumentation.apk
+            adb logcat -c
+            adb shell am instrument -w com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/instrumentation.txt
+            adb logcat -d -b crash > results/crashes.txt
+            adb pull /sdcard/Android/data/com.senikolo.pomocniknowy/files/pa2-tests results/screenshots || true
+            grep -q 'TOTAL PASS system' results/instrumentation.txt
+            test ! -s results/crashes.txt || ! grep -q 'FATAL EXCEPTION' results/crashes.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PA2-Android-${{ matrix.api }}-test-results
+          path: results
+          retention-days: 60

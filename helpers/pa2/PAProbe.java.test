@@ -1,0 +1,29 @@
+package com.senikolo.pa2test;
+import android.app.*;import android.os.*;import android.content.*;import android.view.*;import android.webkit.*;import android.graphics.Bitmap;import java.io.*;import java.util.concurrent.*;
+public class PAProbe extends Instrumentation {
+ StringBuilder log=new StringBuilder();
+ void record(String s){log.append(s).append('\n');Bundle b=new Bundle();b.putString("stream",s+"\n");sendStatus(0,b);}
+ void require(boolean condition,String why){if(!condition)throw new AssertionError(why);}
+ WebView web(View v){if(v instanceof WebView)return(WebView)v;if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++){WebView w=web(((ViewGroup)v).getChildAt(i));if(w!=null)return w;}return null;}
+ String js(Activity a,String source)throws Exception{CountDownLatch latch=new CountDownLatch(1);String[] result={""};runOnMainSync(()->{WebView w=web(a.getWindow().getDecorView());if(w==null){latch.countDown();return;}w.evaluateJavascript(source,v->{result[0]=v;latch.countDown();});});if(!latch.await(10,TimeUnit.SECONDS))throw new AssertionError("WebView callback timeout");return result[0];}
+ void waitJs(Activity a,String expression,long max)throws Exception{long until=System.currentTimeMillis()+max;while(System.currentTimeMillis()<until){if("true".equals(js(a,expression)))return;Thread.sleep(300);}throw new AssertionError("UI timeout: "+expression+"; result="+js(a,"document.body.innerText.slice(-3000)"));}
+ Activity launch(String name)throws Exception{Intent intent=new Intent().setClassName(getTargetContext().getPackageName(),"com.ispina.lokalnie."+name).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);Activity a=startActivitySync(intent);waitForIdleSync();Thread.sleep(900);require(a!=null,name+" did not start");return a;}
+ void screenshot(String name)throws Exception{File dir=getTargetContext().getExternalFilesDir("pa2-tests");dir.mkdirs();Bitmap bitmap=getUiAutomation().takeScreenshot();if(bitmap!=null)try(FileOutputStream out=new FileOutputStream(new File(dir,name+".png"))){bitmap.compress(Bitmap.CompressFormat.PNG,100,out);}}
+ @Override public void onStart(){Bundle out=new Bundle();try{
+  record("Android API "+Build.VERSION.SDK_INT+", package "+getTargetContext().getPackageName());
+  Activity a=launch("MainActivity");record("PASS main launches");screenshot("main");runOnMainSync(()->a.finish());
+  Activity planner=launch("PARegionsActivity");waitJs(planner,"document.getElementById('coverage').innerText.includes('offline')",30000);record("PASS WebView, all GTFS indexes and ES2017 client load");
+  js(planner,"document.getElementById('from').value='Tarchomin';document.getElementById('confirmFrom').click();document.getElementById('to').value='Dw. Centralny';document.getElementById('confirmTo').click();true");
+  waitJs(planner,"document.querySelectorAll('.trip').length>0",60000);record("PASS automatic Tarchomin–Dw. Centralny real timetable search");screenshot("planner");
+  js(planner,"document.getElementById('tabAssistant').click();document.getElementById('chatInput').value='Chcę jutro po 9 jechać z Ispiny do Bochni';document.getElementById('ask').click();true");
+  waitJs(planner,"document.getElementById('messages').innerText.includes('09:00')",20000);record("PASS chat retains requested date/time while clarifying Bochnia stop");
+  js(planner,"document.getElementById('chatInput').value='Bochnia Dworzec PKP';document.getElementById('ask').click();true");
+  waitJs(planner,"document.getElementById('messages').innerText.includes('Godziny planowe. Wybierz')",60000);record("PASS chat completes MLD journey from clarification");
+  js(planner,"document.getElementById('chatInput').value='A godzinę później?';document.getElementById('ask').click();true");
+  waitJs(planner,"!document.getElementById('ask').disabled",60000);require(!js(planner,"document.getElementById('messages').lastElementChild.innerText").contains("Z którego przystanku"),"Lost origin on follow-up");record("PASS contextual one-hour-later follow-up");screenshot("assistant");
+  js(planner,"document.getElementById('chatInput').value='Zapisz notatkę: test PA2 mleko';document.getElementById('ask').click();true");waitJs(planner,"document.getElementById('messages').innerText.includes('Zapisałem w notatniku')",15000);require(getTargetContext().getSharedPreferences("native_notes",0).getString("note","").contains("test PA2 mleko"),"Native note missing");record("PASS native notes bridge persists in existing PA notepad");
+  js(planner,"document.getElementById('settingsToggle').click();document.getElementById('theme').value='dark';document.getElementById('theme').dispatchEvent(new Event('change'));true");require(js(planner,"document.documentElement.dataset.theme").contains("dark"),"Dark theme missing");screenshot("dark");record("PASS dark appearance");runOnMainSync(()->planner.finish());
+  for(String name:new String[]{"NotesActivity","RemindersActivity","RadioActivity","TvActivity","TubeActivity","WeatherActivity","AppearanceActivity","ReaderActivity"}){Activity module=launch(name);record("PASS module launch "+name+" (network playback not asserted)");runOnMainSync(()->module.finish());}
+  record("TOTAL PASS system installation, launch and UI smoke");out.putString("stream",log.toString());finish(Activity.RESULT_OK,out);
+ }catch(Throwable e){record("FAIL "+e);out.putString("stream",log.toString());finish(Activity.RESULT_CANCELED,out);}}
+}
