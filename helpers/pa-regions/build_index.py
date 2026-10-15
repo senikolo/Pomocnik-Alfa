@@ -19,7 +19,7 @@ OUT = Path(sys.argv[1] if len(sys.argv) > 1 else "build/pa-regions")
 OUT.mkdir(parents=True, exist_ok=True)
 SOURCE = Path(sys.argv[2] if len(sys.argv) > 2 else "data/pa-gtfs")
 TODAY = dt.date.fromisoformat(os.environ["PA_REGION_TODAY"]) if os.environ.get("PA_REGION_TODAY") else dt.datetime.now(ZoneInfo("Europe/Warsaw")).date()
-DAYS = [TODAY + dt.timedelta(days=i) for i in range(4)]
+DAYS = [TODAY + dt.timedelta(days=i) for i in range(14)]
 WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 
 def write(path, obj):
