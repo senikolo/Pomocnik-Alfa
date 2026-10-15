@@ -62,6 +62,7 @@ async function routeAction(a){setPoints(a.from,a.to,a.when);$('typing').textCont
 async function departureAction(a){
  if(a.line&&![...a.from.routes].some(r=>norm(engine.idx.routes[r][1])===norm(a.line))){say('Linia '+a.line+' nie obsługuje przystanku '+a.from.name+' według tej bazy rozkładów. Wybierz inny przystanek lub linię.');assistant.state.asked='from';return}
  const departures=await engine.departures(a.from,a.when,a.line,a.direction);
+ if(!departures.length&&a.direction){const other=await engine.departures(a.from,a.when,a.line,null);if(other.length){assistant.state.direction=null;assistant.state.asked='direction';say('Wcześniejszy cel nie wskazuje jednoznacznie kierunku tej linii. W którym kierunku jedziesz?',[...new Set(other.map(d=>d.headsign))]);return}}
  if(!departures.length){say((a.line&&!a.from.routes.size?'Linia nie ma tu potwierdzonych kursów. ':'')+'Brak pasujących odjazdów z '+a.from.name+' w kolejnych 24 godzinach. Spróbuj innej godziny albo kierunku.');return}
  const directions=[...new Set(departures.map(d=>d.headsign))];if(!a.direction&&directions.length>1){assistant.state.asked='direction';say('Z przystanku '+a.from.name+' mam kilka kierunków. Który wybierasz?',directions);return}
  if(a.type==='vehicle'){
