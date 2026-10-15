@@ -26,7 +26,7 @@ if 'Lcom/ispina/lokalnie/PARegionsClick;' not in s:
 '''
  # The legacy nearby-stop screen is a different function from the regional planner.
  # Keep its original click listener, but label it by its actual purpose.
- legacy=anchor.replace('    invoke-direct {p0, v1, v2, v0}', '    const-string v1, "Przystanki w pobliżu"\\n\\n    invoke-direct {p0, v1, v2, v0}',1)
+ legacy=anchor.replace('    invoke-direct {p0, v1, v2, v0}', '    const-string v1, "Przystanki w pobliżu"' + chr(10) + chr(10) + '    invoke-direct {p0, v1, v2, v0}',1)
  s=s.replace(anchor,legacy+addition)
 s=s.replace('Warszawa: autobusy. Małopolska: MLD. Trasy, przesiadki i rozmowa po polsku.','Warszawa, Małopolska i kolej. Trasy, przesiadki, pogoda i Twoje notatki.')
 s=s.replace('Pomocnik Alfa 1.7.66','Pomocnik Alfa 2.0')
