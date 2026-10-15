@@ -99,8 +99,52 @@ nav button.active span{animation:navPop .24s ease-out both}
 @keyframes navPop{0%{transform:scale(.84)}65%{transform:scale(1.12)}100%{transform:scale(1)}}
 @media(max-width:520px){main{padding:9px 11px 96px}.card{padding:12px;margin:9px 0}.grid2{grid-template-columns:1fr;gap:9px}header{padding:11px 12px}.trip-time{font-size:22px}.entry{gap:6px}#planner .grid2{gap:6px}}
 @media(prefers-reduced-motion:reduce){.panel.active,.trip,.bubble,nav button.active span,#search:disabled:before{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* Unified outline icon family and compact four-position bottom navigation. */
+.vicon{width:20px;height:20px;display:inline-block;vertical-align:middle;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.icon .vicon{width:25px;height:25px}
+.btn .vicon{width:18px;height:18px;margin-right:4px}
+.heading-icon{width:25px;height:25px;color:var(--brand);margin-right:5px}
+nav .nav-inner{gap:3px}
+nav button{min-width:0;font-size:11px;padding:7px 2px;line-height:1.3}
+nav button span{display:flex;justify-content:center;align-items:center;margin-bottom:3px}
+nav button .vicon{width:22px;height:22px}
+#liveBus .eyebrow{margin-top:3px}
+.bus-form{margin-bottom:11px}
+.bus-live-foot{gap:8px;margin-top:8px;flex-wrap:wrap}
+.bus-live-foot .btn{min-height:36px;font-size:12px}
+#busStopConfirmed:empty{display:none}
+#busResult .card{border-left:3px solid var(--brand)}
+.bus-status{padding:9px 11px;border-radius:11px;background:var(--soft);margin:8px 0;font-size:13px;font-weight:620}
+.bus-status.ok{color:var(--green)}
+.bus-status.warn{color:var(--amber)}
+.bus-vehicle-line{font-size:23px;font-weight:760;color:var(--deep)}
+.bus-map{padding:8px;border-radius:14px;background:var(--soft);margin:10px 0;overflow:hidden}
+.bus-map svg{width:100%;height:130px;display:block}
+.bus-map .road{stroke:var(--muted);stroke-width:2;stroke-dasharray:5 5;opacity:.65}
+.bus-map .station{fill:var(--brand);stroke:var(--surface);stroke-width:3}
+.bus-map .vehicle{fill:var(--green);stroke:var(--surface);stroke-width:3}
+.bus-map .map-label{fill:var(--ink);font-size:12px;font-weight:650}
+.bus-map .map-foot{fill:var(--muted);font-size:10px}
+.bus-card-header{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.bus-source{font-size:11px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
+#busStops .list-option{min-height:48px}
+@media(max-width:390px){nav button{font-size:10px}nav button .vicon{width:20px;height:20px}}
+@media(prefers-reduced-motion:reduce){.bus-map *,#liveBus .card{animation:none!important;transition:none!important}}
 </style></head><body>
-<header><button class="icon" id="back" aria-label="Wróć do pulpitu">‹</button><div class="heading"><h1>Pomocnik Alfa <span style="font-size:11px;opacity:.8;vertical-align:middle">2.0</span></h1><p>Warszawa · Małopolska · kolej</p></div><button class="icon" id="settingsToggle" aria-label="Wygląd i informacje">☷</button></header>
+<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><defs>
+<symbol id="pa-arrow-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6M9 12h12" /></symbol>
+<symbol id="pa-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16M8 4v6m8 4v6" /><circle cx="8" cy="7" r="2"/><circle cx="16" cy="17" r="2"/></symbol>
+<symbol id="pa-route" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h7a4 4 0 0 0 0-8H9a4 4 0 0 1 0-8h7"/></symbol>
+<symbol id="pa-bus" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="17" rx="3"/><path d="M4 10h16M4 16h16M8 20v2m8-2v2M8 13h.01M16 13h.01"/></symbol>
+<symbol id="pa-sparkles" viewBox="0 0 24 24"><path d="m12 3 1.9 5.9L20 11l-6.1 2.1L12 19l-1.9-5.9L4 11l6.1-2.1L12 3ZM20 18l-1 2-2 1 2 1 1 2 1-2 2-1-2-1-1-2Z"/></symbol>
+<symbol id="pa-star" viewBox="0 0 24 24"><path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1 6.2-5.5-2.9-5.5 2.9 1-6.2L3 9.6l6.2-.9L12 3Z"/></symbol>
+<symbol id="pa-pin" viewBox="0 0 24 24"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+<symbol id="pa-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14-5L4 8V3m0 5h5M4 13a8 8 0 0 0 14 5l2-2v5m0-5h-5"/></symbol>
+<symbol id="pa-send" viewBox="0 0 24 24"><path d="m3 11 18-8-8 18-2.5-7.5L3 11Zm7.5 2.5L21 3"/></symbol>
+</defs></svg>
+
+<header><button class="icon" id="back" aria-label="Wróć do pulpitu"><svg class="vicon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="#pa-arrow-left"></use></svg></button><div class="heading"><h1>Pomocnik Alfa <span style="font-size:11px;opacity:.8;vertical-align:middle">2.0</span></h1><p>Warszawa · Małopolska · kolej</p></div><button class="icon" id="settingsToggle" aria-label="Wygląd i informacje"><svg class="vicon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="#pa-settings"></use></svg></button></header>
 <main>
 <section id="settings" class="hidden card"><h2>Po Twojemu</h2><div class="grid2 field"><div><label for="theme">Wygląd</label><select id="theme"><option value="auto">Jak w telefonie</option><option value="light">Jasny</option><option value="dark">Ciemny</option></select></div><div><label for="senior">Rozmiar elementów</label><select id="senior"><option value="normal">Standardowy</option><option value="large">Senior · większe</option></select></div></div><button class="btn" id="update">Odśwież rozkłady</button><p class="small" id="updateStatus" role="status"></p><details><summary>O danych i możliwościach Alfy</summary><p class="small">Planer korzysta z pobranych rozkładów. Dojścia są orientacyjne, na podstawie odległości między przystankami; sprawdź przejścia i dostępność na miejscu. GPS sprawdzamy wyłącznie na Twoje żądanie i pokazujemy tylko świeże, zgodne dane.</p><p class="small">Rozmowa lokalna pomaga obsługiwać Planer, pogodę, notatki i przypomnienia. Nie jest modelem językowym. Opcjonalna AI online wymaga uruchomienia usługi przez właściciela PA i ma bezpłatny limit. Pytanie i ostatnie wiadomości są wysyłane dopiero po włączeniu AI online.</p><label class="inline-control"><input type="checkbox" id="aiOnline">AI online · wyślij kontekst rozmowy</label><div id="sources" class="small sources"></div><p class="small">Dane pogodowe: Open-Meteo, CC BY 4.0. Wyszukiwanie lokalnego asystenta: polska Wikipedia. Pełne wyszukiwanie internetu wymaga działającej usługi AI.</p></details></section>
 <section class="panel active" id="planner"><div class="eyebrow">W DROGĘ Z ALFĄ</div><h2>Dokąd dziś jedziemy?</h2><p class="small">Wybierz trasę. Sprawdzę dla Ciebie najlepsze połączenia.</p>
@@ -109,12 +153,33 @@ nav button.active span{animation:navPop .24s ease-out both}
 <div class="field"><label for="to">Dokąd</label><div class="entry"><input id="to" autocomplete="off" placeholder="Miejscowość lub przystanek" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggestTo"><button class="btn primary accept" id="confirmTo">Akceptuj</button></div><div class="list" id="suggestTo" role="listbox" aria-label="Propozycje przystanków docelowych"></div><p class="confirmed" id="statusTo" role="status"></p></div>
 <div class="grid2 field"><div><label for="departAt">Wyjazd</label><div class="date-shell"><span id="dateDisplay" aria-hidden="true">Wybierz datę i godzinę</span><input type="datetime-local" id="departAt" aria-label="Data i godzina wyjazdu"></div></div><div><label for="sort">Pokaż najpierw</label><select id="sort"><option value="arrival">Najwcześniejszy przyjazd</option><option value="duration">Najkrótsza podróż</option><option value="transfers">Najmniej przesiadek</option></select></div></div>
 <details><summary>Dopasuj podróż</summary><div class="grid2 field"><div><label for="transfer">Minuty na przesiadkę</label><input type="number" id="transfer" value="5" min="1" max="60"></div><div><label for="changes">Maksymalnie przesiadek</label><select id="changes"><option value="0">Bez przesiadek</option><option value="1">1 przesiadka</option><option value="2" selected>2 przesiadki</option><option value="3">3 przesiadki</option></select></div></div><label for="modes">Środki transportu</label><select id="modes"><option value="all">Wszystkie</option><option value="bus">Autobusy, także nocne</option><option value="tram">Tramwaje</option><option value="metro">Metro</option><option value="rail">Kolej, SKM, WKD</option></select><label class="inline-control"><input type="checkbox" id="walk" checked>Dojście do innego przystanku do ok. 400 m w linii prostej</label></details>
-<button class="btn primary full" id="search"><span aria-hidden="true">⌕ </span> Pokaż połączenia <span aria-hidden="true">→</span></button><div class="coverage"><i class="dot"></i><span id="coverage">Wczytuję bazę…</span></div></div>
+<button class="btn primary full" id="search"><svg class="vicon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="#pa-route"></use></svg> Pokaż połączenia →</button><div class="coverage"><i class="dot"></i><span id="coverage">Wczytuję bazę…</span></div></div>
 <div class="row between results-heading"><h3>Twoje połączenia</h3><button class="btn quiet small" id="now">Teraz</button></div><div class="progress" id="progress" role="status" aria-live="polite"></div><div id="results" aria-label="Znalezione połączenia" aria-live="polite"></div>
 <details class="card"><summary>Nie znalazłeś połączenia?</summary><p class="small">Brak wyniku w tej bazie nie oznacza braku kursów u przewoźnika. Sprawdź datę, liczbę przesiadek i pobliskie przystanki. Ostateczne informacje kolejowe znajdziesz w oficjalnym serwisie.</p><button id="official" class="btn">Portal Pasażera ↗</button></details></section>
+<section class="panel" id="liveBus">
+<div class="eyebrow">NA ŻYWO · SPRAWDZONE ŹRÓDŁA</div>
+<h2><svg class="vicon heading-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="#pa-bus"></use></svg> Gdzie jest mój autobus?</h2>
+<p class="small">Podaj przystanek, wybierz linię i kierunek. Sprawdzę, czy przewoźnik udostępnia świeże położenie lub aktualną godzinę przyjazdu.</p>
+<div class="card bus-form">
+ <div class="field"><label for="busStop">1. Gdzie czekasz? Wpisz co najmniej 3 litery przystanku</label>
+  <input id="busStop" type="text" role="combobox" aria-controls="busStops" aria-expanded="false" aria-autocomplete="list" autocomplete="off" placeholder="Np. Tarchomin, Ispina Most…">
+  <div id="busStops" class="list" role="listbox" aria-label="Pasujące przystanki"></div>
+  <p id="busStopConfirmed" class="confirmed" role="status"></p>
+ </div>
+ <div class="grid2 field">
+  <div><label for="busLine">2. Która linia?</label><select id="busLine" disabled><option value="">Najpierw wybierz przystanek</option></select></div>
+  <div><label for="busDirection">3. W jakim kierunku?</label><select id="busDirection" disabled><option value="">Wybierz linię</option></select></div>
+ </div>
+ <button class="btn primary full" id="checkBus" disabled><svg class="vicon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="#pa-pin"></use></svg> Sprawdź, gdzie jest autobus</button>
+ <div class="row between bus-live-foot"><span class="small" id="busProvider">Dane LIVE tylko tam, gdzie są dostępne.</span><button class="btn quiet" id="busRefresh" disabled aria-label="Odśwież dane autobusu"><svg class="vicon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="#pa-refresh"></use></svg> Odśwież</button></div>
+</div>
+<div id="busLoading" class="progress" role="status" aria-live="polite"></div>
+<div id="busResult" aria-live="polite"></div>
+<p class="footnote">Położenie GPS jest wyświetlane wyłącznie dla konkretnego kursu zgodnego z rozkładem i nie starsze niż 120 sekund. Odległość do przystanku to linia prosta, a nie czas dojazdu. Nie wszystkie linie mają dostępne dane LIVE.</p>
+</section>
 <section class="panel" id="assistant"><div class="chat-top row between"><div><div class="eyebrow">Jestem obok</div><h2>Porozmawiajmy <span aria-hidden="true">✦</span></h2></div><button class="btn quiet" id="clearChat" aria-label="Nowa rozmowa">Nowa</button></div><div class="chat-badge" id="aiStatus">Pomoc w podróży, pogodzie i notatkach · tryb lokalny</div>
-<div class="chat-shell"><div class="messages" id="messages" role="log" aria-label="Rozmowa z Alfą" aria-live="polite"></div><div class="typing" id="typing" role="status"></div><div class="composer"><div id="quickPrompts" class="options"><button class="btn prompt" data-query="Jak dojadę z Tarchomina na Dworzec Centralny?">Tarchomin → centrum</button><button class="btn prompt" data-query="Chcę jutro po 9 jechać z Ispiny do Bochni">Ispina → Bochnia</button></div><label class="sr-only" for="chatInput">Wiadomość do Alfy</label><div class="entry field"><textarea id="chatInput" rows="1" placeholder="Napisz, w czym pomóc…"></textarea><button class="btn primary send" id="ask" aria-label="Wyślij wiadomość">↑</button></div><div class="row between wrap"><button class="btn quiet small" id="webSearch">Szukaj w Wikipedii</button></div></div></div></section>
+<div class="chat-shell"><div class="messages" id="messages" role="log" aria-label="Rozmowa z Alfą" aria-live="polite"></div><div class="typing" id="typing" role="status"></div><div class="composer"><div id="quickPrompts" class="options"><button class="btn prompt" data-query="Jak dojadę z Tarchomina na Dworzec Centralny?">Tarchomin → centrum</button><button class="btn prompt" data-query="Chcę jutro po 9 jechać z Ispiny do Bochni">Ispina → Bochnia</button></div><label class="sr-only" for="chatInput">Wiadomość do Alfy</label><div class="entry field"><textarea id="chatInput" rows="1" placeholder="Napisz, w czym pomóc…"></textarea><button class="btn primary send" id="ask" aria-label="Wyślij wiadomość"><svg class="vicon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="#pa-send"></use></svg></button></div><div class="row between wrap"><button class="btn quiet small" id="webSearch">Szukaj w Wikipedii</button></div></div></div></section>
 <section class="panel" id="favorites"><div class="eyebrow">Pod ręką</div><h2>Twoje ulubione</h2><p class="small">Zapisane trasy i przystanki są dostępne na tym urządzeniu.</p><div id="favoriteList"></div><div class="card"><h3>Pozostałe funkcje PA</h3><div class="options"><button class="btn module" data-module="notes">Notatnik</button><button class="btn module" data-module="reminders">Przypomnienia</button><button class="btn module" data-module="radio">Radio</button><button class="btn module" data-module="tv">Telewizja</button><button class="btn module" data-module="weather">Pogoda</button></div></div></section>
 <section class="panel" id="notePanel"><div class="eyebrow">Wszystko w jednym miejscu</div><h2>Twoja podróż</h2><div class="card"><div id="note" class="note"></div><div class="buttons field options"><button class="btn primary" id="copyNote">Kopiuj notatkę</button><button class="btn" id="saveNote">Zapisz w notatniku PA</button><button class="btn" id="noteWeather">Dodaj pogodę</button></div><p class="small" id="noteStatus" role="status"></p></div><button class="btn full" id="returnResults">Wróć do połączeń</button></section>
-</main><nav aria-label="Nawigacja"><div class="nav-inner"><button class="active" id="tabPlanner" data-tab="planner"><span aria-hidden="true">⇄</span>Planer</button><button id="tabAssistant" data-tab="assistant"><span aria-hidden="true">✧</span>Alfa</button><button id="tabFavorites" data-tab="favorites"><span aria-hidden="true">☆</span>Ulubione</button></div></nav><div class="toast hidden" id="toast" role="status"></div>
+</main><nav aria-label="Nawigacja"><div class="nav-inner"><button class="active" id="tabPlanner" data-tab="planner"><span><svg class="vicon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="#pa-route"></use></svg></span>Planer</button><button id="tabBus" data-tab="liveBus"><span><svg class="vicon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="#pa-bus"></use></svg></span>Autobus</button><button id="tabAssistant" data-tab="assistant"><span><svg class="vicon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="#pa-sparkles"></use></svg></span>Alfa</button><button id="tabFavorites" data-tab="favorites"><span><svg class="vicon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="#pa-star"></use></svg></span>Ulubione</button></div></nav><div class="toast hidden" id="toast" role="status"></div>
 <script src="/transit-core.js"></script><script src="/conversation.js"></script><script src="/app.js"></script></body></html>
