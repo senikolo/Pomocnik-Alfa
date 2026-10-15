@@ -1,25 +1,51 @@
 package com.ispina.lokalnie;
-/** Semantic dashboard glyphs; the original Alfa cat remains the launcher icon. */
+
+import java.text.Normalizer;
+import java.util.Locale;
+
+/** Clear, function-matched dashboard glyphs. The original Alfa cat remains the launcher icon. */
 public final class PAIcons {
+ private PAIcons() {}
+
+ private static String normalized(String label) {
+  if (label == null) return "";
+  return Normalizer.normalize(label, Normalizer.Form.NFD)
+      .replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT)
+      .replace('ł', 'l').trim();
+ }
+ private static boolean has(String label, String... names) {
+  for (String name : names) if (label.contains(name)) return true;
+  return false;
+ }
  public static String glyph(String label) {
-  if(label==null)return "•";
-  if(label.startsWith("Planer"))return "🧭";
-  if(label.contains("Kids"))return "🧸";
-  if(label.contains("Tube"))return "▶";
-  if(label.startsWith("Odjazdy"))return "🚌";
-  if(label.contains("Pogoda"))return "🌤";
-  if(label.equals("Radio"))return "📻";
-  if(label.equals("Telewizja"))return "📺";
-  if(label.contains("Lotnictwo")||label.contains("lotnisk"))return "✈";
-  if(label.contains("spokoju"))return "🌿";
-  if(label.contains("promocji"))return "🛒";
-  if(label.contains("Przypomnienia"))return "🔔";
-  if(label.contains("Subskrypcje"))return "🗓";
-  if(label.contains("Smart Saver"))return "💡";
-  if(label.contains("Oszczędzacz"))return "💰";
-  if(label.contains("Czytnik"))return "📖";
-  if(label.contains("Notat"))return "📝";
-  if(label.contains("Ustawienia"))return "⚙";
-  return "•";
+  String s = normalized(label);
+  if (s.isEmpty()) return "📱";
+  if (has(s, "alfa kids", "dla dzieci", "dziecko", "bajki")) return "🧸";
+  if (has(s, "alfa tube", "tube", "wideo", "filmy")) return "▶";
+  if (has(s, "tramwaj")) return "🚋";
+  if (has(s, "pociag", "kolej", "skm", "wkd", "pkp")) return "🚆";
+  if (has(s, "przystank", "odjazd", "autobus", "pojazd", "transport")) return "🚌";
+  if (has(s, "planer", "trasa", "podroz", "nawigacj")) return "🧭";
+  if (has(s, "mapa", "korki", "lokalizacj", "gps")) return "🗺";
+  if (has(s, "asystent", "pomocnik", "chat", "czat")) return "💬";
+  if (has(s, "telewizj", "tv")) return "📺";
+  if (has(s, "radio", "stacje fm")) return "📻";
+  if (has(s, "pogod", "prognoz", "temperatur")) return "🌤";
+  if (has(s, "lotnictw", "lotnisk", "samolot", "loty")) return "✈";
+  if (has(s, "spokoj", "relaks", "wyciszen", "medytacj")) return "🌿";
+  if (has(s, "promocj", "okazj", "zakup", "gazetk", "lowca")) return "🛒";
+  if (has(s, "przypomn", "powiadom", "alarm", "budzik")) return "🔔";
+  if (has(s, "subskrypcj", "kalendarz", "terminarz")) return "🗓";
+  if (has(s, "smart saver", "bateria", "energia")) return "🔋";
+  if (has(s, "oszczedzacz", "oszczedno", "wydatk", "finans")) return "💰";
+  if (has(s, "czytnik", "ksiaz", "lektur")) return "📖";
+  if (has(s, "notat", "zapiski")) return "📝";
+  if (has(s, "dzwiek", "muzyk", "odglos")) return "🎵";
+  if (has(s, "wschod", "zachod slonca")) return "🌅";
+  if (has(s, "senior", "dostepnos")) return "👓";
+  if (has(s, "ulubion", "zakladk")) return "⭐";
+  if (has(s, "ustawien", "motyw", "wyglad")) return "⚙";
+  if (has(s, "informacj", "o aplikacji")) return "ℹ";
+  return "📱";
  }
 }
