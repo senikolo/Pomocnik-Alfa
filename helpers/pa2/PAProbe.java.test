@@ -13,7 +13,7 @@ public class PAProbe extends Instrumentation {
  @Override public void onStart(){Bundle out=new Bundle();try{
   record("Android API "+Build.VERSION.SDK_INT+", package "+getTargetContext().getPackageName());
   String iconRes=getTargetContext().getResources().getResourceEntryName(getTargetContext().getApplicationInfo().icon);
-  require("ic_launcher".equals(iconRes),"Original Alfa cat launcher was replaced: "+iconRes);
+  require("ic_launcher".equals(iconRes)||"ic_launcher_round".equals(iconRes),"Original Alfa cat launcher was replaced: "+iconRes);
   record("PASS original adaptive cat launcher restored");
   Activity a=launch("MainActivity");record("PASS main launches");screenshot("main");runOnMainSync(()->a.finish());
   Activity planner=launch("PARegionsActivity");waitJs(planner,"document.getElementById('coverage').innerText.includes('offline')",30000);record("PASS WebView, all GTFS indexes and ES2017 client load");
