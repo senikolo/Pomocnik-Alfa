@@ -30,7 +30,8 @@ public class PAProbe extends Instrumentation {
   js(planner,"document.querySelector('#busStops button').click();true");
   waitJs(planner,"document.getElementById('busStopConfirmed').innerText.includes('Wybrano') && document.getElementById('busLine').options.length>1",12000);
   require("true".equals(js(planner,"document.querySelectorAll('nav .vicon').length===4 && document.getElementById('pa-bus')!==null && document.getElementById('busLine').options.length>1")),"LIVE bus icon/diagram utilities missing");
-  js(planner,"document.getElementById('busResult').innerHTML='<div id=\\\"osmProbe\\\"></div>';PAMap.mount(document.getElementById('osmProbe'),{lat:52.2,lon:21.0},{lat:52.201,lon:21.001});true");
+  String mapInit=js(planner,"var mapNode=document.createElement('div');mapNode.id='osmProbe';document.getElementById('busResult').replaceChildren(mapNode);PAMap.mount(mapNode,{lat:52.2,lon:21.0},{lat:52.201,lon:21.001});true");
+  require("true".equals(mapInit),"Failed to initialize on-screen map: "+mapInit);
   waitJs(planner,"document.querySelectorAll('#osmProbe .osm-layer img').length>0 && document.querySelectorAll('#osmProbe .osm-marker').length===2",12000);
   String zoomBefore=js(planner,"document.querySelector('#osmProbe .osm-layer img').src");
   js(planner,"document.querySelector('#osmProbe .osm-buttons button').click();true");
