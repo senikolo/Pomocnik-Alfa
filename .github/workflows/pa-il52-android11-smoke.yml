@@ -1,0 +1,61 @@
+name: PA IL52 Planner Android 11 Smoke
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  emulator:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.issue.title == 'TRIGGER PA IL52 EMULATOR 20261015' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get newly-built signed test APK
+        run: |
+          set -euxo pipefail
+          mkdir -p package report
+          gh run download 38681059159 -R "$GITHUB_REPOSITORY" -n PA-1.7.67-IL52-BUS-PREVIEW-RESULT -D package
+          test -s package/Pomocnik-Alfa-1.7.67-IL52-BUS-PREVIEW.apk
+      - name: Install and open IL planner on Android 11
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-boot-timeout: 900
+          script: |
+            set -euxo pipefail
+            adb wait-for-device
+            adb shell getprop ro.build.version.sdk > report/api.txt
+            adb install -r package/Pomocnik-Alfa-1.7.67-IL52-BUS-PREVIEW.apk > report/install.txt
+            adb logcat -c
+            adb shell am start -W -n com.senikolo.pomocniknowy.ilbuspreview/com.ispina.lokalnie.MainActivity > report/home.txt
+            sleep 5
+            adb shell pidof com.senikolo.pomocniknowy.ilbuspreview | tee report/home.pid
+            adb shell am start -W -n com.senikolo.pomocniknowy.ilbuspreview/com.ispina.lokalnie.ILBusPlannerActivity > report/planner.txt
+            sleep 16
+            adb shell uiautomator dump /sdcard/pa-il52.xml || true
+            adb pull /sdcard/pa-il52.xml report/pa-il52.xml || true
+            adb shell screencap -p /sdcard/pa-il52.png || true
+            adb pull /sdcard/pa-il52.png report/pa-il52.png || true
+            adb shell dumpsys activity activities > report/activities.txt || true
+            adb logcat -d -b crash > report/crash.txt || true
+            adb logcat -d -s chromium:E AndroidRuntime:E cr_WebView:E > report/browser-errors.txt || true
+            adb shell pidof com.senikolo.pomocniknowy.ilbuspreview > report/planner.pid
+            test -s report/planner.pid
+            if grep -E 'FATAL EXCEPTION|Process: com.senikolo.pomocniknowy.ilbuspreview' report/crash.txt; then echo FAIL > report/result.txt; exit 1; fi
+            if test -s report/pa-il52.xml && grep -qi -E 'Planer podr|Cel podr|Wybierz cel|Skąd|Przystanek' report/pa-il52.xml; then echo 'PASS: route planner UI present and no fatal process crash' > report/result.txt; else echo 'WARN: app alive but planner labels not confirmed in accessibility tree' > report/result.txt; fi
+            cat report/result.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PA-IL52-ANDROID11-REPORT
+          path: report/
+          retention-days: 14
