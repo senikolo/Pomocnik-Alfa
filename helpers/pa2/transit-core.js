@@ -6,9 +6,16 @@ function distance(a,b){if(!a[3]||!b[3])return Infinity;const rad=Math.PI/180,x=(
 const canonical=s=>norm(s).replace(/^ispin[yi]\b/,'ispina').replace(/^bochni\b/,'bochnia').replace(/^warszaw(?:y|ie)\b/,'warszawa').replace(/^krakow(?:a|ie)\b/,'krakow').replace(/^tarchomin(?:a|ie)\b/,'tarchomin').replace(/^grobli\b/,'grobla').replace(/^proszowic\b/,'proszowice').replace(/^niepolomic\b/,'niepolomice').replace(/^podleza\b/,'podleze').replace(/^nowego brzeska\b/,'nowe brzesko').replace(/lesniczowki\b/,'lesniczowka').replace(/dworzec centralny|dworca centralnego|dworzec centralnego/g,'dw centralny').replace(/dworzec pkp bochnia/,'bochnia dworzec pkp');
 class Engine{
  constructor(idx,loader){this.idx=idx;this.loader=loader;this.cache=new Map();this.groups=new Map();this.grid=new Map();this.walkCache=new Map();this.explicit=new Map();
-  idx.stops.forEach((s,i)=>{const key=canonical(s[1])==='ispina'&&s[6]==='mld'?'ispina most':canonical(s[1]);let g=this.groups.get(key);if(!g){g={key,name:key==='ispina most'?'Ispina Most':s[1],stops:[],routes:new Set()};this.groups.set(key,g)}g.stops.push(i);s[5].forEach(r=>g.routes.add(r));
+  const buckets=new Map(),network=s=>s==='warsaw'?'Warszawa':s.startsWith('krakow')?'Kraków':s==='mld'?'MLD':s==='kmlrail'?'Koleje Małopolskie':s==='wkd'?'WKD':'kolej';
+  idx.stops.forEach((s,i)=>{const base=canonical(s[1])==='ispina'&&s[6]==='mld'?'ispina most':canonical(s[1]);let list=buckets.get(base);if(!list){list=[];buckets.set(base,list)}let g=list.find(x=>distance(idx.stops[x.stops[0]],s)<=800);if(!g){g={key:base,name:base==='ispina most'?'Ispina Most':s[1],stops:[],routes:new Set()};list.push(g)}g.stops.push(i);s[5].forEach(r=>g.routes.add(r));
    const k=this.cell(s[3],s[4]);if(!this.grid.has(k))this.grid.set(k,[]);this.grid.get(k).push(i);
   });
+  this.ambiguous=new Map();
+  const rail=idx.stops.filter(s=>s[6]==='polishrail');
+  for(const [base,list] of buckets){const areas=list.map(g=>network(idx.stops[g.stops[0]][6]));for(let n=0;n<list.length;n++){const g=list[n],stop=idx.stops[g.stops[0]];
+   if(list.length>1){let label=areas[n];if(areas.filter(x=>x===label).length>1){let near=null,metres=Infinity;for(const station of rail){if(canonical(station[1])===base)continue;const d=distance(stop,station);if(d<metres){metres=d;near=station}}label+=near&&metres<25000?' · rejon stacji '+near[1]:' · '+stop[3].toFixed(3)+', '+stop[4].toFixed(3)}g.name+=' · '+label;g.key=canonical(g.name)}
+   if(this.groups.has(g.key)){g.name+=' · '+stop[0];g.key=canonical(g.name)}this.groups.set(g.key,g);
+  }if(list.length>1)this.ambiguous.set(base,list)}
   if(this.groups.has('ispina most'))this.groups.set('ispina',this.groups.get('ispina most'));
   for(const [a,b] of [['bochnia pkp','bochnia dworzec pkp'],['podleze pkp','pkp podleze'],['warszawa centralna','warszawa centralna'],['dw centralny','dw centralny'],['metro centrum','centrum']])if(this.groups.has(b))this.groups.set(a,this.groups.get(b));
   (idx.transfers||[]).forEach(t=>this.explicit.set(t[0]+':'+t[1],t));
@@ -20,7 +27,7 @@ class Engine{
   this.walkCache.set(key,out);return out;
  }
  match(q,limit=16){const k=canonical(q);if(k.length<3)return[];const unique=[...new Set(this.groups.values())];return unique.filter(g=>canonical(g.name).includes(k)||g.key.includes(k)).sort((a,b)=>Number(!a.key.startsWith(k))-Number(!b.key.startsWith(k))||a.name.localeCompare(b.name,'pl')).slice(0,limit)}
- resolve(q){let k=canonical(q).replace(/^(?:przystanek|przystanku|stacja|stacji)\s+/,'');if(k==='ispina')k='ispina most';if(k==='metro centrum'&&this.groups.has('centrum'))k='centrum';const exact=this.groups.get(k);if(exact)return{group:exact,candidates:[]};
+ resolve(q){let k=canonical(q).replace(/^(?:przystanek|przystanku|stacja|stacji)\s+/,'');if(k==='ispina')k='ispina most';if(k==='metro centrum'&&this.groups.has('centrum'))k='centrum';const exact=this.groups.get(k);if(exact)return{group:exact,candidates:[]};if(this.ambiguous.has(k))return{group:null,candidates:this.ambiguous.get(k)};
   // Station aliases are allowed only if they lead to exactly one indexed group.
   const aliases={'dw centralny':'warszawa centralna','bochnia pkp':'bochnia dworzec pkp','podleze pkp':'pkp podleze'};
   if(aliases[k]&&this.groups.has(aliases[k]))return{group:this.groups.get(aliases[k]),candidates:[]};
