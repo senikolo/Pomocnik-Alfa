@@ -7,6 +7,7 @@ Each source is usable only on dates supported by its calendar.
 import csv
 import io
 import json
+import os
 import sys
 import zipfile
 import datetime as dt
@@ -17,7 +18,7 @@ from zoneinfo import ZoneInfo
 OUT = Path(sys.argv[1] if len(sys.argv) > 1 else "build/pa-regions")
 OUT.mkdir(parents=True, exist_ok=True)
 SOURCE = Path(sys.argv[2] if len(sys.argv) > 2 else "data/pa-gtfs")
-TODAY = dt.datetime.now(ZoneInfo("Europe/Warsaw")).date()
+TODAY = dt.date.fromisoformat(os.environ["PA_REGION_TODAY"]) if os.environ.get("PA_REGION_TODAY") else dt.datetime.now(ZoneInfo("Europe/Warsaw")).date()
 DAYS = [TODAY + dt.timedelta(days=i) for i in range(4)]
 WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
 
