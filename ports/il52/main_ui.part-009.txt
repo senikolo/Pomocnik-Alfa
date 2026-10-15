@@ -1,0 +1,850 @@
+      if(playing){try{var r=v.play();if(r&&r.catch)r.catch(function(){})}catch(e){}}
+    };
+    function tvpSaverReveal(){
+      if(!tvpSaverAnchor)return;
+      clearTimeout(tvpSaverTimer);tvpSaverControls.classList.add('on');var v=el('rtvTvpVideo');if(v)v.controls=true;
+      tvpSaverTimer=setTimeout(function(){if(tvpSaverAnchor){tvpSaverControls.classList.remove('on');if(v)v.controls=false}},4000);
+    }
+    function tvpSaverExit(){
+      if(!tvpSaverAnchor)return;
+      clearTimeout(tvpSaverTimer);tvpSaverGeneration++;var anchor=tvpSaverAnchor;tvpSaverAnchor=null;
+      var p=el('rtvTvpPlayer'),v=el('rtvTvpVideo'),playing=!!(v&&!v.paused);
+      if(p){p.classList.remove('il-tv-saver');if(anchor.parentNode){anchor.parentNode.insertBefore(p,anchor);anchor.parentNode.removeChild(anchor);}}
+      if(tvpSaverControls&&tvpSaverControls.parentNode)tvpSaverControls.parentNode.removeChild(tvpSaverControls);tvpSaverControls=null;
+      d.body.style.overflow=tvpSaverOverflow;if(v)v.controls=true;
+      if(tvpSaverPrevious&&tvpSaverPrevious.engine===tvpHls){tvpHls.autoLevelCapping=tvpSaverPrevious.cap;tvpHls.loadLevel=tvpSaverPrevious.level;}
+      if(v&&tvpSaverNativeSource&&tvpSaverNativeSource.switched&&!tvpHls){v.src=tvpSaverNativeSource.url;v.load();}
+      tvpSaverNativeSource=null;tvpSaverPrevious=null;tvpSaverNative(false);window.scrollTo(0,tvpSaverScroll);
+      if(playing&&v){try{var r=v.play();if(r&&r.catch)r.catch(function(){})}catch(e){}}
+    }
+    window.IL_TV_SAVER_EXIT=tvpSaverExit;
+    function tvpSaverEnter(){
+      if(tvpSaverAnchor)return;
+      var p=el('rtvTvpPlayer'),v=el('rtvTvpVideo');if(!p||!p.classList.contains('on'))return;
+      tvpFullscreenExit();if(v){v.muted=false;v.removeAttribute('muted');if(v.volume===0)v.volume=1;}var playing=!!(v&&!v.paused);tvpSaverOverflow=d.body.style.overflow;tvpSaverScroll=window.pageYOffset||0;
+      tvpSaverAnchor=d.createComment('TV Saver original position');p.parentNode.insertBefore(tvpSaverAnchor,p);
+      d.body.appendChild(p);p.classList.add('il-tv-saver');d.body.style.overflow='hidden';
+      tvpSaverControls=d.createElement('div');tvpSaverControls.className='il-saver-controls';
+      var hint=d.createElement('span');hint.textContent='Saver • najniższa jakość • dotknij tła, aby pokazać sterowanie';tvpSaverControls.appendChild(hint);
+      var exit=d.createElement('button');exit.className='rtv-btn';exit.textContent='Wyjdź z Savera';exit.onclick=function(e){e.stopPropagation();tvpSaverExit()};tvpSaverControls.appendChild(exit);p.appendChild(tvpSaverControls);
+      tvpSaverNative(true);tvpSaverLowest();tvpSaverReveal();
+      if(playing&&v){try{var r=v.play();if(r&&r.catch)r.catch(function(){})}catch(e){}}
+    }
+    var saverActions=el('rtvTvpFull');if(saverActions&&saverActions.parentNode){var saverButton=d.createElement('button');saverButton.id='rtvTvpSaver';saverButton.className='rtv-btn';saverButton.textContent='Saver • mały ekran';saverButton.onclick=tvpSaverEnter;saverActions.parentNode.appendChild(saverButton);}
+    var saverPlayer=el('rtvTvpPlayer');if(saverPlayer)saverPlayer.addEventListener('click',function(e){if(tvpSaverAnchor&&e.target===saverPlayer)tvpSaverReveal()});
+    d.addEventListener('visibilitychange',function(){if(d.hidden)tvpSaverExit()});
+    d.addEventListener('keydown',function(e){if(e.key==='Escape'&&tvpSaverAnchor){e.preventDefault();tvpSaverExit()}});
+    window.addEventListener('popstate',tvpSaverExit);
+    if(window.MutationObserver&&view){var saverObserver=new MutationObserver(function(){var panel=el('iaP');if(tvpSaverAnchor&&(!view.classList.contains('on')||(panel&&!panel.classList.contains('on'))))tvpSaverExit()});saverObserver.observe(view,{attributes:true,attributeFilter:['class']});var panel=el('iaP');if(panel)saverObserver.observe(panel,{attributes:true,attributeFilter:['class']});}
+
+    var tvpFullAnchor=null,tvpFullScroll=0,tvpFullOverflow='',tvpFullFocus=null;
+    var tvpFullStyle=d.createElement('style');
+    tvpFullStyle.textContent='#rtvTvpPlayer.il-tv-full{position:fixed!important;inset:0!important;z-index:2147483000!important;display:flex!important;flex-direction:column!important;margin:0!important;padding:12px!important;padding-top:max(12px,env(safe-area-inset-top))!important;padding-bottom:max(12px,env(safe-area-inset-bottom))!important;box-sizing:border-box!important;border-radius:0!important;background:#000!important;width:100%!important;height:100%!important;overflow:auto!important}#rtvTvpPlayer.il-tv-full video{display:block!important;flex:1 1 auto!important;width:100%!important;min-height:0!important;max-height:none!important;object-fit:contain!important;background:#000!important;border-radius:0!important}#rtvTvpPlayer.il-tv-full .rtv-q{color:#fff!important;font-size:13px!important;margin:6px 0!important}#rtvTvpPlayer.il-tv-full .rtv-actions{display:flex!important;flex:0 0 auto!important;gap:8px!important;flex-wrap:wrap!important}#rtvTvpPlayer.il-tv-full .rtv-start{display:none;flex:0 0 auto;justify-content:center}#rtvTvpPlayer.il-tv-full .rtv-start.on{display:flex}#rtvTvpPlayer.il-tv-full .rtv-btn{min-height:44px!important}body.senior #rtvTvpPlayer.il-tv-full .rtv-btn{font-size:16px!important}';
+    d.head.appendChild(tvpFullStyle);
+    function tvpFullscreenExit(){
+      var p=el('rtvTvpPlayer');if(!p||!tvpFullAnchor)return;
+      var anchor=tvpFullAnchor;tvpFullAnchor=null;
+      var v=el('rtvTvpVideo'),playing=!!(v&&!v.paused);
+      p.classList.remove('il-tv-full');
+      if(anchor.parentNode){anchor.parentNode.insertBefore(p,anchor);anchor.parentNode.removeChild(anchor);}
+      d.body.style.overflow=tvpFullOverflow;
+      var b=el('rtvTvpFull');if(b){b.textContent='Pełny ekran';b.setAttribute('aria-pressed','false');}
+      var fs=d.fullscreenElement||d.webkitFullscreenElement;
+      if(fs===p){try{var exit=d.exitFullscreen||d.webkitExitFullscreen;if(exit){var result=exit.call(d);if(result&&result.catch)result.catch(function(){});}}catch(e){}}
+      window.scrollTo(0,tvpFullScroll);
+      if(tvpFullFocus&&tvpFullFocus.focus)try{tvpFullFocus.focus({preventScroll:true});}catch(e){}
+      if(playing&&v){try{var resume=v.play();if(resume&&resume.catch)resume.catch(function(){});}catch(e){}}
+    }
+    function tvpFullscreenToggle(){
+      tvpSaverExit();
+      if(tvpFullAnchor){tvpFullscreenExit();return;}
+      var p=el('rtvTvpPlayer'),v=el('rtvTvpVideo');if(!p||!p.classList.contains('on'))return;
+      var playing=!!(v&&!v.paused);tvpFullFocus=d.activeElement;tvpFullScroll=window.pageYOffset||0;tvpFullOverflow=d.body.style.overflow;
+      tvpFullAnchor=d.createComment('TV player original position');p.parentNode.insertBefore(tvpFullAnchor,p);
+      d.body.appendChild(p);p.classList.add('il-tv-full');d.body.style.overflow='hidden';
+      var b=el('rtvTvpFull');if(b){b.textContent='Wróć do okna';b.setAttribute('aria-pressed','true');b.focus();}
+      if(playing&&v){try{var resume=v.play();if(resume&&resume.catch)resume.catch(function(){});}catch(e){}}
+      try{var enter=p.requestFullscreen||p.webkitRequestFullscreen;if(enter){var result=enter.call(p);if(result&&result.catch)result.catch(function(){});}}catch(e){}
+    }
+    var tvpFullButton=el('rtvTvpFull');if(tvpFullButton)tvpFullButton.addEventListener('click',tvpFullscreenToggle);
+    function tvpFullscreenChanged(){if(tvpFullAnchor&&!(d.fullscreenElement||d.webkitFullscreenElement))tvpFullscreenExit();}
+    d.addEventListener('fullscreenchange',tvpFullscreenChanged);d.addEventListener('webkitfullscreenchange',tvpFullscreenChanged);
+    d.addEventListener('keydown',function(e){if(e.key==='Escape'&&tvpFullAnchor){e.preventDefault();tvpFullscreenExit();}});
+
+    window.addEventListener('popstate',tvpFullscreenExit);
+    var tvpFullPanel=el('iaP');if(window.MutationObserver&&tvpFullPanel){var tvpFullObserver=new MutationObserver(function(){if(tvpFullAnchor&&(!view.classList.contains('on')||!tvpFullPanel.classList.contains('on')))tvpFullscreenExit();});tvpFullObserver.observe(view,{attributes:true,attributeFilter:['class']});tvpFullObserver.observe(tvpFullPanel,{attributes:true,attributeFilter:['class']});}
+    function stopTvpLow(){tvpSaverExit();tvpFullscreenExit();tvpSession++;tvpActive=false;tvpDestroyEngine();tvpShowStart(false);tvpSourceUrls=[];tvpSourcePos=0;tvpProviderPos=0;tvpRecovery=0;tvpNativePos=0;tvpVideo=el('rtvTvpVideo');if(tvpVideo){try{tvpVideo.pause();tvpVideo.removeAttribute('src');tvpVideo.load()}catch(e){}}var p=el('rtvTvpPlayer');if(p)p.classList.remove('on');tvpSetButton(false)}
+    function tvpAddUrl(out,u){u=String(u||'').trim();if(!/^https:\/\//i.test(u))return;var clean=u.replace(/&amp;/g,'&');if(out.indexOf(clean)<0)out.push(clean)}
+    function tvpFindHls(o,out,depth){out=out||[];depth=depth||0;if(depth>10||o==null)return out;if(typeof o==='string'){if(/\.m3u8(?:[?#]|$)/i.test(o))tvpAddUrl(out,o);return out}if(Array.isArray(o)){o.forEach(function(v){tvpFindHls(v,out,depth+1)});return out}if(typeof o==='object'){var u=o.url||o.src||o.source||o.hls||o.HLS;var typ=String(o.type||o.format||o.mimeType||o.mime||'').toLowerCase();if(u&&(/m3u8|hls|mpegurl/.test(typ)||/\.m3u8(?:[?#]|$)/i.test(String(u))))tvpAddUrl(out,u);Object.keys(o).forEach(function(k){tvpFindHls(o[k],out,depth+1)})}return out}
+    function tvpGetJsonp(id){return new Promise(function(resolve,reject){var cb='__ilTvp'+Date.now()+Math.floor(Math.random()*100000),sc=d.createElement('script'),done=false,timer=null;function clean(){if(timer)clearTimeout(timer);try{if(sc&&sc.parentNode)sc.parentNode.removeChild(sc)}catch(e){}try{delete window[cb]}catch(e){window[cb]=void 0}}function fail(msg){if(done)return;done=true;clean();reject(new Error(msg||'TVP JSONP'))}window[cb]=function(){if(done)return;var obj=null;for(var i=arguments.length-1;i>=0;i--){var v=arguments[i];if(v&&typeof v==='object'){obj=v;break}}if(!obj){fail('brak danych TVP');return}done=true;clean();resolve(obj)};sc.async=true;sc.referrerPolicy='no-referrer';sc.onerror=function(){fail('TVP JSONP network')};sc.src='https://www.tvp.pl/sess/TVPlayer2/api.php?id='+encodeURIComponent(id)+'&@method=getTvpConfig&@callback='+encodeURIComponent(cb)+'&_='+Date.now();timer=setTimeout(function(){fail('TVP JSONP timeout')},8000);(d.head||d.documentElement).appendChild(sc)})}
+    function tvpGetVod(){return new Promise(function(resolve,reject){var x=new XMLHttpRequest();x.open('GET','https://vod.tvp.pl/api/products/'+tvpCfg().vodId+'/videos/playlist?lang=pl&platform=BROWSER&videoType=MOVIE',true);x.timeout=8000;x.onload=function(){if(x.status<200||x.status>=300){reject(new Error('TVP VOD HTTP '+x.status));return}try{resolve(JSON.parse(x.responseText))}catch(e){reject(e)}};x.onerror=x.ontimeout=function(){reject(new Error('TVP VOD network'))};try{x.send()}catch(e){reject(e)}})}
+    function tvpResolveProvider(i){if(i===0)return tvpGetJsonp(tvpCfg().embedIds[0]).then(function(j){return tvpFindHls(j)});if(i===1)return tvpGetJsonp(tvpCfg().embedIds[1]).then(function(j){return tvpFindHls(j)});if(i===2)return tvpGetVod().then(function(j){return tvpFindHls(j)});return Promise.resolve([])}
+    /* Fast TV: resolve a small TVP config before the tap, then start the HLS stream in the existing 16:9 window. No video data is downloaded during prewarm. */
+    var tvpFastWarm=null,tvpFastWarmUrls=[],tvpFastCacheKey='il_tvp3_fast_url_v1',tvpFastCacheTtl=8*60*1000,tvpFastFallbackProvider=1;
+    function tvpFastCacheGet(){try{var x=JSON.parse(localStorage.getItem(tvpFastCacheKey)||'null');if(x&&x.u&&/^https:\/\//i.test(x.u)&&Date.now()-Number(x.t||0)<tvpFastCacheTtl)return x.u}catch(e){}return ''}
+    function tvpFastCachePut(u){try{if(/^https:\/\//i.test(String(u||'')))localStorage.setItem(tvpFastCacheKey,JSON.stringify({u:String(u),t:Date.now()}))}catch(e){}}
+    function tvpFastUnique(a){var out=[];(a||[]).forEach(function(u){tvpAddUrl(out,u)});return out}
+    function tvpPrewarmFast(){var cached=tvpFastCacheGet();if(cached&&tvpFastWarmUrls.indexOf(cached)<0)tvpFastWarmUrls.unshift(cached);if(tvpFastWarm)return tvpFastWarm;tvpFastWarm=tvpResolveProvider(0).then(function(urls){urls=tvpFastUnique(urls);if(urls.length){var c=tvpFastCacheGet(),all=[];if(c)all.push(c);urls.forEach(function(u){if(all.indexOf(u)<0)all.push(u)});tvpFastWarmUrls=all}return tvpFastWarmUrls.slice()}).catch(function(){return tvpFastWarmUrls.slice()});/* preload parser only, not the stream */loadHlsLibrary().catch(function(){});return tvpFastWarm}
+    function tvpFastOfficialFallback(){stopTvpLow();status('rtvStatusTvp','Nie udało się uruchomić transmisji w okienku — otwieram oficjalny TVP VOD…','error');try{if(!(window.IL_OPEN_EXTERNAL_1862&&window.IL_OPEN_EXTERNAL_1862(tvpCfg().official)))location.href=tvpCfg().official}catch(e){var r=el('rtvTvpRetry');if(r)r.hidden=false}}
+    function tvpFastResolveNext(session){if(!tvpActive||session!==tvpSession)return;if(tvpFastFallbackProvider>=3){tvpFastOfficialFallback();return}var provider=tvpFastFallbackProvider++;status('rtvStatusTvp','Odświeżam źródło TVP…','');tvpResolveProvider(provider).then(function(urls){if(!tvpActive||session!==tvpSession)return;urls=tvpFastUnique(urls);if(urls.length){tvpFastTry(urls,0,session);return}tvpFastResolveNext(session)}).catch(function(){if(tvpActive&&session===tvpSession)tvpFastResolveNext(session)})}
+    function tvpFastTryNative(urls,pos,session){if(!tvpActive||session!==tvpSession)return;if(!urls||pos>=urls.length){tvpFastResolveNext(session);return}tvpDestroyEngine();tvpVideo=el('rtvTvpVideo');if(!tvpVideo){tvpFastOfficialFallback();return}var url=urls[pos],done=false,started=false,timer=null;function cleanup(){if(timer){clearTimeout(timer);timer=null}}function next(){if(done)return;done=true;cleanup();try{tvpVideo.pause();tvpVideo.removeAttribute('src');tvpVideo.load()}catch(e){}tvpFastTryNative(urls,pos+1,session)}tvpVideo.onplaying=function(){if(done||!tvpActive||session!==tvpSession)return;started=true;cleanup();tvpFastCachePut(url);tvpShowStart(false);status('rtvStatusTvp','Odtwarzanie — szybki start','playing');tvpSetQuality(tvpCfg().name+' • transmisja na żywo')};tvpVideo.onwaiting=tvpVideo.onstalled=function(){if(!done&&tvpActive&&session===tvpSession)status('rtvStatusTvp','Buforowanie…','')};tvpVideo.onerror=next;try{tvpVideo.preload='auto';tvpVideo.src=url;tvpVideo.load();tvpShowStart(true);status('rtvStatusTvp','Uruchamiam transmisję…','');var pp=tvpVideo.play();if(pp&&pp.catch)pp.catch(function(){if(!done&&!started&&tvpActive&&session===tvpSession){status('rtvStatusTvp','Gotowe — dotknij „Uruchom obraz i dźwięk”','');tvpShowStart(true)}});timer=setTimeout(function(){if(!started)next()},6500)}catch(e){next()}}
+    function tvpFastTry(urls,pos,session){if(!tvpActive||session!==tvpSession)return;if(!urls||pos>=urls.length){tvpFastResolveNext(session);return}tvpVideo=el('rtvTvpVideo');if(!tvpVideo){tvpFastOfficialFallback();return}var canNative='';try{canNative=tvpVideo.canPlayType('application/vnd.apple.mpegurl')||tvpVideo.canPlayType('application/x-mpegURL')}catch(e){}if(canNative){tvpFastTryNative(urls,pos,session);return}loadHlsLibrary().then(function(Hls){if(!tvpActive||session!==tvpSession)return;if(!Hls||!Hls.isSupported()){tvpFastTryNative(urls,pos,session);return}tvpDestroyEngine();tvpVideo=el('rtvTvpVideo');var url=urls[pos],inst=new Hls({enableWorker:false,lowLatencyMode:false,startLevel:0,capLevelToPlayerSize:true,maxBufferLength:24,maxMaxBufferLength:40,backBufferLength:10,liveSyncDurationCount:3,liveMaxLatencyDurationCount:9,manifestLoadingMaxRetry:2,levelLoadingMaxRetry:3,fragLoadingMaxRetry:4,manifestLoadingRetryDelay:500,levelLoadingRetryDelay:500,fragLoadingRetryDelay:500,manifestLoadingTimeOut:7000,levelLoadingTimeOut:8000,fragLoadingTimeOut:12000});tvpHls=inst;inst.on(Hls.Events.FRAG_BUFFERED,function(){if(tvpSaverAnchor&&(!tvpSaverPrevious||tvpSaverPrevious.engine!==inst))tvpSaverLowest();});var done=false,started=false,recovery=0;function next(){if(done)return;done=true;tvpClearTimers();try{inst.destroy()}catch(e){}if(tvpHls===inst)tvpHls=null;tvpFastTry(urls,pos+1,session)}inst.on(Hls.Events.MEDIA_ATTACHED,function(){if(tvpActive&&session===tvpSession&&!done){try{inst.loadSource(url)}catch(e){next()}}});inst.on(Hls.Events.MANIFEST_PARSED,function(){if(done||!tvpActive||session!==tvpSession)return;tvpClearTimers();tvpShowStart(true);status('rtvStatusTvp','Uruchamiam transmisję…','');var pp;try{pp=tvpVideo.play()}catch(e){pp=null}if(pp&&pp.catch)pp.catch(function(){if(!done&&tvpActive&&session===tvpSession){status('rtvStatusTvp','Gotowe — dotknij „Uruchom obraz i dźwięk”','');tvpShowStart(true)}})});inst.on(Hls.Events.FRAG_BUFFERED,function(){recovery=0});inst.on(Hls.Events.ERROR,function(ev,data){if(done||!tvpActive||session!==tvpSession||!data)return;if(!data.fatal)return;if(recovery<1&&data.type===Hls.ErrorTypes.NETWORK_ERROR){recovery++;try{inst.startLoad(-1);return}catch(e){}}if(recovery<1&&data.type===Hls.ErrorTypes.MEDIA_ERROR){recovery++;try{inst.recoverMediaError();return}catch(e){}}next()});try{inst.attachMedia(tvpVideo)}catch(e){next();return}tvpManifestTimer=setTimeout(function(){if(!started)next()},9000);tvpVideo.onplaying=function(){if(done||!tvpActive||session!==tvpSession)return;started=true;tvpClearTimers();tvpFastCachePut(url);tvpShowStart(false);status('rtvStatusTvp','Odtwarzanie — szybki start','playing');tvpSetQuality('TVP3 Kraków • jakość automatyczna')};tvpVideo.onwaiting=tvpVideo.onstalled=function(){if(!done&&tvpActive&&session===tvpSession)status('rtvStatusTvp','Buforowanie…','')};tvpVideo.onerror=function(){if(!done)next()}}).catch(function(){if(tvpActive&&session===tvpSession)tvpFastTryNative(urls,pos,session)})}
+    function startTvpFast(){stopRadio();stopTvpLow();if(navigator.onLine===false){status('rtvStatusTvp','Nie mam teraz połączenia z internetem.','error');return}tvpActive=true;tvpFastFallbackProvider=tvpFastWarmUrls.length?1:0;var session=++tvpSession,p=el('rtvTvpPlayer'),r=el('rtvTvpRetry');if(p)p.classList.add('on');if(r)r.hidden=true;tvpVideo=el('rtvTvpVideo');tvpSetQuality(tvpCfg().name+' • przygotowanie szybkiego startu…');status('rtvStatusTvp','Uruchamiam '+tvpCfg().name+'…','');var cached=tvpFastCacheGet(),initial=[];if(cached)initial.push(cached);tvpFastWarmUrls.forEach(function(u){if(initial.indexOf(u)<0)initial.push(u)});if(initial.length){tvpFastTry(initial,0,session);tvpPrewarmFast();return}tvpPrewarmFast().then(function(urls){if(!tvpActive||session!==tvpSession)return;tvpFastFallbackProvider=1;if(urls&&urls.length)tvpFastTry(urls,0,session);else tvpFastResolveNext(session)})}
+    function tvpPickLow(levels){var a=levels||[],best=-1,minBr=Infinity,i,l,br;for(i=0;i<a.length;i++){l=a[i]||{};br=Number(l.bitrate||l.averageBitrate)||0;if(br>0&&br<minBr){minBr=br;best=i}}if(best>=0)return best;var minPx=Infinity;for(i=0;i<a.length;i++){l=a[i]||{};var px=(Number(l.width)||0)*(Number(l.height)||0);if(px>0&&px<minPx){minPx=px;best=i}}return best>=0?best:(a.length?0:-1)}
+    function tvpDescribeLevel(l){l=l||{};var bits=Number(l.bitrate||l.averageBitrate)||0,br=bits?Math.round(bits/1000):0,res=(l.width&&l.height)?(l.width+'×'+l.height):'';return 'Tryb oszczędny • '+(br?br+' kb/s':'najniższa dostępna jakość')+(res?' • '+res:'')}
+    function tvpFailAll(){if(!tvpActive)return;tvpDestroyEngine();tvpShowStart(false);tvpSetButton(false);var p=el('rtvTvpPlayer');if(p)p.classList.remove('on');status('rtvStatusTvp','Tryb oszczędny chwilowo niedostępny — użyj „Standardowo”.','error');var r=el('rtvTvpRetry');if(r)r.hidden=false}
+    function tvpManualPlay(){if(!tvpActive||!tvpVideo)return;var p;try{p=tvpVideo.play()}catch(e){p=null}if(p&&p.catch)p.catch(function(){status('rtvStatusTvp','Nie udało się uruchomić obrazu. Dotknij ▶ ponownie.','error')})}
+    function tvpTryNative(urls,pos,session){if(!tvpActive||session!==tvpSession)return;if(!urls||pos>=urls.length){tvpFailAll();return}tvpDestroyEngine();tvpVideo=el('rtvTvpVideo');if(!tvpVideo){tvpFailAll();return}var url=urls[pos],advanced=false;function next(){if(advanced)return;advanced=true;tvpVideo.removeEventListener('error',next);tvpTryNative(urls,pos+1,session)}tvpVideo.addEventListener('error',next,{once:true});try{tvpVideo.src=url;tvpVideo.load();tvpShowStart(true);tvpSetQuality('Tryb oszczędny • zgodny strumień TVP');status('rtvStatusTvp','Gotowe — uruchom obraz i dźwięk','');var p=tvpVideo.play();if(p&&p.catch)p.catch(function(){})}catch(e){next()}}
+    function tvpNextProvider(session){if(!tvpActive||session!==tvpSession)return;if(tvpProviderPos>=3){tvpTryNative(tvpSourceUrls,0,session);return}var provider=tvpProviderPos++;status('rtvStatusTvp',provider?'Sprawdzam zapasowe źródło TVP…':'Pobieram dostępne jakości TVP…','');tvpResolveProvider(provider).then(function(urls){if(!tvpActive||session!==tvpSession)return;urls=(urls||[]).filter(function(u){return tvpSourceUrls.indexOf(u)<0});if(!urls.length){tvpNextProvider(session);return}urls.forEach(function(u){tvpSourceUrls.push(u)});tvpTryHlsList(urls,0,session)}).catch(function(){if(tvpActive&&session===tvpSession)tvpNextProvider(session)})}
+    function tvpTryHlsList(urls,pos,session){if(!tvpActive||session!==tvpSession)return;if(!urls||pos>=urls.length){tvpNextProvider(session);return}loadHlsLibrary().then(function(Hls){if(!tvpActive||session!==tvpSession)return;if(!Hls||!Hls.isSupported()){tvpTryNative(urls,pos,session);return}tvpDestroyEngine();tvpVideo=el('rtvTvpVideo');if(!tvpVideo){tvpFailAll();return}var inst=new Hls({enableWorker:false,lowLatencyMode:false,startLevel:0,capLevelToPlayerSize:false,maxBufferLength:18,maxMaxBufferLength:28,backBufferLength:8,liveSyncDurationCount:3,liveMaxLatencyDurationCount:9,manifestLoadingMaxRetry:2,levelLoadingMaxRetry:3,fragLoadingMaxRetry:4,manifestLoadingRetryDelay:900,levelLoadingRetryDelay:900,fragLoadingRetryDelay:700,manifestLoadingTimeOut:10000,levelLoadingTimeOut:10000,fragLoadingTimeOut:16000});tvpHls=inst;inst.on(Hls.Events.FRAG_BUFFERED,function(){if(tvpSaverAnchor&&(!tvpSaverPrevious||tvpSaverPrevious.engine!==inst))tvpSaverLowest();});tvpRecovery=0;var selected=-1,manifest=false,started=false,sourceDone=false,url=urls[pos];function nextSource(){if(sourceDone)return;sourceDone=true;if(tvpHls===inst){try{inst.destroy()}catch(e){}tvpHls=null}tvpClearTimers();tvpTryHlsList(urls,pos+1,session)}inst.on(Hls.Events.MEDIA_ATTACHED,function(){if(tvpActive&&session===tvpSession&&tvpHls===inst){try{inst.loadSource(url)}catch(e){nextSource()}}});inst.on(Hls.Events.MANIFEST_PARSED,function(){if(!tvpActive||session!==tvpSession||tvpHls!==inst)return;manifest=true;tvpClearTimers();selected=tvpPickLow(inst.levels);if(selected<0){nextSource();return}var lev=inst.levels[selected]||{};try{inst.autoLevelCapping=selected;inst.startLevel=selected;inst.nextLevel=selected;inst.loadLevel=selected;inst.nextLoadLevel=selected;inst.currentLevel=selected}catch(e){}tvpSetQuality(tvpDescribeLevel(lev));status('rtvStatusTvp','Gotowe — uruchamiam najniższą dostępną jakość','');tvpShowStart(true);var pp;try{pp=tvpVideo.play()}catch(e){pp=null}if(pp&&pp.catch)pp.catch(function(){if(tvpActive&&session===tvpSession)status('rtvStatusTvp','Dotknij „Uruchom obraz i dźwięk”','')});tvpStartTimer=setTimeout(function(){if(tvpActive&&session===tvpSession&&!started){status('rtvStatusTvp','Gotowe — dotknij „Uruchom obraz i dźwięk”','');tvpShowStart(true)}},2500)});inst.on(Hls.Events.LEVEL_SWITCHING,function(ev,data){if(!tvpActive||session!==tvpSession||tvpHls!==inst||selected<0)return;if(data&&data.level!==selected){try{inst.autoLevelCapping=selected;inst.nextLevel=selected;inst.loadLevel=selected}catch(e){}}});inst.on(Hls.Events.FRAG_BUFFERED,function(){tvpRecovery=0});inst.on(Hls.Events.ERROR,function(ev,data){if(!tvpActive||session!==tvpSession||tvpHls!==inst||!data)return;if(!data.fatal){var det=String(data.details||'').toLowerCase();if(det.indexOf('stall')>=0||det.indexOf('buffer')>=0)status('rtvStatusTvp','Buforowanie…','');return}if(tvpRecovery<1&&data.type===Hls.ErrorTypes.NETWORK_ERROR){tvpRecovery++;try{status('rtvStatusTvp','Ponawiam połączenie…','');inst.startLoad(-1);return}catch(e){}}if(tvpRecovery<1&&data.type===Hls.ErrorTypes.MEDIA_ERROR){tvpRecovery++;try{status('rtvStatusTvp','Naprawiam odtwarzanie…','');inst.recoverMediaError();return}catch(e){}}nextSource()});try{inst.attachMedia(tvpVideo)}catch(e){nextSource();return}tvpManifestTimer=setTimeout(function(){if(tvpActive&&session===tvpSession&&!manifest)nextSource()},14000);tvpVideo.onplaying=function(){if(!tvpActive||session!==tvpSession)return;started=true;tvpShowStart(false);status('rtvStatusTvp','Odtwarzanie — tryb oszczędny','playing');tvpSetButton(false)};tvpVideo.onwaiting=tvpVideo.onstalled=function(){if(tvpActive&&session===tvpSession)status('rtvStatusTvp','Buforowanie…','')};tvpVideo.onerror=function(){if(tvpActive&&session===tvpSession&&!sourceDone)nextSource()}}).catch(function(){if(tvpActive&&session===tvpSession)tvpTryNative(urls,pos,session)})}
+    function startTvpLow(){stopRadio();stopTvpLow();if(navigator.onLine===false){status('rtvStatusTvp','Nie mam teraz połączenia z internetem.','error');return}tvpActive=true;var session=++tvpSession;tvpSetButton(true);var p=el('rtvTvpPlayer');if(p)p.classList.add('on');tvpVideo=el('rtvTvpVideo');tvpSetQuality('Tryb oszczędny: szukam najniższej dostępnej jakości TVP…');status('rtvStatusTvp','Przygotowuję transmisję…','');var r=el('rtvTvpRetry');if(r)r.hidden=true;tvpNextProvider(session)}
+
+    function playStation(key){stopTvpLow();var a=ensureAudio(),st=MEDIA[key];retryVisible(key,false);if(current===key){if(a.paused){status(cardStatus(key),'Łączenie…','');if(key==='pr1'&&!hls){startPr1Hls(a).catch(function(){pr1Fail()})}else{var rp;try{rp=a.play()}catch(e){rp=null}if(rp&&rp.catch)rp.catch(function(){key==='pr1'?scheduleReconnect():pr1Fail()})}}else a.pause();updateNow();return}
+      if(current&&current!==key){status(cardStatus(current),'Zatrzymano','');retryVisible(current,false)}manualStop=true;destroyHls();try{a.pause();a.removeAttribute('src');a.load()}catch(e){}manualStop=false;current=key;status(cardStatus(key),'Łączenie…','');mediaMeta(key);updateNow();if(key==='pr1'){startPr1Hls(a).catch(function(){if(current==='pr1')pr1Fail('Nie udało się połączyć z Polskim Radiem Program 1.')})}else{a.src=st.url;try{a.load()}catch(e){}var p2;try{p2=a.play()}catch(e){p2=null}if(p2&&p2.catch)p2.catch(function(){status(cardStatus(key),key==='rmf'?'Nie udało się połączyć z RMF FM.':'Nie udało się połączyć z Radiem ESKA Bochnia.','error');retryVisible(key,true);updateNow()})}}
+    function stopRadio(){if(!audio)return;var old=current;manualStop=true;destroyHls();try{audio.pause();audio.removeAttribute('src');while(audio.firstChild)audio.removeChild(audio.firstChild);audio.load()}catch(e){}manualStop=false;current=null;if(old){status(cardStatus(old),'Zatrzymano','');retryVisible(old,false)}try{if('mediaSession' in navigator){navigator.mediaSession.metadata=null;navigator.mediaSession.playbackState='none'}}catch(e){}updateNow()}
+    function openMedia(){try{history.pushState({ia:1,media:1},'',location.href)}catch(e){}var drawer=el('iaD'),shade=el('sh'),panel=el('iaP');if(drawer)drawer.classList.remove('on');if(shade)shade.classList.remove('on');panel.querySelectorAll('.view').forEach(function(x){x.classList.remove('on')});view.classList.add('on');panel.classList.add('on');var sec=el('sec');if(sec)sec.textContent='Radio i TV';panel.scrollTop=0;updateNow();if(navigator.onLine!==false)tvpPrewarmFast()}
+    mediaBtn.addEventListener('click',function(e){try{e.preventDefault();e.stopImmediatePropagation()}catch(_e){}openMedia()},true);el('rtvPr1').addEventListener('click',function(){playStation('pr1')});el('rtvPr1Official').addEventListener('click',function(){stopTvpLow();stopRadio();try{var w=window.open(MEDIA.pr1.official,'_blank');if(!w&&!(window.IL_OPEN_EXTERNAL_1862&&window.IL_OPEN_EXTERNAL_1862(MEDIA.pr1.official)))location.href=MEDIA.pr1.official}catch(e){if(!(window.IL_OPEN_EXTERNAL_1862&&window.IL_OPEN_EXTERNAL_1862(MEDIA.pr1.official)))location.href=MEDIA.pr1.official}});el('rtvEska').addEventListener('click',function(){playStation('eska')});el('rtvRmf').addEventListener('click',function(){playStation('rmf')});el('rtvPr1Retry').addEventListener('click',function(){if(current!=='pr1')current='pr1';scheduleReconnect('Ponowne łączenie…')});el('rtvEskaRetry').addEventListener('click',function(){playStation('eska')});el('rtvRmfRetry').addEventListener('click',function(){playStation('rmf')});el('rtvNowToggle').addEventListener('click',function(){if(current)playStation(current)});el('rtvStop').addEventListener('click',stopRadio);
+    el('rtvTvp').addEventListener('click',function(){tvpSelect('tvp','rtvCardTvp3');startTvpFast()});el('rtvTvpLow').addEventListener('click',function(){tvpSelect('tvp','rtvCardTvp3');startTvpLow()});el('rtvTvp1').addEventListener('click',function(){tvpSelect('tvp1','rtvCardTvp1');startTvpFast()});el('rtvTvp1Low').addEventListener('click',function(){tvpSelect('tvp1','rtvCardTvp1');startTvpLow()});el('rtvTvpInfo').addEventListener('click',function(){tvpSelect('tvpinfo','rtvCardTvpInfo');startTvpFast()});el('rtvTvpInfoLow').addEventListener('click',function(){tvpSelect('tvpinfo','rtvCardTvpInfo');startTvpLow()});el('rtvTvpStart').addEventListener('click',tvpManualPlay);el('rtvTvpClose').addEventListener('click',function(){stopTvpLow();status('rtvStatusTvp','Wybierz sposób oglądania','')});el('rtvTvpRetry').addEventListener('click',startTvpFast);
+    addEventListener('offline',function(){if(current){status(cardStatus(current),'Nie udało się połączyć','error');retryVisible(current,true)}if(tvpActive)stopTvpLow();status('rtvStatusTvp','Nie mam teraz połączenia z internetem.','error');el('rtvTvpRetry').hidden=false});
+    addEventListener('online',function(){if(!tvpActive)status('rtvStatusTvp','Wybierz sposób oglądania','');el('rtvTvpRetry').hidden=true;if(current==='pr1'&&!manualStop)scheduleReconnect('Ponowne łączenie…')});
+    d.addEventListener('visibilitychange',function(){if(d.hidden&&tvpVideo&&!tvpVideo.paused){try{tvpVideo.pause()}catch(e){}}});
+  }catch(e){try{console.error('IL Radio/TV module:',e)}catch(_){}}
+})();
+
+/* Ispina Lokalnie — Kamera most w Ispinie (ZDW Kraków) */
+(function(){
+  'use strict';
+  try{
+    var d=document,panel=d.getElementById('iaP'),nav=d.getElementById('nav');if(!d.body||!panel||!nav||d.getElementById('vcamera'))return;
+    var host=(location.hostname||'').toLowerCase();if(host!=='ispinalokalnie.com'&&host!=='www.ispinalokalnie.com'&&host!=='ispinalokalnie.wordpress.com')return;
+    var BASE='https://www.zdw.krakow.pl/kamery/aster/120.jpg',INTERVAL=60000,timer=null,loading=false,lastOk=0,currentSrc='';
+    var st=d.createElement('style');st.textContent='\
+#vcamera .cam-head{padding:16px;margin-bottom:11px;border-radius:22px;color:#fff;background:linear-gradient(135deg,#205f78,#4d9fbd)}\
+#vcamera .cam-card{padding:13px;background:#fff;border:1px solid #dfe8e2;border-radius:18px}.cam-frame{position:relative;overflow:hidden;border-radius:14px;background:#e9efec;min-height:210px;display:grid;place-items:center}.cam-frame img{display:block;width:100%;height:auto;object-fit:contain;cursor:zoom-in}.cam-load{position:absolute;inset:auto 10px 10px auto;background:#17362bcc;color:#fff;border-radius:99px;padding:6px 9px;font-size:11px}.cam-meta{margin-top:10px;font-size:12px;color:#526c61}.cam-status{margin-top:7px;padding:8px 9px;border-radius:10px;background:#f4f8f6;color:#526c61;font-size:12px}.cam-status.error{background:#fff0ee;color:#963129}.cam-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}.cam-btn{border:0;border-radius:12px;padding:10px 13px;background:#176f72;color:#fff;font-weight:850}.cam-btn.secondary{background:#e7f0ed;color:#244b40}.cam-note{font-size:11px;line-height:1.4;color:#687d74;margin-top:9px}.cam-overlay{position:fixed;z-index:100500;inset:0;background:#07120feF;display:none;align-items:center;justify-content:center;padding:18px}.cam-overlay.on{display:flex}.cam-overlay img{max-width:100%;max-height:90vh;object-fit:contain}.cam-close{position:absolute;top:max(12px,env(safe-area-inset-top));right:12px;border:0;border-radius:99px;width:44px;height:44px;background:#fff;color:#17362b;font-size:24px;font-weight:900}';d.documentElement.appendChild(st);
+    var view=d.createElement('div');view.className='view';view.id='vcamera';view.innerHTML='<div class="cam-head"><div class="h">Kamera — most w Ispinie</div><div class="p" style="color:#eaf8ff;margin-top:4px">DW775 • Most w Ispinie</div></div><div class="cam-card"><div class="cam-frame"><img id="camImg" alt="Kamera drogowa ZDW — most w Ispinie"><div class="cam-load" id="camLoad">Już sprawdzam…</div></div><div class="cam-meta" id="camTime">Ostatnia aktualizacja: —</div><div class="cam-status" id="camStatus">Sprawdzam obraz z kamery…</div><div class="cam-actions"><button class="cam-btn" id="camRefresh">Odśwież</button><button class="cam-btn secondary" id="camRetry" hidden>Spróbuj ponownie</button></div><div class="cam-note">Źródło: Zarząd Dróg Wojewódzkich w Krakowie. Obraz jest zdjęciem JPG aktualizowanym cyklicznie, a nie transmisją wideo. Automatyczne odświeżanie działa tylko podczas oglądania tej sekcji.</div></div>';
+    panel.appendChild(view);
+    var settings=d.querySelector('#nav .nb[data-u=":set"]'),btn=d.createElement('button');btn.className='nb place';btn.setAttribute('data-u',':camera');btn.innerHTML='<span class="ni">📷</span>Kamera w Ispinie';var group=Array.prototype.find.call(nav.querySelectorAll('.ng'),function(n){return n.textContent.trim()==='O ISPINIE'}),next=group&&group.nextElementSibling;while(next&&!next.classList.contains('ng'))next=next.nextElementSibling;if(group)nav.insertBefore(btn,next);else nav.appendChild(btn);
+    var overlay=d.createElement('div');overlay.className='cam-overlay';overlay.id='camOverlay';overlay.innerHTML='<button class="cam-close" id="camClose" aria-label="Zamknij">×</button><img id="camBig" alt="Kamera — most w Ispinie">';d.body.appendChild(overlay);
+    function fmt(ts){var x=new Date(ts);return String(x.getHours()).padStart(2,'0')+':'+String(x.getMinutes()).padStart(2,'0')+':'+String(x.getSeconds()).padStart(2,'0')}
+    function visible(){return view.classList.contains('on')&&panel.classList.contains('on')&&!d.hidden}
+    function setStatus(txt,err){var x=d.getElementById('camStatus');if(!x)return;x.textContent=txt;x.className='cam-status'+(err?' error':'')}
+    function refresh(force){if(loading||(!force&&!visible()))return;loading=true;var load=d.getElementById('camLoad'),retry=d.getElementById('camRetry');if(load)load.style.display='block';if(retry)retry.hidden=true;setStatus(lastOk?'Sprawdzam nowszy obraz…':'Pobieram aktualny obraz…',false);var pre=new Image();var url=BASE+(BASE.indexOf('?')>=0?'&':'?')+'_ilcb='+Date.now();pre.onload=function(){loading=false;currentSrc=url;lastOk=Date.now();var im=d.getElementById('camImg');if(im)im.src=url;var big=d.getElementById('camBig');if(big)big.src=url;var tm=d.getElementById('camTime');if(tm)tm.textContent='Ostatnia aktualizacja: '+fmt(lastOk);if(load)load.style.display='none';setStatus('Aktualny obraz z kamery ZDW.',false)};pre.onerror=function(){loading=false;if(load)load.style.display='none';if(retry)retry.hidden=false;setStatus('Nie udało się pobrać aktualnego obrazu z kamery.',true)};pre.src=url}
+    function start(){stop();if(!visible())return;refresh(false);timer=setInterval(function(){refresh(false)},INTERVAL)}
+    function stop(){if(timer){clearInterval(timer);timer=null}}
+    function open(){try{history.pushState({ia:1,camera:1},'',location.href)}catch(e){}var drawer=d.getElementById('iaD'),shade=d.getElementById('sh');if(drawer)drawer.classList.remove('on');if(shade)shade.classList.remove('on');panel.querySelectorAll('.view').forEach(function(x){x.classList.remove('on')});view.classList.add('on');panel.classList.add('on');var sec=d.getElementById('sec');if(sec)sec.textContent='Kamera — most w Ispinie';panel.scrollTop=0;start()}
+    btn.addEventListener('click',open);d.getElementById('camRefresh').addEventListener('click',function(){refresh(true)});d.getElementById('camRetry').addEventListener('click',function(){refresh(true)});d.getElementById('camImg').addEventListener('click',function(){if(!currentSrc)return;overlay.classList.add('on')});d.getElementById('camClose').addEventListener('click',function(){overlay.classList.remove('on')});overlay.addEventListener('click',function(e){if(e.target===overlay)overlay.classList.remove('on')});
+    var mo=new MutationObserver(function(){if(visible())start();else stop()});mo.observe(view,{attributes:true,attributeFilter:['class']});mo.observe(panel,{attributes:true,attributeFilter:['class']});d.addEventListener('visibilitychange',function(){if(visible())start();else stop()});
+  }catch(e){try{console.error('IL camera module:',e)}catch(_){}}
+})();
+
+/* Ispina Lokalnie 1.82.14 — pełny Tryb Senior.
+   Warstwa prezentacji nad istniejącymi modułami; bez duplikowania źródeł danych. */
+(function(){
+  'use strict';
+  try{
+    var d=document, ls=localStorage, SENIOR_KEY='isenior', XL_KEY='iseniorxl';
+    if(!d.body || d.getElementById('vsenior') || !d.getElementById('iaP'))return;
+
+    function el(id){return d.getElementById(id)}
+    function seniorOn(){return ls.getItem(SENIOR_KEY)==='1'}
+    function xlOn(){return ls.getItem(XL_KEY)==='1'}
+    function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+    function cap(s){s=String(s||'');return s?s.charAt(0).toLocaleUpperCase('pl-PL')+s.slice(1):s}
+    function routeClick(route){
+      var b=d.querySelector('#nav .nb[data-u="'+route+'"]');
+      if(b){b.click();setTimeout(syncActive,0);return true}
+      return false;
+    }
+    function closeDrawer(){var dr=el('iaD'),sh=el('sh');if(dr)dr.classList.remove('on');if(sh)sh.classList.remove('on');var mb=d.querySelector('#ilSeniorBottom [data-sr=\"more\"]');if(mb)mb.setAttribute('aria-expanded','false')}
+    function openDrawer(){var dr=el('iaD'),sh=el('sh');if(!dr||!sh)return;try{if(!(history.state&&history.state.ia))history.pushState({ia:1},'',location.href)}catch(e){}dr.classList.add('on');sh.classList.add('on');var mb=d.querySelector('#ilSeniorBottom [data-sr=\"more\"]');if(mb)mb.setAttribute('aria-expanded','true')}
+
+    var style=d.createElement('style');style.id='ilSeniorFullStyle';style.textContent='\
+#vsenior{max-width:820px;padding:calc(18px + env(safe-area-inset-top)) 14px 104px;color:#17362b}\
+#vsenior .sr-head{padding:4px 4px 17px}.sr-app{font-size:29px;line-height:1.08;font-weight:950;letter-spacing:-.5px}.sr-date{margin-top:7px;font-size:25px;line-height:1.2;font-weight:800;color:#426158}\
+.sr-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.sr-tile{appearance:none;-webkit-appearance:none;width:100%;min-height:190px;border:1px solid #d9e7e1;border-radius:24px;padding:18px;text-align:left;background:#fff;color:#17362b;box-shadow:0 7px 20px #17362b12;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;touch-action:manipulation}.sr-tile:active{transform:scale(.99)}\
+.sr-tile.weather{background:linear-gradient(145deg,#eef8fb,#fff);border-color:#cfe7ee}.sr-tile.bus{background:linear-gradient(145deg,#eef8f1,#fff);border-color:#d2e8d8}.sr-tile.plan{background:linear-gradient(145deg,#f3f1fb,#fff);border-color:#ded8ef}.sr-tile.waste{background:linear-gradient(145deg,#f3f9ee,#fff);border-color:#dbe9ce}.sr-tile.news{grid-column:1/-1;min-height:150px;background:linear-gradient(145deg,#fff8ec,#fff);border-color:#eee0c7}\
+.sr-icon{font-family:"Noto Color Emoji","Segoe UI Emoji",sans-serif;font-size:45px;line-height:1;margin-bottom:12px}.sr-title{font-size:22px;line-height:1.16;font-weight:900}.sr-value{display:block;margin-top:9px;font-size:35px;line-height:1.03;font-weight:950;letter-spacing:-.5px}.sr-sub{display:block;margin-top:6px;font-size:19px;line-height:1.28;font-weight:750;color:#3d5c52}.sr-small{display:block;margin-top:5px;font-size:17px;line-height:1.3;color:#61776f}.sr-bus-count{font-size:36px;color:#176a4b}.sr-news-title{font-size:22px;line-height:1.3}.sr-open{margin-top:auto;padding-top:10px;font-size:17px;font-weight:850;color:#176a78}\
+#ilSeniorBottom{position:fixed;z-index:99996;left:0;right:0;bottom:0;display:none;grid-template-columns:repeat(4,1fr);gap:0;height:calc(78px + env(safe-area-inset-bottom));padding:6px 5px max(6px,env(safe-area-inset-bottom));background:#fff;border-top:1px solid #d9e5df;box-shadow:0 -7px 22px #17362b16}body.senior #ilSeniorBottom{display:grid}#ilSeniorBottom button{border:0;background:transparent;color:#34564c;min-width:0;min-height:64px;border-radius:15px;font:850 15px system-ui;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;touch-action:manipulation}#ilSeniorBottom button span{font-family:"Noto Color Emoji","Segoe UI Emoji",sans-serif;font-size:25px;line-height:1}#ilSeniorBottom button.on{background:#e8f5ef;color:#125e43}\
+body.senior #ilDayBottom{display:none!important}body.senior #iaD{z-index:100002}body.senior #sh{z-index:100001}body.senior #iaP{bottom:calc(78px + env(safe-area-inset-bottom))}body.senior.senior-home #iaBar,body.senior.senior-home #iaSp{display:none!important}body.senior.senior-home #iaP{inset:0 0 calc(78px + env(safe-area-inset-bottom)) 0!important;background:#f4f7f5}body.senior.senior-home #vsenior{display:block}\
+body.senior #vplan .plhero .p,body.senior #vplan .plquick,body.senior #vplan .plwhen,body.senior #vplan #pnow,body.senior #vplan #phome,body.senior #vplan .plhint,body.senior #vplan #pswap{display:none!important}body.senior #vplan .plhero{padding:15px 17px;margin-bottom:10px}body.senior #vplan .plhero .h{font-size:26px}body.senior #vplan .plcard{padding:17px}body.senior #vplan .pllabel{font-size:20px;margin:14px 3px 8px;text-transform:none;color:#294f46}body.senior #vplan .plfield{min-height:68px;padding:5px 12px;border-radius:18px}body.senior #vplan .plfield input{font-size:20px!important;min-height:56px}body.senior #vplan .pldot{width:39px;height:39px;font-size:18px}body.senior #vplan .plactions{display:block;margin-top:18px}body.senior #vplan #pgo{width:100%;min-height:72px;font-size:22px;border-radius:18px}body.senior #vplan .plsug{font-size:18px;min-height:58px;padding:12px}body.senior #vplan .plsrc{font-size:12px}body.senior #vplan #pres{font-size:18px}\
+#ilSeniorSettingsDesc{margin:-2px 0 10px;padding:0 44px 8px 0;font-size:15px;line-height:1.35;color:#5d746b}.ilSeniorXLRow{align-items:center}.ilSeniorXLRow b{display:block}.ilSeniorXLRow small{display:block;margin-top:3px;font-size:13px;font-weight:600;color:#6d8179}.ilSeniorXLRow input:disabled{opacity:.45}\
+#vseniorWaste{max-width:760px;padding-bottom:104px}.sr-waste-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}.sr-back{border:0;border-radius:15px;min-width:60px;min-height:60px;background:#e7f1ed;color:#173f35;font-size:25px}.sr-waste-head h2{font-size:27px;margin:0}.sr-waste-note{font-size:17px;line-height:1.4;color:#5f746c;margin:0 0 12px}.sr-waste-row{background:#fff;border:1px solid #dce8e2;border-radius:18px;padding:15px 16px;margin-bottom:10px}.sr-waste-date{font-size:22px;font-weight:950}.sr-waste-type{margin-top:5px;font-size:18px;font-weight:750;color:#385b50}.sr-waste-empty{padding:20px;border-radius:18px;background:#fff;font-size:19px;line-height:1.4}\
+body.senior-xl #vsenior .sr-app{font-size:34px}body.senior-xl #vsenior .sr-date{font-size:29px}body.senior-xl #vsenior .sr-title{font-size:26px}body.senior-xl #vsenior .sr-value{font-size:41px}body.senior-xl #vsenior .sr-sub{font-size:22px}body.senior-xl #vsenior .sr-small,body.senior-xl #vsenior .sr-open{font-size:20px}body.senior-xl #vsenior .sr-tile{padding:20px;min-height:214px}body.senior-xl #ilSeniorBottom button{font-size:17px}body.senior-xl #vplan .pllabel{font-size:23px}body.senior-xl #vplan .plfield input{font-size:23px!important}body.senior-xl #vplan #pgo{font-size:25px;min-height:78px}\
+@media(max-width:430px){.sr-grid{grid-template-columns:1fr}.sr-tile.news{grid-column:auto}.sr-tile{min-height:166px}.sr-tile.news{min-height:145px}.sr-app{font-size:28px}.sr-date{font-size:24px}}\
+@media(max-width:350px){#vsenior{padding-left:10px;padding-right:10px}.sr-tile{padding:16px}.sr-title{font-size:21px}.sr-sub{font-size:18px}}';
+    d.head.appendChild(style);
+
+    var panel=el('iaP');
+    var senior=d.createElement('div');senior.className='view';senior.id='vsenior';senior.setAttribute('role','main');senior.setAttribute('aria-label','Tryb Senior — najważniejsze informacje');
+    senior.innerHTML='<header class="sr-head"><div class="sr-app">Ispina Lokalnie</div><div class="sr-date" id="srDate">Dzisiaj</div></header><div class="sr-grid">'+
+      '<button type="button" class="sr-tile weather" id="srWeather" aria-label="Pogoda w Ispinie. Otwórz pełną pogodę"><span class="sr-icon" id="srWeatherIcon" aria-hidden="true">🌤️</span><span class="sr-title">Pogoda</span><span class="sr-value" id="srTemp">--°C</span><span class="sr-sub" id="srWeatherDesc">Sprawdzam pogodę</span><span class="sr-small" id="srFeels">Odczuwalna --°C</span><span class="sr-open">Dotknij, aby zobaczyć więcej</span></button>'+
+      '<button type="button" class="sr-tile bus" id="srBus" aria-label="Najbliższy autobus. Otwórz odjazdy"><span class="sr-icon" aria-hidden="true">🚌</span><span class="sr-title">Najbliższy autobus</span><span class="sr-sub" id="srBusLine">Sprawdzam połączenia</span><span class="sr-value sr-bus-count" id="srBusCount">--</span><span class="sr-small" id="srBusStop">Ispina Most</span><span class="sr-open">Otwórz odjazdy</span></button>'+
+      '<button type="button" class="sr-tile plan" id="srPlan" aria-label="Zaplanuj podróż"><span class="sr-icon" aria-hidden="true">🗺️</span><span class="sr-title">Zaplanuj podróż</span><span class="sr-sub">Wpisz skąd i dokąd chcesz jechać.</span><span class="sr-open">Otwórz planer</span></button>'+
+      '<button type="button" class="sr-tile waste" id="srWaste" aria-label="Najbliższy odbiór odpadów. Otwórz harmonogram"><span class="sr-icon" aria-hidden="true">♻️</span><span class="sr-title">Najbliższy odbiór odpadów</span><span class="sr-value" id="srWasteWhen">Sprawdzam…</span><span class="sr-sub" id="srWasteType">Harmonogram dla Ispiny</span><span class="sr-small" id="srWasteDate"></span><span class="sr-open">Otwórz harmonogram</span></button>'+
+      '<button type="button" class="sr-tile news" id="srNews" aria-label="Co nowego w Ispinie. Otwórz najnowszą aktualność"><span class="sr-icon" aria-hidden="true">📰</span><span class="sr-title">Co nowego w Ispinie?</span><span class="sr-value sr-news-title" id="srNewsTitle">Sprawdzam najnowszą informację…</span><span class="sr-open">Otwórz aktualność</span></button></div>';
+    panel.appendChild(senior);
+
+    var wasteView=d.createElement('div');wasteView.className='view';wasteView.id='vseniorWaste';wasteView.setAttribute('role','main');wasteView.setAttribute('aria-label','Harmonogram odbioru odpadów');
+    wasteView.innerHTML='<div class="sr-waste-head"><button type="button" class="sr-back" id="srWasteBack" aria-label="Wróć do ekranu głównego">←</button><h2>Odbiór odpadów</h2></div><p class="sr-waste-note">Najbliższe terminy dla Ispiny. Dane pochodzą z tego samego harmonogramu, którego używa aplikacja.</p><div id="srWasteList"></div>';
+    panel.appendChild(wasteView);
+
+    var nav=d.createElement('nav');nav.id='ilSeniorBottom';nav.setAttribute('aria-label','Nawigacja Trybu Senior');
+    nav.innerHTML='<button type="button" data-sr="home" aria-label="Start"><span aria-hidden="true">🏠</span><b>Start</b></button><button type="button" data-sr="dep" aria-label="Odjazdy"><span aria-hidden="true">🚌</span><b>Odjazdy</b></button><button type="button" data-sr="plan" aria-label="Planer"><span aria-hidden="true">🗺️</span><b>Planer</b></button><button type="button" data-sr="more" aria-label="Więcej funkcji"><span aria-hidden="true">☰</span><b>Więcej</b></button>';
+    d.documentElement.appendChild(nav);
+
+    function setPlannerSenior(on){
+      var labels=d.querySelectorAll('#vplan .pllabel'),go=el('pgo'),from=el('pfrom'),to=el('pto');
+      if(labels[0])labels[0].textContent=on?'Skąd?':'START';
+      if(labels[1])labels[1].textContent=on?'Dokąd?':'CEL PODRÓŻY';
+      if(go)go.textContent=on?'SZUKAJ POŁĄCZENIA':'Znajdź połączenie';
+      if(from){from.setAttribute('aria-label','Skąd?');from.placeholder=on?'Wpisz miejsce startu':'Wpisz np. Wo'}
+      if(to){to.setAttribute('aria-label','Dokąd?');to.placeholder=on?'Wpisz cel podróży':'Wpisz miejscowość lub przystanek'}
+    }
+
+    function installSettings(){
+      var sets=el('sets');if(!sets)return;
+      var first=sets.querySelector('.set');
+      if(first&&!el('ilSeniorSettingsDesc')){
+        var p=d.createElement('div');p.id='ilSeniorSettingsDesc';p.textContent='Prostszy wygląd, większe napisy i najważniejsze funkcje na jednym ekranie.';first.insertAdjacentElement('afterend',p);
+      }
+      if(!el('ilSeniorXL')){
+        var row=d.createElement('label');row.className='set ilSeniorXLRow';row.innerHTML='<span><b>Bardzo duży tekst</b><small>Zwiększa najważniejsze elementy o około 15–20%.</small></span><input class="sw" type="checkbox" id="ilSeniorXL" aria-label="Bardzo duży tekst">';
+        var desc=el('ilSeniorSettingsDesc');if(desc)desc.insertAdjacentElement('afterend',row);else sets.appendChild(row);
+        el('ilSeniorXL').checked=xlOn();el('ilSeniorXL').onchange=function(){ls.setItem(XL_KEY,this.checked?'1':'0');syncMode()};
+      }
+      var xl=el('ilSeniorXL');if(xl)xl.disabled=!seniorOn();
+      var seniorToggle=el('s0');if(seniorToggle&&!seniorToggle.getAttribute('data-sr-hook')){seniorToggle.setAttribute('data-sr-hook','1');seniorToggle.addEventListener('change',function(){var t=this;setTimeout(function(){syncMode();if(t.checked)showSenior()},0)})}
+    }
+
+    function weatherData(){try{var x=JSON.parse(ls.getItem('iwx5')||'null');return x&&x.d&&x.d.current?x.d.current:null}catch(e){return null}}
+    function refreshWeather(){
+      var temp=el('dwxt'),desc=el('dwxd'),icon=el('dicon'),w=weatherData();
+      el('srTemp').textContent=temp&&temp.textContent?temp.textContent:'--°C';
+      el('srWeatherDesc').textContent=desc&&desc.textContent?desc.textContent.split(' • ')[0]:'Pogoda';
+      el('srWeatherIcon').textContent=icon&&icon.textContent&&icon.textContent!=='•'?icon.textContent:'🌤️';
+      el('srFeels').textContent='Odczuwalna '+(w&&w.apparent_temperature!=null?Math.round(w.apparent_temperature)+'°C':'--°C');
+    }
+    function countdown(hm){
+      var m=/^(\d{1,2}):(\d{2})$/.exec(String(hm||'').trim());if(!m)return'--';
+      var n=new Date(),t=new Date(n);t.setHours(+m[1],+m[2],0,0);if(t.getTime()<n.getTime()-5*60000)t.setDate(t.getDate()+1);
+      var mins=Math.max(0,Math.round((t-n)/60000));
+      if(mins<60)return'za '+mins+' min';
+      if(mins<180){var h=Math.floor(mins/60),r=mins%60;return'za '+h+' godz.'+(r?' '+r+' min':'')}
+      if(t.getDate()!=n.getDate())return'jutro '+String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
+      return'o '+String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0');
+    }
+    function refreshBus(){
+      var time=el('dbt'),line=el('dbd'),stop=el('stop');var tv=time?time.textContent.trim():'--:--',lv=line?line.textContent.trim():'Autobus';
+      el('srBusLine').textContent=lv==='Brak kursów'?'Brak najbliższych kursów':lv;
+      el('srBusCount').textContent=lv==='Brak kursów'?'—':countdown(tv);
+      el('srBusStop').textContent=stop&&stop.value?stop.value:'Ispina Most';
+    }
+    function refreshWaste(){
+      var main=el('ilWasteMain'),when='',type='',sub=el('ilWasteSub');
+      if(main){var a=main.querySelector('.ilwDate'),b=main.querySelector('.ilwTypes');when=a?a.textContent.trim():'';type=b?b.textContent.trim():''}
+      el('srWasteWhen').textContent=when||'Sprawdzam…';el('srWasteType').textContent=type||'Harmonogram dla Ispiny';el('srWasteDate').textContent=sub?sub.textContent.trim():'';
+    }
+    function refreshNews(){var n=d.querySelector('#dnews .nwt');el('srNewsTitle').textContent=n&&n.textContent.trim()?n.textContent.trim():'Sprawdzam najnowszą informację…'}
+    function refreshDate(){var x=new Intl.DateTimeFormat('pl-PL',{weekday:'long',day:'numeric',month:'long'}).format(new Date());el('srDate').textContent=cap(x)}
+    function refreshSenior(){refreshDate();refreshWeather();refreshBus();refreshWaste();refreshNews()}
+
+    function wasteJson(){
+      try{if(window.IspinaNative&&window.IspinaNative.getWasteData){var s=window.IspinaNative.getWasteData(ls.getItem('ilWasteData1')||'');if(s)return JSON.parse(s)}}catch(e){}
+      try{return JSON.parse(ls.getItem('ilWasteData1')||'null')}catch(e){return null}
+    }
+    function renderWasteList(){
+      var data=wasteJson(),out=[],now=new Date();now.setHours(0,0,0,0),map={mixed_bio:'Odpady zmieszane + bio',segregated:'Odpady segregowane',ash:'Popiół',bulky:'Gabaryty + opony'};
+      if(data&&data.years){Object.keys(data.years).forEach(function(y){var z=data.years[y];(z&&z.entries||[]).forEach(function(e){var p=String(e.date||'').split('-'),dt=p.length===3?new Date(+p[0],+p[1]-1,+p[2]):null;if(dt&&!isNaN(dt)&&dt>=now)out.push({date:dt,types:e.types||[]})})})}
+      out.sort(function(a,b){return a.date-b.date});out=out.slice(0,12);var list=el('srWasteList');if(!list)return;
+      if(!out.length){list.innerHTML='<div class="sr-waste-empty">Brak kolejnych terminów w zapisanym harmonogramie. Aplikacja nadal będzie korzystać z automatycznej aktualizacji danych.</div>';return}
+      list.innerHTML=out.map(function(x){var ds=cap(x.date.toLocaleDateString('pl-PL',{weekday:'long',day:'numeric',month:'long'})),ts=x.types.map(function(t){return map[t]||t}).join(' • ');return'<div class="sr-waste-row"><div class="sr-waste-date">'+esc(ds)+'</div><div class="sr-waste-type">'+esc(ts)+'</div></div>'}).join('');
+    }
+
+    function showSenior(){
+      if(!seniorOn())return;
+      closeDrawer();panel.querySelectorAll('.view').forEach(function(v){v.classList.remove('on')});senior.classList.add('on');panel.classList.add('on');d.body.classList.add('senior-home');var sec=el('sec');if(sec)sec.textContent='Tryb Senior';panel.scrollTop=0;refreshSenior();syncActive();
+    }
+    function showWaste(){if(!seniorOn())return;renderWasteList();panel.querySelectorAll('.view').forEach(function(v){v.classList.remove('on')});wasteView.classList.add('on');panel.classList.add('on');d.body.classList.remove('senior-home');var sec=el('sec');if(sec)sec.textContent='Odpady';panel.scrollTop=0;syncActive()}
+
+    function syncActive(){
+      if(!seniorOn()){d.body.classList.remove('senior-home','senior-xl');nav.querySelectorAll('button').forEach(function(b){b.classList.remove('on')});return}
+      d.body.classList.toggle('senior-xl',xlOn());
+      var active=panel.querySelector('.view.on'),id=active?active.id:'';d.body.classList.toggle('senior-home',id==='vsenior');
+      nav.querySelectorAll('button').forEach(function(b){var k=b.getAttribute('data-sr'),on=(k==='home'&&(id==='vsenior'||id==='vseniorWaste'))||(k==='dep'&&id==='vdep')||(k==='plan'&&id==='vplan');b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
+    }
+    function syncMode(){
+      installSettings();var on=seniorOn();d.body.classList.toggle('senior-xl',on&&xlOn());setPlannerSenior(on);var xl=el('ilSeniorXL');if(xl)xl.disabled=!on;
+      if(!on){d.body.classList.remove('senior-home','senior-xl');if(senior.classList.contains('on')||wasteView.classList.contains('on'))routeClick(':dash');syncActive();return}
+      var path=(location.pathname||'/').toLowerCase();var active=panel.querySelector('.view.on');
+      if((path==='/'||path==='')&&(!active||active.id==='vdash'||active.id==='vsenior'))showSenior();else syncActive();
+    }
+
+    el('srWeather').onclick=function(){routeClick(':wx')};el('srBus').onclick=function(){routeClick(':dep')};el('srPlan').onclick=function(){routeClick(':plan')};el('srWaste').onclick=showWaste;el('srWasteBack').onclick=showSenior;
+    el('srNews').onclick=function(){var b=el('dnews');if(b)b.click();else{var n=d.querySelector('#nav .nb[data-u*="aktualnosci"]');if(n)n.click()}};
+    nav.querySelector('[data-sr="home"]').onclick=showSenior;nav.querySelector('[data-sr="dep"]').onclick=function(){routeClick(':dep')};nav.querySelector('[data-sr="plan"]').onclick=function(){routeClick(':plan')};nav.querySelector('[data-sr="more"]').onclick=openDrawer;
+    var seniorDrawer=el('iaD');if(seniorDrawer)seniorDrawer.addEventListener('click',function(e){if(!seniorOn())return;var b=e.target&&e.target.closest?e.target.closest('.nb'):null;if(!b||!seniorDrawer.contains(b))return;if(b.getAttribute('data-u')===':dash'){e.preventDefault();e.stopImmediatePropagation();closeDrawer();showSenior()}},true);
+
+    var viewObs=new MutationObserver(function(){if(seniorOn())syncActive()});viewObs.observe(panel,{subtree:true,attributes:true,attributeFilter:['class']});
+    var dashSource=el('vdash');if(dashSource){new MutationObserver(function(){if(seniorOn())refreshSenior()}).observe(dashSource,{subtree:true,childList:true,characterData:true})}
+    setInterval(function(){if(seniorOn()){refreshSenior();syncActive()}},30000);
+    d.addEventListener('visibilitychange',function(){if(!d.hidden&&seniorOn())refreshSenior()});window.addEventListener('focus',function(){if(seniorOn())refreshSenior()});
+    installSettings();syncMode();setTimeout(function(){installSettings();syncMode();refreshSenior()},700);setTimeout(function(){installSettings();refreshSenior()},2200);
+  }catch(e){try{console.error('Tryb Senior:',e)}catch(_){}}
+})();
+
+;/* Startup handoff 1.82.16: document-scoped and idempotent.
+   It may select Pulpit once at cold start, but it must never reset a view after the user navigates. */
+(function(){
+  try{
+    var d=document,root=d.documentElement;
+    if(root.getAttribute('data-il-startup-done')==='1'){
+      root.setAttribute('data-il-ui-ready','1');
+      return;
+    }
+    root.setAttribute('data-il-startup-done','1');
+    var p=d.getElementById('iaP'),path=(location.pathname||'/').toLowerCase();
+    var atHome=(path==='/'||path==='');
+    var rawWp=false;
+    try{rawWp=(new URLSearchParams(location.search)).get('ilwp')==='1'}catch(_q){}
+
+    /* Start means the real WordPress home page. Keep the marker in the URL for the lifetime of
+       this document, so a later JS reinjection cannot accidentally re-open Pulpit. */
+    if(rawWp){
+      if(p){
+        p.classList.remove('on');
+        p.querySelectorAll('.view').forEach(function(n){n.classList.remove('on')});
+      }
+      var sec0=d.getElementById('sec');if(sec0)sec0.textContent='Start';
+      root.setAttribute('data-il-ui-ready','1');
+      return;
+    }
+
+    var senior=false;try{senior=localStorage.getItem('isenior')==='1'}catch(_e){}
+    if(p&&atHome&&!senior){
+      var v=d.getElementById('vdash');
+      if(v){
+        p.querySelectorAll('.view').forEach(function(n){n.classList.remove('on')});
+        v.classList.add('on');p.classList.add('on');p.scrollTop=0;
+        var sec=d.getElementById('sec');if(sec)sec.textContent='Pulpit';
+      }
+    }
+    root.setAttribute('data-il-ui-ready','1');
+  }catch(e){try{document.documentElement.setAttribute('data-il-ui-ready','1')}catch(_e){}}
+})();
+;/* IL touch feedback: lightweight, delegated, no action duplication. */
+(function(){try{
+var d=document,active=null;
+function target(e){var n=e&&e.target&&e.target.closest?e.target.closest('button,a,.nb,.tab,.btn,.btn2,.star,.sr-tile,#iaM,.x,[role="button"]'):null;return n&&n.tagName!=='INPUT'&&n.tagName!=='SELECT'&&n.tagName!=='TEXTAREA'?n:null}
+function down(e){var n=target(e);if(!n||n.disabled)return;if(active&&active!==n)active.classList.remove('il-touch');active=n;n.classList.add('il-touch')}
+function up(e){var n=active;if(!n)return;if(e&&e.type==='pointercancel')n.classList.remove('il-touch');else n.classList.remove('il-touch');active=null}
+d.addEventListener('pointerdown',down,true);d.addEventListener('pointerup',up,true);d.addEventListener('pointercancel',up,true);d.addEventListener('pointerleave',function(e){if(active&&e.target===d)up(e)},true);
+var s=d.createElement('style');s.textContent='.il-touch{transform:scale(.98)!important;transition:transform 110ms cubic-bezier(.2,.8,.2,1)!important;will-change:transform}.il-touch{opacity:.97}.il-touch{transition-duration:110ms!important}';(d.head||d.documentElement).appendChild(s);
+}catch(_e){}})();
+
+(function(){var d=document,view=d.getElementById("vset");if(!view||d.getElementById("ilAboutProject"))return;var style=d.createElement("style");style.textContent="#vset .il-about{background:#f8fbf9;border:1px solid #d6e5dd;border-radius:18px;padding:15px;margin-top:12px}#vset .il-about summary{cursor:pointer;color:#225b50;min-height:44px;align-content:center}#vset .il-about summary h2{display:inline;font-size:16px;line-height:1.5;font-weight:800;margin:0}#vset .il-about summary:focus-visible{outline:2px solid #287f8c;outline-offset:4px;border-radius:5px}#vset .il-about-copy{font-size:16px;line-height:1.7;color:#294a3d;overflow-wrap:break-word}#vset .il-about-copy p{margin:14px 0}#vset .il-about-copy h3{font-size:19px;line-height:1.4;margin:18px 0 12px;color:#205c50}#vset .il-about-copy strong{font-weight:750}body.senior #vset .il-about-copy{font-size:18px}";d.head.appendChild(style);view.insertAdjacentHTML("beforeend","<details class=\"card il-about\" id=\"ilAboutProject\">\n<summary><h2>O projekcie Ispina Lokalnie</h2></summary>\n<div class=\"il-about-copy\">\n<h3><strong>Ispina bliżej Ciebie. Każdego dnia.</strong></h3>\n<p><strong>Ispina Lokalnie</strong> to niezależny, nowoczesny projekt informacyjny tworzony z myślą o mieszkańcach Ispiny, osobach związanych z miejscowością oraz wszystkich jej sympatykach.</p>\n<p>Aplikacja jest <strong>udostępniana całkowicie bezpłatnie</strong>. Jej zadaniem jest gromadzenie w jednym miejscu najważniejszych informacji dotyczących Ispiny i najbliższej okolicy oraz przedstawianie ich w wygodnej, przejrzystej i przyjaznej formie.</p>\n<p>Projekt powstał z przekonania, że także niewielka miejscowość zasługuje na własną, nowoczesną przestrzeń cyfrową. Miejsce, które łączy <strong>lokalne wiadomości, komunikację, wydarzenia, historię, praktyczne informacje i codzienne sprawy mieszkańców</strong>.</p>\n<p>Ispina Lokalnie służy nie tylko informowaniu. Ważną częścią projektu jest również <strong>promocja miejscowości, jej historii, charakteru, lokalnych inicjatyw oraz ludzi, którzy tworzą jej codzienność</strong>.</p>\n<p>Chcemy, aby aplikacja była czymś więcej niż zbiorem informacji. Ma być praktycznym, stale rozwijanym <strong>lokalnym centrum informacji o Ispinie</strong>, które pomaga mieszkańcom w codziennym życiu i jednocześnie pokazuje miejscowość osobom spoza niej.</p>\n<p>Projekt rozwijany jest niezależnie, z myślą o rzeczywistych potrzebach lokalnej społeczności. Kolejne funkcje powstają po to, aby dostęp do informacji był jeszcze prostszy, szybszy i bardziej użyteczny.</p>\n<p><strong>Ispina Lokalnie nie jest projektem komercyjnym.</strong> Aplikacja pozostaje bezpłatna i jest tworzona przede wszystkim dla mieszkańców, osób związanych z Ispiną oraz wszystkich, którym ta miejscowość jest bliska.</p>\n<h3><strong>Ispina Lokalnie</strong></h3>\n<p><strong>Informacje. Miejscowość. Ludzie. Jedno miejsce.</strong></p>\n<p><strong>Sławomir Franciszek Kozak</strong><br>autor aplikacji mobilnej Ispina Lokalnie</p>\n</div></details>\n");})();
+
+(function(){var d=document,n=window.IspinaNative,v=d.getElementById('vset');if(!n||!v||d.getElementById('ilNotifyTests'))return;var card=d.createElement('div');card.id='ilNotifyTests';card.className='card';card.innerHTML='<div class="sectitle">Test powiadomień</div><div class="actrow"><button class="btn" id="ilWasteTest">Test odpadów</button><button class="btn2" id="ilBackgroundTest">Test w tle za ok. 1 min</button></div><p class="hint" id="ilNotificationTestResult" role="status">Test w tle powinien pokazać dwa powiadomienia oznaczone TEST. Android może opóźnić wykonanie.</p>';v.appendChild(card);var result=d.getElementById('ilNotificationTestResult');d.getElementById('ilWasteTest').onclick=function(){try{var r=n.testWasteNotification();result.textContent=r==='ok'?'Przekazano test Androidowi. Sprawdź pasek powiadomień.':r==='settings'?'Powiadomienia są zablokowane. W ustawieniach Androida włącz też kategorię Odbiór odpadów.':'Nie udało się wykonać testu.';}catch(e){result.textContent='Test niedostępny.'}};d.getElementById('ilBackgroundTest').onclick=function(){try{n.testBackgroundNotifications();result.textContent='Test zaplanowany. Wróć do ekranu głównego telefonu i zablokuj ekran. Powinny pojawić się dwa powiadomienia TEST. Nie używaj opcji Wymuś zatrzymanie.';}catch(e){result.textContent='Nie udało się zaplanować testu w tle.'}}})();
+
+;(function(){try{var d=document;if(d.getElementById('ilVisualPolish1834'))return;var st=d.createElement('style');st.id='ilVisualPolish1834';st.textContent='#iaBar{box-shadow:0 2px 12px #17362b12}.S{font-size:11px;line-height:1.25}.ng{font-size:11px;letter-spacing:.065em}.view{padding-left:12px;padding-right:12px}.rt{font-size:11px;line-height:1.42;padding:9px 10px}.mins,.stop{font-size:12px}.tag,.delay{font-size:11px}.strow{font-size:12px}.btn,.btn2,.mdch{font-size:11.5px;min-height:40px}.hint{font-size:11.5px;line-height:1.42}.dlab,#net{font-size:11px}#dnews .nwa{font-size:11px}#iaToast{font-size:11px;padding:9px 13px;box-shadow:0 5px 16px #17362b24}#vplan .plsrc{font-size:10px}#vplan .pllabel{font-size:10px}#vplan .prmeta,#vplan .plnote{font-size:12px;line-height:1.4}#ilDayBottom button b{font-size:11px}#vmedia .rtv-card{box-shadow:0 5px 18px #17362b0b}#vmedia .rtv-tvwarn{background:#f6faf8;color:#587068;border:1px solid #e4eee9;font-size:11.5px;line-height:1.4}#vmedia .rtv-note{font-size:12px;line-height:1.45}.nb,.tab,.btn,.btn2,.mdch,.rtv-btn,#ilDayBottom button{transition:transform .14s ease,box-shadow .18s ease,background-color .18s ease;-webkit-tap-highlight-color:transparent}.nb:active,.tab:active,.btn:active,.btn2:active,.mdch:active,.rtv-btn:active,#ilDayBottom button:active{transform:scale(.985)}';d.documentElement.appendChild(st)}catch(e){}})();
+
+;/* Ispina Lokalnie 1.82.38: HAPTICS-POLISH. */
+(function(){try{
+  var d=document, KEY_ON='il_haptic_touch_v1', KEY_LEVEL='il_haptic_level_v1';
+  var down=null, moved=false, lastPulse=0;
+  /* WebView exposes duration, not motor amplitude. These profiles are deliberately
+     separated by duration so they feel distinct without making normal taps harsh. */
+  var LEVELS={soft:{ms:20,label:'Delikatna'},normal:{ms:46,label:'Normalna'},strong:{ms:82,label:'Mocna'}};
+  function enabled(){try{return localStorage.getItem(KEY_ON)!=='0'}catch(e){return true}}
+  function saveEnabled(v){try{localStorage.setItem(KEY_ON,v?'1':'0')}catch(e){}}
+  function level(){try{var v=localStorage.getItem(KEY_LEVEL);return LEVELS[v]?v:'normal'}catch(e){return 'normal'}}
+  function saveLevel(v){try{localStorage.setItem(KEY_LEVEL,LEVELS[v]?v:'normal')}catch(e){}}
+  function pulse(lv,force){
+    if(!force&&!enabled())return;
+    var now=Date.now();
+    if(now-lastPulse<70)return; /* guard against duplicate click/pointer paths */
+    lastPulse=now;
+    var cfg=LEVELS[lv||level()]||LEVELS.normal;
+    try{window.IL_HAPTICS48.pulse(cfg.ms)}catch(e){}
+  }
+  function interactive(t){
+    if(!t||!t.closest)return null;
+    /* Settings have explicit test handlers: excluding them avoids a double pulse. */
+    if(t.closest('#ilHapticCard'))return null;
+    var n=t.closest('button,a[href],input[type="checkbox"],input[type="radio"],select,.nb,.tab,.btn,.btn2,.star,.mdch,.sr-tile,.rtv-btn,#iaM,.x,#ilDayBottom button,[role="button"]');
+    if(!n)return null;
+    if(n.disabled||n.getAttribute('aria-disabled')==='true')return null;
+    return n;
+  }
+  function point(e){return {x:e.clientX||0,y:e.clientY||0,id:e.pointerId}}
+  d.addEventListener('pointerdown',function(e){var n=interactive(e.target);if(!n){down=null;return}down=point(e);down.el=n;moved=false},true);
+  d.addEventListener('pointermove',function(e){if(!down||down.id!==e.pointerId)return;var dx=(e.clientX||0)-down.x,dy=(e.clientY||0)-down.y;if(dx*dx+dy*dy>100)moved=true},true);
+  d.addEventListener('pointercancel',function(){down=null;moved=false},true);
+  d.addEventListener('pointerup',function(e){
+    if(!down||down.id!==e.pointerId){down=null;return}
+    var n=interactive(e.target), same=n&&(n===down.el||down.el.contains(n)||n.contains(down.el));
+    if(!moved&&same)pulse();
+    down=null;moved=false;
+  },true);
+
+  if(!window.PointerEvent)d.addEventListener('click',function(e){if(interactive(e.target))pulse()},true);
+  function installSetting(){
+    var v=d.getElementById('vset');if(!v||d.getElementById('ilHapticCard'))return;
+    var card=d.createElement('div');card.className='card';card.id='ilHapticCard';
+    card.style.cssText='border-color:#d6e7df;background:linear-gradient(180deg,#ffffff,#f8fbf9)';
+    card.innerHTML=''
+      +'<div class="sectitle" style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span>Dotyk i wibracje</span><span id="ilHapticBadge" style="font-size:9px;font-weight:900;padding:4px 8px;border-radius:99px;background:#e8f5ec;color:#167341">Normalna</span></div>'
+      +'<div class="set"><div style="padding-right:12px"><b>Wibracje przy dotyku</b><div class="hint">Krótki impuls po dotknięciu kafelka, przycisku lub przełącznika. Przewijanie pozostaje bez wibracji.</div></div><input class="sw" type="checkbox" id="ilHapticSwitch" aria-label="Wibracje przy dotyku"></div>'
+      +'<div class="set" id="ilHapticStrengthRow"><div style="padding-right:12px"><b>Intensywność</b><div class="hint">Domyślnie: Normalna. Po zmianie poziomu aplikacja wykona jeden krótki test.</div></div><select id="ilHapticLevel" aria-label="Intensywność wibracji" style="min-width:136px;max-width:48%;padding:9px 10px;border-radius:12px;border:1px solid #cfded7;background:#fff;color:inherit;font:inherit"><option value="soft">Delikatna</option><option value="normal">Normalna</option><option value="strong">Mocna</option></select></div>'
+      +'<div class="actrow"><button class="btn2" id="ilHapticTest" type="button">Test wibracji</button></div>'
+      +'<div class="hint" id="ilHapticInfo" style="margin-top:7px">Wibracja: Normalna.</div>';
+    var sets=d.getElementById('sets'), host=sets&&sets.parentNode;
+    if(host&&host.parentNode)host.parentNode.insertBefore(card,host.nextSibling);else v.insertBefore(card,v.firstChild);
+    var sw=d.getElementById('ilHapticSwitch'), sel=d.getElementById('ilHapticLevel'), test=d.getElementById('ilHapticTest');
+    var badge=d.getElementById('ilHapticBadge'), info=d.getElementById('ilHapticInfo');
+    sw.checked=enabled();sel.value=level();
+    function syncText(){var cfg=LEVELS[sel.value]||LEVELS.normal;if(badge)badge.textContent=sw.checked?cfg.label:'Wyłączone';if(info)info.textContent=sw.checked?('Wibracja: '+cfg.label+'.'):'Wibracje przy dotyku są wyłączone.'}
+    function syncDisabled(){sel.disabled=!sw.checked;test.disabled=!sw.checked;var row=d.getElementById('ilHapticStrengthRow');if(row)row.style.opacity=sw.checked?'1':'.58';syncText()}
+    sw.addEventListener('change',function(){saveEnabled(sw.checked);syncDisabled();if(sw.checked)pulse(level(),true)},false);
+    sel.addEventListener('change',function(){saveLevel(sel.value);syncText();pulse(sel.value,true)},false);
+    test.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();pulse(level(),true)},false);
+    syncDisabled();
+  }
+  installSetting();setTimeout(installSetting,600);setTimeout(installSetting,1800);
+}catch(e){try{console.error('Haptics:',e)}catch(_){}}})();
+
+
+/* Ispina Lokalnie 1.82.95 — QUALITY UPDATE.
+   Warstwa jakościowa: pulpit, czytelność Planera i diagnostyka. Bez zmian w danych rozkładów. */
+(function(){
+  'use strict';
+  try{
+    var d=document, n=window.IspinaNative, VER=window.IL_BUILD.versionName;
+    window.IL_APP_VERSION=VER;
+    if(d.getElementById('ilQuality1839'))return;
+
+    var st=d.createElement('style');st.id='ilQuality1839';
+    st.textContent='\
+#vdash>.card{box-shadow:0 5px 17px #17362b0a;border-color:#dce8e2}\
+#vdash>.card:first-child{background:linear-gradient(145deg,#f4fbf8,#ffffff);border-color:#d4e9df}\
+#vdash>.card:first-child>b{font-size:16px;color:#245e50}\
+#ilQualityStrip{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}\
+.ilq-pill{min-width:0;padding:8px 7px;border:1px solid #dfebe5;border-radius:12px;background:#fff;color:#49675e;text-align:center}\
+.ilq-pill span{display:block;font-size:9.5px;font-weight:850;color:#789087;text-transform:uppercase;letter-spacing:.04em}\
+.ilq-pill b{display:block;margin-top:3px;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\
+.ilq-pill.good b{color:#177247}.ilq-pill.warn b{color:#9b6415}.ilq-pill.bad b{color:#9b3c33}\
+#ilQualityRefresh{width:100%;margin-top:8px;min-height:38px;border:1px solid #cfe2da;border-radius:12px;background:#f8fbf9;color:#2d6658;font-size:11px;font-weight:850}\
+#vplan .plcard,#vplan #pres>.card,#vplan .il-transfer-card{box-shadow:0 7px 20px #17362b0d;border-color:#d7e6e0!important}\
+#vplan .prline{display:inline-block;border-radius:8px;padding:3px 7px;font-weight:900}\
+#vplan .prroute{line-height:1.42}\
+#vplan .il-transfer-card.ilq-risk{border-color:#efd8b6!important;background:linear-gradient(180deg,#fffdf9,#fff)}\
+#vplan .il-transfer-card.ilq-live{border-color:#c9e4d3!important}\
+#vplan .il-transfer-live{margin-top:7px;border-radius:10px;background:#f6faf8;padding:9px 10px}\
+#vplan .il-transfer-card.ilq-live .il-transfer-live{background:#eef8f1;color:#245d42}\
+#ilDiagnosticsCard{background:linear-gradient(180deg,#ffffff,#f8fbf9);border-color:#d4e6de}\
+#ilDiagnosticsCard .ilDiagTitle{display:flex;align-items:center;justify-content:space-between;gap:8px}\
+#ilDiagnosticsCard .ilDiagBadge{padding:4px 8px;border-radius:99px;background:#e8f5ec;color:#167341;font-size:9px;font-weight:900}\
+#ilDiagnosticsCard .ilDiagRow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #edf2ef;font-size:11.5px}\
+#ilDiagnosticsCard .ilDiagRow:last-of-type{border-bottom:0}\
+#ilDiagnosticsCard .ilDiagRow b{text-align:right;max-width:57%;overflow-wrap:anywhere}\
+#ilDiagnosticsCard .ilDiagActions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}\
+#ilDiagnosticsCard button{min-height:39px}\
+#vmedia .rtv-card{transition:border-color .18s ease,box-shadow .18s ease,transform .14s ease}\
+#vmedia .rtv-card:has(.rtv-status.playing){border-color:#c9e3d2;box-shadow:0 7px 20px #176b4210}\
+#vmedia .rtv-status.error{border:1px solid #f1d3cf}\
+@media(max-width:360px){#ilQualityStrip{grid-template-columns:1fr}.ilq-pill{display:flex;align-items:center;justify-content:space-between;text-align:left}.ilq-pill b{margin-top:0}}\
+body.senior #ilDiagnosticsCard .ilDiagRow{font-size:16px}body.senior #ilQualityStrip{grid-template-columns:1fr}';
+    d.head.appendChild(st);
+
+    function text(id, fallback){var x=d.getElementById(id);return x&&x.textContent.trim()?x.textContent.trim():(fallback||'—')}
+    function timeLabel(v){if(!v)return'—';return String(v).replace(/^dziś\s*/i,'')}
+    function hapticLabel(){try{var on=localStorage.getItem('il_haptic_touch_v1')!=='0';if(!on)return'Wyłączone';var x=localStorage.getItem('il_haptic_level_v1')||'normal';return x==='soft'?'Delikatna':x==='strong'?'Mocna':'Normalna'}catch(e){return'Normalna'}}
+    function notifLabel(){
+      var parts=[];
+      try{if(n&&n.getNewsStatus){var s=JSON.parse(n.getNewsStatus());parts.push('wpisy '+(s.enabled?(s.allowed?'wł.':'brak zgody'):'wył.'))}}catch(e){}
+      try{if(n&&n.isWasteEnabled)parts.push('odpady '+(n.isWasteEnabled()?'wł.':'wył.'))}catch(e){}
+      return parts.length?parts.join(' • '):'sprawdź ustawienia';
+    }
+    function onlineLabel(){return navigator.onLine===false?'Bez internetu':'Z internetem'}
+
+    function installDashboard(){
+      var v=d.getElementById('vdash');if(!v)return;
+      var first=v.querySelector('.card');if(!first||d.getElementById('ilQualityStrip'))return;
+      var box=d.createElement('div');box.id='ilQualityStrip';box.setAttribute('aria-label','Skrócony stan danych');
+      box.innerHTML='<div class="ilq-pill" id="ilqNet"><span>Sieć</span><b>Sprawdzam</b></div><div class="ilq-pill" id="ilqLive"><span>MLD LIVE</span><b>Sprawdzam</b></div><div class="ilq-pill" id="ilqWaste"><span>Odpady</span><b>Sprawdzam</b></div>';
+      first.appendChild(box);
+      var b=d.createElement('button');b.id='ilQualityRefresh';b.type='button';b.textContent='Odśwież dane';
+      b.onclick=function(){var r=d.getElementById('refreshall');if(r)r.click();b.textContent='Odświeżam…';setTimeout(function(){b.textContent='Odśwież dane';updateAll()},1800)};
+      first.appendChild(b);
+    }
+
+    function setPill(id,value,state){var x=d.getElementById(id);if(!x)return;var b=x.querySelector('b');if(b)b.textContent=value;x.classList.remove('good','warn','bad');x.classList.add(state||'')}
+    function updateDashboard(){
+      var online=navigator.onLine!==false;setPill('ilqNet',online?'Online':'Offline',online?'good':'bad');
+      var rt=text('statrt','brak bieżących danych'), liveBad=/brak/i.test(rt);setPill('ilqLive',timeLabel(rt),liveBad?'warn':'good');
+      var w=d.getElementById('ilWasteMain'),wt=w?w.textContent.trim():'Harmonogram';setPill('ilqWaste',wt||'Harmonogram',/czekam|brak/i.test(wt)?'warn':'good');
+    }
+
+    function installDiagnostics(){
+      var v=d.getElementById('vset');if(!v||d.getElementById('ilDiagnosticsCard'))return;
+      var c=d.createElement('div');c.className='card';c.id='ilDiagnosticsCard';
+      c.innerHTML='<div class="sectitle ilDiagTitle"><span>Stan aplikacji</span><span class="ilDiagBadge" id="ilDiagBadge">OK</span></div>'+
+        '<div class="ilDiagRow"><span>Wersja</span><b id="ilDiagVersion">'+VER+'</b></div>'+
+        '<div class="ilDiagRow"><span>Internet</span><b id="ilDiagNet">—</b></div>'+
+        '<div class="ilDiagRow"><span>MLD LIVE</span><b id="ilDiagLive">—</b></div>'+
+        '<div class="ilDiagRow"><span>Pogoda</span><b id="ilDiagWx">—</b></div>'+
+        '<div class="ilDiagRow"><span>Linia gminna</span><b id="ilDiagG">—</b></div>'+
+        '<div class="ilDiagRow"><span>Powiadomienia</span><b id="ilDiagNotif">—</b></div>'+
+        '<div class="ilDiagRow"><span>Wibracje</span><b id="ilDiagHaptic">—</b></div>'+
+        '<div class="ilDiagActions"><button type="button" class="btn" id="ilDiagRefresh">Odśwież dane</button><button type="button" class="btn2" id="ilDiagHapticTest">Test wibracji</button></div>'+
+        '<div class="hint" style="margin-top:8px">To szybka diagnostyka. Nie wysyła danych poza źródła używane już przez aplikację.</div>';
+      var statusCard=d.getElementById('statwx');statusCard=statusCard&&statusCard.closest('.card');
+      if(statusCard&&statusCard.parentNode)statusCard.parentNode.insertBefore(c,statusCard.nextSibling);else v.appendChild(c);
+      d.getElementById('ilDiagRefresh').onclick=function(){var b=d.getElementById('refreshall');if(b)b.click();setTimeout(updateAll,1800)};
+      d.getElementById('ilDiagHapticTest').onclick=function(){try{var lv=localStorage.getItem('il_haptic_level_v1')||'normal',ms=lv==='soft'?20:lv==='strong'?82:46;if(localStorage.getItem('il_haptic_touch_v1')!=='0')window.IL_HAPTICS48.pulse(ms)}catch(e){}};
+    }
+
+    function updateDiagnostics(){
+      var on=navigator.onLine!==false, live=text('statrt','brak bieżących danych'), badge=d.getElementById('ilDiagBadge');
+      var set=function(id,v){var x=d.getElementById(id);if(x)x.textContent=v};
+      set('ilDiagVersion',VER);set('ilDiagNet',onlineLabel());set('ilDiagLive',live);set('ilDiagWx',text('statwx','—'));set('ilDiagG',text('statg','—'));set('ilDiagNotif',notifLabel());set('ilDiagHaptic',hapticLabel());
+      if(badge){var ok=on&&!/brak live/i.test(live);badge.textContent=ok?'OK':(on?'Sprawdź na żywo':'Offline');badge.style.background=ok?'#e8f5ec':(on?'#fff3dc':'#f8e6e3');badge.style.color=ok?'#167341':(on?'#91620f':'#913a32')}
+    }
+
+    function polishPlanner(){
+      var root=d.getElementById('vplan');if(!root)return;
+      root.querySelectorAll('.il-transfer-card').forEach(function(card){
+        var t=card.textContent||'';card.classList.toggle('ilq-risk',/Ryzykowna przesiadka/.test(t));card.classList.toggle('ilq-live',/Na żywo:/.test(t));
+      });
+      var p=d.getElementById('pres');if(p&&!p.getAttribute('aria-live'))p.setAttribute('aria-live','polite');
+    }
+
+    function mediaNote(){
+      var v=d.getElementById('vmedia');if(!v||d.getElementById('ilMediaResilience'))return;
+      var note=d.createElement('div');note.id='ilMediaResilience';note.className='rtv-note';note.style.cssText='padding:9px 10px;border:1px solid #e1ece8;border-radius:11px;background:#f7faf9';
+      note.textContent='Połączenia są zabezpieczone ponawianiem: PR1 próbuje połączyć się ponownie, a TVP3 korzysta z kolejnych dostępnych źródeł transmisji.';
+      v.appendChild(note);
+    }
+
+    function versionFix(){var x=d.getElementById('ilVersionLabel');if(x)x.textContent=VER}
+    function updateAll(){versionFix();installDashboard();installDiagnostics();mediaNote();updateDashboard();updateDiagnostics();polishPlanner()}
+    updateAll();setTimeout(updateAll,500);setTimeout(updateAll,1600);
+    setInterval(updateAll,15000);
+    addEventListener('online',updateAll);addEventListener('offline',updateAll);
+    var p=d.getElementById('pres');if(p&&window.MutationObserver)new MutationObserver(function(){polishPlanner()}).observe(p,{childList:true,subtree:true,characterData:true});
+  }catch(e){try{console.warn('QUALITY 1.82.93:',e)}catch(_){}}
+})();
+
+
+;/* Ispina Lokalnie 1.82.95 — STABILITY & OFFLINE.
+   Bezpieczna warstwa: czytelny offline, jedno centrum powiadomień,
+   diagnostyka mediów i drobny polish UI. Bez zmian w rozkładach i DEX. */
+(function(){
+  'use strict';
+  try{
+    var d=document,n=window.IspinaNative,VER=window.IL_BUILD.versionName,ls=localStorage;
+    window.IL_APP_VERSION=VER;
+    if(d.getElementById('ilStability1840'))return;
+    var marker=d.createElement('meta');marker.id='ilStability1840';d.head.appendChild(marker);
+
+    var st=d.createElement('style');st.id='ilStabilityStyle1840';
+    st.textContent='\
+#ilOfflineCard{margin-top:10px;padding:11px 12px;border:1px solid #d9e8e1;border-radius:15px;background:linear-gradient(145deg,#f8fbf9,#fff);color:#45645a}\
+#ilOfflineCard.off{border-color:#ead9c7;background:linear-gradient(145deg,#fffaf2,#fff)}\
+#ilOfflineCard .ilh{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;font-weight:900;color:#285e50}\
+#ilOfflineCard.off .ilh{color:#855a22}\
+#ilOfflineCard .ilbadge{padding:4px 7px;border-radius:99px;background:#e9f5ee;color:#167344;font-size:9px;font-weight:900}\
+#ilOfflineCard.off .ilbadge{background:#fff0d9;color:#8a5e20}\
+#ilOfflineCard .ilsub{margin-top:5px;font-size:10.5px;line-height:1.45;color:#667b73}\
+#ilOfflineCard .ilitems{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}\
+#ilOfflineCard .ilitem{padding:5px 7px;border-radius:9px;background:#f0f6f3;font-size:9.5px;font-weight:800;color:#4f6e63}\
+#ilOfflineCard.off .ilitem{background:#fbf2e7;color:#765a36}\
+#ilNotifyCenter1840{background:linear-gradient(180deg,#fff,#f8fbf9);border-color:#d5e6de}\
+#ilNotifyCenter1840 .ilnrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #edf2ef}\
+#ilNotifyCenter1840 .ilnrow:last-of-type{border-bottom:0}\
+#ilNotifyCenter1840 .ilnrow b{font-size:12.5px;color:#2e564a}\
+#ilNotifyCenter1840 .ilnrow small{display:block;margin-top:2px;font-size:9.5px;color:#75877f;font-weight:500}\
+#ilNotifyCenter1840 .ilnstate{font-size:9.5px;font-weight:850;color:#507167;text-align:right}\
+#ilNotifyCenter1840 .ilnstate.bad{color:#9a3e34}.ilnstate.warn{color:#9a6818}\
+#ilNotifyCenter1840 .ilnactions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}\
+#ilNotifyCenter1840 .ilnactions button{min-height:39px}\
+#ilNotifyCenter1840 .ilnfoot{margin-top:8px;font-size:9.5px;line-height:1.45;color:#70827b}\
+#ilMediaDiag1840{margin:0 0 10px;padding:11px 12px;border:1px solid #dae8e2;border-radius:15px;background:#f8fbf9}\
+#ilMediaDiag1840 .ilmhead{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;font-weight:900;color:#285d50}\
+#ilMediaDiag1840 .ilmbadge{padding:4px 7px;border-radius:99px;background:#e9f5ee;color:#167344;font-size:9px}\
+#ilMediaDiag1840.off .ilmbadge{background:#f8e8e5;color:#913e35}\
+#ilMediaDiag1840 .ilmgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}\
+#ilMediaDiag1840 .ilm{padding:7px;border-radius:10px;background:#fff;border:1px solid #e6eeea;text-align:center;min-width:0}\
+#ilMediaDiag1840 .ilm span{display:block;font-size:8.5px;text-transform:uppercase;color:#82938c;font-weight:900}\
+#ilMediaDiag1840 .ilm b{display:block;margin-top:2px;font-size:9.5px;color:#49685f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\
+#ilMediaDiag1840 .ilm b.err{color:#983f36}#ilMediaDiag1840 .ilm b.play{color:#177246}\
+#ilMediaDiag1840 .ilmnote{margin-top:7px;font-size:9.5px;line-height:1.4;color:#71827c}\
+#vset .card.il1840-hidden-duplicate{display:none!important}\
+#ilDiagnosticsCard .ilDiagOfflineRow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #edf2ef;font-size:11.5px}\
+#ilDiagnosticsCard .ilDiagOfflineRow b{text-align:right}\
+#vplan .il-transfer-card,#vplan .plcard{transition:transform .14s ease,box-shadow .18s ease,border-color .18s ease}\
+#vplan .il-transfer-card:active,#vplan .plcard:active{transform:scale(.992)}\
+@media(max-width:360px){#ilMediaDiag1840 .ilmgrid{grid-template-columns:1fr}.ilnrow{align-items:flex-start!important}}\
+body.senior #ilOfflineCard .ilsub,body.senior #ilNotifyCenter1840 .ilnfoot,body.senior #ilMediaDiag1840 .ilmnote{font-size:14px}\
+body.senior #ilNotifyCenter1840 .ilnrow b{font-size:17px}';
+    d.head.appendChild(st);
+
+    function g(k,def){try{var v=ls.getItem(k);return v==null?def:v}catch(e){return def}}
+    function jp(k){try{return JSON.parse(g(k,'')||'null')}catch(e){return null}}
+    function fmt(t){if(!t)return'—';var x=new Date(+t);if(isNaN(x))return'—';return x.toLocaleDateString('pl-PL',{day:'2-digit',month:'2-digit'})+' '+x.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'})}
+    function markOnline(){try{if(navigator.onLine!==false)ls.setItem('il_last_online_1840',String(Date.now()))}catch(e){}}
+    function weatherStamp(){var w=jp('iwx5');return w&&w.t?fmt(w.t):'brak zapisu'}
+    function postStamp(){var p=jp('ilatestpost6');return p&&p.t?fmt(p.t):(p&&p.title?'zapisany':'brak zapisu')}
+    function wasteReady(){try{if(n&&n.getWasteData){var x=JSON.parse(n.getWasteData('')||'{}');return x&&x.years&&Object.keys(x.years).length?'zapisane':'brak'}}catch(e){}return jp('ilWasteData1')?'zapisane':'brak'}
+
+    function installOffline(){
+      var v=d.getElementById('vdash');if(!v||d.getElementById('ilOfflineCard'))return;
+      var first=v.querySelector('.card');if(!first)return;
+      var c=d.createElement('div');c.id='ilOfflineCard';c.setAttribute('role','status');
+      c.innerHTML='<div class="ilh"><span id="ilOfflineTitle">Tryb awaryjny</span><span class="ilbadge" id="ilOfflineBadge">Gotowy</span></div><div class="ilsub" id="ilOfflineSub">Sprawdzam zapisane dane…</div><div class="ilitems"><span class="ilitem">Rozkłady planowe</span><span class="ilitem">Linia gminna</span><span class="ilitem" id="ilOffWaste">Odpady</span><span class="ilitem" id="ilOffWx">Pogoda</span><span class="ilitem" id="ilOffNews">Aktualność</span></div>';
+      first.appendChild(c);
+    }
+    function updateOffline(){
+      installOffline();var c=d.getElementById('ilOfflineCard');if(!c)return;var on=navigator.onLine!==false;if(on)markOnline();
+      c.classList.toggle('off',!on);
+      var title=d.getElementById('ilOfflineTitle'),badge=d.getElementById('ilOfflineBadge'),sub=d.getElementById('ilOfflineSub');
+      if(on){title.textContent='Tryb offline gotowy';badge.textContent='Gotowy';sub.textContent='Aplikacja zachowuje najważniejsze dane na wypadek utraty internetu.'}
+      else{title.textContent='Internet jest teraz niedostępny';badge.textContent='Offline';var lo=g('il_last_online_1840','');sub.textContent='Bieżące dane wymagają internetu. Pokazuję rozkład i zapisane informacje.'+(lo?' Ostatnio online: '+fmt(lo)+'.':'')}
+      var w=d.getElementById('ilOffWaste'),wx=d.getElementById('ilOffWx'),nw=d.getElementById('ilOffNews');if(w)w.textContent='Odpady: '+wasteReady();if(wx)wx.textContent='Pogoda: '+weatherStamp();if(nw)nw.textContent='Aktualność: '+postStamp();
+      var q=d.getElementById('ilqLive');if(q&&!on){var b=q.querySelector('b');if(b)b.textContent='brak sieci';q.classList.remove('good','warn');q.classList.add('bad')}
+    }
+
+    function hideDupes(){
+      var ids=['newsAutoState','wasteNotifyEnabled','ilNotifyTests','nplast'];
+      ids.forEach(function(id){var x=d.getElementById(id);if(!x)return;var c=x.closest('.card');if(c&&c.id!=='ilNotifyCenter1840')c.classList.add('il1840-hidden-duplicate')});
+    }
+    function notifStatus(){
+      var out={news:null,waste:null,allowed:null,checked:0,error:''};
+      try{if(n&&n.getNewsStatus){var s=JSON.parse(n.getNewsStatus()||'{}');out.news=!!s.enabled;out.allowed=!!s.allowed;out.checked=+s.checked||0;out.error=s.error||''}}catch(e){}
+      try{if(n&&n.isWasteEnabled)out.waste=!!n.isWasteEnabled()}catch(e){}
+      return out;
+    }
+    function installNotifyCenter(){
+      var v=d.getElementById('vset');if(!v||!n||d.getElementById('ilNotifyCenter1840'))return;
+      if(!(n.getNewsStatus||n.isWasteEnabled||n.showTestNotification))return;
+      var c=d.createElement('div');c.className='card';c.id='ilNotifyCenter1840';
+      c.innerHTML='<div class="sectitle">Centrum powiadomień</div>'+ 
+        '<div class="ilnrow"><div><b>Nowe wpisy</b><small>Automatyczne sprawdzanie w tle</small></div><div><span class="ilnstate" id="ilNewsState1840">—</span><label class="set" style="margin:4px 0 0"><input type="checkbox" class="sw" id="ilNewsToggle1840"></label></div></div>'+ 
+        '<div class="ilnrow"><div><b>Odbiór odpadów</b><small>Przypomnienie dzień wcześniej</small></div><div><span class="ilnstate" id="ilWasteState1840">—</span><label class="set" style="margin:4px 0 0"><input type="checkbox" class="sw" id="ilWasteToggle1840"></label></div></div>'+ 
+        '<div class="ilnactions"><button class="btn" type="button" id="ilNewsCheck1840">Sprawdź wpisy</button><button class="btn2" type="button" id="ilNotifTest1840">Test powiadomienia</button><button class="btn2" type="button" id="ilNotifSettings1840">Dźwięk i zgody</button></div>'+ 
+        '<div class="ilnfoot" id="ilNotifFoot1840">Dźwięk, wibrację i tryb cichy dla kategorii powiadomień ustawisz w systemowych ustawieniach Androida.</div>';
+      var anchor=d.getElementById('ilDiagnosticsCard');if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(c,anchor);else v.insertBefore(c,v.firstChild);
+      var nt=d.getElementById('ilNewsToggle1840'),wt=d.getElementById('ilWasteToggle1840');
+      if(nt)nt.onchange=function(){try{if(n.setNewsEnabled)n.setNewsEnabled(!!this.checked)}catch(e){}setTimeout(updateNotify,250)};
+      if(wt)wt.onchange=function(){try{if(n.setWasteEnabled)n.setWasteEnabled(!!this.checked)}catch(e){}setTimeout(updateNotify,250)};
+      var ch=d.getElementById('ilNewsCheck1840');if(ch)ch.onclick=function(){var b=this;try{if(n.requestNewsSync){n.requestNewsSync();b.textContent='Zlecono sprawdzenie';setTimeout(function(){b.textContent='Sprawdź nowości';updateNotify()},3000)}else{var old=d.getElementById('ncheck');if(old)old.click()}}catch(e){b.textContent='Spróbuj ponownie';setTimeout(function(){b.textContent='Sprawdź nowości'},1800)}};
+      var tst=d.getElementById('ilNotifTest1840');if(tst)tst.onclick=function(){try{var r=n.showTestNotification?n.showTestNotification():'error';this.textContent=r==='ok'?'Wysłano test':r==='settings'?'Wymaga zgody':'Test nieudany';if(r==='settings'&&n.newsSettings)n.newsSettings()}catch(e){this.textContent='Test niedostępny'}var b=this;setTimeout(function(){b.textContent='Test powiadomienia'},2200)};
+      var set=d.getElementById('ilNotifSettings1840');if(set)set.onclick=function(){try{if(n.newsSettings)n.newsSettings();else if(n.openNotificationSettings)n.openNotificationSettings()}catch(e){}};
+      hideDupes();
+    }
+    function updateNotify(){
+      installNotifyCenter();hideDupes();var s=notifStatus(),a=d.getElementById('ilNewsToggle1840'),b=d.getElementById('ilWasteToggle1840'),ns=d.getElementById('ilNewsState1840'),ws=d.getElementById('ilWasteState1840');
+      if(a&&s.news!==null)a.checked=s.news;if(b&&s.waste!==null)b.checked=s.waste;
+      if(ns){ns.className='ilnstate'+(s.allowed===false?' warn':'');ns.textContent=s.news===null?'niedostępne':(!s.news?'wyłączone':s.allowed===false?'brak zgody':'włączone')}
+      if(ws){ws.className='ilnstate';ws.textContent=s.waste===null?'niedostępne':(s.waste?'włączone':'wyłączone')}
+      var foot=d.getElementById('ilNotifFoot1840');if(foot&&s.checked)foot.textContent='Wpisy ostatnio sprawdzone: '+fmt(s.checked)+(s.error?' • '+s.error:'')+'. Dźwięk i tryb cichy ustawisz w Androidzie.';
+    }
+
+    function mediaState(id){var x=d.getElementById(id),t=x?(x.textContent||'').trim():'';if(!t)return{t:'gotowe',c:''};if(/odtwarz|gra|playing|transmisj.*dzia|uruchomion/i.test(t))return{t:'odtwarzanie',c:'play'};if(/brak internetu|nie uda|błąd|error|spróbuj/i.test(t))return{t:'problem',c:'err'};if(/łącz|przygot|ponow/i.test(t))return{t:'łączenie',c:''};return{t:'gotowe',c:''}}
+    function installMediaDiag(){
+      var v=d.getElementById('vmedia');if(!v||d.getElementById('ilMediaDiag1840'))return;
+      var c=d.createElement('div');c.id='ilMediaDiag1840';c.innerHTML='<div class="ilmhead"><span>Stan mediów</span><span class="ilmbadge" id="ilMediaNet1840">Online</span></div><div class="ilmgrid"><div class="ilm"><span>PR1</span><b id="ilMPr11840">gotowe</b></div><div class="ilm"><span>ESKA</span><b id="ilMEska1840">gotowe</b></div><div class="ilm"><span>TVP3</span><b id="ilMTvp1840">gotowe</b></div></div><div class="ilmnote">PR1 ma automatyczne ponawianie połączenia, a TVP3 przechodzi przez kolejne źródła zapasowe. Status odzwierciedla bieżący odtwarzacz.</div>';
+      var head=v.querySelector('.rtv-head');if(head&&head.nextSibling)v.insertBefore(c,head.nextSibling);else v.insertBefore(c,v.firstChild);
+      ['rtvStatusPr1','rtvStatusEska','rtvStatusTvp'].forEach(function(id){var x=d.getElementById(id);if(x&&window.MutationObserver)new MutationObserver(updateMedia).observe(x,{childList:true,subtree:true,characterData:true,attributes:true})});
+    }
+    function updateMedia(){
+      installMediaDiag();var c=d.getElementById('ilMediaDiag1840');if(!c)return;var on=navigator.onLine!==false;c.classList.toggle('off',!on);var net=d.getElementById('ilMediaNet1840');if(net)net.textContent=on?'Online':'Offline';
+      [['rtvStatusPr1','ilMPr11840'],['rtvStatusEska','ilMEska1840'],['rtvStatusTvp','ilMTvp1840']].forEach(function(p){var s=mediaState(p[0]),x=d.getElementById(p[1]);if(x){x.textContent=on?s.t:'brak sieci';x.className=on?s.c:'err'}});
+    }
+
+    function extendDiagnostics(){
+      var card=d.getElementById('ilDiagnosticsCard');if(!card||d.getElementById('ilDiagOffline1840'))return;
+      var actions=card.querySelector('.ilDiagActions'),row=d.createElement('div');row.className='ilDiagOfflineRow';row.id='ilDiagOffline1840';row.innerHTML='<span>Pamięć offline</span><b id="ilDiagOfflineValue1840">—</b>';
+      if(actions)card.insertBefore(row,actions);else card.appendChild(row);
+    }
+    function updateDiagOffline(){extendDiagnostics();var x=d.getElementById('ilDiagOfflineValue1840');if(x)x.textContent='rozkłady • gminna • odpady • zapisane dane';var v=d.getElementById('ilDiagVersion');if(v)v.textContent=VER;var vl=d.getElementById('ilVersionLabel');if(vl)vl.textContent=VER}
+
+    function updateAll(){updateOffline();updateNotify();updateMedia();updateDiagOffline()}
+    markOnline();installOffline();installNotifyCenter();installMediaDiag();extendDiagnostics();updateAll();
+    setTimeout(updateAll,500);setTimeout(updateAll,1800);setInterval(updateAll,15000);
+    addEventListener('online',function(){markOnline();updateAll()});addEventListener('offline',updateAll);
+  }catch(e){try{console.warn('STABILITY 1.82.93:',e)}catch(_){}}
+})();
+
+
+;/* Ispina Lokalnie 1.82.95 — NATIVE WORDPRESS FOUNDATION.
+   Pierwszy etap odchodzenia od WebView: aktualności i treści WordPress są
+   kierowane do istniejącego natywnego czytnika Androida, z cache i sync status. */
+(function(){
+  'use strict';
+  try{
+    var d=document,n=window.IspinaNative,VER=window.IL_BUILD.versionName,ls=localStorage;
+    window.IL_APP_VERSION=VER;
+    if(d.getElementById('ilNativeWp1841'))return;
+    var marker=d.createElement('meta');marker.id='ilNativeWp1841';d.head.appendChild(marker);
+
+    var st=d.createElement('style');st.id='ilNativeWpStyle1841';
+    st.textContent='\
+#ilNativeNews1841{margin-top:9px;padding:11px 12px;border:1px solid #d5e6de;border-radius:15px;background:linear-gradient(145deg,#f7fbf9,#fff)}\
+#ilNativeNews1841 .ilwphead{display:flex;align-items:center;justify-content:space-between;gap:9px}\
+#ilNativeNews1841 .ilwptitle{font-size:12.5px;font-weight:950;color:#285f50}\
+#ilNativeNews1841 .ilwpbadge{padding:4px 7px;border-radius:99px;background:#e7f5ec;color:#167341;font-size:9px;font-weight:900}\
+#ilNativeNews1841.off .ilwpbadge{background:#fff0d9;color:#8a5e20}\
+#ilNativeNews1841 .ilwppost{margin-top:7px;font-size:12px;font-weight:850;color:#355f52;line-height:1.35}\
+#ilNativeNews1841 .ilwpmeta{margin-top:3px;font-size:9.5px;color:#7a8b84}\
+#ilNativeNews1841 .ilwpactions{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}\
+#ilNativeNews1841 button{min-height:38px}\
+#ilDiagnosticsCard .ilWpDiag1841{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #edf2ef;font-size:11.5px}\
+#ilDiagnosticsCard .ilWpDiag1841 b{text-align:right;color:#2e6654}\
+#dnews .ilNativeBadge1841{display:inline-block;margin-left:6px;padding:2px 5px;border-radius:99px;background:#e7f5ec;color:#167341;font-size:8px;font-weight:900;vertical-align:middle}\
+body.senior #ilNativeNews1841 .ilwppost{font-size:17px}body.senior #ilNativeNews1841 .ilwpmeta{font-size:13px}';
+    d.head.appendChild(st);
+
+    function parseJson(x){try{return JSON.parse(x||'')}catch(e){return null}}
+    function stripHtml(x){try{var t=d.createElement('textarea');t.innerHTML=String(x||'');return t.value.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim()}catch(e){return String(x||'')}}
+    function fmtDate(x){if(!x)return'';var z=new Date(x);if(isNaN(z))return'';return z.toLocaleDateString('pl-PL',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+z.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'})}
+    function getNativePost(){
+      var p=null;
+      try{if(n&&n.getLatestPostJson){var j=parseJson(n.getLatestPostJson());if(j&&j.posts&&j.posts[0])p=j.posts[0]}}catch(e){}
+      if(!p){try{p=parseJson(ls.getItem('il-reader-latest')||'')}catch(e){}}
+      return p;
+    }
+    function openNative(url){
+      url=url||'https://ispinalokalnie.wordpress.com/aktualnosci/';
+      try{if(n&&n.openReader){n.openReader(url);return true}}catch(e){}
+      return false;
+    }
+    function requestNativeSync(){
+      try{if(n&&n.requestNewsSync){n.requestNewsSync();ls.setItem('il_native_news_req_1841',String(Date.now()));return true}}catch(e){}
+      return false;
+    }
+    function newsStatus(){
+      var s=null;try{if(n&&n.getNewsStatus)s=parseJson(n.getNewsStatus())}catch(e){}return s||{};
+    }
+
+    function installCard(){
+      var v=d.getElementById('vdash');if(!v||d.getElementById('ilNativeNews1841'))return;
+      var cards=v.querySelectorAll('.card'),anchor=null;
+      for(var i=0;i<cards.length;i++){if(cards[i].querySelector('#dnews')){anchor=cards[i];break}}
+      var c=d.createElement('div');c.id='ilNativeNews1841';c.setAttribute('role','status');
+      c.innerHTML='<div class="ilwphead"><span class="ilwptitle">Aktualności z Ispiny</span><span class="ilwpbadge" id="ilWpBadge1841">Na bieżąco</span></div><div class="ilwppost" id="ilWpPost1841">Sprawdzam najnowszy wpis…</div><div class="ilwpmeta" id="ilWpMeta1841">Najnowsze informacje z Ispiny</div><div class="ilwpactions"><button class="btn" type="button" id="ilWpOpen1841">Wszystkie wpisy</button><button class="btn2" type="button" id="ilWpSync1841">Odśwież</button></div>';
+      if(anchor&&anchor.parentNode)anchor.parentNode.insertBefore(c,anchor.nextSibling);else v.appendChild(c);
+      d.getElementById('ilWpOpen1841').onclick=function(){if(!openNative())this.textContent='Teraz niedostępne'};
+      d.getElementById('ilWpSync1841').onclick=function(){var b=this;if(requestNativeSync()){b.textContent='Odświeżam…';setTimeout(function(){updateCard();b.textContent='Odśwież'},2300)}else{b.textContent='Teraz niedostępne';setTimeout(function(){b.textContent='Odśwież'},1800)}};
+    }
+    function updateCard(){
+      installCard();var c=d.getElementById('ilNativeNews1841');if(!c)return;
+      var p=getNativePost(),s=newsStatus(),online=navigator.onLine!==false;
+      c.classList.toggle('off',!online);
+      var badge=d.getElementById('ilWpBadge1841'),title=d.getElementById('ilWpPost1841'),meta=d.getElementById('ilWpMeta1841');
+      if(badge)badge.textContent=online?'Na bieżąco':'Bez internetu';
+      if(title){var pt=(p&&p.title&&typeof p.title==='object')?p.title.rendered:(p&&p.title);title.textContent=p?stripHtml(pt||'Najnowszy wpis'):'Brak zapisanego wpisu';}
+      var when=(p&&(p.date||p.modified))?fmtDate(p.date||p.modified):'';
+      if(meta)meta.textContent=(online?'Zaktualizowano':'Ostatnio zapisano')+(when?' • '+when:'');
+      try{if(p)ls.setItem('il-reader-latest',JSON.stringify(p))}catch(e){}
+      var dn=d.getElementById('dnews');if(dn&&!dn.querySelector('.ilNativeBadge1841')){var b=d.createElement('span');b.className='ilNativeBadge1841';b.textContent='NATYWNE';var t=dn.querySelector('.nwt');if(t)t.appendChild(b)}
+    }
+
+    function installDiag(){
+      var card=d.getElementById('ilDiagnosticsCard');if(!card||card.querySelector('.ilWpDiag1841'))return;
+      var actions=card.querySelector('.ilDiagActions'),row=d.createElement('div');row.className='ilWpDiag1841';row.innerHTML='<span>Aktualności WordPress</span><b id="ilWpDiagValue1841">natywny czytnik</b>';
+      if(actions)card.insertBefore(row,actions);else card.appendChild(row);
+      var ver=d.getElementById('ilDiagVersion');if(ver)ver.textContent=VER;var vl=d.getElementById('ilVersionLabel');if(vl)vl.textContent=VER;
+    }
+    function updateDiag(){installDiag();var x=d.getElementById('ilWpDiagValue1841');if(!x)return;var p=getNativePost();x.textContent=(navigator.onLine===false?'Zapisane dane':'Dane dostępne')+(p?' • wpis zapisany':' • brak wpisu')}
+
+    function replaceManualCheck(){
+      var b=d.getElementById('ilNewsCheck1840')||d.getElementById('ncheck');if(!b||b.getAttribute('data-il-native1841'))return;
+      b.setAttribute('data-il-native1841','1');
+      b.onclick=function(){var self=this;if(requestNativeSync()){self.textContent='Odświeżam…';setTimeout(function(){updateCard();updateDiag();self.textContent=(self.id==='ncheck'?'Sprawdź teraz':'Sprawdź nowości')},2500)}else{self.textContent='Teraz niedostępne';setTimeout(function(){self.textContent=(self.id==='ncheck'?'Sprawdź teraz':'Sprawdź nowości')},1800)}};
+    }
+
+    /* WordPress content is already routed by the native bridge in this APK. This layer
+       makes the handoff explicit and keeps the dashboard/news check off page rendering. */
+    installCard();installDiag();replaceManualCheck();updateCard();updateDiag();
+    if(navigator.onLine!==false)requestNativeSync();
+    setTimeout(function(){replaceManualCheck();updateCard();updateDiag()},1000);
+    setTimeout(function(){replaceManualCheck();updateCard();updateDiag()},3000);
+    setInterval(function(){updateCard();updateDiag()},30000);
+    addEventListener('online',function(){requestNativeSync();setTimeout(updateCard,1500)});addEventListener('offline',updateCard);
+  }catch(e){try{console.warn('NATIVE WORDPRESS 1.82.93:',e)}catch(_){} }
+})();
+
+
+;/* Ispina Lokalnie 1.82.95 — NATIVE NEWS FEED.
+   Lista aktualności nie ładuje strony WordPress. Korzysta z danych z natywnego
+   mostu NewsEngine/NativeReader, zachowuje cache offline i otwiera artykuły
+   w istniejącym natywnym czytniku Androida. */
+(function(){
+ 'use strict';
+ try{
+  var d=document,n=window.IspinaNative,ls=localStorage,VER=window.IL_BUILD.versionName,CACHE='il_native_news_list_1842';
+  window.IL_APP_VERSION=VER;
+  if(d.getElementById('ilNativeFeedMarker1842'))return;
+  var mark=d.createElement('meta');mark.id='ilNativeFeedMarker1842';d.head.appendChild(mark);
+  var css=d.createElement('style');css.id='ilNativeFeedStyle1842';css.textContent='\
+#vilNews1842{padding-bottom:92px}\
+#vilNews1842 .ilnf-hero{padding:14px;border:1px solid #d4e6dd;border-radius:19px;background:linear-gradient(145deg,#f3faf7,#fff);box-shadow:0 5px 17px #17362b0a;margin-bottom:9px}\
+#vilNews1842 .ilnf-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}\
+#vilNews1842 .ilnf-title{font-size:18px;font-weight:950;color:#245e50;letter-spacing:-.2px}\
+#vilNews1842 .ilnf-sub{font-size:10.5px;color:#70827a;margin-top:3px;line-height:1.35}\
+#vilNews1842 .ilnf-state{flex:0 0 auto;border-radius:99px;padding:5px 8px;background:#e7f5ec;color:#167341;font-size:9px;font-weight:950}\
+#vilNews1842.off .ilnf-state{background:#fff0d9;color:#875d20}\
+#vilNews1842 .ilnf-tools{display:grid;grid-template-columns:1fr auto;gap:7px;margin-top:11px}\
+#vilNews1842 .ilnf-search{min-width:0;width:100%;height:42px;border:1px solid #d7e5df;background:#fff;border-radius:13px;padding:0 12px;color:#24483d;font:700 12px system-ui,sans-serif;outline:none}\
+#vilNews1842 .ilnf-search:focus{border-color:#7db6a0;box-shadow:0 0 0 3px #7db6a01d}\
+#vilNews1842 .ilnf-refresh{height:42px;border:0;border-radius:13px;padding:0 12px;background:#17834b;color:#fff;font-weight:900;font-size:10px}\
+#vilNews1842 .ilnf-info{margin:6px 2px 0;font-size:9.5px;color:#7b8c85}\
+#vilNews1842 .ilnf-list{display:grid;gap:8px}\
+#vilNews1842 .ilnf-post{display:block;width:100%;text-align:left;border:1px solid #dce8e2;border-radius:16px;background:#fff;padding:12px;box-shadow:0 3px 12px #17362b08;color:#17362b}\
+#vilNews1842 .ilnf-post:active{transform:scale(.988)}\
+#vilNews1842 .ilnf-date{font-size:9px;font-weight:850;color:#72857c;text-transform:uppercase;letter-spacing:.04em}\
+#vilNews1842 .ilnf-pt{font-size:14px;font-weight:950;line-height:1.28;color:#245e50;margin-top:4px}\
+#vilNews1842 .ilnf-ex{font-size:10.5px;color:#647970;line-height:1.42;margin-top:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}\
+#vilNews1842 .ilnf-open{margin-top:7px;font-size:9.5px;font-weight:900;color:#167341}\
+#vilNews1842 .ilnf-empty{padding:22px 14px;text-align:center;border:1px dashed #cadbd3;border-radius:16px;background:#f9fbfa;color:#657b72;font-size:11px;line-height:1.45}\
+#ilNativeNews1841 .ilnf-recent{display:grid;gap:4px;margin-top:7px}\
+#ilNativeNews1841 .ilnf-mini{border:0;background:#f4f9f6;border-radius:10px;padding:7px 8px;text-align:left;color:#396558;font-size:9.5px;font-weight:800;line-height:1.3}\
+#ilNativeMigration1842 .ilnm-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #edf2ef;font-size:11px}\
+#ilNativeMigration1842 .ilnm-row:last-of-type{border-bottom:0}\
+#ilNativeMigration1842 .ilnm-row b{text-align:right;color:#24654e;font-size:10px}\
+#ilNativeMigration1842 .ilnm-note{margin-top:7px;font-size:9.5px;line-height:1.45;color:#70827a}\
+body.senior #vilNews1842 .ilnf-title{font-size:24px}body.senior #vilNews1842 .ilnf-pt{font-size:19px}body.senior #vilNews1842 .ilnf-ex{font-size:15px}body.senior #vilNews1842 .ilnf-search{font-size:16px}';d.head.appendChild(css);
+
+  function parse(x){try{return JSON.parse(x||'')}catch(e){return null}}
+  function decode(x){try{var t=d.createElement('textarea');t.innerHTML=String(x||'');return t.value.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim()}catch(e){return String(x||'')}}
+  function title(p){var x=p&&p.title;return decode(x&&typeof x==='object'?x.rendered:x)||'Wpis Ispina Lokalnie'}
+  function excerpt(p){var x=p&&(p.excerpt||p.content);x=x&&typeof x==='object'?x.rendered:x;return decode(x||'')}
+  function url(p){return (p&&(p.URL||p.url||p.link||p.guid&&p.guid.rendered))||'https://ispinalokalnie.wordpress.com/aktualnosci/'}
+  function dateText(p){var x=p&&(p.date||p.modified||p.date_gmt);if(!x)return'';var z=new Date(x);if(isNaN(z))return'';return z.toLocaleDateString('pl-PL',{day:'2-digit',month:'long',year:'numeric'});}function imageUrl(p){try{if(!p)return'';function pick(x){if(!x)return'';if(typeof x==='string'){x=x.trim();return/^https?:\/\//i.test(x)?x.replace(/&amp;/g,'&'):''}if(Array.isArray(x)){for(var i=0;i<x.length;i++){var v=pick(x[i]);if(v)return v}return''}if(typeof x==='object'){return pick(x.source_url||x.URL||x.url||x.src||x.medium_large||x.large||x.medium||x.full||x.guid&&x.guid.rendered)}}var a=[p.jetpack_featured_media_url,p.featured_image_url,p.featured_image,p.thumbnail_url,p.thumbnail,p.image_url,p.image,p.images,p.media,p._embedded&&p._embedded['wp:featuredmedia']];for(var i=0;i<a.length;i++){var u=pick(a[i]);if(u)return u}var h='';if(p.content)h=typeof p.content==='object'?(p.content.rendered||''):p.content;if(!h&&p.excerpt)h=typeof p.excerpt==='object'?(p.excerpt.rendered||''):p.excerpt;var m=String(h||'').match(/<img[^>]+(?:data-src|data-lazy-src|src)=[\"']([^\"']+)[\"']/i);return m?String(m[1]).replace(/&amp;/g,'&'):''}catch(e){return''}}
+  function readNative(){
+   var posts=[];
+   try{if(n&&n.getLatestPostJson){var j=parse(n.getLatestPostJson());if(j&&Array.isArray(j.posts))posts=j.posts.filter(Boolean)}}catch(e){}
+   if(posts.length){try{ls.setItem(CACHE,JSON.stringify({at:Date.now(),posts:posts.slice(0,20)}))}catch(e){}}
+   if(!posts.length){try{var c=parse(ls.getItem(CACHE));if(c&&Array.isArray(c.posts))posts=c.posts}catch(e){}}
+   if(!posts.length){try{var one=parse(ls.getItem('il-reader-latest'));if(one)posts=[one]}catch(e){}}
+   return posts;
+  }
+  function cacheAge(){try{var c=parse(ls.getItem(CACHE));return c&&c.at?+c.at:0}catch(e){return 0}}
+  function fmtAge(t){if(!t)return'brak zapisu';var m=Math.max(0,Math.round((Date.now()-t)/60000));if(m<2)return'przed chwilą';if(m<60)return m+' min temu';var h=Math.round(m/60);if(h<24)return h+' godz. temu';return Math.round(h/24)+' dni temu'}
+  function openNative(u){try{if(n&&n.openReader){n.openReader(u);return true}}catch(e){}return false}
+  function requestSync(){try{if(n&&n.requestNewsSync){n.requestNewsSync();return true}}catch(e){}return false}
+
+  function ensureView(){
+   var panel=d.getElementById('iaP');if(!panel)return null;var v=d.getElementById('vilNews1842');if(v)return v;
+   v=d.createElement('div');v.id='vilNews1842';v.className='view';v.innerHTML='<div class="ilnf-hero"><div class="ilnf-top"><div><div class="ilnf-kicker">ISPINA LOKALNIE</div><div class="ilnf-title">Aktualności z Ispiny</div><div class="ilnf-sub">Najnowsze informacje, wydarzenia i sprawy z naszej miejscowości.</div></div><span class="ilnf-state" id="ilNfState1842">Na bieżąco</span></div><div class="ilnf-tools"><input class="ilnf-search" id="ilNfSearch1842" type="search" placeholder="Szukaj wpisu…" aria-label="Szukaj w aktualnościach"><button class="ilnf-refresh" id="ilNfRefresh1842" type="button">Odśwież</button></div><div class="ilnf-info" id="ilNfInfo1842">Ładuję aktualności…</div></div><div class="ilnf-list" id="ilNfList1842"></div>';
+   panel.appendChild(v);
+   var inp=v.querySelector('#ilNfSearch1842');inp.oninput=function(){render(this.value)};
+   v.querySelector('#ilNfRefresh1842').onclick=function(){var b=this;if(navigator.onLine===false){b.textContent='Offline';setTimeout(function(){b.textContent='Odśwież'},1500);return}if(requestSync()){b.textContent='Odświeżam…';setTimeout(function(){render(inp.value);b.textContent='Odśwież'},1100);setTimeout(function(){render(inp.value)},2600)}else{b.textContent='Niedostępne';setTimeout(function(){b.textContent='Odśwież'},1700)}};
+   return v;
+  }
+  function render(filter){
+   var v=ensureView();if(!v)return;var posts=readNative(),q=String(filter||'').trim().toLocaleLowerCase('pl-PL'),shown=posts.filter(function(p){return !q||title(p).toLocaleLowerCase('pl-PL').indexOf(q)>=0||excerpt(p).toLocaleLowerCase('pl-PL').indexOf(q)>=0});
+   v.classList.toggle('off',navigator.onLine===false);var state=d.getElementById('ilNfState1842');if(state)state.textContent=navigator.onLine===false?'Offline':'Na bieżąco';
+   var info=d.getElementById('ilNfInfo1842');if(info)info.textContent=(posts.length?posts.length+' '+(posts.length===1?'artykuł':'artykułów'):'Brak zapisanych artykułów')+(cacheAge()?' • aktualizacja '+fmtAge(cacheAge()):'');
+   var list=d.getElementById('ilNfList1842');if(!list)return;list.innerHTML='';
+   if(!shown.length){var e=d.createElement('div');e.className='ilnf-empty';e.textContent=q?'Nie znaleziono wpisów pasujących do wyszukiwania.':'Nie ma jeszcze wpisów w pamięci aplikacji. Połącz się z Internetem i wybierz „Odśwież”.';list.appendChild(e);return}
