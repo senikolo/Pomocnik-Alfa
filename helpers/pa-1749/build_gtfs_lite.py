@@ -11,7 +11,7 @@ SOURCES={
 }
 OUT=Path("data/pa-gtfs");OUT.mkdir(parents=True,exist_ok=True)
 now=datetime.datetime.now(ZoneInfo("Europe/Warsaw")).date()
-dates={(now+datetime.timedelta(days=d)).strftime("%Y%m%d") for d in (-1,0,1,2)}
+dates={(now+datetime.timedelta(days=d)).strftime("%Y%m%d") for d in range(-1,14)}
 HEADERS={
  "stops.txt":["stop_id","stop_code","stop_name","stop_lat","stop_lon"],
  "routes.txt":["route_id","route_short_name","route_long_name","route_type"],
