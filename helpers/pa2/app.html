@@ -193,6 +193,17 @@ nav button{min-height:58px;font-size:12px}nav button.active{box-shadow:inset 0 0
 #favorites .module{display:flex;align-items:center;gap:5px;min-height:50px}.note{font-size:16px;line-height:1.7}
 .senior button,.senior .btn,.senior input,.senior select{min-height:58px}.senior label{font-size:17px}.senior nav button{font-size:14px}
 @media(max-width:360px){main{padding-left:9px;padding-right:9px}.card{padding:11px}.entry{gap:5px}.accept{min-width:76px;padding:9px 7px}header h1{font-size:18px}.bus-eta strong{font-size:20px}}
+
+/* Flex gap is absent in Android 10/11 stock WebViews. Use actual margins. */
+header{gap:0}header>.heading{margin-left:12px;margin-right:12px;min-width:0}
+.entry{gap:0}.entry>*+*{margin-left:7px}
+.row{gap:0}.row>*+*{margin-left:8px}
+.options{gap:0}.options>*{margin-right:6px;margin-bottom:6px}
+nav .nav-inner{gap:0}nav button+button{margin-left:6px}
+.bubble .options{gap:0}.bubble .options>button{margin-right:6px;margin-bottom:6px}
+.osm-toolbar{gap:0}.osm-toolbar>.osm-buttons{margin-left:7px}.osm-buttons{gap:0}.osm-buttons button+button{margin-left:5px}
+.bus-card-header .bus-vehicle-line{gap:0}.bus-vehicle-line>.vicon{margin-right:8px}
+.bus-status{gap:0}.bus-status>.vicon{margin-right:8px}.bus-eta strong{gap:0}.bus-eta strong>.vicon{margin-right:8px}
 </style></head><body>
 <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><defs>
 <symbol id="pa-arrow-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6M9 12h12" /></symbol>
