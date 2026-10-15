@@ -214,7 +214,7 @@ $('busStop').oninput=busStopList;$('busStop').onfocus=()=>{if(!busState.stop)bus
 $('busLine').onchange=busChangeLine;$('busDirection').onchange=busChangeDirection;
 $('checkBus').onclick=checkLiveBus;$('busRefresh').onclick=checkLiveBus;$('busQuick').onclick=()=>tab('liveBus');
 
-$('official').onclick=()=>native('official',{url:'https://portalpasazera.pl/'}).catch(e=>toast(e.message));document.querySelectorAll('.module').forEach(b=>b.onclick=()=>native('module',{name:b.dataset.module}).catch(e=>toast(e.message)));
+$('official').onclick=()=>native('official',{url:'https://portalpasazera.pl/'}).catch(e=>toast(e.message));$('goDashboard').onclick=()=>native('back').catch(e=>toast(e.message));
 $('chatInput').addEventListener('focus',()=>{document.body.classList.add('keyboard-open');setTimeout(scrollChat,100)});
 $('chatInput').addEventListener('blur',()=>{document.body.classList.remove('keyboard-open');setTimeout(layoutChat,100)});
 window.addEventListener('resize',layoutChat);if(window.visualViewport)window.visualViewport.addEventListener('resize',layoutChat);
