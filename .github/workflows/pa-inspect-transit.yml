@@ -1,0 +1,45 @@
+name: PA inspect existing native transit UI
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  inspect:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.issue.title == 'TRIGGER PA TRANSIT INSPECT 20261015' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Fetch APK and Apktool
+        run: |
+          set -euxo pipefail
+          gh run download 37921731880 -R "$GITHUB_REPOSITORY" -n Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-UNSIGNED -D baseline
+          gh release download v2.12.1 -R iBotPeaches/Apktool -p 'apktool_2.12.1.jar' -D tools
+          test -s tools/apktool_2.12.1.jar
+          java -jar tools/apktool_2.12.1.jar --version
+      - name: Extract activity and manifest for safe patch
+        run: |
+          set -euxo pipefail
+          java -Xmx3g -jar tools/apktool_2.12.1.jar d -f -o pa-d baseline/Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-UNSIGNED.apk
+          mkdir -p inspect
+          cp pa-d/AndroidManifest.xml inspect/AndroidManifest.xml
+          find pa-d -name 'MainActivity.smali' -o -name 'NearbyDeparturesActivity.smali' -o -name 'LineDeparturesActivity.smali' -o -name 'NativeUi.smali' > inspect/paths.txt
+          while IFS= read -r f; do
+            cp "$f" "inspect/$(basename "$f")"
+          done < inspect/paths.txt
+          grep -R -n 'Lcom/ispina/lokalnie/MainActivity;' pa-d/smali*/com/ispina/lokalnie/MainActivity.smali | head -8 || true
+          wc -c inspect/*.smali
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PA-1766-SMALI-TRANSIT-INSPECT
+          path: inspect/
+          retention-days: 5
