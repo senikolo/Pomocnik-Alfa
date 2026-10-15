@@ -94,7 +94,7 @@ function prepare(date,idx){
  if(di<0||!idx.covered[di])throw new Error("Brak potwierdzonych danych rozkładu na "+day+". Wybierz dzień objęty aktualną bazą. Nie wyświetlam niezweryfikowanych kursów.");
  return {day:di,minute:date.getHours()*60+date.getMinutes(),date};
 }
-const groupOf=(index,sid)=>norm(index.stops[sid]?.[1]);
+const groupOf=(index,sid)=>{const key=norm(index.stops[sid]?.[1]);return index.groups.get(key)?.key||key;};
 function oneTrip(points,src,dst,minDepart){
  let board=null;
  for(let i=0;i<points.length;i++){
@@ -202,7 +202,7 @@ function extractStop(idx,text){
  }
  return null;
 }
-const dialogue={from:null,to:null,when:null,fromHint:"",toHint:"",fromCandidates:[],toCandidates:[],asked:"",line:null,lastResults:[]};
+const dialogue={from:null,to:null,when:null,fromHint:"",toHint:"",fromCandidates:[],toCandidates:[],asked:"",line:null,lastResults:[],intent:"route"};
 function segmentKey(value){
  let k=norm(value).replace(/^(?:przystanek|przystanku|stacja|stacji|z|ze|do|na)\s+/,"");
  for(const [a,b] of [
@@ -337,7 +337,8 @@ async function assistant(){
  }
  if(/\b(od nowa|nowa trasa|wyczysc rozmowe|reset)\b/.test(lower)){
   dialogue.from=dialogue.to=dialogue.when=null;dialogue.fromHint=dialogue.toHint="";
-  dialogue.fromCandidates=dialogue.toCandidates=[];dialogue.asked="";dialogue.line=null;dialogue.lastResults=[];
+  dialogue.fromCandidates=dialogue.toCandidates=[];dialogue.asked="";dialogue.line=null;dialogue.lastResults=[];dialogue.intent="route";
+  start=end=null;$("from").value=$("to").value="";
   answer("Jasne, zaczynamy nową trasę. Skąd chcesz jechać?");return;
  }
  if(/\b(gdzie.*(?:autobus|bus)|gps|pozycja.*(?:autobus|bus))\b/.test(lower)){
@@ -350,7 +351,7 @@ async function assistant(){
  if(proposed&&proposed!==network){
   $("network").value=proposed;$("network").onchange();
   dialogue.from=dialogue.to=null;dialogue.fromHint=dialogue.toHint="";
-  dialogue.fromCandidates=dialogue.toCandidates=[];dialogue.asked="";dialogue.line=null;
+  dialogue.fromCandidates=dialogue.toCandidates=[];dialogue.asked="";dialogue.line=null;dialogue.intent="route";
  }
  const parsed=parseRequestDate(question),date=parsed.date;
  dialogue.when=date;
@@ -360,6 +361,9 @@ async function assistant(){
   lower.match(/\b(a(?:4|7|50|57|65))\b/);
  if(lineMention)dialogue.line=lineMention[1].toUpperCase();
  const loc=parseLocations(question);
+ const departureRequest=/\b(kiedy|najblizsz\w*|nastepn\w*|odjazd\w*|odjezdz\w*|o ktorej|rozklad\w*)\b/.test(lower);
+ if(departureRequest && !loc.to){dialogue.intent="departure";dialogue.to=null;dialogue.toHint="";}
+ else if(loc.from&&loc.to){dialogue.intent="route";if(!lineMention)dialogue.line=null;}
  if(loc.from||loc.to){
   if(loc.from){const f=identifyStop(idx,loc.from);dialogue.from=f.group;dialogue.fromHint=loc.from;dialogue.fromCandidates=f.candidates;}
   if(loc.to){const t=identifyStop(idx,loc.to);dialogue.to=t.group;dialogue.toHint=loc.to;dialogue.toCandidates=t.candidates;}
@@ -374,14 +378,15 @@ async function assistant(){
   }
  }
  // A standalone "A4 z Ispiny" is a departure request, not an incomplete journey.
- const asksDepartures=/\b(kiedy|najblizsz\w*|nastepn\w*|odjazd\w*|odjezdz\w*|o ktorej|rozkla\w*)\b/.test(lower)||
+ const asksDepartures=dialogue.intent==="departure"||departureRequest||
    (!!dialogue.line&&!dialogue.to&&!!dialogue.from);
  if(asksDepartures&&!dialogue.to){
   if(!dialogue.from){dialogue.asked="from";answer("Z którego przystanku sprawdzić najbliższe odjazdy?");return;}
   try{
    const r=await departures(idx,dialogue.from,date,dialogue.line);
-   if(r.message){answer(r.message);return;}
+   if(r.message){dialogue.intent="route";answer(r.message);return;}
    const list=r.found.map(x=>minuteFormat(x.time)+" • "+x.line+" → "+(x.headsign||"kierunek nieopisany"));
+   dialogue.intent="route";dialogue.asked="";
    answer(list.length?"Planowe odjazdy z "+dialogue.from.name+" od "+pad(date.getHours())+":"+pad(date.getMinutes())+
      ":\n"+list.join("\n")+"\nBez danych o rzeczywistym opóźnieniu.":"Brak potwierdzonych odjazdów z "+dialogue.from.name+" w kolejnych 6 godzinach. Sprawdź inną godzinę lub linię.");
   }catch(e){answer(e.message);}
