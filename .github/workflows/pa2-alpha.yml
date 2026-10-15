@@ -61,6 +61,9 @@ jobs:
           cp helpers/pa2/PALiveTest.java.test live-test-src/PALiveTest.java
           javac -cp "classes:$SDK/platforms/android-35/android.jar" -d live-test-classes live-test-src/PALiveTest.java
           java -cp "classes:live-test-classes:$SDK/platforms/android-35/android.jar" com.ispina.lokalnie.PALiveTest | tee output/live-tests.txt
+          cp helpers/pa2/PAIconsTest.java.test live-test-src/PAIconsTest.java
+          javac -encoding UTF-8 -cp "classes:$SDK/platforms/android-35/android.jar" -d live-test-classes live-test-src/PAIconsTest.java
+          java -cp "classes:live-test-classes:$SDK/platforms/android-35/android.jar" PAIconsTest | tee output/dashboard-icon-tests.txt
           find classes -name '*.class' -print0 | xargs -0 "$SDK/build-tools/35.0.0/d8" --min-api 29 --lib "$SDK/platforms/android-35/android.jar" --output native
           java -Xmx4g -jar tools/apktool_2.12.1.jar b decoded -o output/rebuilt.apk
           cp native/classes.dex output/classes5.dex
@@ -85,6 +88,29 @@ jobs:
       - name: Export public signing tool for local stable-key signing
         run: |
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" output/apksigner.jar
+      - name: Sign temporary standalone Android test build
+        run: |
+          keytool -genkeypair -noprompt -alias pa2debug -keyalg RSA -keysize 3072 -validity 30 \
+            -keystore "$RUNNER_TEMP/pa2-debug.jks" -storepass android -keypass android \
+            -dname "CN=PA2 temporary test, OU=Android CI, O=Pomocnik Alfa"
+          SIGN="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          "$SIGN" sign --ks "$RUNNER_TEMP/pa2-debug.jks" --ks-key-alias pa2debug \
+            --ks-pass pass:android --key-pass pass:android \
+            --out output/Pomocnik-Alfa-2.0.0-alpha.6-UX-DEBUG.apk output/PA2-aligned-unsigned.apk
+          "$SIGN" sign --ks "$RUNNER_TEMP/pa2-debug.jks" --ks-key-alias pa2debug \
+            --ks-pass pass:android --key-pass pass:android \
+            --out output/PA2-instrumentation-debug.apk output/PA2-instrumentation-unsigned.apk
+          "$SIGN" verify --verbose output/Pomocnik-Alfa-2.0.0-alpha.6-UX-DEBUG.apk
+          "$SIGN" verify --verbose output/PA2-instrumentation-debug.apk
+          sha256sum output/Pomocnik-Alfa-2.0.0-alpha.6-UX-DEBUG.apk > output/SHA256-debug.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PA2-installable-debug-alpha6
+          path: |
+            output/Pomocnik-Alfa-2.0.0-alpha.6-UX-DEBUG.apk
+            output/PA2-instrumentation-debug.apk
+            output/SHA256-debug.txt
+          retention-days: 30
       - name: Preserve complete reconstructed project and updateable data
         run: |
           cp -r helpers/pa2 decoded/pa2-build-sources
@@ -108,3 +134,48 @@ jobs:
             output/PA2-Reconstructed-Project.zip
             output/*.txt
           retention-days: 60
+
+  android_debug:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [29, 30]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: PA2-installable-debug-alpha6
+          path: build
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run installation and screen smoke tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          arch: x86_64
+          target: google_apis
+          profile: pixel_2
+          disable-animations: true
+          emulator-boot-timeout: 700
+          script: |
+            set -euo pipefail
+            mkdir -p results
+            adb install build/Pomocnik-Alfa-2.0.0-alpha.6-UX-DEBUG.apk
+            adb install build/PA2-instrumentation-debug.apk
+            adb logcat -c
+            timeout 300s adb shell am instrument -w com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/instrumentation.txt
+            grep -q 'TOTAL PASS system' results/instrumentation.txt
+            adb logcat -d -b crash > results/crash-buffer.txt
+            ! grep -q 'FATAL EXCEPTION' results/crash-buffer.txt
+            adb pull /sdcard/Android/data/com.senikolo.pomocniknowy.pa2preview/files/pa2-tests results/screenshots || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PA2-debug-Android-${{ matrix.api }}-screenshots-tests
+          path: results
+          retention-days: 30
