@@ -1,0 +1,850 @@
+   shown.slice(0,20).forEach(function(p,idx){var b=d.createElement('button');b.type='button';b.className='ilnf-post'+(idx===0?' ilnf-featured':'');var ex=excerpt(p),im=imageUrl(p),cover='';if(im)cover='<span class="ilnf-cover"><img alt="" loading="lazy" decoding="async"></span>';else if(idx===0)cover='<span class="ilnf-cover ilnf-cover-placeholder"><span class="ilnf-cover-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.5h16v13H4z"/><path d="M7 9h10M7 12h10M7 15h6"/></svg></span><span>Najświeższy wpis z Ispiny</span></span>';b.innerHTML=cover+'<span class="ilnf-body">'+(idx===0?'<span class="ilnf-latest">NAJNOWSZY WPIS</span>':'')+'<span class="ilnf-date"></span><span class="ilnf-pt"></span>'+(ex?'<span class="ilnf-ex"></span>':'')+'<span class="ilnf-open"><span class="ilnf-eye" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.8"/></svg></span><span>Czytaj artykuł</span><span class="ilnf-arrow" aria-hidden="true">→</span></span></span>';b.querySelector('.ilnf-date').textContent=dateText(p);b.querySelector('.ilnf-pt').textContent=title(p);if(ex)b.querySelector('.ilnf-ex').textContent=ex;if(im){var img=b.querySelector('.ilnf-cover img');if(img){img.onload=function(){this.parentNode.classList.add('ready')};img.onerror=function(){this.parentNode.style.display='none'};img.src=im}}b.onclick=function(){if(!openNative(url(p))){var x=this.querySelector('.ilnf-open span:nth-child(2)');if(x)x.textContent='Czytnik niedostępny'}};b.ilReaderPost1886=p;list.appendChild(b)});
+  }
+  function showFeed(){
+   var panel=d.getElementById('iaP'),v=ensureView();if(!panel||!v)return;try{if(!(history.state&&history.state.ia))history.pushState({ia:1},'',location.href)}catch(e){}
+   var drawer=d.getElementById('iaD'),shade=d.getElementById('sh');if(drawer)drawer.classList.remove('on');if(shade)shade.classList.remove('on');panel.querySelectorAll('.view').forEach(function(x){x.classList.remove('on')});v.classList.add('on');panel.classList.add('on');var sec=d.getElementById('sec');if(sec)sec.textContent='Aktualności';panel.scrollTop=0;render((d.getElementById('ilNfSearch1842')||{}).value||'');
+  }
+  window.IL_NATIVE_NEWS_FEED=showFeed;
+
+  function wire(){
+   var dn=d.getElementById('dnews');if(dn&&!dn.getAttribute('data-native-feed1842')){dn.setAttribute('data-native-feed1842','1');dn.onclick=showFeed}
+   var all=d.getElementById('ilWpOpen1841');if(all&&!all.getAttribute('data-native-feed1842')){all.setAttribute('data-native-feed1842','1');all.onclick=showFeed}
+   d.querySelectorAll('#nav .nb').forEach(function(b){var u=(b.getAttribute('data-u')||'').toLowerCase(),tx=(b.textContent||'').trim().toLowerCase();if((u.indexOf('aktualnosci')>=0||tx==='aktualności'||tx==='aktualnosci')&&!b.getAttribute('data-native-feed1842')){b.setAttribute('data-native-feed1842','1');b.onclick=showFeed}});
+   var bot=d.querySelector('#ilDayBottom button[data-kd-route=":news"]');if(bot&&!bot.getAttribute('data-native-feed1842')){bot.setAttribute('data-native-feed1842','1');bot.onclick=showFeed}
+  }
+  function addRecent(){
+   var card=d.getElementById('ilNativeNews1841');if(!card||card.querySelector('.ilnf-recent'))return;var posts=readNative();if(posts.length<2)return;var box=d.createElement('div');box.className='ilnf-recent';posts.slice(1,3).forEach(function(p){var b=d.createElement('button');b.type='button';b.className='ilnf-mini';b.textContent=title(p);b.onclick=function(){openNative(url(p))};box.appendChild(b)});var actions=card.querySelector('.ilwpactions');if(actions)card.insertBefore(box,actions);else card.appendChild(box)
+  }
+  function migrationCard(){
+   var v=d.getElementById('vset');if(!v||d.getElementById('ilNativeMigration1842'))return;var c=d.createElement('div');c.id='ilNativeMigration1842';c.className='card';c.innerHTML='<div class="sectitle">Przejście na moduły natywne</div><div class="ilnm-row"><span>Aktualności</span><b>API + lista w aplikacji</b></div><div class="ilnm-row"><span>Czytanie artykułów</span><b>Natywny czytnik Androida</b></div><div class="ilnm-row"><span>Planer i Odjazdy</span><b>Bez zmian • stabilny silnik</b></div><div class="ilnm-row"><span>Pulpit / Ustawienia</span><b>Hybrydowe • etap przejściowy</b></div><div class="ilnm-note">Migracja jest wykonywana modułami, aby zachować działające rozkłady, LIVE i powiadomienia. WebView nie jest usuwany na siłę przed przeniesieniem funkcji.</div>';v.appendChild(c)
+  }
+  function updateVersion(){var a=d.getElementById('ilDiagVersion');if(a)a.textContent=VER;var b=d.getElementById('ilVersionLabel');if(b)b.textContent=VER}
+  ensureView();wire();migrationCard();updateVersion();render('');addRecent();
+  setTimeout(function(){wire();render('');addRecent();migrationCard();updateVersion()},700);
+  setTimeout(function(){wire();render('');addRecent()},2400);
+  setInterval(function(){if(!d.hidden){wire();render((d.getElementById('ilNfSearch1842')||{}).value||'');addRecent()}},15000);
+  addEventListener('online',function(){requestSync();setTimeout(function(){render('');addRecent()},1700)});addEventListener('offline',function(){render((d.getElementById('ilNfSearch1842')||{}).value||'')});
+ }catch(e){try{console.warn('NATIVE NEWS FEED 1.82.93:',e)}catch(_){} }
+})();
+
+
+;/* Ispina Lokalnie 1.82.95 — DASHBOARD & SETTINGS POLISH.
+   Bezpieczna warstwa UX: pulpit bardziej aplikacyjny, szybkie skróty i porządek
+   w ustawieniach. Bez zmian w silniku Planera, Odjazdach, DEX-ach i danych. */
+(function(){
+ 'use strict';
+ try{
+  var d=document,ls=localStorage,VER=window.IL_BUILD.versionName;window.IL_APP_VERSION=VER;
+  if(d.getElementById('ilDashPolish1843'))return;
+  var marker=d.createElement('meta');marker.id='ilDashPolish1843';d.head.appendChild(marker);
+  var st=d.createElement('style');st.id='ilDashPolishStyle1843';st.textContent='\
+#ilDashHero1843{margin-bottom:10px;padding:16px;border:1px solid #cfe3da;border-radius:22px;background:linear-gradient(140deg,#155d6c,#2d8b87);color:#fff;box-shadow:0 9px 24px #164d5724;overflow:hidden;position:relative}\
+#ilDashHero1843:after{content:"";position:absolute;width:130px;height:130px;border-radius:50%;right:-52px;top:-58px;background:#ffffff10;box-shadow:-52px 82px 0 8px #ffffff08}\
+#ilDashHero1843 .ildh-top{position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}\
+#ilDashHero1843 .ildh-greet{font-size:20px;font-weight:950;letter-spacing:-.25px}\
+#ilDashHero1843 .ildh-date{font-size:11px;opacity:.9;margin-top:3px;text-transform:capitalize}\
+#ilDashHero1843 .ildh-state{flex:0 0 auto;padding:5px 8px;border-radius:99px;background:#ffffff1f;border:1px solid #ffffff2e;font-size:9.5px;font-weight:900}\
+#ilDashHero1843.off .ildh-state{background:#8b3c3630;border-color:#ffd5d033}\
+#ilDashHero1843 .ildh-sync{position:relative;z-index:1;margin-top:9px;font-size:10px;line-height:1.35;color:#e8fbf6}\
+#ilDashQuick1843{position:relative;z-index:1;display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:13px}\
+#ilDashQuick1843 button{min-width:0;border:1px solid #ffffff22;background:#ffffff16;color:#fff;border-radius:14px;padding:9px 4px 8px;font:850 9.5px system-ui,sans-serif;line-height:1.12;-webkit-tap-highlight-color:transparent}\
+#ilDashQuick1843 button:active{transform:scale(.97);background:#ffffff24}\
+#ilDashQuick1843 .ildq-icon{display:block;font-size:19px;line-height:1;margin-bottom:5px}\
+#vdash .il1843-hidden-news{display:none!important}\
+#vdash #ilNativeNews1841{margin:0 0 9px!important;padding:13px 14px;border-radius:17px;box-shadow:0 5px 17px #17362b0a}\
+#vdash #ilNativeNews1841 .ilwptitle{font-size:13.5px}\
+#vdash #ilNativeNews1841 .ilwppost{font-size:12.5px}\
+#ilSettingsQuick1843{background:linear-gradient(145deg,#f4faf7,#fff);border-color:#d4e6de}\
+#ilSettingsQuick1843 .ilsq-title{font-size:15px;font-weight:950;color:#245e50}\
+#ilSettingsQuick1843 .ilsq-sub{font-size:10px;line-height:1.35;color:#71847c;margin-top:3px}\
+#ilSettingsQuick1843 .ilsq-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}\
+#ilSettingsQuick1843 button{min-height:43px;border:1px solid #d4e5de;border-radius:13px;background:#fff;color:#315f52;text-align:left;padding:8px 10px;font:850 10.5px system-ui,sans-serif;box-shadow:0 2px 8px #17362b07}\
+#ilSettingsQuick1843 button:active{transform:scale(.985)}\
+#ilSettingsQuick1843 button span{display:block;font-size:9px;font-weight:650;color:#789087;margin-top:2px}\
+#vset .card{scroll-margin-top:90px}\
+#vset .il1843-focus{animation:il1843focus 1.1s ease}\
+@keyframes il1843focus{0%{box-shadow:0 0 0 0 #2d8b8744}35%{box-shadow:0 0 0 5px #2d8b8724}100%{box-shadow:0 0 0 0 #2d8b8700}}\
+#ilNativeMigration1842 .ilnm-note{background:#f6faf8;border:1px solid #e1ece7;border-radius:10px;padding:8px}\
+@media(max-width:370px){#ilDashQuick1843{grid-template-columns:1fr 1fr}#ilSettingsQuick1843 .ilsq-grid{grid-template-columns:1fr}}\
+body.senior #ilDashHero1843 .ildh-greet{font-size:28px}body.senior #ilDashQuick1843 button{font-size:15px;min-height:68px}body.senior #ilSettingsQuick1843 button{font-size:16px;min-height:58px}';
+  d.head.appendChild(st);
+
+  function fmtDate(){try{return new Date().toLocaleDateString('pl-PL',{weekday:'long',day:'numeric',month:'long'})}catch(e){return''}}
+  function greeting(){var n=new Date(),m=n.getHours()*60+n.getMinutes();if(m<300)return'Dobrego odpoczynku!';if(m<720)return'Dzień dobry! Miło Cię widzieć.';if(m<870)return'Miłego dnia!';if(m<1050)return'Miłego popołudnia!';if(m>=1320)return'Dobrego odpoczynku!';if(m>=1200)return'Dobry wieczór! Miło Cię widzieć.';try{var w=JSON.parse(ls.getItem('iwx5')||'null'),day=w&&w.d&&w.d.current&&w.d.current.is_day;if(day!==undefined&&day!==null)return +day?'Miłego popołudnia!':'Dobry wieczór! Miło Cię widzieć.'}catch(e){}return m<1110?'Miłego popołudnia!':'Dobry wieczór! Miło Cię widzieć.'}
+  function fmtLastOnline(){try{var x=ls.getItem('il_last_online_1840');if(!x)return'';var n=+x||Date.parse(x);if(!n)return'';var m=Math.max(0,Math.round((Date.now()-n)/60000));if(m<2)return'przed chwilą';if(m<60)return m+' min temu';var h=Math.round(m/60);if(h<24)return h+' godz. temu';return new Date(n).toLocaleDateString('pl-PL')}catch(e){return''}}
+  function route(u){
+   try{
+    if(u===':news'&&window.IL_NATIVE_NEWS_FEED){window.IL_NATIVE_NEWS_FEED();return}
+    var b=d.querySelector('#ilDayBottom button[data-kd-route="'+u+'"]');if(b){b.click();return}
+    var n=d.querySelector('#nav .nb[data-u="'+u+'"]');if(n){n.click();return}
+   }catch(e){}
+  }
+  function installHero(){
+   var v=d.getElementById('vdash');if(!v||d.getElementById('ilDashHero1843'))return;
+   var h=d.createElement('section');h.id='ilDashHero1843';h.setAttribute('aria-label','Skróty pulpitu');
+   h.innerHTML='<div class="ildh-top"><div><div class="ildh-greet" id="ilDashGreeting1843">Dzień dobry! Miło Cię widzieć.</div><div class="ildh-date" id="ilDashDate1843"></div></div><span class="ildh-state" id="ilDashState1843">Online</span></div><div class="ildh-sync" id="ilDashSync1843">Najważniejsze funkcje pod ręką.</div><div id="ilDashQuick1843"><button type="button" data-r=":news"><span class="ildq-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span><span class="ildq-main">Aktualności</span><span class="ildq-sub">Wpisy z Ispiny</span></button><button type="button" data-r=":dep"><span class="ildq-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="16" rx="3"/><path d="M7.5 7h9M7 13h10M8 19v2M16 19v2"/><circle cx="8.5" cy="15.5" r="1"/><circle cx="15.5" cy="15.5" r="1"/></svg></span><span class="ildq-main">Odjazdy</span><span class="ildq-sub">Najbliższe kursy</span></button><button type="button" data-r=":plan"><span class="ildq-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="18" r="2"/><path d="M8 6h3a3 3 0 0 1 3 3v6a3 3 0 0 0 3 3h1"/><path d="m15.5 15.5 2.5 2.5-2.5 2.5"/></svg></span><span class="ildq-main">Planer</span><span class="ildq-sub">Zaplanuj przejazd</span></button><button type="button" data-r=":day"><span class="ildq-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 9h16M8 13h2M14 13h2M8 17h2M14 17h2"/></svg></span><span class="ildq-main">Karta dnia</span><span class="ildq-sub">Data i informacje</span></button></div>';
+   v.insertBefore(h,v.firstChild);
+   h.querySelectorAll('button[data-r]').forEach(function(b){b.onclick=function(){route(this.getAttribute('data-r'))}});
+  }
+  function updateHero(){
+   installHero();var h=d.getElementById('ilDashHero1843');if(!h)return;var on=navigator.onLine!==false;h.classList.toggle('off',!on);
+   var g=d.getElementById('ilDashGreeting1843'),dt=d.getElementById('ilDashDate1843'),stt=d.getElementById('ilDashState1843'),sy=d.getElementById('ilDashSync1843');
+   if(g)g.textContent=greeting();if(dt)dt.textContent=fmtDate();if(stt)stt.textContent=on?'Z internetem':'Bez internetu';
+   var live=d.getElementById('statrt'),lt=live?(live.textContent||'').trim():'';var lo=fmtLastOnline();
+   if(sy)sy.textContent=on?'Dane aktualne':'Brak internetu • pokazuję zapisane dane.';
+  }
+  function tidyNews(){
+   var v=d.getElementById('vdash'),native=d.getElementById('ilNativeNews1841'),old=d.getElementById('dnews');if(!v||!native)return;
+   if(old){var c=old.closest('.card');if(c)c.classList.add('il1843-hidden-news')}
+   var first=v.querySelector('.card');if(first&&native!==first.nextElementSibling)v.insertBefore(native,first.nextSibling);
+  }
+  function target(id){return d.getElementById(id)}
+  function jump(id){var x=target(id);if(!x)return;x.scrollIntoView({behavior:'smooth',block:'start'});x.classList.remove('il1843-focus');void x.offsetWidth;x.classList.add('il1843-focus');setTimeout(function(){x.classList.remove('il1843-focus')},1200)}
+  function installSettingsQuick(){
+   var v=d.getElementById('vset');if(!v||d.getElementById('ilSettingsQuick1843'))return;
+   var c=d.createElement('div');c.id='ilSettingsQuick1843';c.className='card';
+   c.innerHTML='<div class="ilsq-title">Szybkie ustawienia</div><div class="ilsq-sub">Najczęściej używane opcje bez przewijania całej strony.</div><div class="ilsq-grid"><button type="button" data-t="ilNotifyCenter1840">Powiadomienia<span>Wpisy i odpady</span></button><button type="button" data-t="ilHapticCard">Wibracje<span>Siła i test wibracji</span></button></div>';
+   v.insertBefore(c,v.firstChild);c.querySelectorAll('button[data-t]').forEach(function(b){b.onclick=function(){jump(this.getAttribute('data-t'))}});
+  }
+  function updateMigration(){
+   var c=d.getElementById('ilNativeMigration1842');if(!c)return;var rows=c.querySelectorAll('.ilnm-row');
+   rows.forEach(function(r){var a=r.querySelector('span'),b=r.querySelector('b');if(a&&b&&/Pulpit\s*\/\s*Ustawienia/i.test(a.textContent)){b.textContent='Dopracowany interfejs • nadal hybrydowy'}});
+   var note=c.querySelector('.ilnm-note');if(note)note.textContent='Aktualności korzystają już z API/cache i natywnego czytnika. Pulpit oraz Ustawienia mają teraz bardziej aplikacyjny interfejs, ale ich pełne przeniesienie do natywnych widoków Androida wymaga osobnego etapu w kodzie źródłowym.';
+  }
+  function version(){var a=d.getElementById('ilDiagVersion');if(a)a.textContent=VER;var b=d.getElementById('ilVersionLabel');if(b)b.textContent=VER}
+  function all(){installHero();updateHero();tidyNews();installSettingsQuick();updateMigration();version()}
+  all();setTimeout(all,600);setTimeout(all,1800);setTimeout(all,3500);setInterval(function(){if(!d.hidden){updateHero();tidyNews();updateMigration();version()}},30000);
+  addEventListener('online',updateHero);addEventListener('offline',updateHero);d.addEventListener('visibilitychange',function(){if(!d.hidden)all()});
+ }catch(e){try{console.warn('DASHBOARD POLISH 1.82.93:',e)}catch(_){} }
+})();
+
+
+;/* Ispina Lokalnie 1.82.95 — APP SHELL POLISH.
+   Dalsze wygładzenie powłoki aplikacji bez ingerencji w DEX, Planer, Odjazdy
+   ani dane. Dodaje globalny stan offline, odświeżanie Pulpitu i wyszukiwarkę
+   ustawień. */
+(function(){
+ 'use strict';
+ try{
+  var d=document,ls=localStorage,VER=window.IL_BUILD.versionName;window.IL_APP_VERSION=VER;
+  if(d.getElementById('ilShell1844'))return;
+  var m=d.createElement('meta');m.id='ilShell1844';d.head.appendChild(m);
+  var css=d.createElement('style');css.id='ilShellStyle1844';css.textContent='\
+#ilOfflineRibbon1844{position:fixed;z-index:99989;left:9px;right:9px;top:calc(70px + env(safe-area-inset-top) + 6px);display:none;align-items:center;justify-content:space-between;gap:9px;padding:8px 10px;border:1px solid #efd49e;border-radius:13px;background:#fff8e8;color:#76551d;box-shadow:0 5px 16px #38280d18;font:800 10px system-ui,sans-serif}\
+#ilOfflineRibbon1844.on{display:flex}\
+#ilOfflineRibbon1844 button{border:1px solid #e4c986;background:#fff;color:#735319;border-radius:10px;padding:6px 9px;font:900 9px system-ui,sans-serif;white-space:nowrap}\
+#ilDashRefresh1844{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid #ffffff1f}\
+#ilDashRefresh1844 .ilr-meta{font-size:9px;color:#ddf3ed;line-height:1.3}\
+#ilDashRefresh1844 button{border:1px solid #ffffff2d;background:#ffffff14;color:#fff;border-radius:11px;padding:7px 9px;font:900 9px system-ui,sans-serif;white-space:nowrap}\
+#ilDashRefresh1844 button:active{transform:scale(.97);background:#ffffff24}\
+#ilSettingsSearch1844{position:sticky;top:0;z-index:7;margin-bottom:9px;padding:8px;border:1px solid #d5e5de;border-radius:16px;background:#f7fbf9eF;backdrop-filter:blur(8px);box-shadow:0 4px 14px #17362b0c}\
+#ilSettingsSearch1844 .ilss-row{display:grid;grid-template-columns:1fr auto;gap:7px}\
+#ilSettingsSearch1844 input{min-width:0;height:41px;border:1px solid #d4e2dc;border-radius:12px;background:#fff;color:#24483d;padding:0 11px;font:700 12px system-ui,sans-serif;outline:none}\
+#ilSettingsSearch1844 input:focus{border-color:#7db6a0;box-shadow:0 0 0 3px #7db6a01d}\
+#ilSettingsSearch1844 button{height:41px;border:1px solid #d4e2dc;border-radius:12px;background:#fff;color:#356456;padding:0 11px;font:850 10px system-ui,sans-serif}\
+#ilSettingsSearch1844 .ilss-info{margin-top:5px;padding:0 2px;font-size:9px;color:#72857d}\
+#vset .il1844-filter-hidden{display:none!important}\
+#vset .il1844-match{box-shadow:0 0 0 2px #76ae991e}\
+body.senior #ilOfflineRibbon1844{font-size:14px;padding:10px 12px}\
+body.senior #ilSettingsSearch1844 input{font-size:17px;height:50px}\
+body.senior #ilSettingsSearch1844 button{font-size:15px;height:50px}\
+body.senior #ilDashRefresh1844 .ilr-meta{font-size:13px}\
+@media(max-width:380px){#ilOfflineRibbon1844{left:6px;right:6px}#ilDashRefresh1844{align-items:flex-start;flex-direction:column}#ilDashRefresh1844 button{width:100%}}';d.head.appendChild(css);
+
+  function ago(t){if(!t)return'jeszcze nie odświeżano';var m=Math.max(0,Math.round((Date.now()-t)/60000));if(m<2)return'przed chwilą';if(m<60)return m+' min temu';var h=Math.round(m/60);if(h<24)return h+' godz. temu';return new Date(t).toLocaleDateString('pl-PL')}
+  function toast(msg){try{var t=d.getElementById('iaToast');if(t){t.textContent=msg;t.classList.add('on');setTimeout(function(){t.classList.remove('on')},1700)}}catch(e){}}
+
+  function installOffline(){if(d.getElementById('ilOfflineRibbon1844'))return;var r=d.createElement('div');r.id='ilOfflineRibbon1844';r.setAttribute('role','status');r.innerHTML='<span id="ilOffText1844">Tryb offline • korzystasz z zapisanych danych</span><button type="button" id="ilOffRetry1844">Sprawdź sieć</button>';d.body.appendChild(r);d.getElementById('ilOffRetry1844').onclick=function(){updateOffline();if(navigator.onLine!==false){var x=d.getElementById('refreshall');if(x)x.click();toast('Połączenie wróciło • odświeżam dane')}else toast('Nadal brak połączenia')};}
+  function updateOffline(){installOffline();var r=d.getElementById('ilOfflineRibbon1844');if(!r)return;var off=navigator.onLine===false;r.classList.toggle('on',off);var tx=d.getElementById('ilOffText1844');if(tx&&off){var t=+(ls.getItem('il_last_online_1840')||0);tx.textContent='Brak internetu • pokazuję zapisane dane'+(t?' • ostatnio online '+ago(t):'')}}
+
+  function installDashRefresh(){var h=d.getElementById('ilDashHero1843');if(!h||d.getElementById('ilDashRefresh1844'))return;var x=d.createElement('div');x.id='ilDashRefresh1844';x.innerHTML='<div class="ilr-meta" role="status"><span class="ilr-dot" aria-hidden="true"></span><b id="ilDashRefreshTime1844">Sprawdzam dane…</b></div><button type="button" id="ilDashRefreshBtn1844">Odśwież dane</button>';h.appendChild(x);d.getElementById('ilDashRefreshBtn1844').onclick=function(){var b=this;if(navigator.onLine===false){toast('Brak internetu • pokazuję zapisane dane');return}var r=d.getElementById('refreshall');if(r)r.click();var w=d.getElementById('ilWpSync1841');if(w)try{w.click()}catch(e){};b.textContent='Odświeżam…';ls.setItem('il_refresh_all_1844',String(Date.now()));updateRefreshTime();setTimeout(function(){b.textContent='Odśwież dane';updateRefreshTime()},1900)}}
+  function updateRefreshTime(){installDashRefresh();var e=d.getElementById('ilDashRefreshTime1844'),row=e&&e.parentNode;if(!e)return;var off=navigator.onLine===false;if(row)row.classList.toggle('ilr-off',off);if(off){e.textContent='Nie mam teraz połączenia z internetem.';return}var ok=false;try{var b=window.IspinaNative;if(b&&b.getScheduleSyncStatus){var st=JSON.parse(b.getScheduleSyncStatus()||'{}');ok=!!(+st.mldLastSuccess||+st.gminnaLastSuccess)}}catch(_e){}if(!ok)ok=!!+(ls.getItem('il_refresh_all_1844')||0);e.textContent=ok?'Dane aktualne':'Sprawdzam dane…'}
+
+  function cards(){var v=d.getElementById('vset');if(!v)return[];return Array.prototype.slice.call(v.children).filter(function(x){return x&&x.classList&&x.classList.contains('card')&&x.id!=='ilSettingsSearch1844'})}
+  function installSearch(){var v=d.getElementById('vset');if(!v||d.getElementById('ilSettingsSearch1844'))return;var c=d.createElement('div');c.id='ilSettingsSearch1844';c.innerHTML='<div class="ilss-row"><input id="ilSettingsQuery1844" type="search" placeholder="Szukaj w ustawieniach" aria-label="Szukaj w ustawieniach"><button id="ilSettingsClear1844" type="button">Wyczyść</button></div><div class="ilss-info" id="ilSettingsInfo1844">Wpisz np. „wibracje”, „odpady” lub „powiadomienia”.</div>';v.insertBefore(c,v.firstChild);var q=d.getElementById('ilSettingsQuery1844');q.oninput=function(){filterSettings(this.value)};d.getElementById('ilSettingsClear1844').onclick=function(){q.value='';filterSettings('');q.focus()};}
+  function norm(s){try{return String(s||'').toLocaleLowerCase('pl-PL').normalize('NFD').replace(/[\u0300-\u036f]/g,'')}catch(e){return String(s||'').toLowerCase()}}
+  function filterSettings(q){installSearch();var a=cards(),n=norm(q).trim(),hits=0;a.forEach(function(c){var ok=!n||norm(c.textContent).indexOf(n)>=0;c.classList.toggle('il1844-filter-hidden',!ok);c.classList.toggle('il1844-match',!!n&&ok);if(ok)hits++});var i=d.getElementById('ilSettingsInfo1844');if(i)i.textContent=n?(hits?('Znaleziono sekcji: '+hits):'Brak pasujących ustawień.'):'Wpisz np. „wibracje”, „odpady” lub „powiadomienia”.'}
+
+  function version(){var a=d.getElementById('ilDiagVersion');if(a)a.textContent=VER;var b=d.getElementById('ilVersionLabel');if(b)b.textContent=VER}
+  function migration(){var c=d.getElementById('ilNativeMigration1842');if(!c)return;var note=c.querySelector('.ilnm-note');if(note)note.textContent='Aktualności korzystają z API/cache i natywnego czytnika. Pulpit i Ustawienia mają teraz wspólną, bardziej aplikacyjną powłokę: globalny stan offline, centralne odświeżanie oraz wyszukiwarkę ustawień. Pełne usunięcie WebView wymaga następnego etapu na kodzie źródłowym Androida.'}
+  function all(){installOffline();updateOffline();installDashRefresh();updateRefreshTime();installSearch();migration();version()}
+  all();setTimeout(all,500);setTimeout(all,1600);setTimeout(all,3300);setInterval(function(){if(!d.hidden){updateOffline();updateRefreshTime();version()}},15000);
+  addEventListener('offline',function(){updateOffline();toast('Brak internetu • pokazuję zapisane dane')});
+  addEventListener('online',function(){try{ls.setItem('il_last_online_1840',String(Date.now()))}catch(e){}updateOffline();toast('Połączenie przywrócone');setTimeout(function(){var r=d.getElementById('refreshall');if(r)r.click()},450)});
+  d.addEventListener('visibilitychange',function(){if(!d.hidden)all()});
+ }catch(e){try{console.warn('APP SHELL 1.82.93:',e)}catch(_){} }
+})();
+
+
+;/* Ispina Lokalnie 1.82.95 — USABILITY & RESILIENCE.
+   Warstwa odporności i czytelności bez zmian silnika Planera/DEX/danych.
+   Dodaje świeżość danych, blokadę wielokrotnego odświeżania, lepsze puste stany,
+   diagnostykę i wsparcie ograniczenia animacji. */
+(function(){
+ 'use strict';
+ try{
+  var d=document,ls=localStorage,VER=window.IL_BUILD.versionName;window.IL_APP_VERSION=VER;
+  if(d.getElementById('ilResilience1845'))return;
+  var mark=d.createElement('meta');mark.id='ilResilience1845';d.head.appendChild(mark);
+  var css=d.createElement('style');css.id='ilResilienceStyle1845';css.textContent='\
+#ilFresh1845{display:inline-flex;align-items:center;gap:5px;margin-left:5px;padding:4px 7px;border-radius:99px;background:#ffffff19;border:1px solid #ffffff26;color:#effbf7;font-size:8.5px;font-weight:900;vertical-align:middle}\
+#ilFresh1845:before{content:"";width:6px;height:6px;border-radius:50%;background:#7fe0a6;box-shadow:0 0 0 3px #7fe0a61c}\
+#ilFresh1845.warn:before{background:#ffd06e;box-shadow:0 0 0 3px #ffd06e20}\
+#ilFresh1845.old:before{background:#ff9f80;box-shadow:0 0 0 3px #ff9f8020}\
+#ilFresh1845.off:before{background:#d5d9d7;box-shadow:none}\
+#ilDashRefreshBtn1844[disabled],#ilNfRefresh1842[disabled]{opacity:.65;cursor:default;transform:none!important}\
+#vilNews1842 .ilnf-empty .il1845-retry{display:inline-block;margin-top:11px;border:1px solid #bdd8cc;border-radius:11px;background:#fff;color:#23624d;padding:8px 11px;font:900 9.5px system-ui,sans-serif}\
+#ilDiagFresh1845{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #edf2ef;font-size:11.5px}\
+#ilDiagFresh1845 b{text-align:right}\
+#iaP button:focus-visible,#iaD button:focus-visible,#iaP input:focus-visible{outline:3px solid #2d8b8738;outline-offset:2px}\
+body.senior #ilFresh1845{font-size:12px;padding:5px 8px}\
+body.senior #ilDiagFresh1845{font-size:15px}\
+@media (prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}';d.head.appendChild(css);
+
+  function ageMs(){try{return Math.max(0,Date.now()-(+(ls.getItem('il_refresh_all_1844')||0)))}catch(e){return 0}}
+  function ageText(ms){if(!ms)return'nie odświeżano';var m=Math.round(ms/60000);if(m<2)return'świeże';if(m<30)return m+' min temu';if(m<120)return'ok. '+m+' min temu';var h=Math.round(m/60);if(h<24)return h+' godz. temu';return Math.round(h/24)+' dni temu'}
+  function toast(msg){try{var t=d.getElementById('iaToast');if(t){t.textContent=msg;t.classList.add('on');setTimeout(function(){t.classList.remove('on')},1700)}}catch(e){}}
+
+  function installFresh(){
+   var meta=d.querySelector('#ilDashRefresh1844 .ilr-meta');if(!meta||d.getElementById('ilFresh1845'))return;
+   var x=d.createElement('span');x.id='ilFresh1845';x.textContent='sprawdzam';meta.appendChild(x);
+  }
+  function updateFresh(){
+   installFresh();var x=d.getElementById('ilFresh1845');if(!x)return;var off=navigator.onLine===false,ms=ageMs();x.classList.remove('warn','old','off');
+   if(off){x.classList.add('off');x.textContent='offline';return}
+   if(!ms){x.classList.add('old');x.textContent='do odświeżenia';return}
+   if(ms<=30*60000){x.textContent='świeże'}else if(ms<=2*3600000){x.classList.add('warn');x.textContent='starsze'}else{x.classList.add('old');x.textContent='odśwież dane'}
+  }
+
+  function robustDashRefresh(){
+   var b=d.getElementById('ilDashRefreshBtn1844');if(!b||b.getAttribute('data-il1845'))return;b.setAttribute('data-il1845','1');
+   b.onclick=function(){
+    if(this.disabled)return;if(navigator.onLine===false){toast('Brak internetu • korzystasz z danych offline');updateFresh();return}
+    var btn=this;btn.disabled=true;btn.setAttribute('aria-busy','true');btn.textContent='Odświeżam…';
+    var r=d.getElementById('refreshall');if(r)try{r.click()}catch(e){};var w=d.getElementById('ilWpSync1841');if(w)try{w.click()}catch(e){};
+    try{ls.setItem('il_refresh_all_1844',String(Date.now()))}catch(e){}updateFresh();
+    setTimeout(function(){btn.textContent='Kończę…'},900);
+    setTimeout(function(){btn.disabled=false;btn.removeAttribute('aria-busy');btn.textContent='Odśwież dane';updateFresh();toast('Dane odświeżone')},2300);
+   };
+  }
+
+  function robustNewsRefresh(){
+   var b=d.getElementById('ilNfRefresh1842');if(!b||b.getAttribute('data-il1845'))return;var old=b.onclick;if(typeof old!=='function')return;b.setAttribute('data-il1845','1');
+   b.onclick=function(ev){
+    if(this.disabled)return;if(navigator.onLine===false){old.call(this,ev);return}
+    var btn=this;btn.disabled=true;btn.setAttribute('aria-busy','true');old.call(btn,ev);
+    setTimeout(function(){if(btn.textContent==='Synchronizuję…')btn.textContent='Sprawdzam…'},1200);
+    setTimeout(function(){btn.disabled=false;btn.removeAttribute('aria-busy');btn.textContent='Odśwież'},3100);
+   };
+  }
+
+  function improveNewsEmpty(){
+   var e=d.querySelector('#vilNews1842 .ilnf-empty');if(!e||e.querySelector('.il1845-retry'))return;
+   var q=d.getElementById('ilNfSearch1842');if(q&&String(q.value||'').trim())return;if(navigator.onLine===false)return;
+   var b=d.createElement('button');b.type='button';b.className='il1845-retry';b.textContent='Spróbuj ponownie';b.onclick=function(){var r=d.getElementById('ilNfRefresh1842');if(r&&!r.disabled)r.click()};e.appendChild(d.createElement('br'));e.appendChild(b);
+  }
+
+  function extendDiag(){
+   var card=d.getElementById('ilDiagnosticsCard');if(!card||d.getElementById('ilDiagFresh1845'))return;var a=card.querySelector('.ilDiagActions'),row=d.createElement('div');row.id='ilDiagFresh1845';row.innerHTML='<span>Świeżość danych</span><b id="ilDiagFreshValue1845">—</b>';if(a)card.insertBefore(row,a);else card.appendChild(row);
+  }
+  function updateDiag(){extendDiag();var x=d.getElementById('ilDiagFreshValue1845');if(x){var ms=ageMs();x.textContent=navigator.onLine===false?'bez internetu • zapis':ageText(ms)}var v=d.getElementById('ilDiagVersion');if(v)v.textContent=VER;var vl=d.getElementById('ilVersionLabel');if(vl)vl.textContent=VER}
+
+  function migration(){var c=d.getElementById('ilNativeMigration1842');if(!c)return;var note=c.querySelector('.ilnm-note');if(note)note.textContent='Aktualności korzystają z API/cache i natywnego czytnika. Powłoka aplikacji ma teraz także kontrolę świeżości danych, ochronę przed wielokrotnym odświeżaniem, lepsze stany braku danych oraz tryb ograniczonych animacji. Pełne usunięcie WebView pozostaje osobnym etapem w kodzie Androida.'}
+  function all(){installFresh();updateFresh();robustDashRefresh();robustNewsRefresh();improveNewsEmpty();extendDiag();updateDiag();migration()}
+  all();setTimeout(all,500);setTimeout(all,1500);setTimeout(all,3300);setInterval(function(){if(!d.hidden){updateFresh();robustDashRefresh();robustNewsRefresh();improveNewsEmpty();updateDiag()}},30000);
+  addEventListener('online',function(){setTimeout(all,300)});addEventListener('offline',function(){updateFresh();updateDiag()});d.addEventListener('visibilitychange',function(){if(!d.hidden)all()});
+ }catch(e){try{console.warn('USABILITY RESILIENCE 1.82.93:',e)}catch(_){} }
+})();
+
+
+;/* Ispina Lokalnie 1.82.95 — NAVIGATION & ERROR POLISH.
+   Ulepsza nawigację, stany operacji i diagnostykę bez zmian silnika Planera/DEX/danych. */
+(function(){
+ 'use strict';
+ try{
+  var d=document,ls=localStorage,VER=window.IL_BUILD.versionName,ERRKEY='il_last_error_1846',PEND='il_pending_refresh_1846';
+  window.IL_APP_VERSION=VER;
+  if(d.getElementById('ilNavErr1846'))return;
+  var mark=d.createElement('meta');mark.id='ilNavErr1846';d.head.appendChild(mark);
+  var css=d.createElement('style');css.id='ilNavErrStyle1846';css.textContent='\
+#ilBack1846{display:none;align-items:center;justify-content:center;width:38px;height:38px;border:0;border-radius:12px;background:#ffffff18;color:#fff;font:900 21px/1 system-ui,sans-serif;margin-right:1px} \
+#ilBack1846.on{display:inline-flex} \
+#ilBusy1846{position:fixed;z-index:2147482500;left:50%;top:66px;transform:translate(-50%,-8px);opacity:0;pointer-events:none;display:flex;align-items:center;gap:7px;max-width:calc(100vw - 28px);padding:7px 11px;border-radius:99px;background:#183f36ed;color:#fff;box-shadow:0 7px 24px #0002;font:850 10.5px system-ui,sans-serif;transition:opacity .18s ease,transform .18s ease} \
+#ilBusy1846.on{opacity:1;transform:translate(-50%,0)} \
+#ilBusy1846:before{content:"";width:8px;height:8px;border:2px solid #ffffff66;border-top-color:#fff;border-radius:50%;animation:ilspin1846 .75s linear infinite} \
+@keyframes ilspin1846{to{transform:rotate(360deg)}} \
+#ilErrRow1846{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #edf2ef;font-size:11.5px} \
+#ilErrRow1846 b{max-width:62%;text-align:right;line-height:1.3} \
+#ilEmptyNear1846{padding:12px;border-radius:13px;background:#f7faf8;border:1px dashed #cfddd6;color:#6b7d75;font-size:11px;line-height:1.35} \
+body.senior #ilBack1846{width:46px;height:46px;font-size:26px} \
+body.senior #ilBusy1846{font-size:14px;padding:9px 13px} \
+body.senior #ilErrRow1846{font-size:15px} \
+@media (prefers-reduced-motion:reduce){#ilBusy1846{transition:none}#ilBusy1846:before{animation:none}}';d.head.appendChild(css);
+
+  function toast(msg){try{var t=d.getElementById('iaToast');if(t){t.textContent=msg;t.classList.add('on');setTimeout(function(){t.classList.remove('on')},1900)}}catch(e){}}
+  function safeText(v){return String(v||'').replace(/https?:\/\/\S+/g,'adres').replace(/\s+/g,' ').trim().slice(0,120)}
+  function recordError(msg){try{var m=safeText(msg);if(!m)return;ls.setItem(ERRKEY,JSON.stringify({t:Date.now(),m:m}));updateDiagError()}catch(e){}}
+  function lastError(){try{return JSON.parse(ls.getItem(ERRKEY)||'null')}catch(e){return null}}
+  function when(t){if(!t)return'—';var m=Math.max(0,Math.round((Date.now()-t)/60000));if(m<1)return'przed chwilą';if(m<60)return m+' min temu';var h=Math.round(m/60);if(h<24)return h+' godz. temu';return Math.round(h/24)+' dni temu'}
+
+  function installBack(){
+   var bar=d.getElementById('iaBar'),menu=d.getElementById('iaM');if(!bar||!menu||d.getElementById('ilBack1846'))return;
+   var b=d.createElement('button');b.id='ilBack1846';b.type='button';b.setAttribute('aria-label','Wstecz');b.textContent='‹';bar.insertBefore(b,menu);
+   b.onclick=function(){
+    var p=d.getElementById('iaP'),drawer=d.getElementById('iaD');
+    if(drawer&&drawer.classList.contains('on')){var cl=d.getElementById('cl');if(cl)cl.click();return}
+    if(!p||!p.classList.contains('on'))return;
+    var a=p.querySelector('.view.on');
+    if(a&&a.id!=='vdash'){
+      p.querySelectorAll('.view').forEach(function(x){x.classList.remove('on')});var h=d.getElementById('vdash');if(h){h.classList.add('on');p.classList.add('on');var sec=d.getElementById('sec');if(sec)sec.textContent='Pulpit';p.scrollTop=0}
+    }
+   };
+  }
+  function updateBack(){
+   installBack();var b=d.getElementById('ilBack1846'),p=d.getElementById('iaP'),dr=d.getElementById('iaD');if(!b)return;
+   var a=p&&p.querySelector('.view.on');var open=!!(dr&&dr.classList.contains('on'))||!!(p&&p.classList.contains('on')&&a&&a.id!=='vdash');b.classList.toggle('on',open);
+   b.setAttribute('aria-label',dr&&dr.classList.contains('on')?'Zamknij menu':'Wróć do Pulpitu');
+  }
+
+  function installBusy(){if(d.getElementById('ilBusy1846'))return;var x=d.createElement('div');x.id='ilBusy1846';x.setAttribute('role','status');x.setAttribute('aria-live','polite');x.textContent='Pracuję…';d.body.appendChild(x)}
+  function busyText(){
+   var busy=d.querySelector('button[aria-busy="true"], [data-il-loading="1"]');
+   if(!busy)return'';
+   var t=safeText(busy.textContent||busy.getAttribute('aria-label')||'Odświeżanie');
+   if(!t||t.length>45)t='Odświeżanie danych';
+   return t.replace(/…+$/,'')+'…';
+  }
+  function updateBusy(){installBusy();var x=d.getElementById('ilBusy1846');if(!x)return;var t=busyText();x.classList.toggle('on',!!t);if(t)x.textContent=t}
+
+  function installDiagError(){
+   var card=d.getElementById('ilDiagnosticsCard');if(!card||d.getElementById('ilErrRow1846'))return;
+   var actions=card.querySelector('.ilDiagActions'),row=d.createElement('div');row.id='ilErrRow1846';row.innerHTML='<span>Ostatni problem</span><b id="ilErrValue1846">brak</b>';
+   if(actions)card.insertBefore(row,actions);else card.appendChild(row);
+  }
+  function updateDiagError(){
+   installDiagError();var x=d.getElementById('ilErrValue1846');if(!x)return;var e=lastError();
+   x.textContent=e?(e.m+' • '+when(e.t)):'brak zapisanych problemów';
+  }
+
+  function improveNearEmpty(){
+   var n=d.getElementById('near');if(!n)return;
+   var has=n.children&&n.children.length>0,txt=safeText(n.textContent);
+   var old=d.getElementById('ilEmptyNear1846');
+   if(has||txt){if(old&&old.parentNode)old.parentNode.removeChild(old);return}
+   if(old)return;
+   var e=d.createElement('div');e.id='ilEmptyNear1846';e.textContent=navigator.onLine===false?'Brak sieci. Pokażę najbliższe zapisane odjazdy, gdy będą dostępne.':'Brak kolejnych odjazdów do pokazania w tej chwili.';n.appendChild(e);
+  }
+
+  function queueOfflineRefresh(){try{ls.setItem(PEND,'1')}catch(e){};toast('Brak internetu • odświeżę po odzyskaniu sieci')}
+  function installOfflineQueue(){
+   ['ilDashRefreshBtn1844','ilNfRefresh1842','refreshall'].forEach(function(id){var b=d.getElementById(id);if(!b||b.getAttribute('data-ilq1846'))return;b.setAttribute('data-ilq1846','1');b.addEventListener('click',function(){if(navigator.onLine===false)queueOfflineRefresh()},true)});
+  }
+  function runPending(){
+   if(navigator.onLine===false)return;var p='0';try{p=ls.getItem(PEND)||'0'}catch(e){}if(p!=='1')return;try{ls.setItem(PEND,'0')}catch(e){}
+   setTimeout(function(){var b=d.getElementById('ilDashRefreshBtn1844')||d.getElementById('refreshall');if(b&&!b.disabled){b.click();toast('Połączenie wróciło • odświeżam dane')}},700);
+  }
+
+  function migration(){var c=d.getElementById('ilNativeMigration1842');if(!c)return;var note=c.querySelector('.ilnm-note');if(note)note.textContent='Aktualności korzystają z API/cache i natywnego czytnika. Powłoka aplikacji ma teraz także kontekstowe Wstecz, wspólny stan operacji, kolejkę odświeżenia po powrocie sieci oraz zapis ostatniego problemu w diagnostyce. Pełne usunięcie WebView pozostaje osobnym etapem w kodzie Androida.'}
+
+  function all(){installBack();updateBack();installBusy();updateBusy();installDiagError();updateDiagError();installOfflineQueue();improveNearEmpty();migration();var v=d.getElementById('ilDiagVersion');if(v)v.textContent=VER;var vl=d.getElementById('ilVersionLabel');if(vl)vl.textContent=VER}
+
+  window.addEventListener('error',function(ev){try{var msg=ev&&ev.message;if(msg&&msg!=='Script error.')recordError(msg)}catch(e){}});
+  window.addEventListener('unhandledrejection',function(ev){try{var r=ev&&ev.reason, msg=r&&(r.message||r.name)||'Nieudana operacja';recordError(msg)}catch(e){}});
+  window.addEventListener('offline',function(){recordError('Brak połączenia z internetem');updateBack();updateBusy()});
+  window.addEventListener('online',function(){runPending();setTimeout(all,250)});
+  d.addEventListener('visibilitychange',function(){if(!d.hidden)all()});
+  d.addEventListener('click',function(){setTimeout(function(){updateBack();updateBusy();improveNearEmpty()},30)},true);
+  all();setTimeout(all,500);setTimeout(all,1600);setTimeout(all,3500);setInterval(function(){if(!d.hidden){updateBack();updateBusy();updateDiagError();installOfflineQueue();improveNearEmpty()}},15000);
+ }catch(e){try{console.warn('NAVIGATION ERROR POLISH 1.82.93:',e)}catch(_){} }
+})();
+
+
+;/* Ispina Lokalnie 1.82.95 — UPDATE CENTER.
+   Bezpieczne sprawdzanie aktualizacji z publicznego manifestu GitHub.
+   Brak automatycznej instalacji: użytkownik zawsze sam uruchamia pobieranie. */
+(function(){
+ 'use strict';
+ try{
+  var d=document,ls=localStorage,VER=window.IL_BUILD.versionName,VC=window.IL_BUILD.versionCode;
+  var URL='https://api.github.com/repos/senikolo/Ispina-Lokalnie-/releases?per_page=20';
+  var KDATA='il_update_data_'+window.IL_BUILD.packageName,KLAST='il_update_last_'+window.IL_BUILD.packageName,KAUTO='il_update_auto_1847';
+  window.IL_APP_VERSION=VER;window.IL_APP_VERSION_CODE=VC;
+  if(d.getElementById('ilUpdateMarker1847'))return;
+  var marker=d.createElement('meta');marker.id='ilUpdateMarker1847';d.head.appendChild(marker);
+  var css=d.createElement('style');css.id='ilUpdateStyle1847';css.textContent='\
+#ilUpdateCenter1847{background:linear-gradient(145deg,#f4faf7,#fff);border-color:#cfe3da}\
+#ilUpdateCenter1847 .iluc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}\
+#ilUpdateCenter1847 .iluc-title{font-size:15px;font-weight:950;color:#235d50}\
+#ilUpdateCenter1847 .iluc-badge{flex:0 0 auto;padding:4px 8px;border-radius:99px;background:#eef5f2;color:#527168;font-size:9px;font-weight:900}\
+#ilUpdateCenter1847.update .iluc-badge{background:#fff0d3;color:#8a5b0f}\
+#ilUpdateCenter1847.ok .iluc-badge{background:#e6f5eb;color:#176c42}\
+#ilUpdateCenter1847.error .iluc-badge{background:#faeeee;color:#8b4039}\
+#ilUpdateCenter1847 .iluc-sub{margin-top:3px;font-size:10px;line-height:1.4;color:#72867e}\
+#ilUpdateCenter1847 .iluc-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #e8f0ec;font-size:11.5px}\
+#ilUpdateCenter1847 .iluc-row b{text-align:right;max-width:60%;color:#315f52}\
+#ilUpdateCenter1847 .iluc-status{margin-top:10px;padding:10px;border:1px solid #ddeae4;border-radius:12px;background:#fbfdfc;color:#4d6960;font-size:10.5px;line-height:1.45}\
+#ilUpdateCenter1847.update .iluc-status{background:#fff9ed;border-color:#ecdcb9;color:#76551d}\
+#ilUpdateCenter1847 .iluc-notes{display:none;margin-top:8px;padding:9px 10px;border-radius:11px;background:#f7faf8;color:#587068;font-size:10px;line-height:1.45;white-space:pre-line}\
+#ilUpdateCenter1847 .iluc-notes.on{display:block}\
+#ilUpdateCenter1847 .iluc-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}\
+#ilUpdateCenter1847 .iluc-actions button{flex:1;min-width:125px}\
+#ilUpdateCenter1847 #ilUpdateDownload1847{display:none;background:#276b5d;color:#fff;border-color:#276b5d}\
+#ilUpdateCenter1847.update #ilUpdateDownload1847{display:block}\
+#ilUpdateCenter1847 .iluc-auto{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;padding-top:9px;border-top:1px solid #e8f0ec;font-size:10.5px;font-weight:800;color:#42665b}\
+#ilUpdateDash1847{display:none;margin:0 0 9px;padding:10px 12px;border:1px solid #ead8ac;border-radius:15px;background:linear-gradient(135deg,#fff9e9,#fff);color:#75541b;box-shadow:0 4px 13px #654a1610}\
+#ilUpdateDash1847.on{display:flex;align-items:center;justify-content:space-between;gap:10px}\
+#ilUpdateDash1847 .ilud-main{min-width:0}.ilud-title{font-size:11.5px;font-weight:950}.ilud-sub{margin-top:2px;font-size:9.5px;line-height:1.3;color:#876c3b}\
+#ilUpdateDash1847 button{flex:0 0 auto;border:1px solid #dec990;border-radius:11px;background:#fff;color:#715216;padding:7px 9px;font:850 9.5px system-ui,sans-serif}\
+body.senior #ilUpdateCenter1847 .iluc-title{font-size:21px}body.senior #ilUpdateCenter1847 .iluc-row{font-size:15px}body.senior #ilUpdateCenter1847 .iluc-status{font-size:14px}body.senior #ilUpdateDash1847 .ilud-title{font-size:16px}\
+@media(max-width:360px){#ilUpdateCenter1847 .iluc-actions{display:grid;grid-template-columns:1fr}#ilUpdateCenter1847 .iluc-actions button{width:100%}}';d.head.appendChild(css);
+
+  function toast(msg){try{var t=d.getElementById('iaToast');if(t){t.textContent=msg;t.classList.add('on');setTimeout(function(){t.classList.remove('on')},2400)}}catch(e){}}
+  function safeUrl(u){u=String(u||'').trim();return /^https:\/\//i.test(u)?u:''}
+  function n(v){var x=parseInt(v,10);return isFinite(x)?x:0}
+  function escText(v){return String(v==null?'':v).replace(/\s+/g,' ').trim().slice(0,600)}
+  function when(ts){if(!ts)return'jeszcze nie sprawdzano';var m=Math.max(0,Math.round((Date.now()-ts)/60000));if(m<1)return'przed chwilą';if(m<60)return m+' min temu';var h=Math.round(m/60);if(h<24)return h+' godz. temu';return new Date(ts).toLocaleDateString('pl-PL')}
+  function load(){try{return JSON.parse(ls.getItem(KDATA)||'null')}catch(e){return null}}
+  function save(x){try{ls.setItem(KDATA,JSON.stringify(x));ls.setItem(KLAST,String(Date.now()))}catch(e){}}
+  function last(){try{return +ls.getItem(KLAST)||0}catch(e){return 0}}
+  function autoOn(){try{return ls.getItem(KAUTO)!=='0'}catch(e){return true}}
+  function newer(x){if(!x)return false;var c=n(x.versionCode||x.version_code);if(c)return c>VC;var v=String(x.versionName||x.version||'').split('.').map(n),a=VER.split('.').map(n);for(var i=0;i<Math.max(v.length,a.length);i++){var q=v[i]||0,w=a[i]||0;if(q!==w)return q>w}return false}
+  function latestName(x){return escText(x&&(x.versionName||x.version)||'—')||'—'}
+  function codeFromVersion(v){var a=String(v||'').replace(/^[^0-9]*/,'').split('.').map(n);return (a[0]||0)*10000+(a[1]||0)*100+(a[2]||0)}
+  function normalize(raw){
+   var build=window.IL_BUILD;
+   function empty(){return {versionName:VER,versionCode:VC,packageName:build.packageName,channel:build.channel,notes:'Brak opublikowanego wydania zgodnego z tą aplikacją.',downloadUrl:'',releasePage:'',noRelease:true}}
+   function verified(x){return x&&x.packageName===build.packageName&&x.channel===build.channel&&x.signingCertificateSha256===build.signingCertificateSha256&&n(x.versionCode)>0&&!!safeUrl(x.downloadUrl||'')}
+   if(Array.isArray(raw)){
+    var candidates=[];
+    raw.forEach(function(release){if(release.draft||release.prerelease)return;var assets=release.assets||[],notes=String(release.body||''),metadata=null;
+     // Published release notes carry an explicit descriptor; no APK-name guessing.
+     var match=notes.match(/<!-- IL_UPDATE:(\{[^\n]*\}) -->/);if(match){try{metadata=JSON.parse(match[1])}catch(e){}}
+     if(!metadata||metadata.packageName!==build.packageName||metadata.channel!==build.channel||metadata.signingCertificateSha256!==build.signingCertificateSha256)return;
+     var asset=assets.filter(function(a){return a.name===metadata.assetName&&/\.apk$/i.test(a.name)})[0];if(!asset)return;
+     metadata.downloadUrl=safeUrl(asset.browser_download_url||'');metadata.releasePage=safeUrl(release.html_url||'');metadata.releasedAt=release.published_at||'';metadata.notes=notes.replace(/<!-- IL_UPDATE:.*? -->/,'').trim();
+     if(verified(metadata))candidates.push(metadata);
+    });candidates.sort(function(a,b){return n(b.versionCode)-n(a.versionCode)});return candidates[0]||empty();
+   }
+   if(!raw||typeof raw!=='object')throw new Error('Nieprawidłowa odpowiedź serwera');
+   if(!verified(raw))return empty();return {versionName:escText(raw.versionName||''),versionCode:n(raw.versionCode),packageName:raw.packageName,channel:raw.channel,signingCertificateSha256:raw.signingCertificateSha256,releasedAt:escText(raw.releasedAt||''),notes:escText(raw.notes||''),downloadUrl:safeUrl(raw.downloadUrl),releasePage:safeUrl(raw.releasePage||'')};
+  }
+  function xhrJson(url,ok,bad){
+   try{var x=new XMLHttpRequest(),done=false;x.open('GET',url+(url.indexOf('?')>=0?'&':'?')+'_='+(Date.now()),true);x.timeout=9000;x.setRequestHeader('Accept','application/json');x.onreadystatechange=function(){if(x.readyState!==4||done)return;done=true;if(x.status>=200&&x.status<300){try{ok(normalize(JSON.parse(x.responseText)))}catch(e){bad(e)}}else bad(new Error('HTTP '+x.status))};x.ontimeout=function(){if(!done){done=true;bad(new Error('Przekroczono czas połączenia'))}};x.onerror=function(){if(!done){done=true;bad(new Error('Błąd sieci'))}};x.send()}catch(e){bad(e)}}
+  function openUrl(u){
+   u=safeUrl(u);if(!u)return false;
+   // Navigate through the native WebViewClient: external HTTPS opens ACTION_VIEW,
+   // while WordPress articles retain their existing reader. Never use window.open here.
+   try{var bridge=window.IspinaNative;if(bridge&&typeof bridge.openExternal==='function'){bridge.openExternal(u)}else{window.location.assign(u)}
+    var message=d.getElementById('ilUpdateStatus1847');if(message)message.textContent='Otwieram pobieranie w przeglądarce. Po pobraniu APK otwórz plik i wybierz Aktualizuj.';return true;
+   }catch(e){toast('Nie udało się otworzyć pobierania. Otwórz GitHub Releases w przeglądarce.');return false}
+  }
+  window.IL_OPEN_UPDATE_URL_1887=openUrl;
+
+  function installSettings(){
+   var v=d.getElementById('vset');if(!v||d.getElementById('ilUpdateCenter1847'))return;
+   var c=d.createElement('div');c.id='ilUpdateCenter1847';c.className='card';
+   c.innerHTML='<div class="iluc-head"><div><div class="iluc-title">Aktualizacje aplikacji</div><div class="iluc-sub">Wydania stabilne Ispina Lokalnie.</div></div><span class="iluc-badge" id="ilUpdateBadge1847">Gotowe</span></div><div class="iluc-row"><span>Zainstalowana wersja</span><b>'+VER+'</b></div><div class="iluc-row"><span>Najnowsza wersja</span><b id="ilUpdateLatest1847">—</b></div><div class="iluc-row"><span>Ostatnie sprawdzenie</span><b id="ilUpdateLast1847">'+when(last())+'</b></div><div class="iluc-status" id="ilUpdateStatus1847">Naciśnij „Sprawdź aktualizację”.</div><div class="iluc-notes" id="ilUpdateNotes1847"></div><div class="iluc-actions"><button class="btn" type="button" id="ilUpdateCheck1847">Sprawdź aktualizację</button><button class="btn" type="button" id="ilUpdateDownload1847">Pobierz aktualizację</button></div><label class="iluc-auto"><span>Ciche sprawdzanie raz na dobę</span><input class="sw" type="checkbox" id="ilUpdateAuto1847"></label><div class="hint">Sprawdzanie używa publicznego kanału aktualizacji GitHub. Aplikacja nie instaluje aktualizacji samodzielnie — decyzja o pobraniu i instalacji zawsze należy do Ciebie.</div>';
+   var mig=d.getElementById('ilNativeMigration1842');if(mig&&mig.parentNode===v)v.insertBefore(c,mig);else v.appendChild(c);
+   var a=d.getElementById('ilUpdateAuto1847');if(a){a.checked=autoOn();a.onchange=function(){try{ls.setItem(KAUTO,this.checked?'1':'0')}catch(e){}}}
+   var b=d.getElementById('ilUpdateCheck1847');if(b)b.onclick=function(){check(true)};
+   var dl=d.getElementById('ilUpdateDownload1847');if(dl)dl.onclick=function(){var x=load();if(!x||!newer(x)||!x.downloadUrl)return;openUrl(x.downloadUrl)};
+  }
+  function installQuick(){var g=d.querySelector('#ilSettingsQuick1843 .ilsq-grid');if(!g||d.getElementById('ilUpdateQuick1847'))return;var b=d.createElement('button');b.id='ilUpdateQuick1847';b.type='button';b.innerHTML='Aktualizacje<span>Sprawdź nową wersję</span>';b.onclick=function(){var c=d.getElementById('ilUpdateCenter1847');if(c){c.scrollIntoView({behavior:'smooth',block:'start'});c.classList.remove('il1843-focus');void c.offsetWidth;c.classList.add('il1843-focus')}};g.appendChild(b)}
+  function installDash(){var v=d.getElementById('vdash');if(!v||d.getElementById('ilUpdateDash1847'))return;var x=d.createElement('div');x.id='ilUpdateDash1847';x.innerHTML='<div class="ilud-main"><div class="ilud-title">Dostępna aktualizacja</div><div class="ilud-sub" id="ilUpdateDashSub1847"></div></div><button type="button">Zobacz</button>';var hero=d.getElementById('ilDashHero1843');if(hero&&hero.parentNode===v)v.insertBefore(x,hero.nextSibling);else v.insertBefore(x,v.firstChild);x.querySelector('button').onclick=function(){var nav=d.querySelector('#nav .nb[data-u=":set"]');if(nav){nav.click();setTimeout(function(){var c=d.getElementById('ilUpdateCenter1847');if(c)c.scrollIntoView({behavior:'smooth',block:'start'})},160)}}}
+  function render(x,err){
+   installSettings();installDash();installQuick();var c=d.getElementById('ilUpdateCenter1847');if(!c)return;
+   c.classList.remove('ok','update','error');var badge=d.getElementById('ilUpdateBadge1847'),latest=d.getElementById('ilUpdateLatest1847'),st=d.getElementById('ilUpdateStatus1847'),notes=d.getElementById('ilUpdateNotes1847'),la=d.getElementById('ilUpdateLast1847'),dash=d.getElementById('ilUpdateDash1847'),ds=d.getElementById('ilUpdateDashSub1847');
+   var download=d.getElementById('ilUpdateDownload1847');if(download)download.disabled=!x||!newer(x)||!x.downloadUrl;if(la)la.textContent=when(last());if(latest)latest.textContent=x?latestName(x):'—';if(notes){notes.textContent=x&&x.notes?x.notes:'';notes.classList.toggle('on',!!(x&&x.notes))}
+   if(err){c.classList.add('error');if(badge)badge.textContent='Problem';if(st)st.textContent='Nie udało się sprawdzić aktualizacji. '+escText(err.message||err);if(dash)dash.classList.remove('on');return}
+   if(!x){if(badge)badge.textContent='Gotowe';if(st)st.textContent='Naciśnij „Sprawdź aktualizację”.';if(dash)dash.classList.remove('on');return}
+   if(newer(x)){c.classList.add('update');if(badge)badge.textContent='Nowa wersja';if(st)st.textContent='Dostępna jest wersja '+latestName(x)+'. Możesz przejść do pobierania.';var dl=d.getElementById('ilUpdateDownload1847');if(dl)dl.textContent=x.downloadUrl?'Pobierz aktualizację':'Otwórz stronę pobierania';if(dash){dash.classList.add('on');if(ds)ds.textContent='Wersja '+latestName(x)+' jest gotowa do pobrania.'}}
+   else{c.classList.add('ok');if(badge)badge.textContent=x.noRelease?'Brak wydania':'Aktualna';if(st)st.textContent=x.noRelease?'Brak opublikowanej aktualizacji dla tej aplikacji.':'Masz najnowszą opublikowaną wersję stabilną.';if(dash)dash.classList.remove('on')}
+  }
+  function check(manual){
+   installSettings();var b=d.getElementById('ilUpdateCheck1847');if(navigator.onLine===false){render(load(),new Error('Brak połączenia z internetem.'));if(manual)toast('Nie mam teraz połączenia z internetem.');return}
+   if(b){b.disabled=true;b.setAttribute('aria-busy','true');b.textContent='Sprawdzam…'}
+   var st=d.getElementById('ilUpdateStatus1847');if(st)st.textContent='Łączę z kanałem aktualizacji…';
+   xhrJson(URL,function(x){save(x);render(x,null);if(b){b.disabled=false;b.removeAttribute('aria-busy');b.textContent='Sprawdź ponownie'}if(manual)toast(newer(x)?'Jest nowsza wersja':x.noRelease?'Brak zgodnej aktualizacji':'Wersja jest aktualna')},function(e){render(load(),e);if(b){b.disabled=false;b.removeAttribute('aria-busy');b.textContent='Spróbuj ponownie'}if(manual)toast('Nie udało się sprawdzić aktualizacji')});
+  }
+  function auto(){if(!autoOn()||navigator.onLine===false)return;var age=Date.now()-last();if(age>23*60*60*1000)setTimeout(function(){check(false)},1300)}
+  function migration(){var c=d.getElementById('ilNativeMigration1842');if(!c)return;var note=c.querySelector('.ilnm-note');if(note)note.textContent='Aktualności korzystają z API/cache i natywnego czytnika. Strony informacyjne i Galeria działają już jako lokalne widoki aplikacji, a linki wewnętrzne są kierowane bez przeładowania głównego WebView. Pełne usunięcie WebView pozostaje osobnym etapem w kodzie Androida.'}
+  function all(){installSettings();installQuick();installDash();render(load(),null);migration();var v=d.getElementById('ilDiagVersion');if(v)v.textContent=VER;var vl=d.getElementById('ilVersionLabel');if(vl)vl.textContent=VER}
+  all();setTimeout(all,500);setTimeout(all,1600);setTimeout(function(){all();auto()},3300);d.addEventListener('visibilitychange',function(){if(!d.hidden)all()});window.addEventListener('online',function(){setTimeout(function(){all();auto()},300)});
+  window.IL_UPDATE_CENTER=function(){var nav=d.querySelector('#nav .nb[data-u=":set"]');if(nav)nav.click();setTimeout(function(){var c=d.getElementById('ilUpdateCenter1847');if(c)c.scrollIntoView({behavior:'smooth',block:'start'})},120)};
+ }catch(e){try{console.warn('UPDATE CENTER 1.82.93:',e)}catch(_){} }
+})();
+
+;(function(){try{
+ var d=document;if(d.getElementById('ilVisualRefine1848'))return;
+ var st=d.createElement('style');st.id='ilVisualRefine1848';st.textContent='\
+#iaBar{background:linear-gradient(125deg,#246f86,#4ea6aa);box-shadow:0 3px 16px #17362b20;border-bottom:1px solid #ffffff20}\
+#iaM,.x{background:#123b404f;box-shadow:inset 0 0 0 1px #ffffff10;transition:transform .16s ease,background-color .18s ease}\
+#iaM:active,.x:active{transform:scale(.965);background:#123b4068}\
+#iaD{width:min(84vw,310px);box-shadow:12px 0 34px #102d2328;transition:transform .40s cubic-bezier(.22,.72,.25,1)}\
+#sh{transition:opacity .32s ease-out,visibility 0s linear .32s}\
+#iaP{background:#f3f7f5}\
+.view{padding:14px 12px 28px}\
+#iaP .card{border-color:#dce8e2;border-radius:18px;box-shadow:0 5px 17px #17362b0a;margin-bottom:11px}\
+#iaP .card .sectitle{letter-spacing:-.08px}\
+.h{letter-spacing:-.14px}.p{line-height:1.48}\
+.nb{height:auto;min-height:46px;border-radius:13px;margin:3px 0;padding:7px 9px;transition:transform .15s ease,background-color .18s ease,box-shadow .18s ease}\
+.nb:active{transform:scale(.986)}.ni{border-radius:10px}\
+.ng{padding-top:15px;color:#70887e}\
+#ilDashHero1843{padding:18px;border-radius:24px;border-color:#c9dfd6;background:linear-gradient(140deg,#1f6674,#318b84);box-shadow:0 11px 28px #164d5722}\
+#ilDashHero1843 .ildh-greet{font-size:21px;letter-spacing:-.34px}\
+#ilDashHero1843 .ildh-date{font-size:11.5px}\
+#ilDashHero1843 .ildh-state{padding:5px 9px;font-size:10px;backdrop-filter:blur(4px)}\
+#ilDashHero1843 .ildh-sync{font-size:10.8px;line-height:1.42}\
+#ilDashQuick1843{gap:8px;margin-top:14px}\
+#ilDashQuick1843 button{min-height:58px;border-radius:15px;padding:10px 5px 9px;font-size:10.5px;line-height:1.18;box-shadow:inset 0 1px 0 #ffffff18;transition:transform .15s ease,background-color .18s ease}\
+#ilDashQuick1843 button:active{transform:scale(.976)}\
+#ilDashQuick1843 .ildq-icon{font-size:20px;margin-bottom:6px}\
+#ilDashRefresh1844{margin-top:10px;padding-top:10px}\
+#ilDashRefresh1844 .ilr-meta{font-size:10px;line-height:1.4}\
+#ilDashRefresh1844 button{border-radius:12px;padding:8px 10px;font-size:10px}\
+#vdash #ilNativeNews1841{padding:14px 15px!important;border-radius:18px;box-shadow:0 5px 17px #17362b09}\
+#vdash #ilNativeNews1841 .ilwptitle{font-size:14px;line-height:1.35}\
+#vdash #ilNativeNews1841 .ilwppost{font-size:12.5px;line-height:1.48}\
+#vset .card{padding:14px}\
+#vset .set{padding:12px 0;gap:12px}\
+#vset .hint{font-size:11.8px;line-height:1.48;color:#667d74}\
+#vset .sectitle{font-size:15.5px}\
+#ilSettingsQuick1843{border-radius:19px;background:linear-gradient(145deg,#f3faf7,#fff)}\
+#ilSettingsQuick1843 .ilsq-sub{font-size:10.8px;line-height:1.45}\
+#ilSettingsQuick1843 .ilsq-grid{gap:8px;margin-top:11px}\
+#ilSettingsQuick1843 button{min-height:46px;border-radius:14px;padding:9px 11px;font-size:11px;box-shadow:0 3px 10px #17362b08}\
+#ilSettingsQuick1843 button span{font-size:9.8px;line-height:1.3}\
+#ilSettingsSearch1844{top:4px;margin-bottom:11px;padding:9px;border-radius:18px;background:#f8fbfaf2;box-shadow:0 6px 18px #17362b0d}\
+#ilSettingsSearch1844 input,#ilSettingsSearch1844 button{height:43px;border-radius:13px}\
+#ilSettingsSearch1844 input{font-size:12.5px;padding:0 12px}\
+#ilSettingsSearch1844 button{font-size:10.5px;padding:0 12px}\
+#ilSettingsSearch1844 .ilss-info{font-size:10px;margin-top:6px}\
+#ilUpdateCenter1847{border-radius:19px;background:linear-gradient(145deg,#f4faf7,#fff)}\
+#ilUpdateCenter1847 .iluc-title{font-size:15.5px;letter-spacing:-.08px}\
+#ilUpdateCenter1847 .iluc-badge{font-size:9.5px;padding:5px 9px}\
+#ilUpdateCenter1847 .iluc-sub{font-size:10.8px;line-height:1.45}\
+#ilUpdateCenter1847 .iluc-row{padding:10px 0;font-size:12px}\
+#ilUpdateCenter1847 .iluc-status{padding:11px 12px;border-radius:13px;font-size:11.2px;line-height:1.48}\
+#ilUpdateCenter1847 .iluc-notes{padding:10px 11px;border-radius:12px;font-size:10.8px;line-height:1.5}\
+#ilUpdateCenter1847 .iluc-actions{gap:8px;margin-top:11px}\
+#ilUpdateDash1847{padding:11px 13px;border-radius:16px;box-shadow:0 5px 15px #654a1610}\
+.btn,.btn2,.mdch{min-height:42px;border-radius:13px;font-size:11.5px;transition:transform .15s ease,box-shadow .18s ease,background-color .18s ease}\
+.btn:active,.btn2:active,.mdch:active{transform:scale(.982)}\
+.sel,#vset select{min-height:44px;border-radius:13px}\
+.rt{border-radius:12px;line-height:1.46}\
+.dep{padding:13px 1px}.time{letter-spacing:-.35px}.dest{line-height:1.34}\
+#ilDayBottom{padding:6px 5px calc(6px + env(safe-area-inset-bottom));background:#fffffff8;box-shadow:0 -4px 18px #17362b0c;backdrop-filter:blur(10px)}\
+#ilDayBottom button{min-height:55px;border-radius:14px;transition:transform .15s ease,background-color .18s ease}\
+#ilDayBottom button:active{transform:scale(.975)}\
+#ilDayBottom .kd-active{box-shadow:inset 0 0 0 1px #d7e9e0}\
+#iaToast{font-size:11.5px;padding:10px 14px;box-shadow:0 6px 18px #17362b28;transition:opacity .18s ease,transform .22s ease}\
+#ilBusy1846{border-radius:14px;box-shadow:0 6px 18px #17362b1c}\
+@media(max-width:359px){.view{padding-left:9px;padding-right:9px}#ilDashHero1843{padding:16px}#ilDashQuick1843{gap:6px}#ilDashQuick1843 button{font-size:10px}#vset .card{padding:12px}}\
+body.senior #vset .hint{font-size:15px}body.senior #ilDashHero1843 .ildh-date{font-size:15px}body.senior #ilDashHero1843 .ildh-sync{font-size:14px}\
+@media(prefers-reduced-motion:reduce){#iaD,#sh,#iaM,.x,.nb,#ilDashQuick1843 button,.btn,.btn2,.mdch,#ilDayBottom button,#iaToast{transition:none!important}}';
+ (d.head||d.documentElement).appendChild(st);
+ var v=d.getElementById('ilDiagVersion');if(v)v.textContent='1.82.93';
+ var vl=d.getElementById('ilVersionLabel');if(vl)vl.textContent='1.82.93';
+}catch(e){try{console.warn('VISUAL REFINEMENT 1.82.93:',e)}catch(_){}}})();
+
+;(function(){try{
+ var d=document;if(d.getElementById('ilWebViewPolish1849'))return;
+ var st=d.createElement('style');st.id='ilWebViewPolish1849';st.textContent='\
+html,body{max-width:100%;overflow-x:hidden;-webkit-text-size-adjust:100%;text-size-adjust:100%}\
+body{overscroll-behavior-x:none}\
+#iaP,#iaD{scrollbar-width:thin;-webkit-overflow-scrolling:touch}\
+#iaP{overscroll-behavior-y:contain;scroll-behavior:smooth}\
+button,.btn,.btn2,.nb,.mdch,.tab,select,input{-webkit-tap-highlight-color:transparent;touch-action:manipulation}\
+button:focus-visible,.btn:focus-visible,.btn2:focus-visible,.nb:focus-visible,.mdch:focus-visible,.tab:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #2f8f78;outline-offset:2px}\
+#iaP .card{overflow:hidden;border-color:#dce7e1;box-shadow:0 4px 15px rgba(23,54,43,.055)}\
+#iaP .card:has(.dep){overflow:visible}\
+.hero{box-shadow:0 9px 25px rgba(22,77,87,.14)}\
+.nb{line-height:1.25}.nb .ni{box-shadow:inset 0 0 0 1px rgba(255,255,255,.28)}\
+.mydirs{gap:7px}.mdch{white-space:normal;line-height:1.25;padding:8px 10px;max-width:100%;text-wrap:balance}\
+.tabs{scrollbar-width:none}.tabs::-webkit-scrollbar,.hours::-webkit-scrollbar{display:none}\
+.sel,#vset select,#vset input[type=text],#vset input[type=search]{font-size:14px;line-height:1.35}\
+.dep{min-width:0}.dep>div,.route{min-width:0}.dest,.stop{overflow-wrap:anywhere}\
+#ilDashQuick1843 button,#ilSettingsQuick1843 button{min-width:0}\
+#ilSettingsSearch1844{backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}\
+#ilDayBottom{backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}\
+#iaToast{max-width:min(88vw,560px);text-align:center;line-height:1.35}\
+@media(max-width:380px){.mydirs{gap:6px}.mdch{font-size:10.5px;padding:8px 9px}.dep{grid-template-columns:84px minmax(0,1fr);gap:9px}.time{font-size:28px}}\
+@media(max-width:330px){.dep{grid-template-columns:78px minmax(0,1fr)}#ilDashQuick1843{grid-template-columns:1fr 1fr!important}}\
+@media(prefers-reduced-motion:reduce){#iaP{scroll-behavior:auto}}';
+ (d.head||d.documentElement).appendChild(st);
+ var v=d.getElementById('ilDiagVersion');if(v)v.textContent='1.82.93';
+ var vl=d.getElementById('ilVersionLabel');if(vl)vl.textContent='1.82.93';
+}catch(e){try{console.warn('WEBVIEW POLISH 1.82.93:',e)}catch(_){}}})();
+
+
+;/* Ispina Lokalnie 1.82.95 — NEWS TRANSITION / WHITE SCREEN GUARD */
+(function(){
+ try{
+  var d=document;
+  function guard(){
+   var p=d.getElementById('iaP');if(!p||!p.classList.contains('on'))return;
+   var a=p.querySelector('.view.on');if(a)return;
+   var h=d.getElementById('vdash');if(!h)return;
+   h.classList.add('on');
+   var sec=d.getElementById('sec');if(sec)sec.textContent='Pulpit';
+   p.scrollTop=0;
+  }
+  d.addEventListener('visibilitychange',function(){if(!d.hidden)setTimeout(guard,60)});
+  addEventListener('pageshow',function(){setTimeout(guard,20)});
+  addEventListener('focus',function(){setTimeout(guard,80)});
+  d.addEventListener('click',function(){var n=d.getElementById('vilNews1842');if(n&&n.classList.contains('on'))setTimeout(guard,0)},true);
+ }catch(e){try{console.warn('NEWS TRANSITION FIX 1.82.93:',e)}catch(_){}}
+})();
+
+/* Ispina Lokalnie 1.82.95 — local information pages / WebView migration stage */
+;(function(){
+  'use strict';
+  try{
+    var d=document, panel=d.getElementById('iaP'), drawer=d.getElementById('iaD'), shade=d.getElementById('sh');
+    if(!panel || d.getElementById('vilPage1851')) return;
+    var WP='https://ispinalokalnie.wordpress.com';
+    var MAP={
+      '/uslugi-w-okolicy/':{slug:'uslugi-w-okolicy',title:'Usługi w okolicy'},
+      '/facebook/':{slug:'facebook',title:'Opis komunikacji w Ispinie'},
+      '/dane-o-ispinie/':{slug:'dane-o-ispinie',title:'Dane o Ispinie'},
+      '/historia-ispiny/':{slug:'historia-ispiny',title:'Historia Ispiny'},
+      '/ciekawostki-historyczne/':{slug:'ciekawostki-historyczne',title:'Ciekawostki historyczne'},
+      '/galeria/':{slug:'galeria',title:'Galeria Ispiny'},
+      '/kontakt/':{slug:'kontakt',title:'Kontakt'},
+      '/o-mnie/':{slug:'o-mnie',title:'O projekcie'}
+    };
+    var cachePrefix='il-local-page-1851:';
+    var view=d.createElement('div');
+    view.className='view';view.id='vilPage1851';
+    view.innerHTML='<div class="ilp-head1851"><div><span class="ilp-badge1851">Ispina Lokalnie</span><h2 id="ilpTitle1851">Ispina Lokalnie</h2><p id="ilpMeta1851">Treść dostępna bez opuszczania aplikacji</p></div><button class="btn" id="ilpBack1851">Pulpit</button></div><div class="card ilp-card1851"><div id="ilpBody1851" class="ilp-body1851"><div class="ilp-skeleton1851"><i></i><i></i><i></i><i></i></div></div><div class="ilp-actions1851"><button class="btn" id="ilpRefresh1851">Odśwież</button></div></div>';
+    panel.appendChild(view);
+    var st=d.createElement('style');st.id='ilLocalPagesStyle1851';st.textContent='\
+#vilPage1851{padding-bottom:28px}\
+.ilp-head1851{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:2px 0 12px;padding:16px 16px 14px;border-radius:22px;background:linear-gradient(135deg,rgba(24,111,119,.96),rgba(47,143,120,.92));color:#fff;box-shadow:0 10px 26px rgba(22,77,87,.15)}\
+.ilp-head1851 h2{font-size:22px;line-height:1.15;margin:6px 0 4px}.ilp-head1851 p{margin:0;color:rgba(255,255,255,.86);font-size:12px;line-height:1.4}.ilp-head1851 .btn{flex:0 0 auto;background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.26);color:#fff;box-shadow:none}\
+.ilp-badge1851{display:inline-flex;align-items:center;min-height:22px;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.15);font-size:9px;font-weight:900;letter-spacing:.08em}\
+.ilp-card1851{padding:17px 16px 15px}.ilp-body1851{font-size:15px;line-height:1.64;color:#183b31;overflow-wrap:anywhere}.ilp-body1851 h1,.ilp-body1851 h2,.ilp-body1851 h3,.ilp-body1851 h4{line-height:1.22;color:#143c33;margin:1.15em 0 .5em}.ilp-body1851 h1{font-size:24px}.ilp-body1851 h2{font-size:21px}.ilp-body1851 h3{font-size:18px}.ilp-body1851 p{margin:.65em 0}.ilp-body1851 a{color:#176f77;font-weight:750;text-decoration:none;border-bottom:1px solid rgba(23,111,119,.24)}.ilp-body1851 img{display:block;max-width:100%;height:auto;border-radius:16px;margin:13px auto}.ilp-body1851 figure{max-width:100%;margin:14px 0}.ilp-body1851 .wp-block-gallery,.ilp-body1851 .blocks-gallery-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:0!important;list-style:none}.ilp-body1851 .wp-block-gallery figure,.ilp-body1851 .blocks-gallery-grid figure,.ilp-body1851 .blocks-gallery-item{margin:0!important;min-width:0}.ilp-body1851 .wp-block-gallery img,.ilp-body1851 .blocks-gallery-grid img{width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;margin:0;border-radius:13px}.ilp-body1851 table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse}.ilp-body1851 td,.ilp-body1851 th{padding:7px 9px;border-bottom:1px solid #e3ece8;text-align:left}.ilp-body1851 blockquote{margin:12px 0;padding:10px 13px;border-left:3px solid #5aa995;background:#f3f8f6;border-radius:0 12px 12px 0}.ilp-body1851 ul,.ilp-body1851 ol{padding-left:22px}.ilp-actions1851{display:flex;flex-wrap:wrap;gap:8px;margin-top:15px;padding-top:13px;border-top:1px solid #e4ece8}.ilp-skeleton1851 i{display:block;height:14px;margin:10px 0;border-radius:8px;background:linear-gradient(90deg,#edf3f0,#f8faf9,#edf3f0);background-size:220% 100%;animation:ilpShimmer1851 1.25s ease-in-out infinite}.ilp-skeleton1851 i:nth-child(1){height:22px;width:64%}.ilp-skeleton1851 i:nth-child(2){width:95%}.ilp-skeleton1851 i:nth-child(3){width:88%}.ilp-skeleton1851 i:nth-child(4){width:72%}@keyframes ilpShimmer1851{0%{background-position:100% 0}100%{background-position:-100% 0}}\
+.ilp-note1851{padding:12px 13px;border-radius:14px;background:#f2f7f5;color:#42635a;font-size:13px;line-height:1.5}.ilp-error1851{padding:14px;border-radius:15px;background:#fff7f4;border:1px solid #f3ded5;color:#754739}.ilp-offline1851{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;background:#edf4f1;color:#527067;font-size:10px;font-weight:800}\
+body.senior .ilp-head1851 h2{font-size:27px}body.senior .ilp-body1851{font-size:18px;line-height:1.7}body.senior .ilp-head1851 p{font-size:15px}body.senior .ilp-actions1851 .btn{font-size:17px;padding:14px}\
+@media(max-width:370px){.ilp-head1851{padding:14px;gap:8px}.ilp-head1851 h2{font-size:20px}.ilp-head1851 .btn{padding:9px 10px;font-size:11px}.ilp-card1851{padding:15px 13px}}\
+@media(prefers-reduced-motion:reduce){.ilp-skeleton1851 i{animation:none}}';
+    (d.head||d.documentElement).appendChild(st);
+    var titleEl=d.getElementById('ilpTitle1851'), metaEl=d.getElementById('ilpMeta1851'), bodyEl=d.getElementById('ilpBody1851');
+    var backBtn=d.getElementById('ilpBack1851'), refreshBtn=d.getElementById('ilpRefresh1851'), webBtn=null;
+    var current=null,loading=false,loadSerial=0;
+    function safeText(s){var t=d.createElement('textarea');t.innerHTML=s||'';return t.value}
+    function cacheGet(slug){try{return JSON.parse(localStorage.getItem(cachePrefix+slug)||'null')}catch(e){return null}}
+    function cacheSet(slug,x){try{localStorage.setItem(cachePrefix+slug,JSON.stringify(x))}catch(e){}}
+    function sanitize(html){
+      var box=d.createElement('div');box.innerHTML=html||'';
+      box.querySelectorAll('script,iframe,object,embed,form,style,link,meta,noscript').forEach(function(x){x.remove()});
+      box.querySelectorAll('*').forEach(function(el){
+        Array.prototype.slice.call(el.attributes||[]).forEach(function(a){var n=(a.name||'').toLowerCase(),v=(a.value||'').trim().toLowerCase();if(n.indexOf('on')===0||n==='srcdoc'||((n==='href'||n==='src')&&v.indexOf('javascript:')===0))el.removeAttribute(a.name)});
+        if(el.tagName==='IMG'){el.removeAttribute('srcset');el.setAttribute('loading','lazy');el.setAttribute('decoding','async')}
+      });
+      return box.innerHTML;
+    }
+    function showShell(info,push){
+      current=info; view.setAttribute('data-il-page-slug',info.slug); if(push!==false)try{history.pushState({ia:1,ilPage1851:info.slug},'',location.href)}catch(e){}
+      if(drawer)drawer.classList.remove('on');if(shade)shade.classList.remove('on');
+      panel.querySelectorAll('.view').forEach(function(x){x.classList.remove('on')});view.classList.add('on');panel.classList.add('on');panel.scrollTop=0;
+      var sec=d.getElementById('sec');if(sec)sec.textContent=info.title;
+      titleEl.textContent=info.title;
+    }
+    function renderCached(c,offline){
+      if(!c)return false;titleEl.textContent=c.title||current.title;bodyEl.innerHTML=c.html||'<div class="ilp-note1851">Brak zapisanej treści.</div>';
+      metaEl.innerHTML='Zapisano '+new Date(c.time||Date.now()).toLocaleString('pl-PL')+(offline?'<span class="ilp-offline1851">OFFLINE</span>':' • odświeżam');return true;
+    }
+    function load(info,force){
+      if(loading&&!force)return;loading=true;var requestId=++loadSerial,c=cacheGet(info.slug),had=renderCached(c,navigator.onLine===false);
+      if(navigator.onLine===false){loading=false;if(!had)bodyEl.innerHTML='<div class="ilp-error1851"><b>Brak internetu</b><br>Ta strona nie została jeszcze zapisana w aplikacji.</div>';return}
+      if(!had)bodyEl.innerHTML='<div class="ilp-skeleton1851"><i></i><i></i><i></i><i></i></div>';
+      metaEl.textContent=had?'Odświeżam treść…':'Pobieram treść z Ispina Lokalnie…';
+      var x=new XMLHttpRequest(),url=WP+'/wp-json/wp/v2/pages?slug='+encodeURIComponent(info.slug)+'&_fields=id,link,title,content,modified&_='+(Date.now());
+      x.open('GET',url,true);x.timeout=12000;
+      x.onreadystatechange=function(){if(x.readyState!==4)return;if(requestId!==loadSerial||!current||current.slug!==info.slug)return;if(x.status>=200&&x.status<300){loading=false;try{var a=JSON.parse(x.responseText||'[]'),p=a&&a[0];if(!p)throw new Error('empty');var rec={title:safeText(p.title&&p.title.rendered)||info.title,html:sanitize(p.content&&p.content.rendered),link:p.link||WP+'/'+info.slug+'/',time:Date.now(),modified:p.modified||''};cacheSet(info.slug,rec);titleEl.textContent=rec.title;bodyEl.innerHTML=rec.html||'<div class="ilp-note1851">Ta strona nie ma jeszcze treści.</div>';metaEl.textContent='Treść w aplikacji • aktualizacja '+new Date(rec.time).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'})}catch(e){fallbackV1(info,had,requestId)}}else fallbackV1(info,had,requestId)};
+      x.onerror=x.ontimeout=function(){fallbackV1(info,had,requestId)};try{x.send()}catch(e){fallbackV1(info,had,requestId)}
+    }
+    function fallbackV1(info,had,requestId){if(requestId!==loadSerial||!current||current.slug!==info.slug)return;try{var y=new XMLHttpRequest(),u='https://public-api.wordpress.com/rest/v1.1/sites/ispinalokalnie.wordpress.com/posts/slug:'+encodeURIComponent(info.slug)+'?_='+(Date.now());y.open('GET',u,true);y.timeout=10000;y.onreadystatechange=function(){if(y.readyState!==4)return;if(requestId!==loadSerial||!current||current.slug!==info.slug)return;loading=false;if(y.status>=200&&y.status<300){try{var p=JSON.parse(y.responseText||'{}');var rec={title:safeText(p.title)||info.title,html:sanitize(p.content||''),link:p.URL||WP+'/'+info.slug+'/',time:Date.now(),modified:p.modified||''};if(!rec.html)throw new Error('empty');cacheSet(info.slug,rec);titleEl.textContent=rec.title;bodyEl.innerHTML=rec.html;metaEl.textContent='Treść w aplikacji • aktualizacja '+new Date(rec.time).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'})}catch(e){fail(had)}}else fail(had)};y.onerror=y.ontimeout=function(){loading=false;fail(had)};y.send()}catch(e){loading=false;fail(had)}}
+    function fail(had){if(had){metaEl.innerHTML='Pokazuję zapisaną wersję<span class="ilp-offline1851">ZAPIS</span>';return}bodyEl.innerHTML='<div class="ilp-error1851"><b>Nie udało się pobrać treści.</b><br>Spróbuj ponownie za chwilę.</div>';metaEl.textContent='Połączenie ze stroną nie powiodło się'}
+    function openInfo(info,push){showShell(info,push);load(info,info.slug==='uslugi-w-okolicy')}
+    window.IL_LOCAL_PAGE_OPEN=function(path,push){var info=MAP[String(path||'').toLowerCase()];if(!info)return false;openInfo(info,push!==false);return true};
+    function toDash(){
+      panel.querySelectorAll('.view').forEach(function(x){x.classList.remove('on')});var h=d.getElementById('vdash');if(h){h.classList.add('on');panel.classList.add('on');panel.scrollTop=0;var s=d.getElementById('sec');if(s)s.textContent='Pulpit'}
+      current=null;
+    }
+    d.addEventListener('click',function(e){
+      var b=e.target&&e.target.closest?e.target.closest('.nb'):null;if(!b)return;var u=(b.getAttribute('data-u')||'');
+      var path='';try{path=new URL(u,location.href).pathname}catch(_){path=u.replace(WP,'')}
+      var info=MAP[path];if(!info)return;e.preventDefault();e.stopImmediatePropagation();openInfo(info,true);
+    },true);
+    bodyEl.addEventListener('click',function(e){var a=e.target&&e.target.closest?e.target.closest('a[href]'):null;if(!a)return;var u=a.getAttribute('href')||'',path='';try{var o=new URL(u,WP);path=o.pathname;if((o.hostname||'').toLowerCase().indexOf('ispinalokalnie')<0)return}catch(_){return}var info=MAP[path];if(!info)return;e.preventDefault();e.stopPropagation();openInfo(info,true)});
+    backBtn.onclick=function(){toDash()};
+    refreshBtn.onclick=function(){if(current)load(current,true)};
+    var report=d.getElementById('report');if(report)report.onclick=function(){openInfo(MAP['/kontakt/'],true)};
+    addEventListener('popstate',function(e){if(view.classList.contains('on')){e.stopImmediatePropagation();toDash()}},true);
+    function guard(){if(panel.classList.contains('on')&&!panel.querySelector('.view.on'))toDash()}
+    addEventListener('pageshow',guard);addEventListener('focus',guard);d.addEventListener('visibilitychange',function(){if(!d.hidden)guard()});
+    // If the shell is currently sitting on one of these old WordPress pages, switch to the local view after initialization.
+    setTimeout(function(){var info=MAP[(location.pathname||'').toLowerCase()];if(info)openInfo(info,false)},80);
+    var ver=d.getElementById('ilDiagVersion');if(ver)ver.textContent='1.82.93';var vl=d.getElementById('ilVersionLabel');if(vl)vl.textContent='1.82.93';
+  }catch(e){try{console.warn('IL local pages 1.82.93',e)}catch(_){}}
+})();
+
+
+;/* Ispina Lokalnie 1.82.95 — INTERNAL LINK ROUTER / WEBVIEW REDUCTION */
+(function(){
+ try{
+  var d=document,WP='https://ispinalokalnie.wordpress.com';
+  if(d.getElementById('ilInternalRouter1853'))return;
+  var marker=d.createElement('meta');marker.id='ilInternalRouter1853';(d.head||d.documentElement).appendChild(marker);
+  var LOCAL={
+   '/uslugi-w-okolicy/':1,
+   '/facebook/':1,'/dane-o-ispinie/':1,'/historia-ispiny/':1,'/ciekawostki-historyczne/':1,'/galeria/':1,'/kontakt/':1,'/o-mnie/':1
+  };
+  function hostOk(h){h=String(h||'').toLowerCase();return h==='ispinalokalnie.wordpress.com'||h==='ispinalokalnie.com'||h==='www.ispinalokalnie.com'}
+  function normPath(p){p=String(p||'/').replace(/\/+/g,'/');if(!p.startsWith('/'))p='/'+p;if(p!=='/'&&!p.endsWith('/'))p+='/';return p.toLowerCase()}
+  function navClick(sel){var b=d.querySelector(sel);if(!b)return false;try{b.click();return true}catch(e){return false}}
+  function dashboard(){return navClick('#nav .nb[data-u=\":dash\"]')}
+  function news(){try{if(window.IL_NATIVE_NEWS_FEED){window.IL_NATIVE_NEWS_FEED();return true}}catch(e){}var b=d.getElementById('dnews');if(b){try{b.click();return true}catch(e){}}return false}
+  function local(path){
+   try{if(window.IL_LOCAL_PAGE_OPEN&&window.IL_LOCAL_PAGE_OPEN(path,true))return true}catch(e){}
+   var url=WP+path;
+   var b=d.querySelector('#nav .nb[data-u="'+url.replace(/"/g,'\\"')+'"]');
+   if(!b)return false;
+   try{b.click();return true}catch(e){return false}
+  }
+  function nativeReader(url){
+   try{if(window.IspinaNative&&IspinaNative.openReader){IspinaNative.openReader(url);return true}}catch(e){}
+   return false;
+  }
+  function route(url){
+   var u;try{u=new URL(url,location.href)}catch(e){return false}
+   if(!hostOk(u.hostname))return false;
+   var p=normPath(u.pathname||'/');
+   if(p==='/'||p==='/?')return dashboard();
+   if(p==='/aktualnosci/'||p.indexOf('/category/')===0||p.indexOf('/tag/')===0||p.indexOf('/author/')===0)return news();
+   if(LOCAL[p])return local(p);
+   // Media/download links should keep the Android/WebViewClient path so files and images still work.
+   if(/\.(?:jpe?g|png|gif|webp|svg|pdf|zip|apk|mp3|m4a|aac|ogg|mp4|m3u8)$/i.test(u.pathname||''))return false;
+   // Remaining same-site HTML links are normally articles: use the existing native reader.
+   return nativeReader(u.href);
+  }
+  window.IL_INTERNAL_ROUTE=route;
+  addEventListener('click',function(e){
+   if(e.defaultPrevented||e.button>0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;
+   var t=e.target,a=t&&t.closest?t.closest('a[href]'):null;if(!a)return;
+   var href=a.getAttribute('href')||'';if(!href||href.charAt(0)==='#'||/^mailto:|^tel:/i.test(href))return;
+   var u;try{u=new URL(href,location.href)}catch(_){return}
+   if(!hostOk(u.hostname))return;
+   if(route(u.href)){e.preventDefault();e.stopImmediatePropagation()}
+  },true);
+  // If a legacy Start button is reintroduced by an older layer, keep it local.
+  addEventListener('click',function(e){var b=e.target&&e.target.closest?e.target.closest('#nav .nb'):null;if(!b)return;var u=b.getAttribute('data-u')||'';if(u===WP||u===WP+'/'){e.preventDefault();e.stopImmediatePropagation();dashboard()}},true);
+  // Make the current migration state visible in Settings/diagnostics without adding clutter.
+  function status(){
+   var c=d.getElementById('ilNativeMigration1842');if(c){
+    var rows=c.querySelectorAll('.ilnm-row');
+    if(rows&&rows.length){
+     var found=false;Array.prototype.forEach.call(rows,function(r){if((r.textContent||'').indexOf('Strony informacyjne')>=0)found=true});
+     if(!found){var r=d.createElement('div');r.className='ilnm-row';r.innerHTML='<span>Strony informacyjne</span><b>Lokalne widoki + router linków</b>';var note=c.querySelector('.ilnm-note');if(note)c.insertBefore(r,note);else c.appendChild(r)}
+    }
+   }
+   var v=d.getElementById('ilDiagVersion');if(v)v.textContent='1.82.93';var vl=d.getElementById('ilVersionLabel');if(vl)vl.textContent='1.82.93';
+  }
+  status();setTimeout(status,700);setTimeout(status,1800);
+ }catch(e){try{console.warn('INTERNAL LINK ROUTER 1.82.93:',e)}catch(_){}}
+})();
+
+
+;/* Ispina Lokalnie 1.82.95 — HARD NEWS ROUTE GUARD */
+(function(){
+ try{
+  var d=document;
+  if(d.getElementById('ilHardNewsRoute1854'))return;
+  var m=d.createElement('meta');m.id='ilHardNewsRoute1854';(d.head||d.documentElement).appendChild(m);
+  function openNews(){
+   try{if(window.IL_NATIVE_NEWS_FEED){window.IL_NATIVE_NEWS_FEED();return true}}catch(e){}
+   return false;
+  }
+  // Window capture runs before the older document handlers and before target onclick.
+  addEventListener('click',function(e){
+   var t=e.target,b=t&&t.closest?t.closest('#dnews,#ilWpOpen1841,#nav .nb[data-native-feed1842="1"]'):null;
+   if(!b)return;
+   if(openNews()){
+    e.preventDefault();
+    e.stopImmediatePropagation();
+   }
+  },true);
+  // Older code periodically rewrites #dnews.onclick. Restore the native route without polling aggressively.
+  function pin(){
+   var b=d.getElementById('dnews');
+   if(b&&window.IL_NATIVE_NEWS_FEED){
+    b.setAttribute('data-native-feed1842','1');
+    b.onclick=window.IL_NATIVE_NEWS_FEED;
+   }
+   var v=d.getElementById('ilDiagVersion');if(v)v.textContent='1.82.93';
+   var vl=d.getElementById('ilVersionLabel');if(vl)vl.textContent='1.82.93';
+  }
+  pin();setTimeout(pin,250);setTimeout(pin,1200);
+  addEventListener('pageshow',pin);addEventListener('focus',pin);
+  d.addEventListener('visibilitychange',function(){if(!d.hidden)pin()});
+ }catch(e){try{console.warn('HARD NEWS ROUTE 1.82.93:',e)}catch(_){}}
+})();
+
+
+;/* Ispina Lokalnie 1.82.95 — LOCAL SHELL LOCK / WEBVIEW REDUCTION */
+(function(){
+ 'use strict';
+ try{
+  var d=document,p=d.getElementById('iaP'),VER=window.IL_BUILD.versionName;
+  window.IL_APP_VERSION=VER;
+  if(!p||d.getElementById('ilLocalShell1855'))return;
+  var mark=d.createElement('meta');mark.id='ilLocalShell1855';(d.head||d.documentElement).appendChild(mark);
+  var st=d.createElement('style');st.id='ilLocalShellStyle1855';st.textContent=
+   '#iaP{background:linear-gradient(180deg,#f6faf8 0%,#f1f6f3 100%)!important;overscroll-behavior:contain}'+
+   '#iaP .view{min-height:calc(100vh - 142px)}'+
+   '#iaP .view.on{animation:ilViewIn1855 .14s ease-out}'+
+   '#vset>.card,#vilPage1851>.card,#vilNews1842>.card{box-shadow:0 5px 18px rgba(22,65,52,.045)}'+
+   '#ilpWeb1851{background:#f7faf8!important;color:#557168!important;border-color:#d9e5df!important}'+
+   '@keyframes ilViewIn1855{from{opacity:.72;transform:translateY(2px)}to{opacity:1;transform:none}}'+
+   '@media(prefers-reduced-motion:reduce){#iaP .view.on{animation:none}}';
+  (d.head||d.documentElement).appendChild(st);
+
+  function dashNoPush(){
+   var h=d.getElementById('vdash');if(!h)return false;
+   p.querySelectorAll('.view').forEach(function(x){x.classList.remove('on')});
+   h.classList.add('on');p.classList.add('on');p.scrollTop=0;
+   var sec=d.getElementById('sec');if(sec)sec.textContent='Pulpit';
+   try{if(typeof dash==='function')dash()}catch(e){}
+   return true;
+  }
+  function guard(){
+   if(!p.classList.contains('on'))return;
+   var active=p.querySelectorAll('.view.on');
+   if(active.length===1)return;
+   if(active.length>1){for(var i=1;i<active.length;i++)active[i].classList.remove('on');return}
+   dashNoPush();
+  }
+  // Observe only class changes in the local shell: cheap and catches race conditions immediately.
+  var mo=new MutationObserver(function(){guard()});
+  mo.observe(p,{subtree:true,attributes:true,attributeFilter:['class']});
+  guard();setTimeout(guard,120);setTimeout(guard,650);
+  addEventListener('pageshow',guard);addEventListener('focus',guard);
+  d.addEventListener('visibilitychange',function(){if(!d.hidden)guard()});
+
+  // Make migration status accurately reflect the current stage.
+  function status(){
+   var c=d.getElementById('ilNativeMigration1842');if(c){
+    var rows=c.querySelectorAll('.ilnm-row'),found=false;
+    Array.prototype.forEach.call(rows,function(r){var a=r.querySelector('span'),b=r.querySelector('b');if(!a||!b)return;var t=a.textContent||'';if(/Pulpit\s*\/\s*Ustawienia/i.test(t)){b.textContent='Lokalna powłoka • bez przeładowań WWW'}if(/Strony informacyjne/i.test(t)){b.textContent='Lokalne widoki • cache • router';found=true}});
+    if(!found){var r=d.createElement('div');r.className='ilnm-row';r.innerHTML='<span>Strony informacyjne</span><b>Lokalne widoki • cache • router</b>';var n=c.querySelector('.ilnm-note');if(n)c.insertBefore(r,n);else c.appendChild(r)}
+    var note=c.querySelector('.ilnm-note');if(note)note.textContent='Większość nawigacji Ispina Lokalnie działa już bez przeładowywania głównego WebView. Aktualności korzystają z API/cache i natywnego czytnika, a strony informacyjne z lokalnych widoków. Sam kontener WebView pozostaje jeszcze warstwą techniczną do czasu pełnej przebudowy źródeł Androida.';
+   }
+   var v=d.getElementById('ilDiagVersion');if(v)v.textContent=VER;
+   var vl=d.getElementById('ilVersionLabel');if(vl)vl.textContent=VER;
+  }
+  status();setTimeout(status,500);setTimeout(status,1500);
+ }catch(e){try{console.warn('LOCAL SHELL 1.82.93:',e)}catch(_){} }
+})();
+
