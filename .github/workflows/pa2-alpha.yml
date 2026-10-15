@@ -42,6 +42,8 @@ jobs:
           python3 -m py_compile helpers/pa2/*.py
           python3 helpers/pa2/test_data.py
           node --check helpers/pa2/backend/worker.mjs
+          node --check helpers/pa2/app.js
+          node --check helpers/pa2/conversation.js
       - name: Rebuild existing project and new native module
         run: |
           java -Xmx4g -jar tools/apktool_2.12.1.jar d -f -o decoded baseline.apk
@@ -75,6 +77,16 @@ jobs:
           (cd testdex && zip -q -0 ../output/test-raw.apk classes.dex)
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -p -f 4 output/test-raw.apk output/test-aligned.apk
           cp output/test-aligned.apk output/PA2-instrumentation-unsigned.apk
+      - name: Sign separately installable PA2 UX alpha.2 test APK
+        run: |
+          keytool -genkeypair -noprompt -keystore output/pa2ux-temp.jks -storepass alpha2Preview2026 -keypass alpha2Preview2026 -alias testpreview -keyalg RSA -keysize 3072 -validity 3650 -dname "CN=PA2 UX Test,OU=Development,O=Pomocnik Alfa,C=PL"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks output/pa2ux-temp.jks --ks-key-alias testpreview --ks-pass pass:alpha2Preview2026 --key-pass pass:alpha2Preview2026 --out output/Pomocnik-Alfa-2.0.0-alpha.2-UX-TEST.apk output/PA2-aligned-unsigned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks output/pa2ux-temp.jks --ks-key-alias testpreview --ks-pass pass:alpha2Preview2026 --key-pass pass:alpha2Preview2026 --out output/PA2-UX-instrumentation.apk output/PA2-instrumentation-unsigned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose output/Pomocnik-Alfa-2.0.0-alpha.2-UX-TEST.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging output/Pomocnik-Alfa-2.0.0-alpha.2-UX-TEST.apk > output/ux-badging.txt
+          grep -q 'com.senikolo.pomocniknowy.pa2uxpreview' output/ux-badging.txt
+          sha256sum output/Pomocnik-Alfa-2.0.0-alpha.2-UX-TEST.apk > output/PA2-UX-SHA256.txt
+          rm output/pa2ux-temp.jks
       - name: Preserve complete reconstructed project and updateable data
         run: |
           cp -r helpers/pa2 decoded/pa2-build-sources
@@ -93,6 +105,8 @@ jobs:
           name: PA2-unsigned-build
           path: |
             output/PA2-aligned-unsigned.apk
+            output/Pomocnik-Alfa-2.0.0-alpha.2-UX-TEST.apk
+            output/PA2-UX-instrumentation.apk
             output/PA2-instrumentation-unsigned.apk
             output/PA2-Reconstructed-Project.zip
             output/*.txt
