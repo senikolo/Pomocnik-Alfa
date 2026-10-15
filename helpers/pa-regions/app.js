@@ -220,7 +220,7 @@ async function assistant(){
   bubble(lastAnswer,"assistant");return;
  }
  if(!from||!to){
-  lastAnswer="Rozumiem "+(from?"start: "+from.name:"cel: "+to.name")+". Podaj jeszcze dokładny "+(!from?"przystanek początkowy.":"przystanek docelowy.")+" Daty i godziny nie będę pytać ponownie, jeżeli już ją podałeś.";
+  lastAnswer="Rozumiem "+(from?"start: "+from.name:"cel: "+to.name)+". Podaj jeszcze dokładny "+(!from?"przystanek początkowy.":"przystanek docelowy.")+" Daty i godziny nie będę pytać ponownie, jeżeli już ją podałeś.";
   bubble(lastAnswer,"assistant");return;
  }
  let dep=new Date($("departAt").value);
