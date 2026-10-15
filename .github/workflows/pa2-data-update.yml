@@ -1,6 +1,9 @@
 name: PA2 independent timetable refresh
 on:
   workflow_dispatch:
+  push:
+    branches: ['main']
+    paths: ['.github/workflows/pa2-data-update.yml', 'helpers/pa2/fetch_data.py', 'helpers/pa2/build_data.py']
   schedule:
     - cron: '20 3 * * *'
 permissions:
