@@ -14,7 +14,9 @@ public class PAProbe extends Instrumentation {
   record("Android API "+Build.VERSION.SDK_INT+", package "+getTargetContext().getPackageName());
   Activity a=launch("MainActivity");record("PASS main launches");screenshot("main");runOnMainSync(()->a.finish());
   Activity planner=launch("PARegionsActivity");waitJs(planner,"document.getElementById('coverage').innerText.includes('offline')",30000);record("PASS WebView, all GTFS indexes and ES2017 client load");
-  js(planner,"document.getElementById('from').value='Tarchomin';document.getElementById('confirmFrom').click();document.getElementById('to').value='Dw. Centralny';document.getElementById('confirmTo').click();true");
+  js(planner,"document.getElementById('from').value='Szwedzka';document.getElementById('from').dispatchEvent(new Event('input'));true");
+  waitJs(planner,"document.getElementById('suggestFrom').innerText.includes('Warszawa')&&document.getElementById('suggestFrom').innerText.includes('Kraków')",10000);record("PASS identical stop names require Warsaw/Kraków geographic choice");
+  js(planner,"document.getElementById('from').value='Tarchomin';document.getElementById('from').dispatchEvent(new Event('input'));document.getElementById('confirmFrom').click();document.getElementById('to').value='Dw. Centralny';document.getElementById('confirmTo').click();true");
   waitJs(planner,"document.querySelectorAll('.trip').length>0",60000);record("PASS automatic Tarchomin–Dw. Centralny real timetable search");screenshot("planner");
   js(planner,"document.getElementById('tabAssistant').click();document.getElementById('chatInput').value='Chcę jutro po 9 jechać z Ispiny do Bochni';document.getElementById('ask').click();true");
   waitJs(planner,"document.getElementById('messages').innerText.includes('09:00')",20000);record("PASS chat retains requested date/time while clarifying Bochnia stop");
