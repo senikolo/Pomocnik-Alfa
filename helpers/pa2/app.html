@@ -131,7 +131,48 @@ nav button .vicon{width:22px;height:22px}
 #busStops .list-option{min-height:48px}
 @media(max-width:390px){nav button{font-size:10px}nav button .vicon{width:20px;height:20px}}
 @media(prefers-reduced-motion:reduce){.bus-map *,#liveBus .card{animation:none!important;transition:none!important}}
-#planner .bus-shortcut{min-height:40px;margin:0 0 5px;padding:7px 10px;border-radius:12px;border:1px solid var(--line);color:var(--deep);background:var(--soft);font-size:13px}#planner .bus-shortcut:active{transform:scale(.98)}\n</style></head><body>
+#planner .bus-shortcut{min-height:40px;margin:0 0 5px;padding:7px 10px;border-radius:12px;border:1px solid var(--line);color:var(--deep);background:var(--soft);font-size:13px}#planner .bus-shortcut:active{transform:scale(.98)}\n
+/* Alpha.4 cohesive UI and actual OpenStreetMap zoomable tile viewport. */
+:root{--radius-ui:18px}
+#liveBus .bus-form{border:1px solid var(--line);box-shadow:0 8px 28px #33194e16}
+#liveBus label{font-size:14px;font-weight:710}
+#liveBus .bus-vehicle-line{font-size:20px;line-height:1.3;overflow-wrap:anywhere}
+#liveBus .bus-status{border:1px solid var(--line);font-weight:700}
+.bus-eta{margin:10px 0;padding:12px 14px;border-radius:15px;background:var(--soft);border:1px solid var(--line)}
+.bus-eta strong{font-size:20px;color:var(--deep);line-height:1.3;display:block}
+.bus-eta small{display:block;color:var(--muted);margin-top:4px}
+.bus-eta.live{border-color:var(--green);background:color-mix(in srgb,var(--green) 8%,var(--surface))}
+.bus-eta.schedule{border-color:var(--line)}
+.bus-eta.unknown{background:var(--surface)}
+.osm-map{margin:11px 0;border-radius:17px;overflow:hidden;border:1px solid var(--line);background:var(--surface)}
+.osm-toolbar{display:flex;align-items:center;justify-content:space-between;gap:7px;flex-wrap:wrap;padding:8px 10px}
+.osm-toolbar strong{font-size:13px;color:var(--ink)}
+.osm-buttons{display:flex;gap:5px}
+.osm-buttons button{border:1px solid var(--line);color:var(--deep);border-radius:10px;background:var(--soft);min-width:44px;min-height:44px;font-size:21px;font-weight:750;cursor:pointer}
+.osm-buttons button:disabled{opacity:.4}
+.osm-viewport{height:268px;overflow:hidden;position:relative;background:#e5ece7;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
+.osm-viewport:active{cursor:grabbing}
+.osm-layer{position:absolute;inset:0;pointer-events:none}
+.osm-layer img{width:256px;height:256px;max-width:none;display:block;user-select:none;pointer-events:none}
+.osm-marker{position:absolute;z-index:2;width:33px;height:33px;border-radius:18px;display:grid;place-items:center;transform:translate(-50%,-50%);border:2px solid #fff;box-shadow:0 2px 10px #1620326c;color:#fff;font-size:15px;font-weight:800;pointer-events:none}
+.osm-stop{background:#643b9d}
+.osm-bus{background:#197b5c;font-size:18px}
+.osm-attribution{position:absolute;z-index:3;right:0;bottom:0;padding:3px 6px;background:#ffffffed;color:#222;font-size:11px;font-weight:650;pointer-events:none}
+.osm-hint{margin:0;padding:8px 11px;font-size:12px;line-height:1.4;color:var(--muted)}
+#liveBus .small{line-height:1.55}
+#liveBus .bus-live-foot{align-items:center}
+#liveBus .card.trip{animation:tripRise .22s ease both}
+#liveBus .bus-source{border-top:1px solid var(--line);padding-top:8px;margin-top:12px}
+nav .vicon{stroke-width:1.9}
+nav button.active .vicon{stroke-width:2.3}
+header .icon{border-radius:13px;box-shadow:none}
+#assistant .bubble:not(.user){border-left:3px solid #9e7bcb}
+#assistant .composer{border-top:1px solid var(--line);box-shadow:0 -6px 15px #1a15320d}
+#planner .trip{box-shadow:0 5px 20px #28134012}
+@media(max-width:390px){.osm-viewport{height:230px}.osm-toolbar strong{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.osm-marker,#liveBus .card.trip{animation:none!important;transition:none!important}}
+
+</style></head><body>
 <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><defs>
 <symbol id="pa-arrow-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6M9 12h12" /></symbol>
 <symbol id="pa-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16M8 4v6m8 4v6" /><circle cx="8" cy="7" r="2"/><circle cx="16" cy="17" r="2"/></symbol>
@@ -171,15 +212,15 @@ nav button .vicon{width:22px;height:22px}
   <div><label for="busDirection">3. W jakim kierunku?</label><select id="busDirection" disabled><option value="">Wybierz linię</option></select></div>
  </div>
  <button class="btn primary full" id="checkBus" disabled><svg class="vicon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="#pa-pin"></use></svg> Sprawdź, gdzie jest autobus</button>
- <div class="row between bus-live-foot"><span class="small" id="busProvider">Dane LIVE tylko tam, gdzie są dostępne.</span><button class="btn quiet" id="busRefresh" disabled aria-label="Odśwież dane autobusu"><svg class="vicon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="#pa-refresh"></use></svg> Odśwież</button></div>
+ <div class="row between bus-live-foot"><span class="small" id="busProvider">Pozycja GPS i prognoza LIVE tylko dla obsługiwanych kursów.</span><button class="btn quiet" id="busRefresh" disabled aria-label="Odśwież dane autobusu"><svg class="vicon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="#pa-refresh"></use></svg> Odśwież</button></div>
 </div>
 <div id="busLoading" class="progress" role="status" aria-live="polite"></div>
 <div id="busResult" aria-live="polite"></div>
-<p class="footnote">Położenie GPS jest wyświetlane wyłącznie dla konkretnego kursu zgodnego z rozkładem i nie starsze niż 120 sekund. Odległość do przystanku to linia prosta, a nie czas dojazdu. Nie wszystkie linie mają dostępne dane LIVE.</p>
+<p class="footnote">Położenie GPS jest wyświetlane wyłącznie dla konkretnego kursu zgodnego z rozkładem i nie starsze niż 120 sekund. Odległość do przystanku to linia prosta, a nie czas dojazdu. Mapę dostarcza OpenStreetMap, a pobrane kafelki są buforowane. Nie wszystkie linie mają dostępne dane LIVE.</p>
 </section>
 <section class="panel" id="assistant"><div class="chat-top row between"><div><div class="eyebrow">Jestem obok</div><h2>Porozmawiajmy <span aria-hidden="true">✦</span></h2></div><button class="btn quiet" id="clearChat" aria-label="Nowa rozmowa">Nowa</button></div><div class="chat-badge" id="aiStatus">Pomoc w podróży, pogodzie i notatkach · tryb lokalny</div>
 <div class="chat-shell"><div class="messages" id="messages" role="log" aria-label="Rozmowa z Alfą" aria-live="polite"></div><div class="typing" id="typing" role="status"></div><div class="composer"><div id="quickPrompts" class="options"><button class="btn prompt" data-query="Jak dojadę z Tarchomina na Dworzec Centralny?">Tarchomin → centrum</button><button class="btn prompt" data-query="Chcę jutro po 9 jechać z Ispiny do Bochni">Ispina → Bochnia</button></div><label class="sr-only" for="chatInput">Wiadomość do Alfy</label><div class="entry field"><textarea id="chatInput" rows="1" placeholder="Napisz, w czym pomóc…"></textarea><button class="btn primary send" id="ask" aria-label="Wyślij wiadomość"><svg class="vicon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="#pa-send"></use></svg></button></div><div class="row between wrap"><button class="btn quiet small" id="webSearch">Szukaj w Wikipedii</button></div></div></div></section>
 <section class="panel" id="favorites"><div class="eyebrow">Pod ręką</div><h2>Twoje ulubione</h2><p class="small">Zapisane trasy i przystanki są dostępne na tym urządzeniu.</p><div id="favoriteList"></div><div class="card"><h3>Pozostałe funkcje PA</h3><div class="options"><button class="btn module" data-module="notes">Notatnik</button><button class="btn module" data-module="reminders">Przypomnienia</button><button class="btn module" data-module="radio">Radio</button><button class="btn module" data-module="tv">Telewizja</button><button class="btn module" data-module="weather">Pogoda</button></div></div></section>
 <section class="panel" id="notePanel"><div class="eyebrow">Wszystko w jednym miejscu</div><h2>Twoja podróż</h2><div class="card"><div id="note" class="note"></div><div class="buttons field options"><button class="btn primary" id="copyNote">Kopiuj notatkę</button><button class="btn" id="saveNote">Zapisz w notatniku PA</button><button class="btn" id="noteWeather">Dodaj pogodę</button></div><p class="small" id="noteStatus" role="status"></p></div><button class="btn full" id="returnResults">Wróć do połączeń</button></section>
 </main><nav aria-label="Nawigacja"><div class="nav-inner"><button class="active" id="tabPlanner" data-tab="planner"><span><svg class="vicon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="#pa-route"></use></svg></span>Planer</button><button id="tabBus" data-tab="liveBus"><span><svg class="vicon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="#pa-bus"></use></svg></span>Autobus</button><button id="tabAssistant" data-tab="assistant"><span><svg class="vicon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="#pa-sparkles"></use></svg></span>Alfa</button><button id="tabFavorites" data-tab="favorites"><span><svg class="vicon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><use href="#pa-star"></use></svg></span>Ulubione</button></div></nav><div class="toast hidden" id="toast" role="status"></div>
-<script src="/transit-core.js"></script><script src="/conversation.js"></script><script src="/app.js"></script></body></html>
+<script src="/transit-core.js"></script><script src="/conversation.js"></script><script src="/osm-map.js"></script><script src="/app.js"></script></body></html>
