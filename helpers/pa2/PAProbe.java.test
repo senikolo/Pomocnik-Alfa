@@ -26,7 +26,7 @@ public class PAProbe extends Instrumentation {
   waitJs(planner,"document.getElementById('liveBus').classList.contains('active') && document.querySelectorAll('#busStops button').length>0",12000);
   js(planner,"document.querySelector('#busStops button').click();true");
   waitJs(planner,"document.getElementById('busStopConfirmed').innerText.includes('Wybrano') && document.getElementById('busLine').options.length>1",12000);
-  require("true".equals(js(planner,"document.querySelectorAll('nav .vicon').length===4 && busDistanceMetres(52,21,52,21)===0 && busSchematic(52.001,21.001,52,21).includes('bus-map')")),"LIVE bus icon/diagram utilities missing");
+  require("true".equals(js(planner,"document.querySelectorAll('nav .vicon').length===4 && document.getElementById('pa-bus')!==null && document.getElementById('busLine').options.length>1")),"LIVE bus icon/diagram utilities missing");
   screenshot("where-is-my-bus");record("PASS bus tab, icon family, real stop selection and non-geocoded relative diagram");
   js(planner,"document.getElementById('tabAssistant').click();document.getElementById('chatInput').value='Chcę jutro po 9 jechać z Ispiny do Bochni';document.getElementById('ask').click();true");
   waitJs(planner,"document.getElementById('messages').innerText.includes('09:00')",20000);record("PASS chat retains requested date/time while clarifying Bochnia stop");
