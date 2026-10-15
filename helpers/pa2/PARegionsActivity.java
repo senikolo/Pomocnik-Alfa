@@ -32,8 +32,8 @@ public final class PARegionsActivity extends Activity {
   web.setWebChromeClient(new WebChromeClient());web.setWebViewClient(new WebViewClient(){
    @Override public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest r){return !local(r.getUrl());}
    @Override public WebResourceResponse shouldInterceptRequest(WebView v,WebResourceRequest r){
-    Uri u=r.getUrl();if(!local(u))return error();String path=u.getPath();if(path==null)return error();String name=path.substring(1);
-    if(!name.matches("(?:app\\.html|app\\.js|transit-core\\.js|conversation\\.js|index_all\\.json|route_all_[0-9]+\\.json|manifest\\.json|summary\\.json)"))return error();
+    Uri u=r.getUrl();if(!local(u))return error();String path=u.getPath();if(path==null)return error();String name=path.substring(1);if(path.startsWith("/osm/"))return PAOSMTiles.load(PARegionsActivity.this,path);
+    if(!name.matches("(?:app\\.html|app\\.js|transit-core\\.js|conversation\\.js|osm-map\\.js|index_all\\.json|route_all_[0-9]+\\.json|manifest\\.json|summary\\.json)"))return error();
     String mime=name.endsWith(".html")?"text/html":name.endsWith(".js")?"application/javascript":"application/json";
     try{InputStream in;File current=active;if(name.endsWith(".json")&&current!=null)in=new FileInputStream(new File(current,name));else in=getAssets().open("pa_regions/"+name);
      Map<String,String> h=new HashMap<>();h.put("Cache-Control","no-store");h.put("X-Content-Type-Options","nosniff");h.put("Content-Security-Policy","default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'");return new WebResourceResponse(mime,"UTF-8",200,"OK",h,in);
@@ -98,7 +98,7 @@ public final class PARegionsActivity extends Activity {
  private static byte[] fileBytes(File f,int max)throws Exception{try(InputStream in=new FileInputStream(f)){return bounded(in,max);}}
  private static String hex(byte[] b){StringBuilder s=new StringBuilder();for(byte v:b)s.append(String.format(Locale.ROOT,"%02x",v&255));return s.toString();}
  private static String enc(String s)throws Exception{return URLEncoder.encode(s,"UTF-8");}
- private static boolean hostOK(String host){return Arrays.asList("geocoding-api.open-meteo.com","api.open-meteo.com","pl.wikipedia.org","raw.githubusercontent.com","github.com","release-assets.githubusercontent.com","objects.githubusercontent.com","mkuran.pl","gtfs.ztp.krakow.pl").contains(host);}
+ private static boolean hostOK(String host){return Arrays.asList("tile.openstreetmap.org","geocoding-api.open-meteo.com","api.open-meteo.com","pl.wikipedia.org","raw.githubusercontent.com","github.com","release-assets.githubusercontent.com","objects.githubusercontent.com","mkuran.pl","gtfs.ztp.krakow.pl").contains(host);}
  static byte[] read(String address,int max)throws Exception{
   String current=address;for(int redirect=0;redirect<5;redirect++){URL u=new URL(current);if(!"https".equals(u.getProtocol())||!hostOK(u.getHost())||u.getUserInfo()!=null||(u.getPort()!=-1&&u.getPort()!=443))throw new IOException("Niedozwolone źródło danych.");HttpURLConnection c=(HttpURLConnection)u.openConnection();c.setInstanceFollowRedirects(false);c.setConnectTimeout(10000);c.setReadTimeout(25000);c.setRequestProperty("User-Agent","PomocnikAlfa/2.0 (+https://github.com/senikolo/Pomocnik-Alfa)");try{int code=c.getResponseCode();if(code>=300&&code<400){current=new URL(u,c.getHeaderField("Location")).toString();continue;}if(code!=200)throw new IOException(code==404?"Usługa lub paczka danych nie jest jeszcze dostępna. Zachowano dane zapisane w aplikacji.":"Źródło jest niedostępne (HTTP "+code+"). Spróbuj później.");if(c.getContentLengthLong()>max)throw new IOException("Odpowiedź źródła jest zbyt duża.");try(InputStream in=c.getInputStream()){return bounded(in,max);}}finally{c.disconnect();}}throw new IOException("Zbyt wiele przekierowań.");
  }
