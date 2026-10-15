@@ -1,0 +1,850 @@
+ padding:calc(6px + env(safe-area-inset-top)) 10px 6px!important;gap:7px!important;overflow:visible!important}
+#iaSp{height:calc(82px + env(safe-area-inset-top))!important}
+html:not(.il9-senior-home) #iaP{inset:calc(82px + env(safe-area-inset-top)) 0 0!important}
+#iaBar > div{grid-template-columns:minmax(0,1fr) 44px!important;gap:1px 6px!important;min-width:0!important}
+#iaBar .B{font-size:20px!important;line-height:1.18!important;overflow:visible!important}
+#iaBar .S{font-size:12px!important;line-height:1.24!important;color:#f6fbff!important;opacity:1!important;
+ display:-webkit-box!important;-webkit-line-clamp:2!important;-webkit-box-orient:vertical!important;overflow:hidden!important;overflow-wrap:break-word!important}
+#iaBar svg.ct{width:44px!important;height:38px!important;max-width:44px!important;overflow:visible!important}
+#iaBar #iaM,#iaBar #ilBack1846{height:48px!important;min-height:48px!important;width:48px!important;min-width:48px!important;flex-basis:48px!important}
+html.il9-senior:not(.il9-senior-home) #iaBar{height:calc(102px + env(safe-area-inset-top))!important;min-height:calc(102px + env(safe-area-inset-top))!important}
+html.il9-senior:not(.il9-senior-home) #iaSp{height:calc(102px + env(safe-area-inset-top))!important}
+html.il9-senior:not(.il9-senior-home) #iaP{inset:calc(102px + env(safe-area-inset-top)) 0 0!important}
+html.il9-senior:not(.il9-senior-home) #iaBar .B{font-size:23px!important}
+html.il9-senior:not(.il9-senior-home) #iaBar .S{font-size:15px!important}
+@media(max-width:355px){#iaBar{padding-left:6px!important;padding-right:6px!important;gap:4px!important}
+ #iaBar > div{grid-template-columns:minmax(0,1fr) 38px!important;column-gap:3px!important}
+ #iaBar svg.ct{width:38px!important;height:35px!important}}
+/* Do not duplicate the bottom-bar Pulpit action, unless bottom navigation is unavailable. */
+#iaP.il12-has-home-nav #vilPage1851 #ilpBack1851{display:none!important}
+#iaP.il12-has-home-nav #vilPage1851 .ilp-head1851{gap:10px!important;justify-content:flex-start!important}
+#iaP.il12-has-home-nav #vilPage1851 .ilp-head1851>div:first-child{width:100%!important;min-width:0!important}
+/* Planner already has a working swap control and return-to-form action. Emphasize instead of duplicating. */
+#iaP #vplan #pswap{display:flex!important;align-items:center!important;justify-content:center!important;gap:5px!important;
+ min-width:122px!important;width:max-content!important;max-width:100%!important;height:48px!important;min-height:48px!important;
+ border-radius:24px!important;font-size:14px!important;line-height:1.15!important;padding:0 13px!important;cursor:pointer!important}
+#iaP #vplan .il7-back-to-form{position:sticky!important;top:0!important;z-index:8!important;
+ background:#e6f4f4!important;border:1px solid #b2d4da!important;box-shadow:0 3px 12px rgba(14,53,92,.09)!important}
+/* Compact radio cards: show status ONLY when it conveys meaningful activity or an error. */
+#iaP #vmedia .rtv-head{padding:13px 15px!important;margin-bottom:10px!important}
+#iaP #vmedia .rtv-card{padding:12px 14px!important;margin-bottom:9px!important;border-radius:18px!important}
+#iaP #vmedia .rtv-row{gap:10px!important;align-items:center!important}
+#iaP #vmedia .rtv-icon{width:42px!important;height:42px!important;flex-basis:42px!important;font-size:22px!important}
+#iaP #vmedia .rtv-title{font-size:16px!important;line-height:1.25!important}
+#iaP #vmedia .rtv-desc{font-size:12px!important;line-height:1.35!important}
+#iaP #vmedia .rtv-status.il12-idle{display:none!important}
+#iaP #vmedia .rtv-status:not(.il12-idle){margin:8px 0!important}
+#iaP #vmedia .rtv-actions{gap:8px!important}
+#iaP #vmedia .rtv-btn{min-height:48px!important;min-width:48px!important;padding:10px 13px!important}
+/* Only shown when the genuine built-in player reports a station. All actions delegate to it. */
+#il12-radio-mini{position:fixed;bottom:calc(76px + env(safe-area-inset-bottom));left:10px;right:10px;z-index:99950;
+ padding:9px 10px;background:linear-gradient(120deg,#124e73,#176e81);border:1px solid #7cc2c5;border-radius:15px;
+ box-shadow:0 7px 21px rgba(5,38,63,.27);color:#fff;display:none;align-items:center;gap:8px;max-width:570px;margin:0 auto}
+#il12-radio-mini.il12-on{display:flex}
+#il12-radio-mini .il12-radio-name{flex:1;min-width:0;font-size:13px;line-height:1.25;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#il12-radio-mini button{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:10px;
+ min-width:48px;min-height:48px;padding:8px 10px;font-size:14px;font-weight:800;cursor:pointer}
+#il12-radio-mini button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+/* Gallery toolbar remains reachable by thumb; hide/show does not change zoom gestures. */
+#ilGalleryViewer1861 .ilgv-bottom1861{padding-bottom:max(15px,env(safe-area-inset-bottom))!important}
+#ilGalleryViewer1861 .ilgv-controls1861{justify-content:center!important;flex-wrap:wrap!important}
+#ilGalleryViewer1861 .ilgv-controls1861>button{min-height:48px!important}
+#ilGalleryViewer1861[data-il12-chrome-hidden="1"] .ilgv-top1861,
+#ilGalleryViewer1861[data-il12-chrome-hidden="1"] .ilgv-bottom1861,
+#ilGalleryViewer1861[data-il12-chrome-hidden="1"] .ilgv-nav1861{opacity:0!important;pointer-events:none!important;transition:opacity 170ms ease}
+#ilGalleryViewer1861:not([data-il12-chrome-hidden="1"]) .ilgv-top1861,
+#ilGalleryViewer1861:not([data-il12-chrome-hidden="1"]) .ilgv-bottom1861{transition:opacity 170ms ease}
+/* Reading tools: article is still the familiar paper card; controls stay outside its prose. */
+#vilPage1851 .il12-reader-tools{display:none;align-items:center;gap:7px;padding:4px 0 12px;flex-wrap:wrap}
+#vilPage1851.il9-archive .il12-reader-tools{display:flex}
+#vilPage1851 .il12-reader-tools button{min-width:48px;min-height:48px;padding:8px 12px;border:1px solid #c7b28b;
+ border-radius:11px;background:#fff8eb;color:#324759;font-weight:850;font-size:15px;cursor:pointer}
+#vilPage1851 .il12-reader-tools span{color:#665942;font-size:12px;font-weight:700}
+#vilPage1851.il9-archive .ilp-body1851 p,#vilPage1851.il9-archive .ilp-body1851 li,
+html.il9-senior #iaP #vilPage1851.il9-archive .ilp-body1851 p,html.il9-senior #iaP #vilPage1851.il9-archive .ilp-body1851 li{font-size:var(--il12-reader-font,18px)!important}
+#vilPage1851 .il12-reading-progress{display:none;position:sticky;top:0;width:100%;height:4px;z-index:8;background:#e7dbc4;overflow:hidden;border-radius:8px}
+#vilPage1851.il9-archive .il12-reading-progress{display:block}
+#vilPage1851 .il12-reading-progress div{height:100%;width:0;background:#208185;transition:width 100ms linear}
+#vdash .il12-resume{display:none;width:100%;margin:10px 0;padding:10px 14px;min-height:48px;
+ border:1px solid #b7d6d7;background:#e9f5f3;color:#145575;border-radius:13px;text-align:left;font-size:13px;font-weight:800}
+#vdash .il12-resume.il12-on{display:block}
+body.senior #il12-radio-mini .il12-radio-name,body.senior #vdash .il12-resume{font-size:16px!important}
+@media(prefers-reduced-motion:reduce){#ilGalleryViewer1861 .ilgv-top1861,#ilGalleryViewer1861 .ilgv-bottom1861,
+ #vilPage1851 .il12-reading-progress div{transition:none!important}}
+`; (d.head||d.documentElement).appendChild(css);
+ var panel=q('#iaP'),page=q('#vilPage1851'),readerBody=q('#ilpBody1851'),results=q('#pres'),media=q('#vmedia'),viewer=q('#ilGalleryViewer1861');
+ function safeGet(k){try{return w.localStorage.getItem(k)||''}catch(e){return ''}}
+ function safePut(k,v){try{w.localStorage.setItem(k,String(v))}catch(e){}}
+ function navTarget(u){return Array.prototype.find.call(d.querySelectorAll('#nav .nb'),function(x){return x.getAttribute('data-u')===u})}
+ function isOn(e){return !!(e&&e.classList.contains('on'))}
+ function patchHeader(){
+   if(!panel)return;var home=q('#ilDayBottom');var btn=home&&home.querySelector('button');
+   var back=q('#ilBack1846');var navAvailable=!!((home&&btn&&w.getComputedStyle(home).display!=='none')||back);
+   panel.classList.toggle('il12-has-home-nav',navAvailable&&!d.body.classList.contains('senior-home'));
+ }
+ function planner(){var b=q('#pswap');if(b){b.textContent='⇅  Zamień';b.title='Zamień miejscami Start i Cel';b.setAttribute('aria-label','Zamień przystanek początkowy i docelowy');b.type='button'}
+   var ret=q('.il7-back-to-form',results);if(ret){ret.textContent='↑ Zmień trasę lub godzinę';ret.setAttribute('aria-label','Wróć do wyboru trasy i godziny')}
+ }
+ // IMPORTANT: this never starts playback; it mirrors the genuine #rtvNow player state.
+ var mini=null;
+ function createMini(){if(mini||!media)return;mini=make('div');mini.id='il12-radio-mini';mini.setAttribute('role','group');mini.setAttribute('aria-label','Sterowanie działającym radiem');
+   var open=make('button','','📻');open.type='button';open.setAttribute('aria-label','Otwórz Radio i TV');open.addEventListener('click',function(){var n=navTarget(':media');if(n)n.click()});
+   var name=make('span','il12-radio-name','Radio');name.id='il12-mini-name';
+   var pause=make('button','','⏸');pause.type='button';pause.id='il12-mini-toggle';pause.setAttribute('aria-label','Wstrzymaj albo wznów radio');pause.addEventListener('click',function(){var b=q('#rtvNowToggle');if(b)b.click()});
+   var stop=make('button','','■');stop.type='button';stop.setAttribute('aria-label','Zatrzymaj radio');stop.addEventListener('click',function(){var b=q('#rtvStop');if(b)b.click()});
+   mini.append(open,name,pause,stop);d.body.appendChild(mini)
+ }
+ function mediaUpdate(){if(!media)return;media.querySelectorAll('.rtv-status').forEach(function(e){
+   e.classList.toggle('il12-idle',/^(Gotowe do odtwarzania|Wybierz sposób oglądania)$/.test((e.textContent||'').trim()))
+ });
+   if(!mini)createMini();var now=q('#rtvNow'),name=q('#rtvNowName'),toggle=q('#rtvNowToggle');
+   var galleryOpen=isOn(viewer),on=!!(now&&now.classList.contains('on')&&name&&name.textContent.trim()!=='—');
+   mini.classList.toggle('il12-on',on&&!galleryOpen);
+   if(on){q('#il12-mini-name').textContent=name.textContent.trim();q('#il12-mini-toggle').textContent=(toggle&&/Wznów/.test(toggle.textContent))?'▶':'⏸'}
+ }
+ function gallery(){if(!viewer||viewer.dataset.il12==='1')return;viewer.dataset.il12='1';
+   var img=q('#ilgvImg1861',viewer);if(img){var clickTimer=0;
+     img.addEventListener('click',function(e){if(e.detail>1){clearTimeout(clickTimer);return}clearTimeout(clickTimer);
+       clickTimer=w.setTimeout(function(){if(isOn(viewer))viewer.setAttribute('data-il12-chrome-hidden',viewer.getAttribute('data-il12-chrome-hidden')==='1'?'0':'1')},230)
+     });img.addEventListener('dblclick',function(){clearTimeout(clickTimer)})
+   }
+   var nav=q('.ilgv-prev1861',viewer),prev=nav&&nav.parentElement;
+   viewer.addEventListener('keydown',function(e){if(e.key==='Escape'&&viewer.getAttribute('data-il12-chrome-hidden')==='1'){
+     viewer.removeAttribute('data-il12-chrome-hidden');e.stopPropagation();e.preventDefault()
+   }});
+   if(w.MutationObserver)new MutationObserver(function(){if(!isOn(viewer))viewer.removeAttribute('data-il12-chrome-hidden');mediaUpdate()}).observe(viewer,{attributes:true,attributeFilter:['class']});
+ }
+ var readTools=null,readKey='',restoredFor='',readRaf=0;
+ function titleKey(){var t=q('#ilpTitle1851');return (t&&t.textContent.trim())||''}
+ function readingOn(){return isOn(page)&&page.classList.contains('il9-archive')}
+ function archiveTools(){if(!page||!readerBody)return;
+   var card=q('.ilp-card1851',page);if(!card)return;
+   if(!q('.il12-reading-progress',page)){var line=make('div','il12-reading-progress');line.setAttribute('aria-hidden','true');line.appendChild(make('div'));page.insertBefore(line,card)}
+   if(!readTools){readTools=make('div','il12-reader-tools');readTools.id='il12-reader-tools';
+     var smaller=make('button','','A−'),bigger=make('button','','A+'),normal=make('button','','A');
+     smaller.type=bigger.type=normal.type='button';
+     smaller.setAttribute('aria-label','Zmniejsz czcionkę historii');bigger.setAttribute('aria-label','Powiększ czcionkę historii');normal.setAttribute('aria-label','Przywróć wielkość czcionki');
+     var val=make('span','','Tekst');val.id='il12-readsize';
+     function change(dx){var base=d.body.classList.contains('senior')?21:18;var v=Math.max(base-3,Math.min(base+9,Number(safeGet('il12-reader-adjust'))+base+dx));
+       var adjustment=v-base;safePut('il12-reader-adjust',adjustment);setReadSize()}
+     smaller.addEventListener('click',function(){change(-2)});bigger.addEventListener('click',function(){change(2)});normal.addEventListener('click',function(){safePut('il12-reader-adjust',0);setReadSize()});
+     readTools.append(smaller,bigger,normal,val);card.insertBefore(readTools,card.firstChild);
+   }
+   setReadSize();readerState()
+ }
+ function setReadSize(){if(!page)return;var base=d.body.classList.contains('senior')?21:18,delta=Math.max(-3,Math.min(9,Number(safeGet('il12-reader-adjust'))||0));
+   page.style.setProperty('--il12-reader-font',(base+delta)+'px');var x=q('#il12-readsize');if(x)x.textContent=(base+delta)+' px'
+ }
+ function readerState(){if(!panel||!readingOn()||!readerBody)return;
+   var key=titleKey();if(!key)return;
+   var paragraphs=readerBody.querySelectorAll('p');if(!paragraphs.length)return;
+   if(readKey!==key){readKey=key;restoredFor=''}
+   var cacheKey='il12-scroll-'+key;
+   if(restoredFor!==key&&panel.scrollTop<65){var saved=Math.max(0,Number(safeGet(cacheKey))||0);
+     if(saved>80){restoredFor=key;w.setTimeout(function(){if(readingOn()&&titleKey()===key&&panel.scrollTop<65)panel.scrollTop=Math.min(saved,Math.max(0,panel.scrollHeight-panel.clientHeight))},120)}
+     else restoredFor=key
+   }
+   var bodyRect=readerBody.getBoundingClientRect(),area=panel.getBoundingClientRect();
+   var span=Math.max(1,readerBody.scrollHeight-area.height*.65),travel=area.top-bodyRect.top;
+   var pct=Math.max(0,Math.min(100,100*travel/span)),bar=q('.il12-reading-progress div',page);if(bar)bar.style.width=pct.toFixed(1)+'%';
+ }
+ function scrollArchive(){if(readRaf)return;readRaf=w.requestAnimationFrame(function(){readRaf=0;if(readingOn()&&readKey&&panel&&readerBody&&readerBody.querySelector('p')){
+   safePut('il12-scroll-'+readKey,Math.round(panel.scrollTop));readerState()
+ }})}
+ var resume=null,lastSeen='';
+ function routeOfActive(){if(!panel)return null;
+   if(isOn(q('#vplan')))return {u:':plan',name:'Planer'};
+   if(isOn(q('#vmedia')))return {u:':media',name:'Radio i TV'};
+   if(isOn(q('#vdep')))return {u:':dep',name:'Odjazdy'};
+   if(isOn(q('#vwx')))return {u:':wx',name:'Pogoda'};
+   if(isOn(page)){var label=titleKey(),map={'Historia Ispiny':'/historia-ispiny/','Ciekawostki historyczne':'/ciekawostki-historyczne/','Galeria':'/galeria/'};
+     if(map[label])return {u:'https://ispinalokalnie.wordpress.com'+map[label],name:label}
+   }return null
+ }
+ function updateResume(){var hero=q('#ilDashHero1843'),home=q('#vdash');if(!hero||!home)return;
+   if(!resume){resume=make('button','il12-resume');resume.type='button';resume.id='il12-resume';hero.insertAdjacentElement('afterend',resume);
+     resume.addEventListener('click',function(){var r;try{r=JSON.parse(safeGet('il12-last-module'))}catch(e){return}
+       var n=r&&navTarget(r.u);if(n)n.click()
+     })}
+   var saved=null;try{saved=JSON.parse(safeGet('il12-last-module'))}catch(e){}
+   var valid=saved&&saved.u&&saved.name&&navTarget(saved.u)&&Date.now()-Number(saved.when)<7*86400000;
+   var active=!!(valid&&isOn(home));resume.classList.toggle('il12-on',active);
+   if(active)resume.textContent='↩ Wróć do: '+saved.name;
+ }
+ function observeView(){var r=routeOfActive();if(r&&lastSeen!==r.u){lastSeen=r.u;safePut('il12-last-module',JSON.stringify({u:r.u,name:r.name,when:Date.now()}))}
+   patchHeader();planner();setReadSize();mediaUpdate();updateResume();
+   if(readingOn())archiveTools()
+ }
+ function init(){patchHeader();planner();gallery();createMini();mediaUpdate();archiveTools();updateResume();
+   if(panel&&w.MutationObserver)new MutationObserver(function(){observeView()}).observe(panel,{subtree:false,childList:true});
+   // Monitor class changes on views, not all DOM mutations (avoids event loops).
+   if(panel&&w.MutationObserver){var targetViews=panel.querySelectorAll('.view');targetViews.forEach(function(el){new MutationObserver(observeView).observe(el,{attributes:true,attributeFilter:['class']})})}
+   var now=q('#rtvNow');if(now&&w.MutationObserver)new MutationObserver(mediaUpdate).observe(now,{attributes:true,subtree:true,childList:true,characterData:true,attributeFilter:['class']});
+   if(media&&w.MutationObserver)new MutationObserver(function(){media.querySelectorAll('.rtv-status').forEach(function(x){x.classList.toggle('il12-idle',/^(Gotowe do odtwarzania|Wybierz sposób oglądania)$/.test(x.textContent.trim()))})}).observe(media,{subtree:true,characterData:true,childList:true});
+   if(readerBody&&w.MutationObserver)new MutationObserver(function(){if(readingOn())archiveTools()}).observe(readerBody,{childList:true,subtree:false});
+   var title=q('#ilpTitle1851');if(title&&w.MutationObserver)new MutationObserver(function(){if(readingOn())archiveTools()}).observe(title,{childList:true,characterData:true,subtree:true});
+   if(panel)panel.addEventListener('scroll',scrollArchive,{passive:true});
+   d.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('#pswap,#vplan .il7-back-to-form'))w.setTimeout(planner,30)},true);
+   d.addEventListener('visibilitychange',mediaUpdate);w.addEventListener('pageshow',observeView);
+   observeView();window.IL20_PREVIEW12={version:'12',features:['compactHeader','singleHomeNavigation','plannerSwapVisibility','compactRadio','radioMiniControls','galleryThumbControls','readingProgress','readerFont','readingPosition','resumeModule'],
+      runChecks:function(){return {header:!!q('#iaBar'),plannerSwap:!!q('#pswap'),radioControls:!!mini,readerTools:!!readTools, gallery:!!viewer, resume:!!resume}}
+   }
+ }
+ if(d.readyState==='loading')d.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
+
+/* IL 2.0 Preview 13 — UX refinement after visual/ergonomic audit of Preview 12.
+   Additive presentation and accessibility only. Original transport, audio and gallery engines untouched. */
+;(function(){
+ 'use strict';
+ if(window.IL20_PREVIEW13) return;
+ var d=document,w=window;
+ var css=d.createElement('style');css.id='il13-ux-audit';
+ css.textContent=`
+/* PULPIT: keep important local information higher; no smaller-than-48px actions. */
+#iaP #vdash #ilDashHero1843{padding:12px 14px!important;border-radius:21px!important}
+#iaP #vdash #ilDashHero1843 .ildh-top{gap:7px!important}
+#iaP #vdash #ilDashHero1843 .ildh-date{margin-top:3px!important}
+#iaP #vdash #ilDashQuick1843{margin-top:10px!important;gap:8px!important}
+#iaP #vdash #ilDashQuick1843 >button:not(#ilServicesTile1896){height:81px!important;min-height:81px!important;max-height:unset!important;padding:7px 6px!important;gap:2px!important}
+#iaP #vdash #ilDashQuick1843 >button:not(#ilServicesTile1896) .ildq-icon{margin:0 auto!important}
+#iaP #vdash #ilDashQuick1843 >button:not(#ilServicesTile1896) .ildq-main{line-height:1.13!important}
+#iaP #vdash #ilDashQuick1843 >button:not(#ilServicesTile1896) .ildq-sub{line-height:1.15!important}
+#iaP #vdash #ilDashQuick1843 >#ilServicesTile1896{height:63px!important;min-height:63px!important;max-height:unset!important;padding:9px 12px!important}
+#iaP #vdash #ilDashRefresh1844{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;column-gap:8px!important;row-gap:4px!important;align-items:center!important;margin-top:10px!important;padding-top:10px!important}
+#iaP #vdash #ilDashRefresh1844>.ilr-meta{grid-column:1!important;grid-row:1!important;min-width:0!important;min-height:48px!important;width:auto!important;margin:0!important;padding:7px 8px!important;gap:5px!important}
+#iaP #vdash #ilDashRefresh1844>.ilr-meta b{font-size:12px!important;white-space:normal!important}
+#iaP #vdash #ilDashRefresh1844>.ilr-meta #ilFresh1845[data-il13-redundant="1"]{display:none!important}
+#iaP #vdash #ilDashRefresh1844>#ilDashRefreshBtn1844{grid-column:2!important;grid-row:1!important;width:auto!important;min-width:112px!important;min-height:48px!important;margin:0!important;padding:8px 11px!important;font-size:12px!important;white-space:normal!important}
+#iaP #vdash #ilDashRefresh1844>.il20v5-sync-details{grid-column:1/-1!important;margin:0!important;border-top:0!important;padding:0!important}
+#iaP #vdash #ilDashRefresh1844>.il20v5-sync-details>summary{display:block!important;width:100%!important;max-width:none!important;min-height:48px!important;padding:10px 4px!important;font-size:12px!important;white-space:nowrap!important;overflow:visible!important}
+#iaP #vdash #ilDashHero1843 .ildh-greet{color:#143F58!important;text-shadow:none!important}
+#iaP #vdash #ilDashHero1843 .ildh-date{color:#345D6F!important;text-shadow:none!important}
+/* PLANER: remove dead space without sacrificing input, acceptance or swap touch target. */
+#iaP #vplan .plhero{padding:11px 13px!important;margin-bottom:7px!important;border-radius:17px!important}
+#iaP #vplan .plhero .h{font-size:19px!important;line-height:1.2!important}
+#iaP #vplan .plhero .p{font-size:12px!important;line-height:1.28!important}
+@media(max-width:600px){#iaP #vplan .plhero .h{display:none!important}
+#iaP #vplan .plhero{padding:9px 12px!important}
+#iaP #vplan .plhero .p{margin:0!important;font-size:12px!important}}
+#iaP:not(.il-r10-editing) #vplan>.pl>.plcard{padding:12px!important;border-radius:18px!important}
+#iaP #vplan .pllabel{margin:7px 4px 3px!important}
+#iaP:not(.il-r10-editing) #vplan .plfield{min-height:50px!important;padding:3px 8px!important;border-radius:14px!important}
+#iaP #vplan .plswap{min-width:122px!important;min-height:48px!important;margin:2px auto 0!important}
+#iaP #vplan .il20v5-when-mode{margin-top:6px!important}
+#iaP #vplan .plwhen{margin-top:7px!important;gap:7px!important}
+#iaP #vplan .pldate{padding:6px 8px!important}
+#iaP #vplan .plactions{margin-top:8px!important;gap:7px!important}
+#iaP #vplan .plactions>button{min-height:48px!important}
+#iaP #vplan .plhome{min-height:48px!important;margin-top:7px!important}
+#iaP #vplan #pres .il7-back-to-form{min-height:48px!important}
+#iaP #vplan .il20v5-summary{min-height:48px!important;display:flex!important;align-items:center!important}
+#iaP #vplan input{font-size:16px!important}
+#iaP #vdash #dwxt.il13-no-weather{font-size:15px!important;letter-spacing:0!important}
+/* RADIO: maintain comfortable tap areas and readable status while limiting repeated text. */
+#iaP #vmedia .rtv-btn{min-height:48px!important;min-width:48px!important}
+#iaP #vmedia .rtv-desc{color:#4C6462!important;line-height:1.42!important}
+#iaP #vmedia .rtv-head .rtv-sub{color:#E7F7F5!important;opacity:1!important}
+#il12-radio-mini{box-sizing:border-box!important;width:calc(100% - 20px)!important;max-width:570px!important}
+#il12-radio-mini .il12-radio-name{font-size:13px!important;color:white!important}
+#il12-radio-mini button{flex-shrink:0!important}
+/* GALERIA: controls stay large, aligned and contrast-checked on narrow displays. */
+#ilGalleryViewer1861 .ilgv-top1861 button,#ilGalleryViewer1861 .ilgv-controls1861 button,
+#ilGalleryViewer1861 .ilgv-nav1861 button{min-width:48px!important;min-height:48px!important}
+#ilGalleryViewer1861 .ilgv-bottom1861{box-sizing:border-box!important;padding-left:10px!important;padding-right:10px!important}
+#ilGalleryViewer1861 .ilgv-controls1861{gap:6px!important}
+#ilGalleryViewer1861 .ilgv-controls1861 button{font-size:13px!important}
+/* READER: keep reading controls reachable and prevent cramped text lines. */
+#iaP #vilPage1851.il9-archive .il12-reader-tools{position:sticky!important;top:0!important;z-index:12!important;
+ background:rgba(255,248,234,.97)!important;border:1px solid #e1ceb0!important;border-radius:12px!important;
+ padding:7px!important;margin-bottom:12px!important;box-shadow:0 3px 10px rgba(74,57,26,.10)!important}
+#iaP #vilPage1851.il9-archive .ilp-body1851 p{line-height:1.65!important;overflow-wrap:break-word!important}
+#iaP #vilPage1851.il9-archive .ilp-body1851{overflow-wrap:break-word!important}
+#iaP #vilPage1851 .il12-reader-tools button:focus-visible,
+#iaP #vplan button:focus-visible,#iaP #vdash button:focus-visible{outline:3px solid #15798C!important;outline-offset:2px!important}
+/* Minimum spacing for on-screen navigation and tap actions. */
+#iaBar #iaM,#iaBar #ilBack1846{min-width:48px!important;min-height:48px!important}
+#iaP #vilPage1851 button,#iaP #vdep button{touch-action:manipulation}
+@media(max-width:355px){
+  #iaP #vdash #ilDashHero1843{padding:11px 10px!important}
+  #iaP #vdash #ilDashQuick1843{gap:7px!important}
+  #iaP #vdash #ilDashRefresh1844>.ilr-meta b{font-size:11px!important}
+  #iaP #vdash #ilDashRefresh1844>#ilDashRefreshBtn1844{min-width:105px!important;font-size:11px!important}
+  #iaP #vplan .plhero .h{font-size:18px!important}
+  #iaP #vplan>.pl>.plcard{padding:10px!important}
+}
+body.senior #iaP #vdash #ilDashQuick1843 >button:not(#ilServicesTile1896){height:auto!important;min-height:97px!important}
+body.senior #iaP #vdash #ilDashQuick1843 >#ilServicesTile1896{height:auto!important;min-height:70px!important}
+body.senior #iaP #vplan .plhero .h{font-size:22px!important}
+body.senior #iaP #vplan .plfield{min-height:58px!important}
+body.senior #iaP #vplan .pllabel{font-size:13px!important}
+@media(prefers-reduced-motion:reduce){#iaP #vdash #ilDashHero1843 *,#iaP #vplan .plcard *,#iaP #vilPage1851 .il12-reader-tools{animation:none!important;transition:none!important}}
+`;
+ (d.head||d.documentElement).appendChild(css);
+ function labelControls(){
+  var m=d.getElementById('il12-radio-mini');if(m){var btns=m.querySelectorAll('button');var names=['Otwórz Radio i TV','Pauza lub wznów odtwarzanie','Zatrzymaj odtwarzanie'];btns.forEach(function(b,i){if(names[i])b.setAttribute('aria-label',names[i])})}
+  var controls=d.querySelectorAll('#ilGalleryViewer1861 button');controls.forEach(function(b){if(!b.getAttribute('aria-label')){var t=b.textContent.trim();if(t)b.setAttribute('aria-label',t)}});
+  var b=d.querySelector('#ilDashRefreshBtn1844');if(b)b.setAttribute('aria-label','Odśwież zapisane dane rozkładowe');
+ }
+ function refreshStates(){
+   var stale=d.getElementById('ilFresh1845');
+   if(stale){var isDuplicate=/^odśwież dane$/i.test((stale.textContent||'').trim());
+     if(stale.getAttribute('data-il13-redundant')!==(isDuplicate?'1':'0'))stale.setAttribute('data-il13-redundant',isDuplicate?'1':'0');}
+   var temp=d.getElementById('dwxt');
+   if(temp){var t=(temp.textContent||'').trim(),bad=/^(--?|—)\s*°?\s*C?$/.test(t);
+     if(bad){temp.textContent='Brak danych';temp.classList.add('il13-no-weather');}
+     else if(t!=='Brak danych')temp.classList.remove('il13-no-weather');}
+ }
+ function init(){labelControls();refreshStates();
+   var badge=d.getElementById('ilFresh1845');if(badge&&w.MutationObserver)new MutationObserver(refreshStates).observe(badge,{characterData:true,childList:true,subtree:true});
+   var temp=d.getElementById('dwxt');if(temp&&w.MutationObserver)new MutationObserver(refreshStates).observe(temp,{characterData:true,childList:true,subtree:true});
+   window.IL20_PREVIEW13={version:'13',features:['denserDashboard','singleSyncAction','compactPlanner','galleryHitAreas','radioContrast','stickyReaderControls','accessibilityLabels'],validate:function(){return {dashboard:!!d.querySelector('#ilDashHero1843'),planner:!!d.querySelector('#vplan'),radio:!!d.querySelector('#vmedia'),gallery:!!d.querySelector('#ilGalleryViewer1861'),reader:!!d.querySelector('#vilPage1851'),style:!!d.getElementById('il13-ux-audit')}}};}
+ if(d.readyState==='loading')d.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
+
+// ---- Ispina Smart AI 18, offline assistant, proper app data/navigation ----
+/* Ispina Smart AI Preview 17 - local explainable assistance, no external APIs.
+ * Source MIT; data and third-party content retain their own licenses.
+ */
+(function (root, factory) {
+  var api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  if (root) root.ILSmartAI = api;
+})(typeof window !== 'undefined' ? window : undefined, function () {
+  'use strict';
+  var aliases = {
+    'nowe brzesko': 'nowe brzesko rynek',
+    'nowe brzesko rynek': 'nowe brzesko rynek',
+    'ispina ii': 'ispina most',
+    'ispina iii': 'ispina dom ludowy',
+    'ispina iv': 'ispina wislisko',
+    'ispina centrum': 'ispina most',
+    'dworzec pkp bochnia': 'bochnia pkp',
+    'bochnia dworzec pkp': 'bochnia pkp',
+    'pkp podleze': 'podleze pkp'
+  };
+  function normalize(s) {
+    var txt = String(s == null ? '' : s).toLocaleLowerCase('pl-PL');
+    if (txt.normalize) txt = txt.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    txt = txt.replace(/ł/g, 'l').replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
+    return txt;
+  }
+  function canonical(s) { var n = normalize(s); return aliases[n] || n; }
+  function distance(a, b) {
+    a = normalize(a); b = normalize(b);
+    if (a === b) return 0;
+    var prev = [], curr = [];
+    for (var j = 0; j <= b.length; j++) prev[j] = j;
+    for (var i = 1; i <= a.length; i++) {
+      curr = [i];
+      for (j = 1; j <= b.length; j++) curr[j] = Math.min(curr[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));
+      prev = curr;
+    }
+    return prev[b.length];
+  }
+  function stops(query, rows, limit) {
+    var target = canonical(query), out = [], max = Math.min(10,Math.max(1,limit||5));
+    if (!target) return [];
+    (rows || []).forEach(function (item) {
+      var names = [item.n || item.name || ''].concat(item.aliases || []), best = 9999;
+      names.forEach(function (name) {
+        var n = canonical(name), d = distance(target, n);
+        var score = n === target ? 0 : n.indexOf(target) === 0 ? 0.75 : n.indexOf(target) >= 0 ? 1.5 :
+          (target.length >= 3 && distance(target, n.slice(0,target.length)) <= 2) ? 2.5 + d*0.05 : d;
+        if (score < best) best = score;
+      });
+      if (best <= Math.max(3,Math.min(6,Math.floor(target.length / 3) + 2))) out.push({name:item.n||item.name,score:best,item:item});
+    });
+    out.sort(function(a,b){return a.score-b.score||a.name.localeCompare(b.name,'pl')});
+    return out.slice(0,max);
+  }
+  function transfer(minutes, minRequired, estimated, live) {
+    var m=Number(minutes), min=Math.max(1,Number(minRequired)||1);
+    if (!isFinite(m)) return {level:'unknown',label:'Brak danych o przesiadce',detail:'Nie można ocenić czasu przesiadki.'};
+    var level=m<min?'invalid':m<=5?'risky':m<=9?'caution':m>45?'long':'good';
+    var labels={invalid:'Za mało czasu',risky:'Ryzykowna przesiadka',caution:'Mały zapas czasu',long:'Długi czas oczekiwania',good:'Wygodna przesiadka'};
+    var details={invalid:'Mniej niż wybrane minimum.',risky:'Zapas 1–5 minut; opóźnienia mogą uniemożliwić przesiadkę.',caution:'Warto kontrolować opóźnienia.',long:'Czas oczekiwania przekracza 45 minut.',good:'Rozsądny zapas czasu między kursami.'};
+    var qualifier=estimated?' Niektóre godziny są szacowane.':live?' Ocena na podstawie dostępnych danych LIVE.':' Brak gwarancji punktualności.';
+    return {level:level,label:labels[level],detail:details[level]+qualifier,minutes:m};
+  }
+  function sentences(input) {
+    var text=String(input||'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+    return (text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[]).map(function(x){return x.trim()}).filter(function(x){return x.length>24});
+  }
+  function summarize(input, maxSentences) {
+    var all=sentences(input), count=Math.max(1,Math.min(4,maxSentences||3));
+    if(all.length<=count)return all.join(' ');
+    var stopwords=/^(oraz|który|która|jest|było|będzie|tylko|przez|jako|oraz|przy|które|tego|też|jego|jej|tego|gdy|aby|dla|nie|się|tak|ten|tych|tym|czy|the|and|ale|do|na|w|we|z|za|od|po|o)$/;
+    var freq={};
+    all.forEach(function(s){normalize(s).split(' ').forEach(function(w){if(w.length>3&&!stopwords.test(w))freq[w]=(freq[w]||0)+1})});
+    var scored=all.map(function(s,i){var words=normalize(s).split(' ').filter(function(w){return w.length>3&&!stopwords.test(w)});var weight=words.reduce(function(n,w){return n+(freq[w]||0)},0)/(Math.sqrt(words.length+1));return {i:i,s:s,score:weight+(i===0?2:0)};});
+    scored.sort(function(a,b){return b.score-a.score||a.i-b.i});
+    return scored.slice(0,count).sort(function(a,b){return a.i-b.i}).map(function(x){return x.s}).join(' ');
+  }
+  function parseQuestion(input) {
+    var original=String(input||'').trim(),text=canonical(original);
+    if(!original) return {intent:'help'};
+    var route=original.match(/(?:jak\s+)?(?:dojecha[cć]|dostac\s+sie|polaczenie)\s+(?:teraz\s+)?z\s+(.+?)\s+do\s+(.+?)(?:\?|$)/i);
+    if(!route) route=original.match(/z\s+(.+?)\s+do\s+(.+?)(?:\?|$)/i);
+    if(route)return {intent:'route',from:route[1].trim(),to:route[2].trim()};
+    if(/(a4|a7|a65|a50|a57|autobus|odjazd|rozklad|przesiadk|planer|dojazd)/.test(text))return {intent:'planner'};
+    if(/(odpady|smiec|worki|odbior|wywoz)/.test(text))return {intent:'waste'};
+    if(/(histori|ciekawost|dawniej|archiw)/.test(text))return {intent:'history'};
+    if(/(aktualno|wiadomos|nowosci|wpis|artykul)/.test(text))return {intent:'news'};
+    if(/(pogoda|temperatur|deszcz|wiatr)/.test(text))return {intent:'weather'};
+    if(/(lektor|glos|czytaj|mowa|tts)/.test(text))return {intent:'reader'};
+    return {intent:'help'};
+  }
+  function answer(input) {
+    var p=parseQuestion(input);
+    switch(p.intent){
+      case 'route': return {intent:p.intent,message:'Mogę przygotować Planer do wyszukania trasy z '+p.from+' do '+p.to+'. Nazwy przystanków trzeba jeszcze zatwierdzić w Planerze.',route:p};
+      case 'planner': return {intent:p.intent,message:'Otwórz Planer i wybierz początek oraz cel. Znajdziesz połączenia bezpośrednie i z przesiadką.'};
+      case 'waste': return {intent:p.intent,message:'Sprawdź moduł Odpady. Terminy dotyczą danych zapisanych w aplikacji; zwróć uwagę na rok i datę aktualizacji.'};
+      case 'history': return {intent:p.intent,message:'Historia Ispiny i Ciekawostki historyczne znajdują się w menu IL.'};
+      case 'news': return {intent:p.intent,message:'Otwórz Aktualności, aby przeczytać wpisy. Mogę skrócić aktualnie widoczny tekst.'};
+      case 'weather': return {intent:p.intent,message:'Aktualne warunki pogodowe znajdziesz na pulpicie i w module Pogoda.'};
+      case 'reader': return {intent:p.intent,message:'Sprawdź test głosu. Odczyt offline jest możliwy tylko wtedy, gdy silnik i polski głos są dostępne w urządzeniu; nie jest to jeszcze wbudowany lektor neuronowy.'};
+      default: return {intent:'help',message:'Zapytaj np. „Jak dojechać z Ispiny do Bochni?”, „Gdzie jest historia Ispiny?” albo „Kiedy odbiór odpadów?”. Odpowiadam lokalnie na typowe pytania, bez serwera AI.'};
+    }
+  }
+  return {normalize:normalize,canonical:canonical,distance:distance,stops:stops,transfer:transfer,summarize:summarize,parseQuestion:parseQuestion,answer:answer};
+});
+
+/* Ispina Smart AI 22 - local, deterministic dialogue understanding.
+ * No remote inference, no voice, and no invented live information. */
+(function(root,factory){
+ var api=factory();if(typeof module==='object'&&module.exports)module.exports=api;
+ if(root)root.ILSmart22Brain=api;
+})(typeof window!=='undefined'?window:null,function(){
+ 'use strict';
+ function norm(s){var t=String(s==null?'':s).toLowerCase();if(t.normalize)t=t.normalize('NFD').replace(/[\u0300-\u036f]/g,'');return t.replace(/ł/g,'l').replace(/[^a-z0-9:]+/g,' ').replace(/\s+/g,' ').trim()}
+ function day(s){s=norm(s);return /\bpojutrze\b/.test(s)?2:/\bjutro\b|\bjutrzejsz/.test(s)?1:0}
+ function clock(s){var n=norm(s),m=n.match(/\b(?:po|od|o|na)\s+(\d{1,2})(?::(\d{2}))?\b/);if(!m)return null;var h=+m[1],min=+(m[2]||0);return h<24&&min<60?{hours:h,minutes:min}:null}
+ var places=[
+  ['Ispina Leśniczówka',/(?:\bispin\w*\s+)?lesniczowk/],['Ispina Przedszkole',/(?:\bispin\w*\s+)?przedszkol/],
+  ['Ispina Dom Ludowy',/(?:\bispin\w*\s+)?dom\s+ludow/],['Ispina Wiślisko',/(?:\bispin\w*\s+)?wislisk/],
+  ['Ispina Most',/(?:\bispin\w*\s+)?\bmos(?:t|tu|cie)\b/]
+ ];
+ function stop(s){var n=norm(s);for(var i=0;i<places.length;i++)if(places[i][1].test(n))return places[i][0];return null}
+ function line(s){var m=norm(s).match(/\b(a(?:4|7|65|50|57))\b/);return m?m[1].toUpperCase():null}
+ function canonicalPlace(s){var n=norm(s).replace(/[?!.]+$/,'').trim();var cases={'ispiny':'Ispina','ispina':'Ispina','bochni':'Bochnia','bochnia':'Bochnia','krakowa':'Kraków','krakow':'Kraków','drwini':'Drwinia','drwinia':'Drwinia','podleza':'Podłęże','niepolomic':'Niepołomice','nowego brzeska':'Nowe Brzesko','nowe brzesko':'Nowe Brzesko','proszowic':'Proszowice','mikluszowic':'Mikluszowice','niepolomice':'Niepołomice'};return cases[n]||String(s).trim()}
+ function route(s){var q=String(s||'').trim();var m=q.match(/\b(?:jak\s+)?(?:dojechac|dojechać|dostać się|dostac sie|połączenie|polaczenie|trasa)?\s*z\s+(.+?)\s+do\s+(.+?)(?=\s+(?:jutro|dzisiaj|pojutrze|po\s+\d{1,2}(?::\d{2})?|od\s+\d{1,2}(?::\d{2})?)\b|[?!.]|$)/i);
+ if(!m) m=q.match(/\bz\s+(.+?)\s+do\s+(.+?)\s*[?!.]?$/i);
+ if(m)return {from:canonicalPlace(m[1]),to:canonicalPlace(m[2]),offset:day(q),after:clock(q)};return null}
+ function classify(raw,prior){
+ var q=String(raw||'').trim().slice(0,350),n=norm(q),last=prior||{},r=route(q),l=line(q),st=stop(q);
+ if(!q)return {intent:'help'};
+ if(/^(czesc|czesc asystent|hej|witaj|dzien dobry|dobry wieczor)\b/.test(n))return {intent:'greeting'};
+ if(/^(dzieki|dziekuje|super|ok dzieki)\b/.test(n))return {intent:'thanks'};
+ if(/\b(co potrafisz|pomoc|jakie pytania|co umiesz|instrukcj)\b/.test(n))return {intent:'help'};
+ if(r)return {intent:'route',route:r};
+ if(/\b(streszcz|skroc|podsumuj)\b/.test(n)&&/\b(artykul|tekst|wpis|ten|otwart|wiadomos|historie)\b/.test(n))return {intent:'summary'};
+ if(/\b(histori|dawniej|archiw|parafi|telefoniz|elektry|wprowadzono prad|doprowadzono prad|maszt|gsm|kolo rolnicz|kolko rolnicz|powodz|nowa huta|huta im|1958|1996|1936|1903)\b/.test(n)||/^(kiedy|w ktorym roku).*(prad|telefon|kosciol|parafi)/.test(n))return {intent:'history'};
+ if(/\b(najnowsz|aktualnosc|wiadomosc|wpisy|co nowego|co sie dzieje|dzisiaj w ispinie|wiesci)\b/.test(n))return {intent:'news'};
+ if(/\b(pogod|temperatur|deszcz|wiatr|prognoz|slonc|zachod|wschod)\b/.test(n))return {intent:'weather'};
+ if(/\b(odpad|smiec|wywoz|odbior|gabaryt|plastik|papier|szklo)\b/.test(n))return {intent:'waste'};
+ if(/\b(przypomnij|przypomnienie|alarm)\b/.test(n))return {intent:'reminder'};
+ if(/\b(status|diagnostyk|czy dziala|sprawdz dzialanie)\b/.test(n))return {intent:'diagnostic'};
+ if(/\b(przesiadk|wyniki planera|wynik trasy|znalezione polaczenia|moja trasa)\b/.test(n))return {intent:'planResults'};
+ if(/\b(przystan|przystanek|przystanki)\b/.test(n)&&!l&&!/odjazd/.test(n))return {intent:'stops',search:q.replace(/.*?przystan(?:ek|ku|ki)?\s*/i,'').trim()};
+ if(l||/\b(kiedy|odjazd|odjezdza|odjedzie|najblizszy|najblizsze|autobus|kursy|odjezdza)\b/.test(n)){var follow=!!(last.intent==='departure'&&/^a\s+/.test(n));return {intent:'departure',line:l||follow&&last.line||null,stop:st||follow&&last.stop||null,offset:follow&&!/\b(jutro|pojutrze|dzisiaj|dzis)\b/.test(n)?last.offset||0:day(n),after:clock(n)||(follow?last.after||null:null),followup:follow};}
+ var shortFollow=/^(a\s+)?(jutro|pojutrze|dzisiaj|dzis|a\s*\d{1,2}(?::\d{2})?|po\s+\d{1,2}(?::\d{2})?|od\s+\d{1,2}(?::\d{2})?|a\s+z\s+|z\s+|a\s+a(?:4|7|65|50|57)\b)/.test(n);
+ if(last.intent==='departure'&&shortFollow)return {intent:'departure',line:l||last.line||null,stop:st||last.stop||null,offset:/\b(jutro|pojutrze|dzisiaj|dzis)\b/.test(n)?day(n):last.offset||0,after:clock(n)||last.after||null,followup:true};
+ if(/\b(lektor|glos|czytanie|tts)\b/.test(n))return {intent:'reader'};
+ return {intent:'unknown'};
+ }
+ var facts=[
+  {re:/elektry|\bprad\b|swiatl|energi/,answer:'Elektryfikacja Ispiny nastąpiła w 1958 roku.'},
+  {re:/telefoniz|telefon(?!ii komork)|stacjonarn/,answer:'Telefonizację Ispiny przeprowadzono w 1996 roku. Wcześniej telefony były dostępne jedynie w nielicznych miejscach, między innymi w leśniczówce i szkole.'},
+  {re:/\bgsm\b|maszt|komork|\b2g\b/,answer:'Na przełomie 2000 i 2001 roku w pobliskich Szpitalach uruchomiono infrastrukturę GSM (2G). Szpitale są osobną wsią, około 3,5 km od Ispiny.'},
+  {re:/parafi|zabierzow bochensk|\bgrobl[aiy]\b/,answer:'Do 1936 roku Ispina należała do parafii Zabierzów Bocheński. Od 1936 roku należy do parafii Grobla.'},
+  {re:/\b1903\b|kolko rolnicz|kolo rolnicz/,answer:'W 1903 roku działało kółko rolnicze „Ispina ad Grobla”, liczące 24 członków. Wśród wymienionych osób byli Adam Nasalski, Norbert Pagacz i Helena Matusikowa. Zebraniom służyła szkoła. Źródło: „Wykaz Kółek rolniczych zawiązanych w r. 1903”.'},
+  {re:/powodz|zalew|\b1970\b|\b1972\b/,answer:'W historii miejscowości zapisały się powodzie w latach 1970 i 1972. Szczegółowe opisy znajdują się w materiałach Historia Ispiny; nie podaję niezweryfikowanych rozmiarów strat.'},
+  {re:/nowa huta|huta im|sendzimir|praca w hucie/,answer:'Wiele osób z Ispiny dojeżdżało do pracy w Nowej Hucie. Dawniej niektórzy pracownicy podróżowali ciężarówkami z ławkami pod plandeką.'}
+ ];
+ function history(question){var n=norm(question);for(var i=0;i<facts.length;i++)if(facts[i].re.test(n))return facts[i].answer+'\nŹródło: opracowania historyczne Ispina Lokalnie; daty należy weryfikować w materiale źródłowym.';return null}
+ function help(){return 'Mogę sprawdzić kursy z zapisanych rozkładów, pomóc przygotować trasę, pokazać wyniki Planera, ostatnie aktualności i odpowiedzieć na wybrane pytania historyczne. Spróbuj: „Kiedy A7 z Ispiny Most jutro po 17?”, „A pojutrze?”, „Jak dojadę z Ispiny do Bochni?”, „Co nowego w Ispinie?”, „Co wydarzyło się w 1903 roku?”. Nie wymyślam odjazdów ani wiadomości.'}
+ return {normalize:norm,day:day,clock:clock,stop:stop,line:line,route:route,canonicalPlace:canonicalPlace,classify:classify,history:history,help:help};
+});
+
+/* Ispina Smart AI 22 – local-first information assistant.
+ * No voice/speech modification, no remote AI calls and no claimed background alarms.
+ * Uses only bounded, read-only adapters to the existing planner and local content.
+ */
+(function(){
+ 'use strict';
+ var ID='il-smart22',mounted=false,reminderKey='il.smart22.reminder',lastDeparture=null,dialogue={intent:'',line:null,stop:null,offset:0,after:null};
+ var d=document, w=window;
+ function by(id){return d.getElementById(id)}
+ function make(tag,cls,value){var n=d.createElement(tag);if(cls)n.className=cls;if(value!=null)n.textContent=String(value);return n}
+ function nodeText(n){return n?String(n.textContent||'').replace(/\s+/g,' ').trim():''}
+ function norm(v){return w.ILSmartAI?w.ILSmartAI.normalize(v):String(v||'').toLowerCase()}
+ function fmt(t){return new Date(t).toLocaleString('pl-PL',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
+ function trim(v,max){return String(v||'').replace(/\s+/g,' ').trim().slice(0,max)}
+ function getNative(){return w.IspinaNative||null}
+ function api(){return w.IL_SMART22_DATA||null}
+ function brain(){return w.ILSmart22Brain||null}
+ function getPosts(){
+   var posts=[],updated=0,source='';
+   try{var n=getNative(),raw=n&&typeof n.getLatestPostJson==='function'?JSON.parse(n.getLatestPostJson()||'null'):null;
+     if(raw&&Array.isArray(raw.posts)){posts=raw.posts;updated=0;source='dane z modułu Aktualności (czas pobrania nieznany)'}}catch(e){}
+   if(!posts.length){try{var c=JSON.parse(localStorage.getItem('il_native_news_list_1842')||'null');if(c&&Array.isArray(c.posts)){posts=c.posts;updated=Number(c.at)||0;source='pamięć Aktualności'}}catch(e){}}
+   return {posts:posts.filter(Boolean),updated:updated,source:source};
+ }
+ function htmlPlain(v){var div=make('div');div.innerHTML=String(v||'');div.querySelectorAll('script,style,iframe,button,nav,svg,img,video,audio,object,embed').forEach(function(x){x.remove()});return nodeText(div)}
+ function postText(p,key){var v=p&&p[key];return trim(htmlPlain(v&&typeof v==='object'?v.rendered:v),key==='title'?140:1500)}
+ function dateFilter(query){var n=norm(query),now=new Date(),offset=/pojutrze/.test(n)?2:/\bjutro\b|jutrzejsz/.test(n)?1:0;now.setHours(0,0,0,0);now.setDate(now.getDate()+offset);var date=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');var time=n.match(/(?:\bpo\s+|\bod\s+|\bo\s+)(\d{1,2})(?::(\d\d))?/);var after=time&&+time[1]<=23&&(+time[2]||0)<60?{hours:+time[1],minutes:+(time[2]||0)}:null;return {date:date,after:after,offset:offset};}
+ function lineFrom(q){var x=norm(q).match(/\b(a4|a7|a65|a50|a57)\b/);return x&&x[1].toUpperCase()}
+ function stopFrom(q){var n=norm(q),stops=[['ispina lesniczowka','Ispina Leśniczówka'],['ispina przedszkole','Ispina Przedszkole'],['ispina dom ludowy','Ispina Dom Ludowy'],['ispina wislisko','Ispina Wiślisko'],['ispina most','Ispina Most']];for(var i=0;i<stops.length;i++)if(n.indexOf(stops[i][0])>=0)return stops[i][1];var m=n.match(/\bispin(?:y|ie|a)\s+(lesniczowka|przedszkole|most|dom ludowy|wislisko)\b/);if(m){return stops.filter(function(x){return x[0].endsWith(m[1])}).map(function(x){return x[1]})[0]||null}return null;}
+ function selectedStop(){var x=by('dstop');return x&&x.options&&x.selectedIndex>=0?nodeText(x.options[x.selectedIndex]):null}
+ function quickDepart(q,parsed){
+   var data=api();if(!data){message('Planer jeszcze nie udostępnia danych. Otwórz Odjazdy i odśwież rozkład.');return}
+   var filter=dateFilter(q),line=parsed&&parsed.line||lineFrom(q),specific=parsed&&parsed.stop||stopFrom(q),st=specific||selectedStop();
+   if(parsed){var dt=new Date();dt.setHours(0,0,0,0);dt.setDate(dt.getDate()+(parsed.offset||0));filter.date=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');filter.after=parsed.after||filter.after}
+   var strictDay=!!(/\b(dzisiaj|dzis|jutro|pojutrze)\b/i.test(norm(q))||(parsed&&parsed.followup));
+   var result=data.departures({line:line,stop:st||undefined,date:filter.date,after:filter.after,strictDay:strictDay});
+   var rows=result.items||[];lastDeparture=rows.length?rows[0]:null;
+   dialogue={intent:'departure',line:line,stop:st,offset:parsed?parsed.offset:filter.offset,after:filter.after};
+   if(!rows.length){message('Nie znalazłem kursu '+(line||'autobusów')+(st?' z '+st:'')+' dla '+filter.date+(filter.after?' po '+String(filter.after.hours).padStart(2,'0')+':'+String(filter.after.minutes).padStart(2,'0'):'')+'. Nie wymyślam godzin. Sprawdź aktualność rozkładu w Odjazdach.');toggleReminder(false);return}
+   var parts=rows.slice(0,4).map(function(x){var live=x.live?' • LIVE'+(x.delayMinutes!=null?' ('+(x.delayMinutes>=0?'+':'')+x.delayMinutes+' min)':''):' • planowy';return '• '+fmt(x.ms)+' — '+x.line+' → '+x.destination+' ('+x.stop+')'+live+(x.estimated?' • godzina szacowana':'')});
+   message('Kursy '+(line||'autobusów')+' od '+filter.date+(st?' z '+st:'')+' według zapisanych rozkładów:\n'+parts.join('\n')+'\nŹródło: '+(result.source||'MLD / linia gminna w aplikacji')+'.'+(result.scheduleUpdated?' Rozkład zapisano: '+fmt(result.scheduleUpdated)+'.':' Data rozkładu niedostępna.')+(result.liveUpdated?' LIVE: '+fmt(result.liveUpdated)+'.':' Brak świeżych danych LIVE.')+'\nMożesz zapytać „a jutro?”, „a po 17?” lub „a A4?”.');
+   toggleReminder(true);
+ }
+ function planSummary(){
+   var x=api()&&api().planned();if(!x||!x.ready){message('Najpierw wybierz trasę w Planerze i zatwierdź przystanki przyciskiem „Akceptuj”. Wtedy pokażę konkretne wyniki.');return}
+   if(!x.results.length){message('Dla zatwierdzonej trasy '+x.from+' → '+x.to+' nie ma wyników w zapisanym rozkładzie na '+x.date+'. Nie proponuję fikcyjnych połączeń.');return}
+   message('Wyniki Planera: '+x.from+' → '+x.to+' (data '+x.date+'):\n'+x.results.slice(0,4).map(function(r){var risk=r.transfers?(' • przesiadka w '+(r.via||'wybranym miejscu')+', '+Math.round(r.wait)+' min'+(r.wait<=5?' (ryzyko)':'')):'';return '• '+fmt(r.departure)+'–'+fmt(r.arrival)+' • '+r.line+risk+(r.estimated?' • częściowo szacowane':'')}).join('\n')+'\nTo wyniki aktualnie wyszukanej trasy, nie prognoza punktualności.');
+ }
+ function go(key){if(key==='news'&&typeof w.IL_NATIVE_NEWS_FEED==='function'){w.IL_NATIVE_NEWS_FEED();close();return true}if(key==='history'&&typeof w.IL_LOCAL_PAGE_OPEN==='function'){if(w.IL_LOCAL_PAGE_OPEN('historia-ispiny',true)){close();return true}}
+   var codes={planner:':plan',departures:':dep',weather:':wx',waste:':waste'};var k=codes[key]||key;
+   var b=d.querySelector('[data-kd-route="'+k+'"]')||d.querySelector('#nav .nb[data-u="'+k+'"]');if(b){b.click();close();return true}return false;
+ }
+ function news(){var data=getPosts(),posts=data.posts;if(!posts.length){message('Nie mam zapisanych aktualności. Otwórz Aktualności i odśwież wiadomości, a potem spróbuj ponownie.');return}
+   var out=posts.slice().sort(function(a,b){return (Date.parse(b.date||b.modified||'')||0)-(Date.parse(a.date||a.modified||'')||0)}).slice(0,3).map(function(p,i){var title=postText(p,'title'),ex=postText(p,'excerpt'),rawDate=p.date||p.modified||'';var pub=rawDate&&!isNaN(+new Date(rawDate))?new Date(rawDate).toLocaleDateString('pl-PL'): 'bez daty';var short=w.ILSmartAI.summarize(ex,1)||trim(ex,170);return (i+1)+'. '+title+' ('+pub+')\n'+trim(short,240)});
+   message('Trzy najnowsze wpisy zapisane w IL:\n'+out.join('\n\n')+'\nŹródło: Ispina Lokalnie. '+(data.updated?'Pamięć odświeżona: '+fmt(data.updated):'Data aktualizacji nieznana')+'.');
+ }
+ function history(q){var info=brain()&&brain().history(q);message(info||'Nie mam wystarczająco potwierdzonych informacji o tym wydarzeniu. Zajrzyj do Historii Ispiny albo Ciekawostek historycznych na portalu; nie będę uzupełniał brakujących dat na podstawie domysłów.');}
+ function summary(){var ids=['ilReaderContent','ilpBody1851','ilpTitle1851'],selectors=['#ilReaderContent','#ilpBody1851','.il-article-body','.reader-content','[data-reader-content]','.entry-content'],content='';selectors.some(function(sel){var el=d.querySelector(sel);if(!el||!el.getClientRects||!el.getClientRects().length)return false;var cp=el.cloneNode(true);cp.querySelectorAll('script,style,button,nav,aside').forEach(function(n){n.remove()});content=nodeText(cp);return content.length>100});if(!content){message('Najpierw otwórz pełną treść artykułu w Aktualnościach lub Historii. Nie skrócę tekstu, którego nie mam.');return}
+   message('Skrót otwartego artykułu (wybrane najważniejsze zdania):\n'+w.ILSmartAI.summarize(content.slice(0,20000),3)+'\nŹródło: otwarty artykuł w IL.');}
+ function weather(){var a=['dwxt','wtemp','wdesc','wmeta'].map(function(k){return nodeText(by(k))}).filter(Boolean);message(a.length?'Pogoda według informacji widocznych w IL:\n'+a.join(' • ')+'\nŹródło: moduł Pogoda, sprawdź datę aktualizacji.':'Brak dostępnej prognozy w aktualnym widoku. Otwórz Pogodę i odśwież dane.');}
+ function waste(){var a=['ilWasteMain','ilWasteSub'].map(function(k){return nodeText(by(k))}).filter(Boolean);message(a.length?'Odpady według harmonogramu zapisanego w IL:\n'+a.join('\n')+'\nPrzed wystawieniem odpadów sprawdź datę i aktualność harmonogramu.':'Nie mam odczytanego terminu. Otwórz Odpady i sprawdź harmonogram przypisany do roku.');}
+ function detectRoute(q){var m=String(q).match(/\bz\s+(.+?)\s+do\s+(.+?)(?:\s+(?:jutro|dzisiaj|pojutrze|po\s+\d{1,2}(?::\d\d)?))?(?:\s*\?|$)/i);if(!m)return null;
+   var from=trim(m[1],80),to=trim(m[2],80).replace(/[?!.]+$/,'');if(!from||!to)return null;
+   var a={'ispiny':'Ispina','bochni':'Bochnia','krakowa':'Kraków','drwini':'Drwinia','niepołomic':'Niepołomice','podłęża':'Podłęże','nowego brzeska':'Nowe Brzesko','proszowic':'Proszowice'},fix=function(s){return a[s.toLocaleLowerCase('pl-PL')]||s};return {from:fix(from),to:fix(to),date:dateFilter(q).date};}
+ var routeRequest=null;
+ function answer(q){
+   q=trim(q,350);if(!q){message('Wpisz pytanie albo wybierz przykład.');return}
+   toggleRoute(false);toggleReminder(false);
+   var b=brain(),p=b?b.classify(q,dialogue):{intent:'unknown'};
+   if(p.intent==='route'){
+     var route=p.route,dt=new Date();dt.setHours(0,0,0,0);dt.setDate(dt.getDate()+(route.offset||0));route.date=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+     var current=api()&&api().planned(),match=current&&current.ready&&current.date===route.date&&norm(current.from).indexOf(norm(route.from))>=0&&norm(current.to).indexOf(norm(route.to))>=0;
+     if(match){planSummary();dialogue={intent:'route'};return}
+     routeRequest=route;dialogue={intent:'route'};message('Mogę przygotować trasę '+route.from+' → '+route.to+' na '+route.date+'. W Planerze samodzielnie potwierdzisz sugerowane przystanki przyciskiem „Akceptuj”. Nie wybieram ich za Ciebie.');toggleRoute(true);return;
+   }
+   if(p.intent==='departure'){quickDepart(q,p);return}
+   if(p.intent==='stops'){var rows=api()&&api().catalog?api().catalog():[],found=w.ILSmartAI.stops(p.search||q,rows,4);message(found.length?'Najbardziej podobne nazwy przystanków:\n• '+found.map(function(x){return x.name}).join('\n• ')+'\nWybierz właściwy przystanek w Planerze i zatwierdź „Akceptuj”.':'Brak dopasowanych przystanków w pobranym rozkładzie. Spróbuj krótszej nazwy albo odśwież dane MLD.');return}
+   if(p.intent==='planResults'){planSummary();return}
+   if(p.intent==='summary'){summary();return}
+   if(p.intent==='news'){news();return}
+   if(p.intent==='history'){history(q);return}
+   if(p.intent==='weather'){weather();return}
+   if(p.intent==='waste'){waste();return}
+   if(p.intent==='reminder'){message('Mogę przypomnieć o wybranym kursie tylko przy otwartej aplikacji. Najpierw zapytaj o konkretny odjazd, potem wybierz „Przypomnij 10 min przed”. Do alarmów po zamknięciu aplikacji potrzebna będzie osobna integracja z Androidem.');return}
+   if(p.intent==='diagnostic'){diagnostics();return}
+   if(p.intent==='greeting'){message('Dzień dobry! Jestem Asystent Ispiny. Zapytaj o autobus, przesiadkę, artykuły lub historię naszej miejscowości.');return}
+   if(p.intent==='thanks'){message('Proszę bardzo! W czym jeszcze mogę pomóc?');return}
+   if(p.intent==='reader'){message('Na razie skupiamy się na Asystencie. Modułu lektora nie zmieniałem w tej wersji.');return}
+   message(b?b.help():'Zapytaj o autobusy, trasę, historię, pogodę lub odpady.');
+ }
+ function prepare(){if(!routeRequest||!go('planner')){message('Nie udało się otworzyć Planera.');return}
+   var route=routeRequest;setTimeout(function(){var date=by('pdate');if(date&&route.date){date.value=route.date;date.dispatchEvent(new Event('change',{bubbles:true}))}['pfrom','pto'].forEach(function(id,i){var field=by(id),value=i?route.to:route.from;if(!field)return;field.value=value;field.dispatchEvent(new Event('input',{bubbles:true}));field.dispatchEvent(new Event('change',{bubbles:true}))});},400);
+ }
+ function assistPickerAndTransfers(){
+   if(!w.ILSmartAI)return;
+   ['pfrom','pto'].forEach(function(id){
+     var input=by(id),box=by(id==='pfrom'?'psfrom':'psto');
+     if(!input||!box)return;
+     var holder=box.querySelector('[data-smart21-fuzzy]');
+     if(!box.querySelector('.plnone')||String(input.value||'').length<3){if(holder)holder.remove();return;}
+     var rows=[],query=String(input.value||'');try{rows=api()&&api().catalog?api().catalog():[]}catch(e){}
+     var suggestions=w.ILSmartAI.stops(query,rows,3).filter(function(v){return norm(v.name)!==norm(query)});
+     if(!suggestions.length){if(holder)holder.remove();return;}
+     if(holder&&holder.getAttribute('data-query')===query)return;
+     if(holder)holder.remove();holder=make('div','il-smart22-fuzzy');holder.setAttribute('data-smart21-fuzzy','1');holder.setAttribute('data-query',query);
+     holder.appendChild(make('div','','Może chodziło o:'));
+     suggestions.forEach(function(v){var b=button(v.name,function(){input.value=v.name;input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}))});holder.appendChild(b)});
+     box.appendChild(holder);
+   });
+   var a=api(),risks=a&&a.transferRisks?a.transferRisks():[],area=by('ilTransferResults');
+   if(!area)return;
+   Array.prototype.forEach.call(area.querySelectorAll('[data-transfer-index]'),function(card){
+     var riskData=risks[Number(card.getAttribute('data-transfer-index'))];if(!riskData||riskData.minutes==null)return;
+     var status=w.ILSmartAI.transfer(riskData.minutes,riskData.minRequired,riskData.estimated,riskData.live);
+     var b=card.querySelector('[data-smart21-risk]');if(!b){b=make('p','il-smart22-risk');b.setAttribute('data-smart21-risk','1');card.appendChild(b)}
+     var desc='Asystent: '+status.label+'. '+status.detail;
+     if(b.textContent!==desc)b.textContent=desc;
+     b.setAttribute('data-level',status.level);
+   });
+ }
+ function checkReminder(){var r;try{r=JSON.parse(localStorage.getItem(reminderKey)||'null')}catch(e){}if(!r||!r.at||Date.now()<r.at)return;
+   try{localStorage.removeItem(reminderKey)}catch(e){}message('Przypomnienie: '+r.line+' z '+r.stop+' o '+r.time+'. Przed podróżą sprawdź rozkład i opóźnienia.');setOpen(true);}
+ function reminder(){var v=lastDeparture;if(!v){message('Najpierw wyszukaj konkretny odjazd.');return}
+   var at=v.ms-10*60000;if(at<=Date.now()){message('Do odjazdu pozostało mniej niż 10 minut. Nie ustawiam spóźnionego przypomnienia.');return}
+   try{localStorage.setItem(reminderKey,JSON.stringify({at:at,line:v.line,stop:v.stop,time:v.predicted,ms:v.ms}));message('Przypomnienie zapisane: '+fmt(at)+' dla '+v.line+' ('+v.stop+').\nUwaga: działa wyłącznie, gdy aplikacja pozostaje otwarta; nie jest alarmem systemowym.');}
+   catch(e){message('Brak możliwości zapisu przypomnienia.');}}
+ function diagnostics(){var data=api(),x=data&&data.diagnostics(),posts=getPosts();message('Smart AI 22 Light: lokalny Asystent działa.\n'+
+   'Połączenia: '+(x&&x.sourceAvailable?'Dane MLD dostępne ('+x.mldTrips+' kursów).':'Dane MLD niedostępne.')+'\n'+
+   'Linia gminna: '+(x&&x.municipalLoaded?'dane dostępne':'brak danych')+'.\n'+
+   'LIVE: '+(x&&x.liveUpdated?fmt(x.liveUpdated):'brak świeżych danych')+'.\n'+
+   'Aktualności: '+posts.posts.length+' zapisanych wpisów.\n'+
+   'Przypomnienia: tylko przy otwartej aplikacji.\nLektor: bez zmian w tej wersji.');}
+ var reply,openButton,routeButton,reminderButton,field,panel;
+ function message(x){if(reply)reply.textContent=String(x||'')}
+ function toggleRoute(v){if(routeButton)routeButton.hidden=!v}
+ function toggleReminder(v){if(reminderButton)reminderButton.hidden=!v}
+ function setOpen(v){if(!panel)return;panel.hidden=!v;openButton.setAttribute('aria-expanded',String(!!v));if(v&&field)field.focus()}
+ function close(){setOpen(false)}
+ function button(label,fn,cls){var b=make('button',cls||'',label);b.type='button';b.addEventListener('click',function(e){e.preventDefault();try{fn()}catch(err){message('Wystąpił problem z odpowiedzią. Spróbuj ponownie lub skorzystaj z modułu IL.')}});return b}
+ function mount(){if(mounted||!d.body||!w.ILSmartAI)return;mounted=true;
+   ['il-smart17','il-smart18','il-smart21'].forEach(function(id){var el=by(id);if(el)el.remove()});['il-smart18-style','il-smart21-style'].forEach(function(id){var old=by(id);if(old)old.remove()});
+   var style=make('style');style.id='il-smart22-style';style.textContent=`
+   #il-smart22{position:fixed;z-index:2147483001;right:12px;bottom:84px;color:#17395a;font:14px/1.5 system-ui,Roboto,sans-serif;pointer-events:none}
+   #il-smart22>*{pointer-events:auto}#il-smart22 button{font:inherit;cursor:pointer;touch-action:manipulation}
+   #il-smart22-open{display:block;margin-left:auto;width:58px;height:58px;border-radius:50%;border:2px solid #fff;background:linear-gradient(135deg,#153b73,#227ab6);color:#fff;font-weight:800;font-size:24px;box-shadow:0 6px 22px #12385a6b}
+   #il-smart22-panel{position:fixed;left:10px;right:10px;bottom:150px;margin:0 auto;max-width:520px;max-height:73vh;overflow-y:auto;overscroll-behavior:contain;padding:15px;border:1px solid #b8d8e9;border-radius:20px;background:#f9fcff;box-shadow:0 15px 42px #132c5370}
+   #il-smart22-panel[hidden],#il-smart22 [hidden]{display:none!important}#il-smart22 h2{font-size:21px!important;color:#153e72;margin:0 0 4px!important}#il-smart22 p{margin:5px 0 10px;color:#436b83;font-size:12px}
+   #il-smart22-question{display:block;box-sizing:border-box;width:100%;min-height:50px;font-size:16px!important;padding:11px;border:1px solid #9cbfda;border-radius:11px;background:#fff;color:#1b3855}
+   #il-smart22-actions,#il-smart22-chips{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}#il-smart22-actions button,#il-smart22-chips button,#il-smart22-bottom button{min-height:43px;border:1px solid #aacde5;border-radius:11px;padding:10px;background:#ebf5fd;color:#155080;font-weight:650}
+   #il-smart22-chips button{font-size:12px}#il-smart22-reply{background:white;border:1px solid #cfe3ef;border-radius:12px;padding:12px;white-space:pre-line;line-height:1.55;min-height:54px;overflow-wrap:anywhere;user-select:text}
+   #il-smart22-status{display:block;color:#356d55;font-size:12px;margin-bottom:7px}#il-smart22-panel button:focus-visible,#il-smart22-question:focus-visible{outline:3px solid #e4b54d;outline-offset:2px}
+   #il-smart22-bottom{display:flex;justify-content:space-between;align-items:center;gap:7px}#il-smart22-bottom label{display:flex;gap:6px;align-items:center;font-size:12px}
+   .il-smart22-fuzzy{border:1px solid #bed9ed;border-radius:9px;padding:9px;margin-top:7px;background:#f2f9fe;color:#164969;font-size:12px}.il-smart22-fuzzy button{display:block;width:100%;padding:9px;margin-top:5px;text-align:left;background:#fff;border:1px solid #cbddeb;border-radius:8px;color:#1b5678}.il-smart22-risk{padding:9px 11px;margin:8px 0;border-radius:10px;border:1px solid #cce5f1;background:#edf7fe;color:#22506b;font-size:12px;line-height:1.45}.il-smart22-risk[data-level='risky'],.il-smart22-risk[data-level='invalid']{background:#fff1e4;border-color:#f0ceb3;color:#8b451d}
+   #il-smart22-panel.il-smart22-large{font-size:19px!important}#il-smart22-panel.il-smart22-large #il-smart22-reply{font-size:19px;line-height:1.65}#il-smart22-panel.il-smart22-large button{font-size:17px!important;min-height:50px}
+   @media(min-width:600px){#il-smart22-panel{left:auto;right:12px;width:490px;margin:0}}
+   `;d.head.appendChild(style);
+   var root=make('aside');root.id=ID;root.setAttribute('aria-label','Asystent Ispiny');openButton=button('✦',function(){setOpen(panel.hidden)});openButton.id='il-smart22-open';openButton.setAttribute('aria-label','Otwórz Ispina Smart AI');openButton.setAttribute('aria-expanded','false');root.appendChild(openButton);
+   panel=make('section');panel.id='il-smart22-panel';panel.hidden=true;panel.appendChild(make('h2','','Asystent Ispiny'));panel.appendChild(make('p','','Inteligentne podpowiedzi • bez konta i abonamentu'));var status=make('span','','● Gotowy do pytań');status.id='il-smart22-status';panel.appendChild(status);
+   field=make('input');field.id='il-smart22-question';field.type='search';field.placeholder='Np. A7 z Ispiny Most jutro';field.setAttribute('aria-label','Pytanie do Asystenta');panel.appendChild(field);
+   var acts=make('div');acts.id='il-smart22-actions';acts.appendChild(button('Zapytaj',function(){answer(field.value)}));acts.appendChild(button('Odjazdy',function(){go('departures')}));acts.appendChild(button('Planer',function(){go('planner')}));acts.appendChild(button('3 wiadomości',news));acts.appendChild(button('Skróć artykuł',summary));acts.appendChild(button('Historia Ispiny',function(){go('history')}));
+   acts.appendChild(button('Wyniki Planera',planSummary));acts.appendChild(button('Sprawdź działanie',diagnostics));routeButton=button('Przenieś trasę do Planera',prepare);routeButton.hidden=true;acts.appendChild(routeButton);reminderButton=button('Przypomnij 10 min przed',reminder);reminderButton.hidden=true;acts.appendChild(reminderButton);
+   panel.appendChild(acts);reply=make('div','','Zapytaj o A7, przesiadkę, wiadomości, historię albo odpady. Możesz zadawać krótkie kolejne pytania, np. „a jutro?”.');reply.id='il-smart22-reply';reply.setAttribute('role','status');reply.setAttribute('aria-live','polite');panel.appendChild(reply);
+   panel.appendChild(make('p','','Odpowiedzi z danych zapisanych w aplikacji. Godziny kursów mogą się zmienić; sprawdzaj aktualność rozkładu. Przypomnienia nie działają po zamknięciu aplikacji.'));
+   var chips=make('div');chips.id='il-smart22-chips';['Kiedy A7 z Ispiny Most?','Jak dojechać z Ispiny do Bochni jutro?','Co nowego w Ispinie?','Co wydarzyło się w 1903 roku?'].forEach(function(q){chips.appendChild(button(q,function(){field.value=q;answer(q)}))});panel.appendChild(chips);
+   var bottom=make('div');bottom.id='il-smart22-bottom';var label=make('label');var large=make('input');large.type='checkbox';large.setAttribute('aria-label','Powiększ tekst Asystenta');try{large.checked=localStorage.getItem('il.smart21.large')==='1'||!!(d.body&&d.body.classList.contains('senior'))}catch(e){large.checked=!!(d.body&&d.body.classList.contains('senior'))}panel.classList.toggle('il-smart22-large',large.checked);large.addEventListener('change',function(){panel.classList.toggle('il-smart22-large',large.checked);try{localStorage.setItem('il.smart21.large',large.checked?'1':'0')}catch(e){}});label.appendChild(large);label.appendChild(make('span','','Duży tekst'));bottom.appendChild(label);bottom.appendChild(button('Zamknij',close));panel.appendChild(bottom);
+   root.appendChild(panel);d.documentElement.appendChild(root);field.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();answer(field.value)}else if(e.key==='Escape')close()});d.addEventListener('keydown',function(e){if(e.key==='Escape')close()});
+   assistPickerAndTransfers();var update=0;var observer=new MutationObserver(function(){if(update)return;update=setTimeout(function(){update=0;assistPickerAndTransfers()},280)});observer.observe(d.body,{childList:true,subtree:true});
+   checkReminder();setInterval(checkReminder,15000);w.IL_SMART22_ASSISTANT={answer:answer,news:news,diagnostics:diagnostics,planSummary:planSummary,version:'22',getReply:function(){return reply&&reply.textContent},getDialogue:function(){return dialogue}};
+ }
+ function start(){try{mount()}catch(e){mounted=false;try{console.warn('Smart AI 22',e)}catch(_){}}}
+ if(d.readyState==='loading')d.addEventListener('DOMContentLoaded',start);else start();
+ var attempts=0,t=setInterval(function(){if(mounted||attempts++>30){clearInterval(t);return}start()},300);
+})();
+
+
+
+
+
+(function(w,d){
+ 'use strict';
+ // Preserve the historical-curiosities reader without the removed AI gateway.
+ function update(){var pg=d.getElementById('vilPage1851'),body=d.getElementById('ilpBody1851');if(!pg||!body)return;
+  var button=d.getElementById('il48ReadCuriosities');if(!button){button=d.createElement('button');button.id='il48ReadCuriosities';button.type='button';button.className='btn2';button.textContent='Odczytaj ciekawostki';button.style.cssText='min-height:48px;margin:10px 0 16px';body.parentNode.insertBefore(button,body);
+   button.onclick=function(){var cp=body.cloneNode(true);cp.querySelectorAll('script,style,button,iframe,nav,header,footer').forEach(function(e){e.remove()});w.IL_ANDROID_READER.speak('Ciekawostki historyczne Ispiny. '+cp.textContent);};
+  }
+  var enabled=false;try{enabled=localStorage.getItem('il_news_history_reader_1886')!=='0'&&localStorage.getItem('il_news_history_reader_1886')!==null;}catch(e){}
+  button.hidden=!enabled||pg.getAttribute('data-il-page-slug')!=='ciekawostki-historyczne';
+ }
+ // Strip only obsolete speech-service preferences after the upgrade.
+ ['il15-ai-consent','il15-gateway-url','il15-ai-voice','il_tts_voice_index_1881','il_tts_voice_choice_1884','il_tts_fast_start_1884'].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
+ update();var pg=d.getElementById('vilPage1851');if(pg&&w.MutationObserver)new MutationObserver(update).observe(pg,{attributes:true,attributeFilter:['data-il-page-slug']});d.addEventListener('change',update);
+})(window,document);
+
+(function(){
+// Local travel data only. Actual courses always come from the IL routing engine.
+function validJourney(j){return !!(j&&typeof j.from==='string'&&j.from.length<=160&&typeof j.to==='string'&&j.to.length<=160&&typeof j.line==='string'&&j.line.length<=100&&Number.isFinite(j.departure)&&Number.isFinite(j.arrival)&&j.arrival>=j.departure&&Number.isFinite(j.duration)&&Array.isArray(j.legs)&&j.legs.length>=1&&j.legs.length<=2&&j.legs.every(l=>l&&typeof l.from==='string'&&typeof l.to==='string'&&typeof l.line==='string'&&Number.isFinite(l.departure)&&Number.isFinite(l.arrival)&&l.arrival>=l.departure));}
+function readTravelData(raw){
+ const empty={favorites:[],starts:[],notes:[],walkMinutes:10};try{if(typeof raw!=='string'||raw.length>300000)return empty;const v=JSON.parse(raw);if(!v||typeof v!=='object')return empty;
+ const stop=s=>typeof s==='string'&&s.length>0&&s.length<=160;
+ empty.favorites=Array.isArray(v.favorites)?v.favorites.filter(f=>f&&stop(f.from)&&stop(f.to)&&f.from!==f.to).slice(-12).map(f=>({from:f.from,to:f.to})):[];
+ empty.starts=Array.isArray(v.starts)?v.starts.filter(stop).slice(-8):[];
+ empty.notes=Array.isArray(v.notes)?v.notes.filter(n=>n&&validJourney(n.journey)&&typeof n.text==='string'&&n.text.length<=8000&&Number.isFinite(n.savedAt)).slice(-12):[];
+ if(Number.isInteger(v.walkMinutes)&&v.walkMinutes>=0&&v.walkMinutes<=120)empty.walkMinutes=v.walkMinutes;
+ }catch(e){}return empty;
+}
+function reminderPlan(j,walkMinutes,extraMinutes,now){
+ if(!validJourney(j))throw Error('INVALID_JOURNEY');
+ if(!Number.isInteger(walkMinutes)||walkMinutes<0||walkMinutes>120||!Number.isInteger(extraMinutes)||extraMinutes<0||extraMinutes>60)throw Error('INVALID_MINUTES');
+ const at=j.departure-(walkMinutes+extraMinutes)*60000;
+ if(at<=now+1000)throw Error('PAST_REMINDER');if(at>now+90*86400000)throw Error('DISTANT_REMINDER');
+ return {id:'pil-'+Math.floor(j.departure)+'-'+j.from+'-'+j.to,at:at,departure:j.departure,title:'Czas wyjść na autobus',body:j.from+' → '+j.to+' · '+j.line,walkMinutes:walkMinutes,extraMinutes:extraMinutes};
+}
+function backupOptions(items,j,now){return (items||[]).filter(x=>validJourney(x)&&x.from===j.from&&x.to===j.to&&x.departure>j.departure&&x.departure>now).sort((a,b)=>a.departure-b.departure||a.arrival-b.arrival).slice(0,4);}
+function arrivalLimit(options){const deadline=+new Date(options.date+'T'+options.time),margin=Number.isInteger(options.arrivalMargin)&&options.arrivalMargin>=0&&options.arrivalMargin<=60?options.arrivalMargin:0;return deadline-margin*60000;}
+function practicalWeather(f){
+ if(!f)return 'Nie mam prognozy na tę godzinę.';
+ const tips=[];
+ if(Number.isFinite(f.wind)&&f.wind>=35)tips.push('Zabierz kurtkę z kapturem, silniejszy wiatr może utrudniać używanie parasola.');
+ else if(Number.isFinite(f.rain)&&f.rain>=0.2||Number.isFinite(f.probability)&&f.probability>=40)tips.push('Warto zabrać parasol albo kurtkę przeciwdeszczową.');
+ if(Number.isFinite(f.feels)&&f.feels<10)tips.push('Przyda się cieplejsza warstwa na oczekiwanie na przystanku.');
+ if(Number.isFinite(f.feels)&&f.feels>=28)tips.push('Weź wodę i poszukaj cienia podczas oczekiwania.');
+ if(!tips.length&&[f.rain,f.probability,f.feels,f.wind].every(x=>!Number.isFinite(x)))return 'Nie mam wystarczających danych pogodowych na tę godzinę.';
+ return tips.join(' ')||'Sprawdź prognozę jeszcze raz przed wyjściem.';
+}
+
+// Offers are search settings, never fabricated departures.
+function timeFloor(date,now,arrivalMargin,notBefore){
+ const today=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+ if(!/^20\d\d-\d\d-\d\d$/.test(date||''))return null;
+ const start=+new Date(date+'T00:00:00'),end=+new Date(date+'T23:59:59.999');
+ if(!Number.isFinite(start)||date<today)return null;
+ const margin=Number.isInteger(arrivalMargin)&&arrivalMargin>=0&&arrivalMargin<=60?arrivalMargin:0;
+ const current=date===today?Math.ceil((+now+margin*60000+1)/60000)*60000:start;
+ const min=Number.isFinite(notBefore)?Math.max(current,Math.ceil((notBefore+margin*60000)/60000)*60000):current;
+ return min<=end?min:null;
+}
+function futureHours(date,now,arrivalMargin,notBefore){
+ const floor=timeFloor(date,now,arrivalMargin,notBefore);if(floor===null)return [];
+ const end=+new Date(date+'T23:59:59.999'),set=new Set();
+ for(let hour=6;hour<=23;hour++)set.add(+new Date(date+'T'+String(hour).padStart(2,'0')+':00'));
+ set.add(+new Date(date+'T23:30'));const start=+new Date(date+'T00:00:00');
+ if(floor>start){for(const offset of [0,15,30,60,120]){const t=new Date(floor);t.setMinutes(Math.ceil((t.getMinutes()+offset)/15)*15,0,0);set.add(+t);}}
+ return Array.from(set).filter(t=>t>=floor&&t<=end).sort((a,b)=>a-b).map(t=>{const d=new Date(t);return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');});
+}
+function travelTimeIssue(state,now){
+ if(!state.date)return null;
+ const today=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+ if(state.date<today)return 'PAST_DATE';if(!state.time)return null;
+ if(state.timeIsNow&&!state.arriveBy)return null;
+ const time=+new Date(state.date+'T'+state.time);if(!Number.isFinite(time))return 'INVALID_TIME';
+ if(time<=+now)return 'PAST_TIME';
+ if(Number.isFinite(state.notBefore)&&time-(state.arriveBy?(state.arrivalMargin||0)*60000:0)<state.notBefore)return 'BEFORE_OUTBOUND_ARRIVAL';
+ if(state.arriveBy&&time-(state.arrivalMargin||0)*60000<=+now)return 'PAST_ARRIVAL_MARGIN';
+ return null;
+}
+function primaryDestinations(catalog){
+ const normal=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ł/g,'l');
+ const cities=catalog.filter(r=>String(r.key).startsWith('group:')).map(r=>r.n.replace(/\s*[–-]\s*wszystkie przystanki.*$/i,''));
+ const result=[],czyzyny=catalog.filter(r=>String(r.key).startsWith('stop:')&&normal(r.n)==='rondo czyzynskie');
+ if(czyzyny.length===1&&cities.includes('Kraków'))result.push({label:'Kraków Czyżyny',city:'Kraków',stop:czyzyny[0].n});else if(cities.includes('Kraków'))result.push({label:'Kraków',city:'Kraków'});
+ for(const city of ['Niepołomice','Proszowice','Nowe Brzesko','Mikluszowice','Podłęże','Bochnia','Drwinia','Koszyce','Ispina'])if(cities.includes(city))result.push({label:city,city:city});
+ return result;
+}
+function friendlyClosing(text){return String(text||'').replace(/\n\n(?:Spokojnej podróży! 😊|Dziękuję za skorzystanie z Pomocnika IL\.[\s\S]*)$/,'')+'\n\nDziękuję za skorzystanie z Pomocnika IL. Życzę Ci udanej i bezpiecznej podróży! 😊';}
+
+var PLACE_FORMS={
+  "Baczków": {
+    "genitive": "Baczkowa",
+    "locative": "Baczkowie",
+    "from": "z",
+    "at": "w"
+  },
+  "Bieńkowice": {
+    "genitive": "Bieńkowic",
+    "locative": "Bieńkowicach",
+    "from": "z",
+    "at": "w"
+  },
+  "Bochnia": {
+    "genitive": "Bochni",
+    "locative": "Bochni",
+    "from": "z",
+    "at": "w"
+  },
+  "Chobot": {
+    "genitive": "Chobotu",
+    "locative": "Chobocie",
+    "from": "z",
+    "at": "w"
+  },
+  "Dolany": {
+    "genitive": "Dolan",
+    "locative": "Dolanach",
+    "from": "z",
+    "at": "w"
+  },
+  "Drwinia": {
+    "genitive": "Drwini",
+    "locative": "Drwini",
+    "from": "z",
+    "at": "w"
+  },
+  "Dziewin": {
+    "genitive": "Dziewina",
+    "locative": "Dziewinie",
+    "from": "z",
+    "at": "w"
+  },
+  "Gawłówek": {
+    "genitive": "Gawłówka",
+    "locative": "Gawłówku",
+    "from": "z",
+    "at": "w"
+  },
+  "Grobla": {
+    "genitive": "Grobli",
+    "locative": "Grobli",
+    "from": "z",
+    "at": "w"
+  },
+  "Hebdów": {
+    "genitive": "Hebdowa",
+    "locative": "Hebdowie",
+    "from": "z",
+    "at": "w"
+  },
+  "Igołomia": {
+    "genitive": "Igołomi",
+    "locative": "Igołomi",
+    "from": "z",
+    "at": "w"
+  },
+  "Ispina": {
+    "genitive": "Ispiny",
+    "locative": "Ispinie",
+    "from": "z",
+    "at": "w"
+  },
+  "Jaksice": {
+    "genitive": "Jaksic",
+    "locative": "Jaksicach",
+    "from": "z",
+    "at": "w"
+  },
+  "Jakubowice": {
+    "genitive": "Jakubowic",
+    "locative": "Jakubowicach",
+    "from": "z",
+    "at": "w"
+  },
+  "Koszyce": {
+    "genitive": "Koszyc",
+    "locative": "Koszycach",
+    "from": "z",
+    "at": "w"
+  },
+  "Kowala": {
+    "genitive": "Kowali",
+    "locative": "Kowali",
+    "from": "z",
+    "at": "w"
+  },
+  "Kraków": {
+    "genitive": "Krakowa",
+    "locative": "Krakowie",
+    "from": "z",
+    "at": "w"
+  },
+  "Książnice Wielkie": {
+    "genitive": "Książnic Wielkich",
+    "locative": "Książnicach Wielkich",
+    "from": "z",
+    "at": "w"
+  },
+  "Mikluszowice": {
+    "genitive": "Mikluszowic",
+    "locative": "Mikluszowicach",
+    "from": "z",
+    "at": "w"
+  },
