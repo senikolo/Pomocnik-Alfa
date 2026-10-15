@@ -105,7 +105,8 @@ jobs:
           "$SIGN" sign --ks "$RUNNER_TEMP/pa2-debug.jks" --ks-key-alias pa2debug \
             --ks-pass pass:android --key-pass pass:android \
             --out output/PA2-instrumentation-debug.apk output/PA2-instrumentation-unsigned.apk
-          "$SIGN" verify --verbose output/Pomocnik-Alfa-2.0.0-alpha.7-SMART-DEBUG.apk
+          "$SIGN" verify --verbose --print-certs output/Pomocnik-Alfa-2.0.0-alpha.7-SMART-DEBUG.apk | tee output/signature.txt
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -v 4 output/Pomocnik-Alfa-2.0.0-alpha.7-SMART-DEBUG.apk > output/zipalign-check.txt
           "$SIGN" verify --verbose output/PA2-instrumentation-debug.apk
           sha256sum output/Pomocnik-Alfa-2.0.0-alpha.7-SMART-DEBUG.apk > output/SHA256-debug.txt
       - uses: actions/upload-artifact@v4
@@ -187,3 +188,33 @@ jobs:
           name: PA2-debug-Android-${{ matrix.api }}-screenshots-tests
           path: results
           retention-days: 30
+
+  publish_test:
+    needs: [build, android_debug]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: PA2-installable-debug-alpha7-smart
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          name: PA2-debug-Android-30-screenshots-tests
+          path: emulator
+      - uses: actions/download-artifact@v4
+        with:
+          name: PA2-unsigned-build
+          path: evidence
+      - name: Publish separately installable, emulator-verified SMART test APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="pa2-smart-alpha7-20261015-${{ github.run_number }}"
+          cp release/Pomocnik-Alfa-2.0.0-alpha.7-SMART-DEBUG.apk release/Pomocnik-Alfa-2.0.0-alpha.7-SMART-TEST.apk
+          python3 helpers/pa2/release_report.py evidence emulator release "$GITHUB_SHA" "${{ github.run_id }}"
+          (cd emulator && zip -qr ../release/PA-SMART-Android11-testy-zrzuty.zip .)
+          cp evidence/live-source-access.json release/
+          cp evidence/signature.txt release/
+          gh release create "$TAG" --target "$GITHUB_SHA" --prerelease --title 'Pomocnik Alfa 2.0 SMART alpha.7 TEST – tablice 1–3' --notes-file release/PA-SMART-RAPORT.md
+          gh release upload "$TAG" release/Pomocnik-Alfa-2.0.0-alpha.7-SMART-TEST.apk release/PA-SMART-RAPORT.md release/PA-SMART-Android11-testy-zrzuty.zip release/signature.txt release/live-source-access.json emulator/screenshots/boards-1.png emulator/screenshots/boards-2.png emulator/screenshots/boards-3.png
