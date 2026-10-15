@@ -25,6 +25,7 @@ jobs:
         run: |
           set -euxo pipefail
           node --check helpers/pa-regions/app.js
+          node helpers/pa-regions/test_dialogue.cjs
           python3 -m py_compile helpers/pa-regions/build_index.py helpers/pa-regions/patch_apk.py
           python3 helpers/pa-regions/build_index.py build/pa-regions data/pa-gtfs | tee gtfs-summary.txt
           python3 - <<'PY'
