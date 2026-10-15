@@ -195,8 +195,8 @@ async function assistant(){
  const input=$("chatInput").value.trim();if(!input)return;
  bubble(input,"user");$("chatInput").value="";
  const lowered=norm(input);
- const wantsMld=/\b(mld|malopols|krakow|ispin|bochn|niepolomic|a4|a7|a65)\b/.test(lowered);
- const wantsWarsaw=/\b(warszaw|ztm|z(p|t)m|m[12]|waw)\b/.test(lowered);
+ const wantsMld=/\b(mld|malopols\w*|krakow\w*|ispin\w*|bochn\w*|niepolomic\w*|a4|a7|a65)\b/.test(lowered);
+ const wantsWarsaw=/\b(warszaw\w*|ztm|z(p|t)m|m[12]|waw)\b/.test(lowered);
  if(wantsMld&&!wantsWarsaw&&network!=="mld"){$("network").value="mld";$("network").onchange()}
  else if(wantsWarsaw&&!wantsMld&&network!=="warsaw"){$("network").value="warsaw";$("network").onchange()}
  let idx;
@@ -224,7 +224,7 @@ async function assistant(){
   bubble(lastAnswer,"assistant");return;
  }
  let dep=new Date($("departAt").value);
- if(/\bjutro\b/.test(lowered))dep.setDate(new Date().getDate()+1);
+ if(/\bjutro\b/.test(lowered)){dep=new Date();dep.setDate(dep.getDate()+1);}
  else if(/\b(dzi(s|siaj)|dzis)\b/.test(lowered))dep=new Date();
  const time=input.match(/(?:\bpo\b|\bo\b|\bokoło\b|\bokolo\b)\s*(\d{1,2})(?:[:.](\d{2}))?/i);
  if(time){dep.setHours(Number(time[1]),Number(time[2]||0),0,0);}
