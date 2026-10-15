@@ -232,6 +232,14 @@ async function assistant(){
  const question=$("chatInput").value.trim();if(!question)return;
  bubble(question,"user");$("chatInput").value="";
  const lower=norm(question);
+ if(/^(hej|czesc|dzien dobry|dobry wieczor|witaj)[!. ]*$/.test(lower)){
+  lastAnswer="Cześć! W czym mogę pomóc z przejazdem? Podaj trasę albo zapytaj o konkretny przystanek.";
+  bubble(lastAnswer,"assistant");return;
+ }
+ if(/^(dzieki|dziekuje|super|ok|okej)[!. ]*$/.test(lower)){
+  lastAnswer="Nie ma za co! Gdy zechcesz sprawdzić kolejną trasę, napisz mi skąd, dokąd i kiedy jedziemy.";
+  bubble(lastAnswer,"assistant");return;
+ }
  const isMld=/\b(mld|malopols\w*|krakow\w*|ispin\w*|bochn\w*|niepolomic\w*|a4|a7|a65)\b/.test(lower);
  const isWarsaw=/\b(warszaw\w*|ztm|z(p|t)m|m[12]|waw)\b/.test(lower);
  if(isMld&&!isWarsaw&&network!=="mld"){$("network").value="mld";$("network").onchange();dialogue.from=dialogue.to=null}
@@ -267,7 +275,8 @@ async function assistant(){
    }
   }
  }
- from=dialogue.from||start;to=dialogue.to||end;
+ from=dialogue.from||(!dialogue.fromHint?start:null);
+ to=dialogue.to||(!dialogue.toHint?end:null);
  if(!from||!to){
   let lines=[];
   if(!from)lines.push("Podaj konkretny przystanek początkowy"+(dialogue.fromHint?" dla „"+dialogue.fromHint+"”":"")+".");
