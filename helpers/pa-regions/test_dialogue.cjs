@@ -30,7 +30,8 @@ const mld = {
     ["A","Ispina","",50,20,[]],
     ["B","Ispina Most","",50,20,[0]],
     ["C","Bochnia Dworzec PKP","",50,20,[0]],
-    ["D","Bochnia Szpital","",50,20,[0]]
+    ["D","Bochnia Szpital","",50,20,[0]],
+    ["E","Ispina Leśniczówka","",50,20,[]]
   ], routes:[["mld-a4","A4",""]]
 };
 const warsaw = {...common,source:"warsaw",
@@ -76,5 +77,23 @@ const ask = async q => {
   assert.doesNotMatch(answer,/linia A4/);
   answer=await ask("Dzięki");
   assert.match(answer,/Nie ma za co/);
+  answer=await ask("od nowa");
+  assert.match(answer,/nową trasę/);
+  answer=await ask("Kiedy następna A4 jutro po 9?");
+  assert.match(answer,/Z którego przystanku/);
+  answer=await ask("Ispina Most");
+  assert.match(answer,/Planowe odjazdy/);
+  assert.match(answer,/09:10/); // If clock is > 09:10, the trip must be in tomorrow's date!
+  answer=await ask("Z Ispiny Leśniczówka do Bochni Dworzec PKP jutro po 9");
+  assert.match(answer,/Nie znalazłem potwierdzonego połączenia/);
+  assert.match(answer,/Ispina Most/);
+  answer=await ask("Z Metro Młociny do Dw. Centralny jutro po 9");
+  assert.match(answer,/linia 102/);
+  answer=await ask("Z Ispiny do Bochni Dworzec PKP jutro po 9");
+  assert.match(answer,/linia A4/);
+  answer=await ask("o 10");
+  assert.doesNotMatch(answer,/linia A4 09:10/);
+  assert.doesNotMatch(answer,/Podaj konkretny przystanek/);
+  console.log("PASS: natural dialogue, pending departures, no invented routes, Warsaw switch, time change");
   console.log("PASS: reverse phrase, canonical Ispina Most, future time retention, ambiguous destination, no stale route, chat greeting");
 })().catch(e=>{console.error(e);process.exitCode=1});
