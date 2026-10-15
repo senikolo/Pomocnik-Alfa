@@ -48,7 +48,7 @@ def build(source,out,today):
     try:lat=float(s['stop_lat']);lon=float(s['stop_lon'])
     except (ValueError,KeyError):continue
     sid=len(stops);si[s['stop_id']]=sid
-    stops.append([provider+':'+s['stop_id'],s.get('stop_name',''),s.get('platform_code') or s.get('stop_code',''),round(lat,6),round(lon,6),[],provider,s.get('parent_station','')]);stop_routes.append(set())
+    stops.append([provider+':'+s['stop_id'],s.get('stop_name',''),s.get('platform_code',''),round(lat,6),round(lon,6),[],provider,s.get('parent_station','')]);stop_routes.append(set())
    for t in rows(z,'trips.txt'):
     service=t['service_id'];mask=masks.setdefault(service,mask_for(service,cal,exc,days))
     if mask and t['route_id'] in ri:tripmeta[t['trip_id']]=(ri[t['route_id']],mask,t.get('trip_headsign',''),t.get('trip_short_name',''))
