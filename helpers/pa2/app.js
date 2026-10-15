@@ -136,11 +136,20 @@ async function busChangeLine(){
 }
 function busChangeDirection(){busResetResults();$('checkBus').disabled=!(busState.stop&&$('busLine').value&&$('busDirection').value);if(!$('checkBus').disabled)$('busLoading').textContent='Gotowe. Sprawdź najbliższy autobus.'}
 function busDistanceMetres(lat1,lon1,lat2,lon2){const rad=Math.PI/180,phi=(lat2-lat1)*rad,dl=(lon2-lon1)*rad,a=Math.sin(phi/2)**2+Math.cos(lat1*rad)*Math.cos(lat2*rad)*Math.sin(dl/2)**2;return Math.round(12742000*Math.asin(Math.min(1,Math.sqrt(a))))}
-function busSchematic(lat,lon,stopLat,stopLon){
- // diagrammatic positions only; never imply an actual road route
- const meanLat=(lat+stopLat)*Math.PI/360,spanX=(lon-stopLon)*Math.cos(meanLat),spanY=lat-stopLat;
- const scale=Math.max(Math.abs(spanX),Math.abs(spanY),.00015);const x=160+spanX/scale*93,y=69-spanY/scale*42;
- return '<div class="bus-map" role="img" aria-label="Schemat: autobus i przystanek, położenie względne, nie rzeczywista mapa ulic"><svg viewBox="0 0 320 140" focusable="false" aria-hidden="true"><path class="road" d="M160 69 L'+x.toFixed(1)+' '+y.toFixed(1)+'"/><circle class="station" cx="160" cy="69" r="9"/><circle class="vehicle" cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="11"/><text class="map-label" x="160" y="91" text-anchor="middle">Przystanek</text><text class="map-label" x="'+x.toFixed(1)+'" y="'+Math.max(13,y-17).toFixed(1)+'" text-anchor="middle">Autobus</text><text class="map-foot" x="160" y="125" text-anchor="middle">Schemat względnego położenia · bez dróg i nawigacji</text></svg></div>';
+function busArrivalView(actual,plannedSeconds,checkedAt){
+ const nowSec=Date.now()/1000,valid=Number(actual.eta)>nowSec-90&&Number(actual.eta)<nowSec+86400&&actual.live&&!actual.cancelled&&!actual.skipped;
+ if(actual.cancelled)return '<div class="bus-eta unknown"><strong>Kurs odwołany</strong><small>Nie oczekuj tego autobusu.</small></div>';
+ if(actual.skipped)return '<div class="bus-eta unknown"><strong>Przystanek pominięty</strong><small>Ten kurs nie zatrzyma się tutaj.</small></div>';
+ if(valid){
+  const left=Math.max(0,Math.ceil((actual.eta-nowSec)/60));
+  const stamp=new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Warsaw',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(actual.eta*1000));
+  const ago=Math.max(0,Math.round(nowSec-Number(checkedAt||nowSec)));
+  return '<div class="bus-eta live"><strong>'+ (left===0?'Przyjazd teraz':'Przyjazd za '+left+' min')+' · '+esc(stamp)+'</strong><small>Prognoza LIVE przewoźnika · sprawdzona '+ago+' s temu. Nie jest to wyliczenie z GPS.</small></div>';
+ }
+ const today=wallNow(),seconds=Number(today.slice(11,13))*3600+Number(today.slice(14,16))*60;
+ const left=Math.ceil((plannedSeconds-seconds)/60);
+ return '<div class="bus-eta schedule"><strong>'+(left<0?'Planowy odjazd już minął':left===0?'Planowy odjazd: teraz':'Planowo za '+left+' min')+'</strong>'+
+ '<small>Godzina według rozkładu: '+clock(plannedSeconds)+'. Brak potwierdzonej prognozy LIVE'+(actual.position?' mimo dostępnego GPS.':'.')+'</small></div>';
 }
 function busStopCoords(d){
  const group=busState.stop;const candidates=group.stops.map(id=>engine.idx.stops[id]);const exact=candidates.find(s=>String(s[0])===String(d.stopId)||String(s[0]).split(':').at(-1)===String(d.stopId).split(':').at(-1));
@@ -172,13 +181,19 @@ async function checkLiveBus(){
     const updateTime=haveGps?new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Warsaw',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date(actual.position.timestamp*1000)):'';
     return '<article class="card trip"><div class="bus-card-header"><span class="bus-vehicle-line">'+esc(d.line)+' → '+esc(d.headsign)+'</span><span class="pill">'+clock(d.dep)+'</span></div>'+
      '<div class="bus-status '+(haveGps||eta?'ok':'warn')+'">'+esc(status)+'</div>'+
+     busArrivalView(actual,d.dep,checked)+
      '<p>Przystanek: <strong>'+esc(busState.stop.name)+'</strong><br>Odjazd planowy: <strong>'+clock(d.dep)+'</strong>'+
-       (eta?'<br>Przyjazd według LIVE: <strong>'+esc(eta)+'</strong>':'')+'</p>'+
-     (haveGps?'<p><strong>Gdzie jest autobus?</strong> Pozycja GPS z '+esc(updateTime)+' (sprzed '+Math.round(actual.position.age)+' s).'+(dist===null?'':' Od przystanku dzieli go około <strong>'+ (dist>=1000?(dist/1000).toFixed(1)+' km':dist+' m')+'</strong> w linii prostej.')+'</p>':'<p class="small">Nie ma potwierdzonej pozycji tego kursu. Nie wyznaczam lokalizacji na podstawie rozkładu.</p>')+
-     (location?busSchematic(actual.position.latitude,actual.position.longitude,coords[3],coords[4]):'')+
+       (eta?'<br>Godzina prognozowana LIVE: <strong>'+esc(eta)+'</strong>':'')+'</p>'+
+     (haveGps?'<p><strong>Gdzie jest autobus?</strong> GPS z '+esc(updateTime)+' (sprzed '+Math.round(actual.position.age)+' s).'+(dist===null?'':' Od przystanku dzieli go około <strong>'+ (dist>=1000?(dist/1000).toFixed(1)+' km':dist+' m')+'</strong> w linii prostej.')+'</p>':'<p class="small">Brak świeżej, potwierdzonej pozycji tego kursu. Nie tworzę fikcyjnego znacznika autobusu.</p>')+
+     (i===0?'<div id="osmLiveMap" role="region" aria-label="Interaktywna mapa OpenStreetMap"></div>':'')+
      '<p class="bus-source">'+esc(actual.provenance||('Dane GTFS: '+d.source))+' · '+(actual.live?'Potwierdzono LIVE':'Bez potwierdzenia LIVE')+'</p></article>';
   }).join('');
   $('busResult').innerHTML=output;
+  const shown=relevant[0],seen=live?.results?.find(v=>v.trip===shown.trip&&v.serviceDay===shown.serviceDay)||{},point=busStopCoords(shown);
+  if(point&&Number.isFinite(point[3])&&Number.isFinite(point[4])&&window.PAMap){
+   const position=seen.position&&Number(seen.position.age)>=0&&Number(seen.position.age)<=120?seen.position:null;
+   PAMap.mount($('osmLiveMap'),{lat:point[3],lon:point[4]},position?{lat:position.latitude,lon:position.longitude}:null);
+  }
   if(live?.results?.some(x=>x.live))$('busLoading').textContent='Sprawdzono aktualne dane LIVE. Wyświetlam tylko kursy pasujące do kierunku i przystanku.';
   else if(live)$('busLoading').textContent='Źródło nie podało świeżej pozycji wybranego kursu. Pokazuję wyłącznie rozkład planowy.';
   $('busProvider').textContent='Dane sprawdzone: '+new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Warsaw',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(checked*1000));
