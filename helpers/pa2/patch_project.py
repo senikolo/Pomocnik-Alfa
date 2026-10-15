@@ -24,7 +24,10 @@ if 'Lcom/ispina/lokalnie/PARegionsClick;' not in s:
     const-string v2, "Warszawa, Małopolska i kolej. Planer, autobus LIVE i asystent Alfa."
     invoke-direct {p0, v1, v2, v0}, Lcom/ispina/lokalnie/MainActivity;->addActionCard(Ljava/lang/String;Ljava/lang/String;Landroid/view/View$OnClickListener;)V
 '''
- s=s.replace(anchor,anchor+addition)
+ # The legacy nearby-stop screen is a different function from the regional planner.
+ # Keep its original click listener, but label it by its actual purpose.
+ legacy=anchor.replace('    invoke-direct {p0, v1, v2, v0}', '    const-string v1, "Przystanki w pobliżu"\\n\\n    invoke-direct {p0, v1, v2, v0}',1)
+ s=s.replace(anchor,legacy+addition)
 s=s.replace('Warszawa: autobusy. Małopolska: MLD. Trasy, przesiadki i rozmowa po polsku.','Warszawa, Małopolska i kolej. Trasy, przesiadki, pogoda i Twoje notatki.')
 s=s.replace('Pomocnik Alfa 1.7.66','Pomocnik Alfa 2.0')
 # Correct every dashboard function glyph, including Planner, Tube and Kids.
@@ -33,7 +36,7 @@ a=s.index('    const-string p2, "Pogoda"',method)
 b=s.index('    const/high16 v3, 0x41b00000',a)
 s=s[:a]+'    invoke-static {p1}, Lcom/ispina/lokalnie/PAIcons;->glyph(Ljava/lang/String;)Ljava/lang/String;\n\n    move-result-object p2\n\n'+s[b:]
 s=re.sub(r'POMOCNIK ALFA 1[^"\n]*','POMOCNIK ALFA 2.0',s)
-s=s.replace('Planer i Asystent PA','Planer i Alfa').replace('Planer, Autobus LIVE i Alfa','Planer i Alfa').replace('Warszawa, Małopolska i kolej. Planer, autobus LIVE i asystent Alfa.','Trasy, autobusy i tramwaje na mapie. Warszawa, Małopolska i kolej.')
+s=s.replace('Planer, Autobus LIVE i Alfa','Planer i Alfa').replace('Warszawa, Małopolska i kolej. Planer, autobus LIVE i asystent Alfa.','Trasy, autobusy i tramwaje na mapie. Warszawa, Małopolska i kolej.')
 main.write_text(s)
 p=root/'AndroidManifest.xml';m=p.read_text()
 m=m.replace('com.senikolo.pomocniknowy.regionspreview','com.senikolo.pomocniknowy')
