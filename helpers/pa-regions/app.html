@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Planer i Asystent PA</title>
+<style>
+:root{--navy:#174875;--blue:#367cad;--ink:#20344a;--bg:#f3f7fc;--muted:#53687d;--line:#d5e1ed;--white:#fff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px system-ui,-apple-system,Roboto,sans-serif}
+header{background:linear-gradient(135deg,#174875,#367cad);padding:20px 16px 15px;color:white;box-shadow:0 5px 16px #193c6028}
+header h1{margin:0;font-size:22px}header p{font-size:13px;opacity:.93;margin:6px 0 0}
+main{max-width:680px;margin:auto;padding:12px 12px 46px}.nav{display:flex;background:#e7eff8;border-radius:16px;padding:4px;gap:4px}
+.nav button{flex:1;font-size:15px;border:0;padding:13px;border-radius:12px;background:none;color:var(--navy);font-weight:700}
+.nav button.active{background:#fff;box-shadow:0 2px 8px #17365022}
+.panel{display:none}.panel.active{display:block}.card{background:#fff;border:1px solid var(--line);border-radius:19px;box-shadow:0 3px 12px #122f4c11;margin-top:12px;padding:16px}
+h2{font-size:17px;margin:0 0 12px}label{display:block;font-size:13px;font-weight:650;margin:12px 0 6px;color:var(--navy)}
+input,select,textarea{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:12px;background:white;color:var(--ink);font:inherit;min-height:47px}
+input:focus,select:focus,textarea:focus{outline:2px solid #367cad77;outline-offset:1px}
+button{font:inherit;cursor:pointer}.primary{background:var(--blue);color:white;border:none;border-radius:12px;padding:12px 15px;font-weight:700}
+.secondary{background:#eaf2fa;border:1px solid var(--line);color:var(--navy);border-radius:12px;padding:11px 14px}
+.buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.confirmed{font-size:12px;color:#096750;font-weight:700;margin:5px 0}
+.small{color:var(--muted);font-size:12px;line-height:1.5}.error{color:#ad3535;font-size:14px}.progress{min-height:18px;margin-top:12px;font-size:13px;color:var(--muted)}
+.suggestions{display:none;max-height:205px;overflow:auto;border:1px solid var(--line);border-radius:12px;margin-top:4px;background:white}
+.suggestions.open{display:block}.suggestions button{display:block;width:100%;text-align:left;background:white;border:0;border-bottom:1px solid #edf2f6;padding:11px;color:var(--ink)}
+.trip{border-left:4px solid #367cad;padding:12px 14px;border-radius:13px;margin-top:10px;background:#f7fafd}.trip.transfer{border-left-color:#d39b3f}
+.trip b{color:var(--navy)}.trip .time{font-size:18px;font-weight:750}.chip{display:inline-block;padding:3px 7px;border-radius:7px;background:#daeaf8;color:#174875;font-size:12px;font-weight:700}
+.chat{min-height:230px;max-height:440px;overflow:auto;padding:4px}.bubble{max-width:90%;padding:11px 13px;border-radius:15px;margin:10px 0;background:#e9f2fa;white-space:pre-wrap;line-height:1.52;font-size:14px}
+.bubble.user{margin-left:auto;background:#174875;color:white;border-bottom-right-radius:5px}
+.bubble.assistant{margin-right:auto;border-bottom-left-radius:5px}
+#chatInput{min-height:82px;resize:vertical}
+.notice{border:1px solid #b3d0e5;background:#f2f8fd;border-radius:12px;padding:10px;font-size:12px;margin-top:12px;color:#32536d}
+@media(max-width:370px){header h1{font-size:19px}.card{padding:13px}.nav button{font-size:14px}}
+@media(prefers-reduced-motion:no-preference){.trip{animation:entry .22s ease both}@keyframes entry{from{opacity:.5;transform:translateY(5px)}to{opacity:1;transform:none}}}
+</style></head>
+<body>
+<header><h1>🚌 Planer i Asystent PA</h1><p>Warszawa • autobusy miejskie &nbsp;|&nbsp; Małopolska • MLD</p></header>
+<main>
+<div class="nav" role="tablist" aria-label="Tryb"><button id="tabPlanner" class="active" type="button" role="tab" aria-selected="true">Planer podróży</button><button id="tabAssistant" type="button" role="tab" aria-selected="false">Asystent PA</button></div>
+<section id="panelPlanner" class="panel active" role="tabpanel">
+<div class="card">
+<h2>Dokąd jedziemy?</h2>
+<label for="network">Sieć komunikacyjna</label><select id="network"><option value="warsaw">Warszawa – autobusy miejskie</option><option value="mld">Małopolska – MLD (linie A)</option></select>
+<div class="notice" id="coverage">Wczytuję dane rozkładów…</div>
+<label for="from">Przystanek początkowy</label><input id="from" placeholder="Wpisz minimum 3 litery" autocomplete="off" aria-autocomplete="list"><div id="suggestFrom" class="suggestions" role="listbox"></div>
+<div class="buttons"><button id="confirmFrom" type="button" class="primary">✓ Akceptuj start</button><button id="changeFrom" type="button" class="secondary">Zmień</button></div><div id="statusFrom" class="confirmed"></div>
+<label for="to">Przystanek docelowy</label><input id="to" placeholder="Wpisz minimum 3 litery" autocomplete="off" aria-autocomplete="list"><div id="suggestTo" class="suggestions" role="listbox"></div>
+<div class="buttons"><button id="confirmTo" type="button" class="primary">✓ Akceptuj cel</button><button id="changeTo" type="button" class="secondary">Zmień</button></div><div id="statusTo" class="confirmed"></div>
+<label for="departAt">Data i godzina wyjazdu</label><input id="departAt" type="datetime-local">
+<div class="buttons"><button class="primary" id="search" type="button">Wyszukaj połączenia</button><button class="secondary" id="swap" type="button">⇄ Zamień przystanki</button></div>
+<p class="small">Po zatwierdzeniu obu przystanków wyszukiwanie uruchamia się automatycznie. Wybrana ręcznie data i godzina pozostają bez zmian.</p>
+</div>
+<div class="card"><h2>Połączenia</h2><div id="progress" class="progress" aria-live="polite"></div><div id="results"></div></div>
+</section>
+<section id="panelAssistant" class="panel" role="tabpanel">
+<div class="card">
+<h2>Porozmawiaj z Asystentem PA</h2>
+<div id="messages" class="chat" aria-live="polite"><div class="bubble assistant">Dzień dobry! Pomogę znaleźć autobus w Warszawie lub linię MLD w Małopolsce. Napisz na przykład: „Chcę jechać z Ispiny Most do Bochni jutro po 9”.</div></div>
+<label for="chatInput">Twoje pytanie</label><textarea id="chatInput" placeholder="Skąd, dokąd i kiedy chcesz jechać?"></textarea>
+<div class="buttons"><button id="ask" class="primary" type="button">Zapytaj Asystenta</button><button id="copy" class="secondary" type="button">Kopiuj odpowiedź</button></div>
+<div class="buttons"><button class="secondary prompt" data-query="Z Ispiny Most do Bochni jutro po 9">Ispina → Bochnia</button><button class="secondary prompt" data-query="Z Metro Młociny do Dw. Centralny dziś po 12">Warszawa</button></div>
+<div class="notice">Asystent sprawdza rzeczywiste godziny z rozkładów GTFS. Nie jest internetowym modelem językowym. Nie udaje GPS LIVE ani nie wymyśla kursów.</div>
+</div>
+</section></main>
+<script src="/app.js"></script>
+</body></html>
