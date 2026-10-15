@@ -48,11 +48,17 @@ public final class PABoardsProbe {
  public static String run(Instrumentation t,Activity home)throws Exception{
   parserTests();StringBuilder log=new StringBuilder("PASS instrumented fixtures: fresh/stale/wrong-trip/wrong-date/no-data/cancelled/skipped/offline; midnight and holiday masks\n");
   waitFor(()->controller()!=null&&get(controller(),"index")!=null,"home index");PANearbyBoards c=controller();need(count(home.getWindow().getDecorView(),"pa-smart-boards")==1,"Actual dashboard card hook");
-  // Actual unavailable-location path, invoked through the production controller.
-  waitFor(()->!((java.util.concurrent.atomic.AtomicBoolean)get(c,"computing")).get(),"no GPS idle");
-  t.runOnMainSync(()->{try{call(c,"cancelLocation",new Class[]{});set(c,"manualId","");set(c,"lastLocation",null);set(c,"lastRequest",System.currentTimeMillis());call(c,"showNearby",new Class[]{});}catch(Exception e){throw new RuntimeException(e);}});
-  waitFor(()->!((java.util.concurrent.atomic.AtomicBoolean)get(c,"computing")).get(),"no GPS message");
-  need(count(home.getWindow().getDecorView(),"pa-departure-board")==0,"No presumed location");screen(t,"boards-no-gps");
+  String persisted=t.getTargetContext().getSharedPreferences("pa2_boards",0).getString("manual_stop","");
+  need(persisted.equals((String)get(c,"manualId")),"Saved manual stop restored after process restart");
+  // First installation has no GPS permission. The second run retains the granted
+  // permission and may legitimately have a provider fix from the weather module.
+  boolean hasGPS=t.getTargetContext().checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)==android.content.pm.PackageManager.PERMISSION_GRANTED;
+  if(!hasGPS){
+   waitFor(()->!((java.util.concurrent.atomic.AtomicBoolean)get(c,"computing")).get(),"no GPS idle");
+   t.runOnMainSync(()->{try{call(c,"cancelLocation",new Class[]{});set(c,"manualId","");set(c,"lastLocation",null);set(c,"lastRequest",System.currentTimeMillis());call(c,"showNearby",new Class[]{});}catch(Exception e){throw new RuntimeException(e);}});
+   waitFor(()->count(home.getWindow().getDecorView(),"pa-departure-board")==0,"Unavailable GPS has no presumed location");screen(t,"boards-no-gps");
+   log.append("PASS actual permission-denied GPS path with manual/GPS actions\n");
+  }else log.append("PASS retained GPS permission and restored manual stop on process restart\n");
   t.getUiAutomation().grantRuntimePermission(t.getTargetContext().getPackageName(),android.Manifest.permission.ACCESS_FINE_LOCATION);
   JSONObject index=(JSONObject)get(c,"index");List<PANearbyRules.Stop> all=PANearbyData.stops(index);Map<Integer,PANearbyRules.Stop> examples=new HashMap<>();
   // Real GTFS coordinates and real installed route data; no demonstration departures in release code.
