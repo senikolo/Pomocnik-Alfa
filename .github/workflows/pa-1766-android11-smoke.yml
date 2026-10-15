@@ -1,0 +1,77 @@
+name: PA 1.7.66 Android 11 Emulator Smoke
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  android-11:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.issue.title == 'TRIGGER PA 1.7.66 ANDROID11 SMOKE 20261015' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Retrieve signed 1.7.66 reference APK
+        run: |
+          set -euo pipefail
+          gh run download 37922298287 -R "$GITHUB_REPOSITORY" -n Pomocnik-Alfa-1.7.66-A10-TEST-SIGNED -D pa
+          test -s pa/Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-TEST-SIGNED.apk
+          mkdir -p test-results
+          echo 'PA 1.7.66 API 30 emulator smoke' > test-results/README.txt
+
+      - name: Run on Android 11 API 30
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-boot-timeout: 900
+          script: |
+            set -euxo pipefail
+            adb wait-for-device
+            adb shell getprop ro.build.version.sdk | tee test-results/android-sdk.txt
+            test "$(adb shell getprop ro.build.version.sdk | tr -d '\r')" = "30"
+            adb install -r pa/Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-TEST-SIGNED.apk
+            adb shell pm grant com.senikolo.pomocniknowy android.permission.ACCESS_FINE_LOCATION || true
+            adb shell pm grant com.senikolo.pomocniknowy android.permission.ACCESS_COARSE_LOCATION || true
+            adb logcat -c
+            adb shell am start -W -n com.senikolo.pomocniknowy/com.ispina.lokalnie.MainActivity | tee test-results/launch.txt
+            sleep 9
+            adb shell pidof com.senikolo.pomocniknowy | tee test-results/initial-pid.txt
+            test -s test-results/initial-pid.txt
+            adb shell dumpsys activity top > test-results/activity-top.txt
+            adb shell uiautomator dump /sdcard/pa-ui.xml || true
+            adb pull /sdcard/pa-ui.xml test-results/pa-ui.xml || true
+            adb shell screencap -p /sdcard/pa-main.png || true
+            adb pull /sdcard/pa-main.png test-results/pa-main.png || true
+            # Exercise random taps and navigation without destructive write actions.
+            adb shell monkey -p com.senikolo.pomocniknowy --throttle 250 -s 1766 -v 70 > test-results/monkey.txt 2>&1 || true
+            sleep 5
+            adb logcat -d -b crash > test-results/crash-log.txt || true
+            adb logcat -d -s AndroidRuntime:E ActivityTaskManager:E > test-results/error-log.txt || true
+            adb shell dumpsys package com.senikolo.pomocniknowy > test-results/package.txt
+            if grep -E 'FATAL EXCEPTION|Process: com\.senikolo\.pomocniknowy' test-results/crash-log.txt; then
+              echo 'FAIL: app crashed on Android 11 emulator' | tee test-results/result.txt
+              exit 1
+            fi
+            echo 'PASS: install/launch/monkey without fatal crash observed' | tee test-results/result.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PA-1766-ANDROID11-SMOKE-REPORT
+          path: test-results
+          if-no-files-found: warn
+          retention-days: 30
