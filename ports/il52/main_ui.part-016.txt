@@ -1,0 +1,850 @@
+  "Morsko": {
+    "genitive": "Morska",
+    "locative": "Morsku",
+    "from": "z",
+    "at": "w"
+  },
+  "Niedary": {
+    "genitive": "Niedar",
+    "locative": "Niedarach",
+    "from": "z",
+    "at": "w"
+  },
+  "Niepołomice": {
+    "genitive": "Niepołomic",
+    "locative": "Niepołomicach",
+    "from": "z",
+    "at": "w"
+  },
+  "Nowe Brzesko": {
+    "genitive": "Nowego Brzeska",
+    "locative": "Nowym Brzesku",
+    "from": "z",
+    "at": "w"
+  },
+  "Pobiednik Wielki": {
+    "genitive": "Pobiednika Wielkiego",
+    "locative": "Pobiedniku Wielkim",
+    "from": "z",
+    "at": "w"
+  },
+  "Podłęże": {
+    "genitive": "Podłęża",
+    "locative": "Podłężu",
+    "from": "z",
+    "at": "w"
+  },
+  "Proszowice": {
+    "genitive": "Proszowic",
+    "locative": "Proszowicach",
+    "from": "z",
+    "at": "w"
+  },
+  "Proszówki": {
+    "genitive": "Proszówek",
+    "locative": "Proszówkach",
+    "from": "z",
+    "at": "w"
+  },
+  "Sierosławice": {
+    "genitive": "Sierosławic",
+    "locative": "Sierosławicach",
+    "from": "z",
+    "at": "w"
+  },
+  "Szpitary": {
+    "genitive": "Szpitar",
+    "locative": "Szpitarach",
+    "from": "ze",
+    "at": "w"
+  },
+  "Śmiłowice": {
+    "genitive": "Śmiłowic",
+    "locative": "Śmiłowicach",
+    "from": "ze",
+    "at": "w"
+  },
+  "Świniary": {
+    "genitive": "Świniar",
+    "locative": "Świniarach",
+    "from": "ze",
+    "at": "w"
+  },
+  "Uście Solne": {
+    "genitive": "Uścia Solnego",
+    "locative": "Uściu Solnym",
+    "from": "z",
+    "at": "w"
+  },
+  "Wawrzeńczyce": {
+    "genitive": "Wawrzeńczyc",
+    "locative": "Wawrzeńczycach",
+    "from": "z",
+    "at": "w"
+  },
+  "Wola Batorska": {
+    "genitive": "Woli Batorskiej",
+    "locative": "Woli Batorskiej",
+    "from": "z",
+    "at": "w"
+  },
+  "Wola Drwińska": {
+    "genitive": "Woli Drwińskiej",
+    "locative": "Woli Drwińskiej",
+    "from": "z",
+    "at": "w"
+  },
+  "Wola Zabierzowska": {
+    "genitive": "Woli Zabierzowskiej",
+    "locative": "Woli Zabierzowskiej",
+    "from": "z",
+    "at": "w"
+  },
+  "Wyżyce": {
+    "genitive": "Wyżyc",
+    "locative": "Wyżycach",
+    "from": "z",
+    "at": "w"
+  },
+  "Zabierzów Bocheński": {
+    "genitive": "Zabierzowa Bocheńskiego",
+    "locative": "Zabierzowie Bocheńskim",
+    "from": "z",
+    "at": "w"
+  },
+  "Zielona": {
+    "genitive": "Zielonej",
+    "locative": "Zielonej",
+    "from": "z",
+    "at": "w"
+  },
+  "Złotniki": {
+    "genitive": "Złotnik",
+    "locative": "Złotnikach",
+    "from": "ze",
+    "at": "w"
+  },
+  "Zofipole": {
+    "genitive": "Zofipola",
+    "locative": "Zofipolu",
+    "from": "z",
+    "at": "w"
+  }
+};
+const plain=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ł/g,'l').trim();
+function placePhrase(city,relation){const key=Object.keys(PLACE_FORMS).find(k=>[k,PLACE_FORMS[k].genitive,PLACE_FORMS[k].locative].some(v=>plain(v)===plain(city))),f=PLACE_FORMS[key];if(!f)return String(city||'');return relation==='from'?f.from+' '+f.genitive:relation==='to'?'do '+f.genitive:f.at+' '+f.locative;}
+function placeOfStop(stop){const q=plain(stop),names=Object.keys(PLACE_FORMS).sort((a,b)=>b.length-a.length);return names.find(n=>q===plain(n)||q.startsWith(plain(n)+' ')||q.startsWith(plain(n)+','))||null;}
+function polishCount(n,one,few,many){return n===1?one:n%10>=2&&n%10<=4&&!(n%100>=12&&n%100<=14)?few:many;}
+function socialIntent(raw){const q=plain(raw).replace(/[:;][-~]?[)(d]/g,'').replace(/[!?.;,😊🙂😉☺️👍❤️]/g,'').trim();if(/^(?:dziekuje|dzieki|dzieki wielkie|dziekuje bardzo|dziekuje za pomoc|dzieki za pomoc|bardzo dziekuje|super dzieki|super|swietnie|fajnie|brawo)(?:\s+(?:ci|pomocniku|il))?$/.test(q))return 'thanks';if(/^(?:czesc|hej|hejka|witaj|dzien dobry|dobry wieczor)(?:\s+(?:pomocniku|il))?$/.test(q))return 'greeting';if(/^(?:pomocy|pomoz mi|jak to dziala|co umiesz|co potrafisz|w czym pomagasz)$/.test(q))return 'help';if(/^(?:czy jestes czlowiekiem|jestes czlowiekiem|kim jestes)$/.test(q))return 'identity';return null;}
+function correctIspinaForms(raw){
+ const corrections=[],seen={};
+ const text=String(raw||'').replace(/\b(do|w|z|ze)\s+ispini(?![a-ząćęłńóśźż0-9_])/gi,function(all,preposition){
+  const p=preposition.toLowerCase(),correct=p==='do'?'do Ispiny':p==='w'?'w Ispinie':'z Ispiny';
+  if(!seen[p]){corrections.push({wrong:p+' Ispini',correct:correct});seen[p]=true;}
+  return correct;
+ });
+ return {text:text,corrections:corrections};
+}
+
+var norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ł/g,'l').replace(/[?!.]+$/,'').trim();
+const towns={'ispiny':'Ispina','ispinie':'Ispina','ispina':'Ispina','bochni':'Bochnia','bochnia':'Bochnia','bohni':'Bochnia','krakowa':'Kraków','krakow':'Kraków','drwini':'Drwinia','drwinia':'Drwinia','podleza':'Podłęże','podleze':'Podłęże','niepolomic':'Niepołomice','niepolomice':'Niepołomice','nowego brzeska':'Nowe Brzesko','nowe brzesko':'Nowe Brzesko','proszowic':'Proszowice','proszowice':'Proszowice','klaja':'Kłaj','grobli':'Grobla','dziewina':'Dziewin','mikluszowic':'Mikluszowice','swiniar':'Świniary','gawlowka':'Gawłówek'};
+Object.assign(towns,{'baczkowa':'Baczków','baczkowie':'Baczków','bienkowic':'Bieńkowice','chobotu':'Chobot','chobocie':'Chobot','dolan':'Dolany','jaksic':'Jaksice','jakubowic':'Jakubowice','kowali':'Kowala','ksiaznic wielkich':'Książnice Wielkie','morska':'Morsko','morsku':'Morsko','niedar':'Niedary','pobiednika wielkiego':'Pobiednik Wielki','pobiedniku wielkim':'Pobiednik Wielki','proszowek':'Proszówki','sieroslawic':'Sierosławice','uscia solnego':'Uście Solne','usciu solnym':'Uście Solne','woli batorskiej':'Wola Batorska','woli drwinskiej':'Wola Drwińska','woli zabierzowskiej':'Wola Zabierzowska','wyzyc':'Wyżyce','zabierzowa bochenskiego':'Zabierzów Bocheński','zabierzowie bochenskim':'Zabierzów Bocheński','zofipola':'Zofipole','zofipolu':'Zofipole','zlotnik':'Złotniki','smilowic':'Śmiłowice','szpitar':'Szpitary','hebbowa':'Hebdów','hebdowa':'Hebdów','hebdowie':'Hebdów','igolomi':'Igołomia','igolomii':'Igołomia','wawrzenczyc':'Wawrzeńczyce','koszyc':'Koszyce','zielonej':'Zielona'});
+Object.keys(PLACE_FORMS).forEach(city=>{[city,PLACE_FORMS[city].genitive,PLACE_FORMS[city].locative].forEach(form=>towns[norm(form)]=city);});
+function town(raw){const clean=String(raw||'').replace(/^(?:przystanku|przystanek|miejscowości|miejscowosci)\s+/i,'').trim(),n=norm(clean);return towns[n]||clean;}
+function dateString(date){return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');}
+// Keep place spans separate from time/settings. Multiple positive alternatives
+// are exposed to the conversation, never silently resolved to the first town.
+function placeIntent(n){
+ const found={from:[],to:[]},excluded={from:[],to:[]},re=/\b(z|ze|do|w|we)\s+/g,marks=[];let m;
+ while((m=re.exec(n)))marks.push({prep:m[1],at:m.index,start:re.lastIndex});
+ const boundary=/\s+(?:(?:dzis(?:iaj)?|jutro|pojutrze|wieczor\w*|rano|teraz|najblizsz\w*|bez\s+przesiad\w*|minimum|minimaln\w*|co\s+najmniej|linia|linia\w*|i\s+(?:jade|chce)|musze|chce|przed|po\s+(?:\d|[a-z]+(?:ej|a)\b)|od\s+\d|o\s+(?:\d|[a-z]+(?:ej|a)\b)|na\s+\d|20\d\d-\d\d-\d\d|\d{1,2}[./]\d{1,2})\b)/;
+ marks.forEach((mark,i)=>{
+  const prefix=n.slice(0,mark.at),side=mark.prep==='do'?'to':mark.prep==='z'||mark.prep==='ze'?'from':/\b(?:byc|dotrzec|dojechac|bede)\s*$/.test(prefix)?'to':'from';
+  let span=n.slice(mark.start,i+1<marks.length?marks[i+1].at:n.length).split(/[,;.!?]/)[0].trim();
+  span=span.split(boundary)[0].replace(/\s+(?:tylko|ale|jednak|lub|albo|czy)\s*$/,'').trim();
+  if(!span||/^(?:przesiad\w*|zapas\w*|powrotem|domu|tego|miejscu|godzin\w*|poniedzial\w*|wtorek|srode|czwartek|piatek|sobote|niedziel\w*)\b/.test(span))return;
+  const negative=/\bnie\s*(?:(?:chce|moge|bede)\s+)?(?:(?:jade|jechac|ruszam|wyjezdzam)\s*)?$/.test(prefix);
+  const values=span.split(/\s+(?:lub|albo|czy)\s+/).map(x=>x.trim()).filter(Boolean);
+  for(const value of values){
+   if((mark.prep==='w'||mark.prep==='we')&&side==='from'&&!/^\s*$/.test(prefix)&&!/\b(?:jestem|startuje|ruszam|wyjezdzam|stoje)\s+(?:teraz\s+)?$/.test(prefix))continue;
+   if((mark.prep==='w'||mark.prep==='we')&&!Object.keys(towns).some(f=>value===f||value.startsWith(f+' ')))continue;
+   const hint=town(value),target=negative?excluded[side]:found[side];if(!target.includes(hint))target.push(hint);
+  }
+ });
+ const out={};for(const side of ['from','to']){if(found[side].length===1)out[side+'Hint']=found[side][0];else if(found[side].length>1)out[side+'Choices']=found[side];else if(excluded[side].length)out[side+'Excluded']=excluded[side];}
+ if(out.toHint||out.toChoices)out.travel=true;return out;
+}
+function parse(raw,now,context){now=now||new Date();const n=norm(String(raw||'').replace(/[„”«»"']/g,' ')).replace(/\s+/g,' ').trim(),out=placeIntent(n);
+ if(/^(?:nowa podroz|zacznij od nowa|od nowa)\b/.test(n))out.newTrip=true;
+ if(/\b(?:wroce|wrocic|wrocimy|wrocisz|wrocmy|wracam|wracamy|powrot|powrotu|powrotem)\b|\bz powrotem\b/.test(n)&&!(out.fromHint&&out.toHint))out.returnTrip=true;
+ let offset=/pojutrze/.test(n)?2:/jutro/.test(n)?1:/dzis|teraz|najblizszy/.test(n)?0:null;
+ const weekdays=[/niedziel/,/poniedzial/,/wtorek/,/srode|sroda/,/czwartek/,/piatek/,/sobote|sobota/];weekdays.some((re,i)=>{if(re.test(n)){offset=(i-now.getDay()+7)%7;return true;}return false;});
+ if(offset!==null){const day=new Date(now);day.setDate(day.getDate()+offset);out.date=dateString(day);}
+ const numericTime=n.match(/\b(?:po|od|o|na|przed)\s+(\d{1,2})(?:[:.](\d{1,2}))?\b/)||(context!=='date'?n.match(/^(\d{1,2})[:.](\d{1,2})$/):null)||(context==='time'?n.match(/^(\d{1,2})$/):null);
+ const dateText=numericTime?n.slice(0,numericTime.index)+' '.repeat(numericTime[0].length)+n.slice(numericTime.index+numericTime[0].length):n;
+ const iso=dateText.match(/\b(20\d\d)-(\d\d)-(\d\d)\b/),pl=dateText.match(/\b(\d{1,2})[./](\d{1,2})(?:[./](20\d\d))?\b/);let exact=iso?iso[1]+'-'+iso[2]+'-'+iso[3]:pl?(pl[3]||now.getFullYear())+'-'+pl[2].padStart(2,'0')+'-'+pl[1].padStart(2,'0'):null;
+ if(exact){const dt=new Date(exact+'T12:00:00');if(isFinite(+dt)&&dateString(dt)===exact)out.date=exact;else out.invalidDate=true;}
+ if(numericTime){if(+numericTime[1]<24&&+(numericTime[2]||0)<60)out.time=String(numericTime[1]).padStart(2,'0')+':'+String(numericTime[2]||'00').padStart(2,'0');else out.invalidTime=true;}
+ const words={'(?:dwudziestej pierwszej|dwudziesta pierwsza)':'21:00','(?:dwudziestej drugiej|dwudziesta druga)':'22:00','(?:dwudziestej trzeciej|dwudziesta trzecia)':'23:00','(?:pierwszej|pierwsza)':'01:00','(?:drugiej|druga)':'02:00','(?:trzeciej|trzecia)':'03:00','(?:czwartej|czwarta)':'04:00','(?:piatej|piata)':'05:00','(?:szostej|szosta)':'06:00','(?:siodmej|siodma)':'07:00','(?:dwudziestej|dwudziesta)':'20:00','(?:osmej|osma)':'08:00','(?:dziewiatej|dziewiata)':'09:00','(?:dziesiatej|dziesiata)':'10:00','(?:jedenastej|jedenasta)':'11:00','(?:dwunastej|dwunasta)':'12:00','(?:trzynastej|trzynasta)':'13:00','(?:czternastej|czternasta)':'14:00','(?:pietnastej|pietnasta)':'15:00','(?:szesnastej|szesnasta)':'16:00','(?:siedemnastej|siedemnasta)':'17:00','(?:osiemnastej|osiemnasta)':'18:00','(?:dziewietnastej|dziewietnasta)':'19:00'};Object.keys(words).some(word=>{if(new RegExp('\\b(?:o|po|od|na|przed)\\s+'+word+'\\b').test(n)){out.time=words[word];return true;}return false;});
+ if(/wieczor/.test(n)&&!out.time){out.time='18:00';out.approximateTime='Wieczorem szukam od 18:00. Jeśli wolisz inną godzinę, po prostu ją napisz.';}
+ if(/rano/.test(n)&&!out.time){out.time='07:00';out.approximateTime='Rano szukam od 07:00. Jeśli wolisz inną godzinę, po prostu ją napisz.';}
+ if(/teraz|najblizsz|jak najszybciej/.test(n)){if(!out.date)out.date=dateString(now);if(!out.time){if(out.date===dateString(now)){out.time=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');out.now=true;}else{out.time='00:00';out.approximateTime='Szukam pierwszego połączenia w wybranym dniu.';}}}
+ if(/bez przesiad|bezposredni|nie chce.*przesiad/.test(n))out.directOnly=true;else if(/z przesiad|moze byc przesiad/.test(n))out.directOnly=false;
+ const min=n.match(/(?:minimum|minimaln\w*|co najmniej)\s+(\d{1,2})\s*min/);if(min)out.minWait=Math.max(1,Math.min(60,+min[1]));
+ const line=n.match(/\b(a(?:65|50|57|4|7))\b/);if(line)out.line=line[1].toUpperCase();
+ if(out.time&&/(?:byc|bede|dotrzec|dojechac|zdazyc|na miejscu|przyjazd).*(?:przed|na|o)\s+/.test(n)||out.time&&/\bprzed\s+/.test(n)&&!/wyjazd|odjazd|wyjechac|ruszyc/.test(n)){out.arriveBy=true;out.arrivalMargin=10;}else if(/wyjazd|odjazd|wyjechac|ruszyc|szukaj od|szukamy od/.test(n)||out.time&&/\b(?:po|od)\s+/.test(n))out.arriveBy=false;
+ const margin=n.match(/(?:zapas|zapasem)\s+(\d{1,2})\s*min/);if(margin)out.arrivalMargin=Math.min(60,+margin[1]);
+ if(/pogod|parasol|deszcz|zimno/.test(n))out.weather=true;
+ if(/kork|utrudn|ruch drogow/.test(n))out.traffic=true;
+ // A reply to a stop/town question may contain a new date or hour too.
+ // Extract all slots before deciding which missing question comes next.
+ if(['from','to','originCity','destination'].includes(context)&&!out.fromHint&&!out.toHint&&!out.fromChoices&&!out.toChoices&&!out.returnTrip&&!out.newTrip){
+  const value=n.replace(/^(?:przystanek|przystanku)\s+/,'').split(/(?:^|\s)(?:dzis(?:iaj)?|jutro|pojutrze|rano|wieczorem|teraz|najblizsz\w*|bez\s+przesiad\w*|z\s+przesiad\w*|linia\w*|minimum|co\s+najmniej|po\s+|od\s+|o\s+|na\s+|przed\s+|20\d\d-|\d{1,2}[./])\b/)[0].replace(/[,;.!?]+$/,'').trim();
+  if(value&&/[a-z]/.test(value)&&!out.weather&&!out.traffic&&!/^(?:(?:w|we)\s+)?(?:poniedzial|wtorek|srod|czwartek|piatek|sobot|niedziel)|^(?:tak|nie|tylko|moze byc|jak najszybciej)\b/.test(value)&&!out.invalidDate&&!out.invalidTime)out.stopHint=value;
+ }
+ return out;
+}
+function cities(rows){const seen={};return rows.filter(r=>String(r.key).indexOf('group:')===0).map(r=>r.n.replace(/\s*[–-]\s*wszystkie przystanki.*$/i,'')).filter(n=>!seen[n]&&(seen[n]=true));}
+function cityChoices(rows,query){const n=norm(town(String(query||'').replace(/^(?:z|ze|do|w|we)\s+/i,''))),all=cities(rows);if(!n)return all;const exact=all.filter(c=>norm(c)===n);return exact.length?exact:all.filter(c=>norm(c).startsWith(n));}
+function stopCity(rows,hint){const q=norm(hint),all=cities(rows).sort((a,b)=>b.length-a.length),known=norm(town(hint));for(const c of all){const cn=norm(c),forms=[cn,...Object.keys(towns).filter(k=>norm(towns[k])===cn)];if(known===cn||forms.some(f=>q===f||q.startsWith(f+' ')||q.startsWith(f+',')))return c;}const row=rows.find(r=>String(r.key).startsWith('stop:')&&[r.n,...r.aliases||[]].some(x=>norm(x)===q));if(row){for(const c of all){const cn=norm(c);if([row.n,...row.aliases||[]].some(x=>norm(x).startsWith(cn+' ')||norm(x).startsWith(cn+',')))return c;}}return null;}
+function stopChoices(rows,city,query){const cn=norm(city);let qn=norm(query).replace(/^(z|ze|na|przy|przystanek|przystanku)\s+/,'').replace(/dworcu|dworca/g,'dworzec').replace(/mostu/g,'most').replace(/przedszkola/g,'przedszkole').replace(/lesniczowki/g,'lesniczowka').replace(/wisliska/g,'wislisko').replace(/\bczyzyny\b|\bczyzyn\b|\bczyzynach\b/g,'czyzynskie').replace(/domu ludowego/g,'dom ludowy');let result=rows.filter(r=>String(r.key).indexOf('stop:')===0&&(!cn||[r.n,...r.aliases||[]].some(x=>norm(x)===cn||norm(x).startsWith(cn+' ')||norm(x).startsWith(cn+','))));
+ if(!qn||qn===cn)return result;
+ const exact=result.filter(r=>norm(r.n)===qn||(r.aliases||[]).some(a=>norm(a)===qn));if(exact.length)return exact;
+ const forms=[cn,...Object.keys(towns).filter(k=>norm(towns[k])===cn)].filter(Boolean).sort((a,b)=>b.length-a.length);for(const f of forms){if(qn===f)return result;if(qn.startsWith(f+' ')||qn.startsWith(f+',')){qn=qn.slice(f.length).replace(/^[,\s]+/,'');break;}}
+ const cityWords=cn.split(/\s+/),words=qn.split(/\s+/).filter(w=>w.length>1&&!['do','ze','na','przy','pod','przystanek','przystanku'].includes(w)&&!cityWords.includes(w)&&norm(town(w))!==cn);if(!words.length)return result;
+ const original=result;result=result.filter(r=>words.every(w=>norm(r.n).includes(w)));if(result.length)return result;
+ function close(a,b){if(a.length<4||b.length<4||Math.abs(a.length-b.length)>1)return false;let mismatches=[];if(a.length===b.length){for(let i=0;i<a.length;i++)if(a[i]!==b[i])mismatches.push(i);return mismatches.length===1||mismatches.length===2&&mismatches[1]===mismatches[0]+1&&a[mismatches[0]]===b[mismatches[1]]&&a[mismatches[1]]===b[mismatches[0]];}if(a.length>b.length){let t=a;a=b;b=t;}let i=0,j=0,skip=0;while(i<a.length&&j<b.length){if(a[i]===b[j]){i++;j++;}else{j++;if(++skip>1)return false;}}return true;}
+ return original.filter(r=>words.every(t=>norm(r.n).split(/\s+/).some(w=>w.includes(t)||close(t,w)))).map(r=>Object.assign({},r,{fuzzy:true}));
+}
+function explain(j){const clock=t=>new Date(t).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});const parts=[];
+ if(!j.transfers)parts.push('Jedziesz bez przesiadki.');
+ j.legs.forEach((leg,i)=>{parts.push((i+1)+'. '+(leg.line==='GMINNA'?'Linia gminna':leg.line)+': '+leg.from+' '+clock(leg.departure)+' → '+leg.to+' '+clock(leg.arrival)+'.');if(i<j.legs.length-1){const next=j.legs[i+1],wait=Math.round((next.departure-leg.arrival)/60000);parts.push('Wysiądź na przystanku '+leg.to+'. '+(norm(leg.to)!==norm(next.from)?'Przejdź na przystanek '+next.from+'. ':'')+'Na przesiadkę masz '+wait+' min.'+(wait<=5?' To mały zapas. Jeśli autobus się spóźni, możesz nie zdążyć na następny.':''));}});
+ parts.push('Cała podróż: '+j.duration+' min'+(j.transfers?', wraz z oczekiwaniem przy przesiadce.':'.'));if(j.estimated)parts.push('Część godzin w rozkładzie jest szacowana.');return parts.join('\n');
+}
+function forecastFor(data,stamp){const h=data&&data.hourly;if(!h||!Array.isArray(h.time))return null;const dt=new Date(stamp),key=dateString(dt)+'T'+String(dt.getHours()).padStart(2,'0')+':00',i=h.time.indexOf(key);if(i<0)return null;const get=k=>Array.isArray(h[k])&&Number.isFinite(h[k][i])?h[k][i]:null;return {time:key,temp:get('temperature_2m'),feels:get('apparent_temperature'),rain:get('precipitation'),probability:get('precipitation_probability'),wind:get('wind_speed_10m')};}
+function weatherAdvice(f){return practicalWeather(f);}
+function weatherNote(label,city,at,f){const number=v=>String(v).replace('.',','),lines=['📍 '+(label==='Wyjazd'?'Gdy ruszasz '+placePhrase(city,'from'):'Na miejscu '+placePhrase(city,'at'))+' o '+clock(at)];if(f.temp!==null)lines.push('🌡️ '+number(f.temp)+'°C'+(f.feels===null?'':' · odczuwalna '+number(f.feels)+'°C'));const rain=[];if(f.probability!==null)rain.push('Szansa opadów: '+number(f.probability)+'%');if(f.rain!==null)rain.push('opady: '+number(f.rain)+' mm');if(rain.length)lines.push('🌧️ '+rain.join(' · '));if(f.wind!==null&&f.wind>=35)lines.push('💨 Wiatr: '+number(f.wind)+' km/h');lines.push((f.rain!==null&&f.rain>=0.2||f.probability!==null&&f.probability>=40?'☂️ ':'💡 ')+weatherAdvice(f));return lines.join('\n');}
+function greeting(now){const h=(now||new Date()).getHours();return h>=6&&h<18?'Dzień dobry!':'Dobry wieczór!';}
+function niceDate(date){return new Date(String(date).slice(0,10)+'T12:00:00').toLocaleDateString('pl-PL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}
+function clock(time){return new Date(time).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});}
+function resultsNote(result,state){const rows=result.items||[],lines=['PODRÓŻ Z POMOCNIKIEM IL','',state.from+' → '+state.to,'Dzień: '+niceDate(state.date),(state.arriveBy?'Przyjazd najpóźniej: ':'Wyjazd od: ')+state.time,''];if(!rows.length){lines.push('Nie znalazłem połączenia dla tych ustawień.','Możesz zmienić godzinę, przystanek lub dopuścić przesiadkę.');}else{lines.push('Propozycje podróży:');rows.forEach((j,i)=>lines.push((i+1)+'. '+clock(j.departure)+' → '+clock(j.arrival)+' | '+j.line+' | '+j.duration+' min | '+(j.transfers?'1 przesiadka':'bez przesiadki')));lines.push('','Wybierz połączenie, a sprawdzę pogodę na jego godzinę.');}lines.push('','Rozkład: Ispina Lokalnie.');return lines.join('\n');}
+function naturalWeatherText(raw){return String(raw||'').split('\n').map(line=>{const m=line.match(/^(?:📍 )?(Wyjazd|Przyjazd) — ([^:,]+)(?:, (\d\d:\d\d))?(.*)$/);if(!m)return line;const city=town(m[2]);if(!PLACE_FORMS[city])return line;return '📍 '+(m[1]==='Wyjazd'?'Gdy ruszasz '+placePhrase(city,'from'):'Na miejscu '+placePhrase(city,'at'))+(m[3]?' o '+m[3]:'')+m[4];}).join('\n');}
+function journeyNote(j,weather,traffic,rows){const fromCity=stopCity(rows||[],j.from)||placeOfStop(j.from),toCity=stopCity(rows||[],j.to)||placeOfStop(j.to);const lines=['🚌 TWOJA PODRÓŻ — POMOCNIK IL','', '📍 '+j.from+' → '+j.to,...(j.accessFrom?['🚶 Wskazany początek: '+j.accessFrom+'. Autobus w stronę celu obsługuje '+j.from+'. Uwzględnij dojście przed odjazdem; podany czas podróży nie obejmuje dojścia.']:[]),...(fromCity?['🚏 Ruszasz '+placePhrase(fromCity,'at')+', z przystanku '+j.from+'.']:[]),...(toCity?['🏁 Wysiadasz '+placePhrase(toCity,'at')+', na przystanku '+j.to+'.']:[]),'📅 Dzień: '+niceDate(dateString(new Date(j.departure))),'',...(Number.isFinite(j.arrivalTarget)?['🎯 Cel: przyjazd do '+clock(j.arrivalTarget)+' · zapas '+(j.arrivalMargin||0)+' min.']:[]),'🕒 Wyjazd: '+clock(j.departure),'🏁 Przyjazd: '+clock(j.arrival),'⏱️ Cała podróż: '+j.duration+' min'+(j.transfers?', wraz z oczekiwaniem przy przesiadce.':'.'),'🎫 Połączenie: '+j.line+' • '+(j.transfers?'1 przesiadka':'bez przesiadki'),'','🧭 KROK PO KROKU'];explain(j).split('\n').filter(x=>!/^Cała podróż:|^Jedziesz bez przesiadki\./.test(x)).forEach(x=>lines.push(x));lines.push('','🌤️ POGODA',naturalWeatherText(weather)||'Sprawdzam pogodę na godzinę Twojej podróży…');if(traffic)lines.push('','💡 WARTO WIEDZIEĆ',traffic);return friendlyClosing(lines.join('\n'));}
+
+window.IL_HELPER_BRAIN={timeFloor:timeFloor,futureHours:futureHours,travelTimeIssue:travelTimeIssue,correctIspinaForms:correctIspinaForms,primaryDestinations:primaryDestinations,friendlyClosing:friendlyClosing,validJourney:validJourney,readTravelData:readTravelData,reminderPlan:reminderPlan,backupOptions:backupOptions,arrivalLimit:arrivalLimit,placePhrase:placePhrase,polishCount:polishCount,socialIntent:socialIntent,norm:norm,town:town,dateString:dateString,parse:parse,cities:cities,cityChoices:cityChoices,stopCity:stopCity,stopChoices:stopChoices,explain:explain,forecastFor:forecastFor,weatherAdvice:weatherAdvice,weatherNote:weatherNote,greeting:greeting,niceDate:niceDate,clock:clock,resultsNote:resultsNote,journeyNote:journeyNote};
+})();
+
+window.IL_POMOCNIK_ENDPOINT="";
+(function(){
+ var endpoint=String(window.IL_POMOCNIK_ENDPOINT||'').replace(/\/+$/,'');
+ if(!/^https:\/\/[a-z0-9-]+\.[a-z0-9-]+\.workers\.dev$/i.test(endpoint))endpoint='';
+ window.IL_POMOCNIK_AI={configured:!!endpoint,interpret:function(body,signal){return new Promise(function(resolve,reject){
+  if(!endpoint){resolve(null);return;}var xhr=new XMLHttpRequest(),done=false;
+  function finish(error,data){if(done)return;done=true;if(signal)signal.removeEventListener('abort',abort);error?reject(error):resolve(data);}
+  function abort(){xhr.abort();finish(Error('CANCELLED'));}if(signal){if(signal.aborted){finish(Error('CANCELLED'));return;}signal.addEventListener('abort',abort);}
+  xhr.open('POST',endpoint+'/journey-intent',true);xhr.setRequestHeader('Content-Type','application/json');xhr.timeout=32000;
+  xhr.onprogress=function(e){if(e.loaded>16000){xhr.abort();finish(Error('TOO_LARGE'));}};
+  xhr.onload=function(){try{if(xhr.responseText.length>16000)throw Error('TOO_LARGE');var result=JSON.parse(xhr.responseText);if(xhr.status!==200)throw Error(result.error||'HTTP '+xhr.status);if(!result.slots||typeof result.slots!=='object')throw Error('INVALID_ANSWER');var p={},raw=result.slots;
+   ['fromHint','toHint'].forEach(function(k){if(typeof raw[k]==='string'&&raw[k].length<=90)p[k]=raw[k];});
+   if(/^20\d\d-\d\d-\d\d$/.test(raw.date||'')){var dt=new Date(raw.date+'T12:00:00');if(isFinite(+dt)&&window.IL_HELPER_BRAIN.dateString(dt)===raw.date)p.date=raw.date;}
+   if(/^([01]\d|2[0-3]):[0-5]\d$/.test(raw.time||''))p.time=raw.time;
+   ['returnTrip','directOnly','arriveBy','weather','traffic'].forEach(function(k){if(typeof raw[k]==='boolean')p[k]=raw[k];});
+   if(Number.isInteger(raw.minWait)&&raw.minWait>=1&&raw.minWait<=60)p.minWait=raw.minWait;if(/^A(?:4|7|65|50|57)$/.test(raw.line||''))p.line=raw.line;
+   finish(null,p);
+  }catch(e){finish(e);}};xhr.onerror=function(){finish(Error('NETWORK'));};xhr.ontimeout=function(){finish(Error('TIMEOUT'));};xhr.onabort=function(){finish(Error('CANCELLED'));};xhr.send(JSON.stringify(body));
+ });}};
+})();
+
+window.IL_POMOCNIK_CSS="#il-smart22,#il-chat25,#il-smart3{display:none!important}\n#pil-root{font:16px/1.5 system-ui,Roboto,sans-serif;color:#183858}\n#pil-root [hidden]{display:none!important}\n#pil-root button,#pil-root input,#pil-root textarea{font:inherit}\n#pil-open{position:fixed;z-index:2147483005;right:12px;bottom:84px;padding:13px 16px;border:2px solid white;border-radius:18px;background:#164e87;color:white;box-shadow:0 5px 18px #17375855;font-weight:700}\n#pil-panel{position:fixed;top:8px;right:8px;bottom:8px;left:8px;z-index:2147483011;max-width:760px;margin:auto;background:#f0f7fd;border:1px solid #b2d0e8;border-radius:20px;display:flex;flex-direction:column;overflow:hidden}\n.pil-head{flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#163e68;color:white}\n.pil-head strong{font-size:21px}.pil-head small{display:block;color:#c5e1f5;font-size:12px}\n.pil-head-buttons{display:flex;flex-shrink:0}.pil-head button{background:transparent;color:white;border:1px solid #ffffff40;border-radius:10px;width:44px;height:44px;margin-left:7px;font-size:24px!important}\n#pil-menu{flex:0 0 auto;display:flex;flex-wrap:wrap;max-height:30vh;overflow:auto;padding:7px 10px;background:#dfedfa}\n#pil-menu button{border:1px solid #aac9e1;background:white;color:#184a78;border-radius:9px;padding:8px 11px;margin-right:8px}\n#pil-log{flex:1 1 0;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px;overscroll-behavior:contain}\n.pil-message{background:white;border:1px solid #c7ddeb;border-radius:15px;padding:11px 13px;margin-bottom:10px;box-sizing:border-box;max-width:100%}\n.pil-user{margin-left:auto;background:#dfedfa;max-width:85%}.pil-who{display:block;color:#547693;font-size:12px;font-weight:700;margin-bottom:4px}\n.pil-text{white-space:pre-wrap;overflow-wrap:break-word;user-select:text}\n.pil-copy{border:0;background:transparent;color:#326087;padding:6px 0;font-size:12px!important}\n.pil-note{border-left:4px solid #438bc1;background:#fff;padding:16px}.pil-note .pil-text{line-height:1.7}.pil-note .pil-text::first-line{font-size:18px;font-weight:750;color:#164e87}.pil-note .pil-copy{display:block;margin-top:10px;padding:10px 14px;border-radius:10px;background:#e6f2fd;font-size:14px!important;font-weight:600}\n.pil-credit{display:block;font-size:11px;line-height:1.5;margin-top:10px;color:#54718c}.pil-credit button{font:inherit!important;border:0;background:transparent;cursor:pointer;color:inherit;text-decoration:underline;text-underline-offset:2px;padding:3px 0;display:inline-block}\n.pil-details{font-size:12px;color:#54718c;margin-top:8px}.pil-details summary{cursor:pointer;padding:6px 0}.pil-details div{white-space:pre-wrap}\n/* Suggestions are part of the transcript flow, never a layer over the chat. */\n#pil-choices{position:static;display:flex;flex-wrap:wrap;max-height:none;overflow:visible;margin:0 -3px 10px}\n#pil-choices:empty{display:none}\n.pil-tile{box-sizing:border-box;border:1px solid #a9cce5;border-radius:11px;padding:9px 11px;min-height:44px;background:#e9f4fe;color:#184a78;flex:1 1 140px;margin:3px;text-align:left;font-weight:600!important}\n#pil-choices input{box-sizing:border-box;padding:9px;border:1px solid #abc9e1;border-radius:10px;margin:3px;max-width:100%}\n.pil-bottom{flex:0 0 auto;padding:9px 11px;background:white;border-top:1px solid #cadfed}\n.pil-compose{display:flex;align-items:flex-end}\n#pil-field{flex:1;min-width:0;box-sizing:border-box;border:1px solid #aac9e1;border-radius:11px;padding:9px;font-size:16px;resize:none;min-height:44px;max-height:80px}\n.pil-send{border:0;background:#18548c;color:white;border-radius:10px;min-height:44px;margin-left:8px;padding:9px 12px}\n.pil-status-row{display:flex;align-items:center;justify-content:space-between;min-height:20px;margin-top:4px}\n#pil-status{font-size:12px;color:#59758b;margin:0}.pil-cancel{border:0;background:transparent;color:#245c89;padding:5px 8px;font-size:12px!important}\n#pil-root :focus{outline:2px solid #dfb759;outline-offset:1px}\n.senior #pil-root{font-size:20px}\n@media(max-width:350px){#pil-panel{top:3px;right:3px;bottom:3px;left:3px}.pil-head strong{font-size:18px}.pil-head small{font-size:11px}.pil-tile{flex-basis:125px}.pil-head{padding:9px 10px}}\n@media(max-height:440px){.pil-head{padding:7px 10px}.pil-head small{display:none}.pil-bottom{padding:6px 9px}#pil-log{padding:8px}}\n\n.pil-note-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.pil-note-actions details{flex-basis:100%}\n.pil-small-action{border:1px solid #abcce4;border-radius:10px;background:#e9f4fe;color:#184a78;padding:9px 11px;min-height:44px;margin:3px;overflow-wrap:anywhere;max-width:100%;text-align:left}\n.pil-library{border:1px solid #a5c8e3;border-radius:14px;background:#f8fcff;padding:12px;margin-bottom:12px;overflow-wrap:anywhere}\n.pil-library>strong{display:block}.pil-saved{border-top:1px solid #c7ddeb;padding-top:8px;margin-top:8px}.pil-saved summary{padding:9px 0;font-weight:600;cursor:pointer}.pil-saved small{display:block;color:#61778b;margin:6px 0}\n.pil-reminder-form{border-top:1px solid #c7ddeb;margin-top:12px;padding-top:12px}.pil-minutes{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0}.pil-minutes input{box-sizing:border-box;width:75px;min-height:44px;padding:8px;border:1px solid #a5c8e3;border-radius:8px}.pil-reminder-preview{white-space:pre-wrap}\n\n.pil-hour-list{flex:1 1 100%;display:flex;flex-wrap:wrap}.pil-hour-empty{padding:5px 7px;margin:0;color:#284e70}\n.pil-language-tip{border-left:5px solid #d7a91e;background:#fff8dd;color:#163e68;font-weight:600}.pil-language-tip .pil-who{color:#5e4a13}\n\n/* Pomocnik IL 40 \u2014 komunikator: poprawiona hierarchia tekstu i p\u0142ynne mikroanimacje. */\n#pil-root{font-family:Roboto,\"Noto Sans\",system-ui,-apple-system,sans-serif;font-size:16.5px;line-height:1.58;letter-spacing:.01em;-webkit-font-smoothing:antialiased}\n#pil-panel{background:linear-gradient(180deg,#e8f2fb 0%,#f7fbff 75%);border-color:#aac9e1;box-shadow:0 12px 36px #12395925}\n.pil-head{padding:12px 16px;background:linear-gradient(118deg,#11375e,#1a649c);box-shadow:0 3px 12px #0c2d4e26}\n.pil-head strong{font-weight:780;letter-spacing:.015em}\n#pil-log{padding:16px 12px 18px;scroll-behavior:smooth}\n.pil-message{position:relative;width:max-content;max-width:89%;border-radius:18px 18px 18px 6px;background:#fff;border:1px solid #d4e2ee;padding:12px 15px;margin:0 auto 12px 0;box-shadow:0 3px 12px #174c7610;animation:pil-incoming .24s cubic-bezier(.2,.75,.25,1) both;transform-origin:bottom left}\n.pil-message:after{content:\"\";position:absolute;bottom:1px;left:-6px;width:10px;height:10px;background:inherit;border-left:1px solid #d4e2ee;border-bottom:1px solid #d4e2ee;transform:skewY(-20deg) rotate(-12deg);border-radius:0 0 0 3px}\n.pil-user{margin:0 0 12px auto;max-width:86%;background:linear-gradient(125deg,#236aaa,#16558e);color:white;border-color:#276fab;border-radius:18px 18px 6px 18px;box-shadow:0 4px 14px #164a8024;animation-name:pil-outgoing;transform-origin:bottom right}\n.pil-user:after{left:auto;right:-6px;border-left:0;border-bottom:1px solid #276fab;border-right:1px solid #276fab;transform:skewY(20deg) rotate(12deg)}\n.pil-who{font-size:11.5px;letter-spacing:.025em;margin-bottom:6px;color:#54728d}\n.pil-user .pil-who{color:#d2ebff}\n.pil-text{font-size:1em;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;color:#1a3550}\n.pil-user .pil-text{color:#fff}\n.pil-highlight{font-weight:750;color:#0a578d;background:#eaf5ff;border-radius:4px;padding:0 1px}\n.pil-user .pil-highlight{color:#fff;background:#ffffff28}\n.pil-copy{margin-top:5px;color:#39638a;font-weight:650;min-height:30px}\n.pil-note{width:calc(100% - 4px);max-width:100%;background:#fffdf6;border:1px solid #ebdcb4;border-left:4px solid #e9ae45;border-radius:13px;padding:15px 14px;box-shadow:0 4px 16px #6d543213}\n.pil-note:after{display:none}\n.pil-note .pil-text{line-height:1.72}\n.pil-note .pil-text::first-line{font-size:1.08em;font-weight:800;color:#153f6b}\n#pil-choices{gap:2px;margin:8px -3px 12px}\n.pil-tile{border-radius:12px;background:#fafdff;border:1px solid #a8cae3;color:#174c78;font-weight:700!important;box-shadow:0 2px 5px #1e527509;transition:background-color .16s,box-shadow .16s,transform .16s}\n.pil-tile:active{transform:scale(.986);background:#e0effa}\n.pil-bottom{box-shadow:0 -6px 16px #102f4b0b;padding:10px 12px max(9px,env(safe-area-inset-bottom));border-top:1px solid #cfe0ec}\n#pil-field{border-radius:17px;border:1.5px solid #abc8de;background:#f9fcff;padding:11px 13px;font-size:16px;line-height:1.35;min-height:48px;max-height:116px}\n#pil-field:focus{border-color:#458cc3;background:white}\n.pil-send{min-height:48px;border-radius:15px;padding:9px 16px;background:#17669f;font-weight:750;transition:transform .14s,background-color .14s}\n.pil-send:active{transform:scale(.95);background:#0c4e7b}\n.pil-status-row{min-height:25px}\n#pil-status{line-height:1.4}\n#pil-status.pil-done{color:#176448;font-weight:700}\n.pil-typing{display:flex;align-items:center;gap:10px;width:max-content;max-width:88%;background:#fff;border:1px solid #d4e2ee;border-radius:17px 17px 17px 6px;padding:10px 15px;margin:0 auto 12px 0;box-shadow:0 3px 12px #174c7610;animation:pil-incoming .2s ease-out both}\n.pil-typing-caption{font-size:12px;color:#55738d}\n.pil-typing-dots{display:inline-flex;gap:4px;align-items:center;height:18px}\n.pil-typing-dots i{width:7px;height:7px;background:#528db7;border-radius:50%;animation:pil-dot 1.05s ease-in-out infinite}\n.pil-typing-dots i:nth-child(2){animation-delay:.14s}.pil-typing-dots i:nth-child(3){animation-delay:.28s}\n@keyframes pil-dot{0%,60%,100%{transform:translateY(0);opacity:.35}30%{transform:translateY(-4px);opacity:1}}\n@keyframes pil-incoming{from{opacity:0;transform:translateY(9px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}\n@keyframes pil-outgoing{from{opacity:0;transform:translateY(8px) translateX(5px) scale(.99)}to{opacity:1;transform:translateY(0) translateX(0) scale(1)}}\n.senior #pil-root{font-size:20px}\n.senior #pil-root .pil-text{line-height:1.7}\n.senior #pil-root .pil-who{font-size:14px}\n@media(max-width:350px){#pil-log{padding:12px 8px} .pil-message{max-width:94%;padding:11px 12px}.pil-note{width:100%} .pil-send{padding:8px 11px}}\n@media(max-height:440px){#pil-log{padding:7px 9px} .pil-message{margin-bottom:8px;padding:9px 11px} .pil-bottom{padding:5px 8px}}\n@media(prefers-reduced-motion:reduce){#pil-root *,#pil-root *:before,#pil-root *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}\n\n\n\n/* IL 41 \u2014 futurystyczna, oszcz\u0119dna energetycznie choreografia mikrointerakcji. */\n#pil-panel{background:radial-gradient(ellipse at 85% 1%,rgba(80,170,238,.20),transparent 46%),linear-gradient(160deg,#e8f3ff 0%,#f7fbff 65%,#e9f5ff 100%);border:1px solid #96bfdd;box-shadow:0 15px 50px #0b355b35}\n.pil-head{position:relative;isolation:isolate;overflow:hidden;background:linear-gradient(115deg,#092c51 0%,#155487 62%,#1275ad 100%)}\n.pil-head:after{content:\"\";position:absolute;inset:0 auto 0 -45%;width:34%;pointer-events:none;background:linear-gradient(105deg,transparent,#d6f4ff22,transparent);transform:skewX(-24deg);animation:pil-head-beam 8s ease-in-out infinite;z-index:-1}\n.pil-head strong{letter-spacing:.005em;text-shadow:0 0 16px #9bd9ff50}\n.pil-message{border-color:#c4dcf0;box-shadow:0 5px 18px #0e467a17,0 1px 1px #ffffff;animation:pil-holo-arrive .38s cubic-bezier(.18,.8,.2,1) both;will-change:transform,opacity}\n.pil-user{background:linear-gradient(132deg,#286fae 0%,#154f86 70%,#153b69 100%);box-shadow:0 5px 20px #0b4f8c2b, inset 0 1px #ffffff30;animation-name:pil-holo-user}\n.pil-note{border-color:#cfdeef;border-left-color:#409fca;background:linear-gradient(160deg,#ffffff,#f0f8ff);box-shadow:0 4px 18px #1d5c8e12}\n.pil-tile{position:relative;overflow:hidden;background:linear-gradient(165deg,#fff,#eff7ff);border-color:#aacde7;box-shadow:0 3px 9px #0d528015;transition:transform .22s cubic-bezier(.2,.75,.28,1),border-color .22s,box-shadow .22s,background-color .22s}\n.pil-tile:focus-visible{border-color:#1680c7;box-shadow:0 0 0 4px #0d90df2b}\n.pil-tile:active{transform:translateY(1px) scale(.985);box-shadow:0 1px 4px #10548117}\n.pil-typing{background:linear-gradient(140deg,#fff,#eaf6ff);box-shadow:0 6px 20px #0e477a18;animation:pil-holo-arrive .3s ease-out both}\n.pil-typing-dots i{background:#258bcd;box-shadow:0 0 9px #56c1ff66;animation:pil-orbit 1.35s cubic-bezier(.38,0,.22,1) infinite}\n.pil-typing-dots i:nth-child(2){animation-delay:.15s}.pil-typing-dots i:nth-child(3){animation-delay:.30s}\n#pil-field{transition:box-shadow .22s ease,border-color .22s ease,background-color .22s ease}\n#pil-field:focus{border-color:#1784c4;box-shadow:0 0 0 4px #3ca7f52a,0 2px 11px #1077be16;outline:none}\n.pil-send{background:linear-gradient(125deg,#156dab,#104778);box-shadow:0 3px 12px #0d5b9e30;transition:transform .18s ease,box-shadow .22s ease}\n.pil-send:active{transform:scale(.96);box-shadow:0 1px 4px #0d5b9e25}\n#pil-status.pil-done:before{content:'\u2726 ';animation:pil-check .45s ease-out both}\n@keyframes pil-holo-arrive{0%{opacity:0;transform:translate3d(-7px,12px,0) scale(.968);filter:brightness(1.09)}72%{opacity:1}100%{opacity:1;transform:translate3d(0,0,0) scale(1);filter:brightness(1)}}\n@keyframes pil-holo-user{0%{opacity:0;transform:translate3d(8px,10px,0) scale(.97)}100%{opacity:1;transform:translate3d(0,0,0) scale(1)}}\n@keyframes pil-head-beam{0%,72%,100%{transform:translateX(-20%) skewX(-24deg);opacity:0}80%{opacity:.65}93%{transform:translateX(470%) skewX(-24deg);opacity:0}}\n@keyframes pil-orbit{0%,65%,100%{transform:translateY(0) scale(.83);opacity:.36}30%{transform:translateY(-4px) scale(1.16);opacity:1}}\n@keyframes pil-check{from{opacity:0;transform:scale(.65)}to{opacity:1;transform:scale(1)}}\n@media(prefers-reduced-motion:reduce){#pil-root *,#pil-root *:before,#pil-root *:after{animation:none!important;transition:none!important;filter:none!important;will-change:auto!important}}\n\n/* IL 45: dymki, mapa prawdziwej pozycji oraz kr\u00f3tkie efekty dotyku. */\n#pil-panel{border-radius:24px;background:radial-gradient(ellipse at top right,#cce7ff77,transparent 55%),#f1f6fc;animation:pil-panel-in .28s cubic-bezier(.18,.78,.22,1) both}\n.pil-head{padding:16px 14px;min-height:60px;box-sizing:content-box}\n.pil-head:after{animation-iteration-count:2}\n.pil-title{position:relative;padding-left:49px;min-width:0}\n.pil-title:before{content:'\u2726';position:absolute;left:0;top:3px;width:36px;height:36px;display:grid;place-items:center;font-size:23px;border-radius:13px;color:#fff;background:linear-gradient(145deg,#69c6f880,#ffffff14);border:1px solid #b8e5ff70;box-shadow:0 0 0 4px #75c5ff12,inset 0 1px #ffffff50}\n.pil-title strong{font-size:21px;line-height:1.3}.pil-title small{font-size:11px;line-height:1.5;margin-top:4px;color:#d3eafa}\n.pil-head-buttons button{margin-left:5px;width:40px;height:40px;background:#ffffff0b}\n#pil-log{padding-top:20px;background-image:radial-gradient(#17487509 .7px,transparent .7px);background-size:16px 16px}\n.pil-message{max-width:91%;padding:13px 15px;border-radius:21px 21px 21px 7px;border-color:#dae6f1;box-shadow:0 4px 16px #1748750b;animation:pil-bubble-in .28s cubic-bezier(.16,.8,.25,1) both;will-change:auto}\n.pil-user{max-width:86%;border-color:#256ba2;border-radius:21px 21px 7px 21px;background:linear-gradient(135deg,#367cad,#174875);animation-name:pil-user-in}\n.pil-message:after{display:none}.pil-who{font-size:11px;line-height:1.4;color:#55738c;letter-spacing:.02em}.pil-user .pil-who{color:#dceeff}\n.pil-copy{font-size:11px!important;color:#4d6d88;padding-bottom:0;min-height:30px}\n.pil-text{line-height:1.6;letter-spacing:0}.pil-highlight{background:#eaf3fc;color:#174875}\n.pil-tile{border-radius:15px;min-height:48px;box-shadow:0 2px 5px #17487508;background:#fff;animation:pil-choice-in .22s ease-out both}\n.pil-tile:nth-child(2){animation-delay:20ms}.pil-tile:nth-child(3){animation-delay:40ms}.pil-tile:nth-child(4){animation-delay:60ms}\n#pil-root button{position:relative;overflow:hidden;isolation:isolate;touch-action:manipulation;-webkit-tap-highlight-color:transparent}\n.pil-ripple{pointer-events:none;position:absolute;border-radius:50%;background:currentColor;width:180px;height:180px;margin:-90px 0 0 -90px;opacity:0;animation:pil-touch .48s ease-out both;z-index:-1}\n.pil-bottom{padding:12px;background:#ffffffed}.pil-compose{gap:8px}.pil-send{margin-left:0;border-radius:17px;background:linear-gradient(135deg,#367cad,#174875)}\n#pil-field{border-radius:18px;background:#f4f8fc;border-color:#d0dfed;padding:12px;box-shadow:inset 0 1px 2px #17487505}\n.pil-typing{border-radius:18px 18px 18px 6px;padding:12px 15px}.pil-typing-caption{color:#446885}\n.pil-note{width:100%;max-width:100%;border-left:4px solid #367cad;background:linear-gradient(140deg,#fff,#edf6ff);border-radius:18px}\n.pil-gps-card{max-width:100%;width:100%;padding:15px;background:#fff;border:1px solid #a8d4c4;border-radius:20px;box-shadow:0 6px 20px #175f4810}\n.pil-gps-badge{display:inline-flex;align-items:center;gap:7px;font-weight:750;font-size:10px;letter-spacing:.07em;color:#196347;background:#eaf8f1;border-radius:20px;padding:5px 9px;margin-bottom:10px}\n.pil-gps-badge:before{content:'';width:7px;height:7px;border-radius:50%;background:#2e9567;box-shadow:0 0 0 3px #2e956719}\n.pil-bus-map{height:200px;position:relative;overflow:hidden;isolation:isolate;border-radius:14px;background:#e9f0f4;margin-top:12px;border:1px solid #d1e0e9;contain:paint}\n.pil-map-tiles{position:absolute;inset:0}.pil-map-tiles img{position:absolute;width:256px!important;height:256px!important;max-width:none!important}\n.pil-bus-marker{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:grid;place-items:center;width:40px;height:40px;border:3px solid white;border-radius:15px;background:#174875;color:white;box-shadow:0 3px 12px #17487566;font-size:22px;z-index:2}\n.pil-bus-marker:before{content:'';position:absolute;inset:-10px;border:2px solid #367cad80;border-radius:22px;animation:pil-location 1.8s ease-out 3;z-index:-1}\n.pil-map-credit{position:absolute;right:0;bottom:0;z-index:3;background:#fffffff2;padding:2px 5px;color:#214c70;font-size:10px;text-decoration:none}\n.pil-map-fallback{display:none;position:absolute;left:10px;right:10px;top:10px;z-index:3;background:#ffffffed;padding:7px;border-radius:8px;font-size:11px;color:#294c67}\n.pil-map-unavailable .pil-map-fallback{display:block}.pil-gps-age{display:block;margin-top:9px;font-size:11px;color:#4d6c7f;line-height:1.5}\n.pil-gps-stale{border-color:#c7ced4}.pil-gps-stale .pil-gps-badge{background:#edf0f2;color:#5c6873}.pil-gps-stale .pil-gps-badge:before{background:#7b8995;box-shadow:none}.pil-gps-stale .pil-bus-map{filter:grayscale(1)}\n@keyframes pil-panel-in{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}\n@keyframes pil-bubble-in{from{opacity:0;transform:translate(-5px,10px) scale(.975)}to{opacity:1;transform:translate(0,0) scale(1)}}\n@keyframes pil-user-in{from{opacity:0;transform:translate(5px,8px) scale(.98)}to{opacity:1;transform:translate(0,0) scale(1)}}\n@keyframes pil-choice-in{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}\n@keyframes pil-touch{from{transform:scale(.05);opacity:.16}to{transform:scale(1.5);opacity:0}}\n@keyframes pil-location{from{transform:scale(.7);opacity:.7}to{transform:scale(1.5);opacity:0}}\n@media(max-width:350px){.pil-head{padding:12px 10px;min-height:48px}.pil-title{padding-left:40px}.pil-title:before{width:30px;height:30px;font-size:20px}.pil-title strong{font-size:18px}.pil-title small{font-size:10px;max-width:144px}.pil-head-buttons button{width:36px;height:38px;margin-left:4px}.pil-message{max-width:95%;padding:12px}.pil-gps-card{max-width:100%}.pil-bottom{padding:9px}.pil-bus-map{height:180px}}\n@media(max-height:440px){.pil-head{min-height:30px;padding-top:7px;padding-bottom:7px}.pil-title small{display:none}.pil-title:before{top:0}.pil-bottom{padding:6px 9px}}\n@media(prefers-reduced-motion:reduce){#pil-root *,#pil-root *:before,#pil-root *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}\n\n/* IL46: schemat z nazwami, szerszy podgl\u0105d mapy i przycisk w rogu. */\n#pil-root #pil-open{position:fixed;left:auto;top:auto;right:14px;right:calc(14px + env(safe-area-inset-right,0px));bottom:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px));border-radius:19px}\n.pil-bus-route{margin-top:12px;padding:12px 10px 6px;background:#f4f8fc;border:1px solid #d5e3ef;border-radius:15px;overflow:hidden}\n.pil-route-title{font-size:13px;display:block;color:#174875;margin-bottom:8px}\n.pil-route-list{list-style:none;margin:0;padding:0}.pil-route-row{position:relative;min-height:40px;box-sizing:border-box;padding:8px 3px 8px 43px;font-size:13px;line-height:1.4}\n.pil-route-row:before{content:'';position:absolute;left:15px;top:0;bottom:0;width:3px;background:#a8bfd4}\n.pil-route-row:first-child:before{top:18px}.pil-route-row:last-child:before{bottom:50%}\n.pil-route-dot{position:absolute;left:10px;top:13px;width:13px;height:13px;box-sizing:border-box;border:3px solid #367cad;border-radius:50%;background:white;z-index:1}\n.pil-route-here{min-height:59px;color:#174875}.pil-route-here .pil-route-dot{left:1px;top:11px;width:32px;height:36px;display:grid;place-items:center;background:#174875;border:2px solid white;border-radius:11px;box-shadow:0 1px 5px #17487533}\n.pil-route-here .pil-route-dot svg{width:20px;height:25px}.pil-route-here .pil-route-name{font-weight:750}\n.pil-route-label{overflow-wrap:anywhere}.pil-route-label small{display:block;font-size:11px;color:#54718a;margin-top:2px}.pil-route-name{display:block}\n.pil-route-past{color:#6c8092}.pil-route-past .pil-route-dot{border-color:#a0b5c6}\n.pil-route-board .pil-route-name{font-weight:750;color:#17684d}.pil-route-board .pil-route-label small{color:#17684d;font-weight:650}.pil-route-board .pil-route-dot{border-color:#2a8d6b}\n.pil-route-gap{min-height:28px;padding-top:4px;padding-bottom:4px}.pil-route-gap:before{background:repeating-linear-gradient(to bottom,#a8bfd4 0,#a8bfd4 3px,transparent 3px,transparent 6px)}\n.pil-route-gap-text{font-size:11px;color:#607b90}.pil-route-goal{font-size:12px;font-weight:750;line-height:1.5;color:#174875;margin:5px 0 4px;padding:7px 0 5px 8px;border-top:1px solid #dbe7f1}\n.pil-route-all{font-size:12px;color:#3b6686}.pil-route-all>summary{padding:10px 0;cursor:pointer;min-height:24px;line-height:24px}.pil-route-full{max-height:340px;overflow:auto;padding:4px 0;overscroll-behavior:contain}\n.pil-bus-map{height:280px;margin-top:14px}.pil-map-tiles img{width:var(--pil-tile-size,256px)!important;height:var(--pil-tile-size,256px)!important}\n.pil-map-stops{position:absolute;inset:0;z-index:1;pointer-events:none}.pil-map-stop{position:absolute;transform:translate(-50%,-50%);width:9px;height:9px;border:2px solid white;border-radius:50%;background:#367cad;box-shadow:0 1px 3px #173e6855;z-index:1}\n.pil-map-board{background:#22845f;width:12px;height:12px}.pil-map-stop-label{position:absolute;box-sizing:border-box;padding:3px 5px;border-radius:5px;background:#fffffff5;border:1px solid #c2d6e6;color:#173e68;font-size:10px;line-height:1.25;font-weight:650;text-align:center;box-shadow:0 1px 4px #173e681c;z-index:2;overflow-wrap:anywhere}\n.pil-map-board-label{background:#effcf4;border-color:#9ac9b4;color:#17684d}.pil-map-bearing{position:absolute;inset:0;width:100%;height:100%;overflow:visible;z-index:0;filter:drop-shadow(0 1px 1px #fff)}\n.pil-map-controls{position:absolute;right:7px;top:7px;z-index:5;display:flex;flex-direction:column;gap:5px}\n#pil-root .pil-map-controls button{display:block;width:40px;height:40px;border:1px solid #b9cedf;border-radius:10px;background:#fffffff2;color:#174875;font-size:25px;line-height:30px;box-shadow:0 2px 6px #173e6822;padding:0}\n.pil-map-controls button:disabled{opacity:.45}.pil-map-caption{display:block;font-size:10px;color:#54718a;line-height:1.45;margin-top:5px}\n@media(max-width:350px){.pil-bus-map{height:250px}.pil-route-row{font-size:12px;padding-left:40px}.pil-route-here{min-height:56px}}\n";
+(function(){
+ 'use strict';var w=window,d=document,B=w.IL_HELPER_BRAIN,KEY='il.pomocnik31.dialogue',CACHE='il.pomocnik31.weather',panel,log,field,choices,status,cancelButton,menu,welcomeCard,noteCard,lastNote='',session=0,active=null,lastResults=null,lastJourney=null,messages=[],state={},weatherCache=[],ownEntry=false,swallowPop=false,pendingOpen=false,historyToken='pil-'+Date.now()+'-'+Math.random();
+ try{var cached=localStorage.getItem(CACHE)||'[]';if(cached.length<200000){var parsed=JSON.parse(cached);if(Array.isArray(parsed))weatherCache=parsed.filter(function(x){return x&&typeof x.url==='string'&&typeof x.at==='number'&&x.data;}).slice(-24);}}catch(e){}
+ function el(tag,cls,text){var n=d.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=String(text);return n;}
+ function button(label,fn,cls){var b=el('button',cls||'',label);b.type='button';b.addEventListener('pointerdown',function(e){if(w.matchMedia&&w.matchMedia('(prefers-reduced-motion: reduce)').matches)return;var r=b.getBoundingClientRect(),wave=el('span','pil-ripple');wave.style.left=(e.clientX-r.left)+'px';wave.style.top=(e.clientY-r.top)+'px';wave.setAttribute('aria-hidden','true');b.appendChild(wave);setTimeout(function(){wave.remove();},500);});b.addEventListener('click',function(e){e.preventDefault();fn();});return b;}
+ function api(){return w.IL_SMART22_DATA;}
+ function rows(){try{return api()&&api().catalog?api().catalog():[];}catch(e){return [];}}
+ function persist(){try{localStorage.setItem(KEY,JSON.stringify({version:47,state:state,messages:messages.slice(-60),note:lastNote,journey:lastJourney}));}catch(e){status.textContent='Nie udało się zapisać rozmowy na telefonie.';}}
+ function weatherCredit(card,text){
+  var old=card.querySelector('.pil-credit');if(old)old.remove();if(!/°C|szansa opadów|opady:|Wiatr:/i.test(text))return;
+  var credit=el('small','pil-credit');[['Open-Meteo','https://open-meteo.com/'],['GeoNames','https://www.geonames.org/'],['CC BY 4.0','https://creativecommons.org/licenses/by/4.0/']].forEach(function(item,i){if(i)credit.appendChild(d.createTextNode(' · '));var a=el('button','',item[0]);a.type='button';a.setAttribute('role','link');a.setAttribute('data-source',item[1]);a.addEventListener('click',function(e){e.preventDefault();try{if(w.IspinaNative&&w.IspinaNative.openReader){w.IspinaNative.openReader(item[1]);return;}}catch(error){}status.textContent='Czytnik jest chwilowo niedostępny.';});credit.appendChild(a);});card.appendChild(credit);
+ }
+ // Build emphasis with text nodes only: no HTML from chat or weather data.
+ function richText(container,value,note){
+  var source=String(value),pattern=/(?:^|\n)(?:TRASA|PODRÓŻ|ODJAZD|PRZYJAZD|PRZESIADKA|POGODA|WARTO WIEDZIEĆ|PODSUMOWANIE|WYJAZD|CZAS PODRÓŻY|PLAN B)(?=\n|:)|\b(?:[01]?\d|2[0-3]):[0-5]\d\b|\b(?:A4|A7|A65|A50|A57)\b|(?:przystanku|przystanek) Ispina (?:Most|Dom Ludowy|Wiślisko|Leśniczówka)/gi;
+  var m,start=0;while((m=pattern.exec(source))!==null){
+   if(m.index>start)container.appendChild(d.createTextNode(source.slice(start,m.index)));
+   var span=el('strong','pil-highlight',m[0]);container.appendChild(span);start=pattern.lastIndex;
+  }
+  if(start<source.length)container.appendChild(d.createTextNode(source.slice(start)));
+  if(!source)container.appendChild(d.createTextNode(''));
+ }
+ var typingCard=null,typingTimer=0;
+ function hideTyping(){if(typingTimer){clearTimeout(typingTimer);typingTimer=0;}if(typingCard){typingCard.remove();typingCard=null;}}
+ function showTyping(){hideTyping();typingTimer=setTimeout(function(){
+   if(!active||!panel||panel.hidden||!log)return;
+   var card=el('div','pil-typing');card.setAttribute('aria-label','Pomocnik IL pisze');
+   card.appendChild(el('span','pil-typing-caption','Pomocnik pisze'));
+   var dots=el('span','pil-typing-dots');dots.setAttribute('aria-hidden','true');
+   for(var i=0;i<3;i++)dots.appendChild(el('i'));
+   card.appendChild(dots);log.insertBefore(card,choices);typingCard=card;log.scrollTop=log.scrollHeight;
+  },200);}
+ function completed(label){hideTyping();if(status){status.textContent=label||'✓ Gotowe';status.classList.add('pil-done');}}
+ function say(text,role,save,note){var m={role:role||'assistant',text:String(text).slice(0,8000),note:!!note},card=el('article','pil-message '+(m.role==='user'?'pil-user':'')+(note?' pil-note':''));card._pilMessage=m;card.appendChild(el('small','pil-who',m.role==='user'?'Ty':note?'Podsumowanie podróży':'Pomocnik IL'));var body=el('div','pil-text');richText(body,m.text,!!note);card.appendChild(body);if(m.role!=='user')card.appendChild(button(note?'Kopiuj notatkę':'Kopiuj',function(){copy(card.querySelector('.pil-text').textContent,false);},'pil-copy'));if(note)weatherCredit(card,m.text);if(m.role==='assistant')hideTyping();log.insertBefore(card,choices);while(log.querySelectorAll('.pil-message').length>60)log.querySelector('.pil-message').remove();log.scrollTop=log.scrollHeight;if(save!==false){messages.push(m);messages=messages.slice(-60);persist();}return card;}
+ function copy(text,automatic){
+  var snapshot=String(text||''),id=session;
+  function current(){return id===session&&(!automatic||lastNote===snapshot);}
+  function feedback(ok){if(current())status.textContent=ok?'Notatka w schowku.':automatic?'Notatka gotowa. Naciśnij „Kopiuj notatkę”, aby zapisać ją w schowku.':'Nie udało się skopiować. Spróbuj ponownie.';}
+  if(!snapshot){status.textContent='Najpierw przygotujmy notatkę z podróży.';return Promise.resolve(false);}
+  function legacy(){
+   if(!current())return false;
+   var previous=d.activeElement,start=field.selectionStart,end=field.selectionEnd,box=el('textarea'),ok=false;
+   try{box.value=snapshot;box.readOnly=true;box.setAttribute('aria-hidden','true');box.style.cssText='position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none';d.body.appendChild(box);box.select();ok=!!d.execCommand('copy');}catch(e){}
+   finally{box.remove();if(previous&&previous.focus){try{previous.focus({preventScroll:true});if(previous===field)field.setSelectionRange(start,end);}catch(e){}}}
+   feedback(ok);return ok;
+  }
+  try{if(navigator.clipboard&&navigator.clipboard.writeText){return Promise.resolve(navigator.clipboard.writeText(snapshot)).then(function(){feedback(true);return true;},function(){return legacy();});}}catch(e){}
+  return Promise.resolve(legacy());
+ }
+ function showNote(text,update,automatic){lastNote=String(text).slice(0,8000);if(update&&noteCard&&noteCard.isConnected){var noteText=noteCard.querySelector('.pil-text');noteText.textContent='';richText(noteText,lastNote,true);if(noteCard._pilMessage)noteCard._pilMessage.text=lastNote;}else noteCard=say(lastNote,'assistant',true,true);
+  weatherCredit(noteCard,lastNote);attachNoteTools(noteCard,lastJourney);refreshSavedNote();if(!/Sprawdzam pogodę/.test(lastNote))completed('✓ Notatka gotowa');persist();if(automatic)copy(lastNote,true);return noteCard;
+ }
+ function journeySummary(weatherText,automatic){if(lastJourney)showNote(B.journeyNote(lastJourney,weatherText,traffic(lastJourney),rows()),true,automatic);}
+ function clearChoices(){choices.textContent='';}
+ function tile(label,fn){var b=button(label,fn,'pil-tile');choices.appendChild(b);return b;}
+ function closeMenu(){if(menu)menu.hidden=true;var b=d.getElementById('pil-options');if(b)b.setAttribute('aria-expanded','false');}
+ function invalidateJourney(){lastJourney=null;lastResults=null;lastNote='';noteCard=null;}
+ function stop(){hideTyping();if(status)status.classList.remove('pil-done');session++;var wasWeather=active&&active.weather;if(active){active.aborted=true;if(active.controller)active.controller.abort();if(active.xhr)active.xhr.abort();if(active.reject)active.reject(Error('CANCELLED'));}active=null;cancelButton.hidden=true;status.textContent='';if(wasWeather)journeySummary('Sprawdzanie pogody anulowano.',false);}
+ function begin(){stop();var id=session,controller;if(w.AbortController)controller=new w.AbortController();else{var listeners=[],signal={aborted:false,addEventListener:function(type,fn){if(type==='abort')listeners.push(fn);},removeEventListener:function(type,fn){listeners=listeners.filter(function(f){return f!==fn;});}};controller={signal:signal,abort:function(){signal.aborted=true;listeners.slice().forEach(function(f){f();});listeners=[];}};}active={controller:controller,aborted:false};cancelButton.hidden=false;showTyping();if(status)status.classList.remove('pil-done');return {id:id,signal:controller.signal};}
+ function open(value){
+  if(value){
+   if(welcomeCard)welcomeCard.querySelector('.pil-text').textContent=B.greeting(new Date())+' Miło Cię widzieć! Napisz, skąd i dokąd chcesz pojechać — pomogę Ci ułożyć podróż.';
+   if(swallowPop){pendingOpen=true;return;}if(!panel.hidden)return;
+   panel.hidden=false;try{w.history.pushState({pomocnikIL:true,instance:historyToken},'',w.location.href);ownEntry=true;}catch(e){}log.scrollTop=log.scrollHeight;if(state.pending==='time')paintTimeChoices();
+  }else{
+   stop();panel.hidden=true;field.blur();closeMenu();pendingOpen=false;
+   if(ownEntry){ownEntry=false;try{if(w.history.state&&w.history.state.instance===historyToken){swallowPop=true;w.history.back();}}catch(e){swallowPop=false;}}
+  }
+ }
+ function cityOf(hint){return B.stopCity(rows(),hint)||B.town(hint);}
+ function setHint(side,hint,confirm){
+  var available=rows(),city=B.stopCity(available,hint),old=state[side+'City'],previous=state[side],known=B.town(hint);
+  if(!city&&B.placePhrase(known,'from')!==known)city=known;
+  if(!city&&old&&B.stopChoices(available,old,hint).length)city=old;
+  state[side+'City']=city||null;state[side]=null;
+  if(!city){if(side==='from')state.accessFrom=null;say('Nie znalazłem „'+String(hint).slice(0,90)+'” w dostępnych przystankach. Wybierz inną miejscowość albo wpisz pełną nazwę przystanku.');return;}
+  var list=B.stopChoices(available,city,hint),n=B.norm(hint),general=n===B.norm(city)||B.norm(B.town(hint))===B.norm(city);
+  if(old===city&&previous&&general&&available.some(function(r){return r.n===previous&&String(r.key).indexOf('stop:')===0;}))state[side]=previous;
+  else if(!confirm&&list.length===1&&!list[0].fuzzy&&!general)state[side]=list[0].n;
+  if(side==='from'&&state.from!==previous)state.accessFrom=null;
+  if(side==='from')say('Rozumiem, ruszamy '+B.placePhrase(city,'from')+'.'+(state.from?' Przystanek: '+state.from+'.':''));
+ }
+ function pickStop(side,row){var current=rows().find(function(r){return r.key===row.key&&r.n===row.n&&String(r.key).indexOf('stop:')===0;});if(!current){say('Ten przystanek nie jest już dostępny w aktualnym katalogu. Wybierzmy go ponownie.');stopPrompt(side);return;}stop();invalidateJourney();state[side]=current.n;if(side==='from')state.accessFrom=null;state[side+'City']=cityOf(current.n);say(current.n,'user');persist();advance();}
+ function stopPrompt(side,query,quiet){clearChoices();state.pending=side;var city=state[side+'City'],list=B.stopChoices(rows(),city,query||'');if(!quiet){var start=side==='to'&&state.from?'Ruszamy '+B.placePhrase(state.fromCity,'at')+', z przystanku '+state.from+'.\n':'';say(start+(side==='from'?'Z którego przystanku'+(city?' '+B.placePhrase(city,'at'):'')+' ruszamy?':'Na którym przystanku'+(city?' '+B.placePhrase(city,'at'):'')+' chcesz wysiąść?')+' Wybierz kafelek albo wpisz nazwę.');}
+  if(!list.length&&query){list=B.stopChoices(rows(),city,'');if(list.length)say('Wybierzmy przystanek z aktualnej listy poniżej. Termin podróży pozostaje zapisany.');}
+  if(!list.length){say('Rozpoznaję miejscowość '+city+', ale nie mam teraz jej przystanków w dostępnych rozkładach. Odśwież rozkłady w Odjazdach, a następnie wróć tutaj.');tile('Sprawdź listę przystanków ponownie',function(){try{if(api()&&api().refreshCatalog)api().refreshCatalog();}catch(e){}stopPrompt(side);});persist();return;}
+  function page(start){clearChoices();list.slice(start,start+9).forEach(function(row){tile(row.n,function(){pickStop(side,row);});});if(start)tile('Poprzednie przystanki',function(){page(Math.max(0,start-9));});if(start+9<list.length)tile('Pokaż więcej przystanków',function(){page(start+9);});}page(0);field.placeholder='Wpisz nazwę przystanku';persist();
+ }
+ function askDate(){state.pending='date';clearChoices();say('Kiedy chcesz jechać? Możesz wybrać dzień albo wpisać np. „jutro po 17”.');['Dzisiaj','Jutro','Pojutrze'].forEach(function(label){tile(label,function(){ask(label);});});var input=el('input');input.type='date';input.min=B.dateString(new Date());input.setAttribute('aria-label','Dzień podróży');choices.appendChild(input);tile('Wybierz ten dzień',function(){if(input.value)ask(input.value);});persist();}
+
+ function askTransfers(){state.pending='transfers';clearChoices();say('Wolisz jechać bezpośrednio, czy może być jedna przesiadka? Jeśli wybierzesz przesiadkę, wyjaśnię Ci ją krok po kroku.');tile('Tak, może być przesiadka',function(){ask('tak');});tile('Tylko bez przesiadki',function(){ask('bez przesiadek');});persist();}
+ function cityPrompt(side,query,quiet){
+  state.pending=side==='from'?'originCity':'destination';clearChoices();field.placeholder=side==='from'?'Skąd ruszasz?':'Dokąd jedziesz?';
+  if(!quiet)say(side==='from'?'Skąd ruszamy? Wybierz miejscowość albo wpisz jej nazwę.':'Dokąd chcesz dotrzeć? Wybierz miejscowość albo wpisz jej nazwę.');
+  var all=B.cityChoices(rows(),query||'').sort(function(a,b){return a.localeCompare(b,'pl');});
+  if(!all.length){say('Nie rozpoznaję jeszcze tej nazwy. Spróbuj napisać ją krócej albo wybierz miejscowość poniżej.');all=B.cities(rows()).sort(function(a,b){return a.localeCompare(b,'pl');});}
+  if(side==='to'&&!query){var main=B.primaryDestinations(rows());if(main.length){
+   function mainPage(start){clearChoices();main.slice(start,start+6).forEach(function(item){tile(item.label,function(){if(item.stop){var row=rows().find(function(r){return r.n===item.stop&&String(r.key).indexOf('stop:')===0;});if(row)pickStop('to',row);else{say('Ten przystanek nie jest już dostępny. Wybierzmy cel z aktualnego katalogu.');cityPrompt('to','',true);}}else ask(B.placePhrase(item.city,'to'));});});if(start)tile('Poprzednie główne kierunki',function(){mainPage(Math.max(0,start-6));});if(start+6<main.length)tile('Więcej głównych kierunków',function(){mainPage(start+6);});tile('Inne miejscowości',function(){page(0);});}mainPage(0);persist();return;
+  }}
+  function page(start){clearChoices();all.slice(start,start+6).forEach(function(city){tile(city,function(){ask(B.placePhrase(city,side==='from'?'from':'to'));});});if(start)tile('Poprzednie miejscowości',function(){page(Math.max(0,start-6));});if(start+6<all.length)tile('Więcej miejscowości',function(){page(start+6);});}page(0);if(side==='from'&&(travelData.starts.length||travelData.favorites.length))tile('⭐ Ulubione przystanki i trasy',function(){showLibrary('favorites');});persist();
+ }
+ function changeTime(){stop();invalidateJourney();state.time=null;askTime();persist();}
+ function changeStop(side){stop();invalidateJourney();state[side]=null;if(side==='from')state.accessFrom=null;stopPrompt(side);persist();}
+ function advance(){if(!state.fromCity&&!state.from){cityPrompt('from');return;}if(!state.from){stopPrompt('from');return;}if(!state.toCity&&!state.to){cityPrompt('to');return;}
+  if(state.from&&state.from===state.to){state.to=null;say('Wybraliśmy ten sam przystanek na początek i koniec. Na którym przystanku chcesz wysiąść?');}
+  if(!state.from){stopPrompt('from');return;}if(!state.to){stopPrompt('to');return;}if(!state.date){askDate();return;}if(!ensureTravelTime())return;if(!state.time){askTime();return;}search();}
+ async function ask(raw){var q=String(raw===undefined?field.value:raw).trim().slice(0,800);if(!q)return;
+  var social=B.socialIntent(q);if(social){closeMenu();field.value='';say(q,'user');if(social==='thanks')say(active&&active.weather?'Proszę bardzo! Jeszcze sprawdzam pogodę na Twoją podróż. 😊':lastJourney?'Proszę bardzo! Spokojnej podróży. Jeśli chcesz, sprawdzimy też powrót. 😊':'Proszę bardzo! Ułożymy tę podróż krok po kroku. 😊');else if(social==='greeting')say(B.greeting(new Date())+' Miło Cię widzieć! Pomogę Ci spokojnie zaplanować podróż.');else if(social==='help')say('Napisz, skąd i dokąd chcesz jechać. Pomogę wybrać przystanki, znajdę połączenia w rozkładach IL, wyjaśnię przesiadkę i sprawdzę pogodę. Możesz też zapytać o powrót.');else say('Nazywam się Pomocnik IL. Jestem wirtualnym asystentem podróży w tej aplikacji. Pomagam korzystać z rozkładów i zaplanować drogę krok po kroku.');return;}
+  if(busMessage(q))return;
+  var nav=B.norm(q);if(/^(ulubione|moje trasy|moje podroze|zapisane podroze)$/.test(nav)){closeMenu();field.value='';say(q,'user');showLibrary(/podroze/.test(nav)?'notes':'favorites');return;}
+  var corrected=B.correctIspinaForms(q);stop();closeMenu();field.value='';say(q,'user');if(corrected.corrections.length){var tip=say('Mała poprawka językowa: '+corrected.corrections.map(function(c){return 'poprawnie jest «'+c.correct+'», zamiast «'+c.wrong+'»';}).join('; ')+'. 😊');tip.classList.add('pil-language-tip');}var pending=state.pending,p=B.parse(corrected.text,new Date(),pending),n=B.norm(corrected.text);q=corrected.text;
+  if(/^(ulubione|moje trasy)$/.test(n)){showLibrary('favorites');return;}if(/^(moje podroze|zapisane podroze)$/.test(n)){showLibrary('notes');return;}if(/^(plan b|nie zdazylem|nie zdazylam|uciekl mi autobus|nastepny kurs)$/.test(n)&&lastJourney){alternatives('backup');return;}
+  if(/^(anuluj|stop|przerwij)$/.test(n)){say('Zatrzymałem sprawdzanie. Możesz spokojnie wrócić do wybranej trasy albo rozpocząć nową podróż.');persist();return;}
+  if(p.newTrip){state={};pending=undefined;invalidateJourney();if(!p.fromHint&&!p.toHint&&!p.fromChoices&&!p.toChoices){persist();advance();return;}}
+  if(p.invalidDate||p.invalidTime){say('Nie jestem pewien dnia lub godziny. Napisz np. „jutro po 17:30”, a sprawdzę połączenia.');return;}
+  var modelHints={};if(w.IL_POMOCNIK_AI&&w.IL_POMOCNIK_AI.configured&&q.split(/\s+/).length>=3){var job=begin();status.textContent='Chwileczkę, zastanawiam się…';try{var slots=await w.IL_POMOCNIK_AI.interpret({question:q,today:new Date().toLocaleString('sv-SE'),state:state,places:B.cities(rows()),messages:messages.slice(-6,-1).map(function(m){return {role:m.role,content:m.text.slice(0,800)};})},job.signal);if(job.id!==session)return;Object.keys(slots||{}).forEach(function(k){if(p[k]===undefined){p[k]=slots[k];if(k==='fromHint'||k==='toHint')modelHints[k]=true;}});}catch(e){if(job.id!==session)return;say('Połączenie na chwilę zawiodło. Nadal mogę pomóc Ci zaplanować podróż krok po kroku.');}finally{if(job.id===session){active=null;cancelButton.hidden=true;}}}
+  if(modelHints.fromHint&&pending!=='originCity'&&pending!=='from'&&!/\b(?:jestem|ruszam|wyjezdzam|startuje|stoje|spod|z|ze|w|we)\b/.test(n))delete p.fromHint;
+  ['from','to'].forEach(function(side){if(p[side+'Excluded']){state[side]=state[side+'City']=null;invalidateJourney();say('Rozumiem, pomijamy wskazane '+(side==='from'?'miejsce rozpoczęcia':'miejsce docelowe')+'. Wybierzmy inne.');}});
+  var outward=lastJourney;var changes=['fromHint','toHint','fromChoices','toChoices','date','time','directOnly','minWait','line','arriveBy','arrivalMargin'].some(function(k){return p[k]!==undefined;});if(changes||p.returnTrip)invalidateJourney();
+  if(p.returnTrip){if(state.from&&state.to){var x=state.from,c=state.fromCity;state.from=state.to;state.fromCity=state.toCity;state.to=x;state.toCity=c;state.time=null;state.timeIsNow=false;state.arriveBy=false;state.line=null;state.notBefore=outward?outward.arrival:null;state.accessFrom=null;if(p.date===undefined)state.date=B.dateString(new Date(Math.max(Date.now(),state.notBefore||0)));state.pending='time';if(state.notBefore)say('Powrót zaplanujemy najwcześniej po przyjeździe do celu, o '+B.clock(state.notBefore)+'.');}else{say('Najpierw ustalmy trasę w jedną stronę, żebym wiedział, skąd wracasz.');advance();return;}}
+  if((pending==='destination'||pending==='originCity')&&p.stopHint&&!p.toHint&&!p.fromHint)p[pending==='destination'?'toHint':'fromHint']=B.town(p.stopHint);
+  if(pending==='destination'&&!p.toHint&&!p.fromHint&&B.cities(rows()).some(function(c){return B.norm(c)===B.norm(B.town(q));}))p.toHint=B.town(q);
+  var originAnswer=q.replace(/^(?:w|we)\s+/i,'');if(pending==='originCity'&&!p.toHint&&!p.fromHint&&B.cities(rows()).some(function(c){return B.norm(c)===B.norm(B.town(originAnswer));}))p.fromHint=B.town(originAnswer);
+  if((pending==='originCity'||pending==='destination')&&!p.fromHint&&!p.toHint&&!p.fromChoices&&!p.toChoices&&!p.date&&!p.time&&!p.returnTrip){cityPrompt(pending==='originCity'?'from':'to',originAnswer,true);return;}
+  if(p.toHint&&!p.fromHint&&!state.from&&!state.fromCity){state.from=state.fromCity=null;}
+  if(p.fromHint){if(state.notBefore&&B.stopCity(rows(),p.fromHint)!==state.fromCity)state.notBefore=null;setHint('from',p.fromHint,modelHints.fromHint);}if(p.toHint)setHint('to',p.toHint,modelHints.toHint);
+  if(p.time!==undefined)state.timeIsNow=!!p.now;else if(p.date!==undefined)state.timeIsNow=false;
+  ['date','time','directOnly','minWait','line','arriveBy','arrivalMargin'].forEach(function(k){if(p[k]!==undefined)state[k]=p[k];});if(p.approximateTime&&!B.travelTimeIssue(state,new Date()))say(p.approximateTime);if(p.arriveBy)say('Szukam przyjazdu do '+state.time+' z zapasem '+(state.arrivalMargin||0)+' min. Możesz zmienić zapas przy wynikach.');
+  if(p.fromChoices||p.toChoices){var side=p.fromChoices?'from':'to',list=p[side+'Choices'];state[side]=state[side+'City']=null;state.pending=side==='from'?'originCity':'destination';clearChoices();say('Wskazałeś więcej niż jedno miejsce. '+(side==='from'?'Skąd ruszamy?':'Dokąd jedziemy?')+' Wybierz jedno albo wpisz nazwę.');list.forEach(function(hint){tile(hint,function(){ask((side==='from'?'z ':'do ')+hint);});});persist();return;}
+  if(pending==='transfers'&&!p.toHint&&!p.fromHint){if(/^(tak|moze|dobrze|ok|zgoda)/.test(n))state.directOnly=false;else if(/^(nie|tylko bez)/.test(n))state.directOnly=true;}
+  if((pending==='from'||pending==='to')&&!p.fromHint&&!p.toHint&&(p.stopHint||!p.date&&!p.time)){var stopAnswer=p.stopHint||q,matches=B.stopChoices(rows(),state[pending+'City'],stopAnswer);if(matches.length===1&&!matches[0].fuzzy){state[pending]=matches[0].n;if(pending==='from')state.accessFrom=null;}else{say(matches.some(function(x){return x.fuzzy;})?'Może to drobna literówka. Czy chodzi o jeden z tych przystanków? Wybierz właściwy kafelek.':matches.length?'Mam kilka pasujących przystanków. Który z nich masz na myśli?':'Nie znalazłem takiego przystanku. Spróbujmy krótszej nazwy.');stopPrompt(pending,stopAnswer,true);return;}}
+  if(lastJourney&&lastJourney.arrival<Date.now()&&(p.weather||p.traffic)){invalidateJourney();state.date=null;state.time=null;say('Ta podróż już minęła. Wybierzmy nowy termin.');advance();return;}
+  if(p.weather&&lastJourney&&!p.date&&!p.time&&!p.toHint&&!p.fromHint){weather(lastJourney);return;}
+  if(p.weather&&!lastJourney&&!changes){say('Wybierz połączenie, żebym sprawdził pogodę na właściwą godzinę.');if(!lastResults)tile('Sprawdź połączenia',function(){advance();});return;}
+  if(p.traffic&&lastJourney){say(traffic(lastJourney));return;}
+  if(/ile.*(?:czasu|potrwa|trwa)|wyjasnij.*przesiad|jak.*przesiad|podsumuj|notatka/.test(n)&&lastJourney&&!p.toHint&&!p.fromHint){showNote(lastNote||B.journeyNote(lastJourney,'Nie mam jeszcze prognozy.',traffic(lastJourney),rows()),false,true);return;}
+  if(pending==='results'&&!changes&&!p.returnTrip){say(/dziek|dzieki/.test(n)?'Proszę bardzo! Życzę spokojnej podróży.':'Pomogę Ci w podróży. Możesz wybrać połączenie, zmienić dzień lub godzinę albo zapytać o powrót.');return;}
+  persist();advance();
+ }
+ function traffic(j){var day=new Date(j.departure),hour=day.getHours(),weekday=day.getDay()>0&&day.getDay()<6;return weekday&&(hour>=7&&hour<9||hour>=15&&hour<18)?'To pora, w której ruch zwykle jest większy. Warto zostawić sobie zapas czasu. Nie mam aktualnych informacji o korkach na tej trasie.':'Czas podróży podaję według rozkładu. Nie mam aktualnych informacji o korkach na tej trasie.';}
+ async function search(){if(!ensureTravelTime())return;clearChoices();state.pending='results';var job=begin();invalidateJourney();status.textContent='Szukam połączeń dla Ciebie…';try{
+   var data=api();if(!data||!data.journeys)throw Error('NO_PLANNER');var coverage=data.stopCoverage&&data.stopCoverage(state);
+   if(coverage&&coverage.known&&!coverage.direct&&coverage.alternatives.length&&(state.directOnly!==false||state.line)){
+    var original=state.from,other=coverage.alternatives.map(function(r){return r.name;});
+    say((state.line&&!coverage.servesFrom?'Linia '+state.line+' nie obsługuje przystanku '+original+'. ':'')+'Z przystanku '+original+' nie ma bezpośredniego połączenia '+B.placePhrase(state.toCity,'to')+(state.line?' linią '+state.line:'')+'. Obsługiwane przystanki w tej miejscowości: '+other.join(', ')+'.');
+    if(!coverage.nearest){say('Wybierz przystanek rozpoczęcia. Nie mam danych, by ustalić najbliższy.');coverage.alternatives.forEach(function(r){tile(r.name,function(){stop();state.from=r.name;state.accessFrom=original;advance();});});active=null;cancelButton.hidden=true;persist();return;}
+    state.accessFrom=original;state.from=coverage.nearest;say('Zaplanuję wyjazd z przystanku '+state.from+' — najbliższego według kolejności przystanków w rozkładzie. Uwzględnij dojście przed odjazdem; czas dojścia nie jest wliczony w czas podróży.');persist();
+   }
+   if(coverage&&coverage.known&&state.line&&!coverage.servesFrom&&!coverage.alternatives.length)say('Linia '+state.line+' nie obsługuje przystanku '+state.from+'. Nie znalazłem też obsługiwanego przystanku z bezpośrednim połączeniem do wybranego celu w tej miejscowości. Możesz wybrać inną linię lub początek podróży.');
+   var result=await data.journeys(state,job.signal);if(job.id!==session)return;result.items=result.items.filter(function(j){return j.departure>=Date.now();});lastResults=result;lastJourney=null;cancelButton.hidden=true;active=null;
+   if(!result.items.length)say('Nie znalazłem połączenia dla '+state.from+' → '+state.to+' w dniu '+B.niceDate(state.date)+'. Możemy zmienić godzinę, przystanek lub dopuścić przesiadkę.');
+   if(!result.items.length){tile('Zmień godzinę',changeTime);tile('Wybierz przystanek początkowy',function(){changeStop('from');});if(state.directOnly)tile('Sprawdź też z przesiadką',function(){state.directOnly=false;search();});return;}
+   say('Mam dla Ciebie '+result.items.length+' '+B.polishCount(result.items.length,'połączenie','połączenia','połączeń')+'. Wybierz jeden kurs poniżej — przygotuję czytelną notatkę z opisem podróży i pogodą.');
+   if(state.arriveBy){say('Cel: przyjazd najpóźniej o '+state.time+'. Zostawiam '+(state.arrivalMargin||0)+' min zapasu.');[0,5,10,15,20].forEach(function(min){tile('Zapas przyjazdu: '+min+' min',function(){state.arrivalMargin=min;search();});});}
+   function renderOptions(start,count){result.items.slice(start,start+count).forEach(function(j,i){var clock=t=>new Date(t).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});tile(clock(j.departure)+' → '+clock(j.arrival)+' · '+j.line+' · '+j.duration+' min · '+(j.transfers?'1 przesiadka':'bez przesiadki'),function(){choose(j);});});}
+   renderOptions(0,4);completed('✓ Połączenia gotowe — wybierz kurs');if(result.items.length>4)tile('Pokaż pozostałe połączenia',function(){clearChoices();renderOptions(4,20);});log.scrollTop=log.scrollHeight;
+  }catch(e){if(job.id===session){say('Nie udało się sprawdzić połączeń '+state.from+' → '+state.to+'. Spróbuj ponownie albo odśwież rozkład w Odjazdach.');tile('Spróbuj ponownie',search);}}
+  finally{if(job.id===session){cancelButton.hidden=true;active=null;}}
+ }
+ function choose(j){if(j.departure<Date.now()){stop();invalidateJourney();say('Ten kurs już odjechał. Sprawdzę następne połączenia na tej trasie.');state.date=B.dateString(new Date());state.time=B.clock(Date.now());state.timeIsNow=true;advance();return;}stop();lastJourney=j;clearChoices();showNote(B.journeyNote(j,'Sprawdzam pogodę na godzinę Twojej podróży…',traffic(j),rows()),false,true);tile('Zaplanuj powrót',function(){ask('jak wrócę');});tile('Zmień godzinę',changeTime);tile('Plan B · następny kurs',function(){alternatives('backup');});if(j.transfers)tile('Spokojniejsza przesiadka',function(){alternatives('safe');});tile('Nowa podróż',function(){ask('nowa podróż');});weather(j);}
+ // Included in helper.js closure by prepare_ui.py.
+var TRAVEL_KEY='il.pomocnik36.travel',travelData=B.readTravelData(null),libraryPanel;
+function saveTravel(){try{localStorage.setItem(TRAVEL_KEY,JSON.stringify(travelData));return true;}catch(e){status.textContent='Nie udało się zapisać na telefonie.';return false;}}
+function sameJourney(a,b){return a&&b&&a.from===b.from&&a.to===b.to&&a.departure===b.departure;}
+function refreshSavedNote(){if(!lastJourney)return;var record=travelData.notes.filter(function(n){return sameJourney(n.journey,lastJourney);})[0];if(record){record.text=lastNote;saveTravel();}}
+function saveNote(j,text){if(!B.validJourney(j)||!text)return;travelData.notes=travelData.notes.filter(function(n){return !sameJourney(n.journey,j);});travelData.notes.push({journey:JSON.parse(JSON.stringify(j)),text:String(text).slice(0,8000),savedAt:Date.now()});travelData.notes=travelData.notes.slice(-12);if(saveTravel())status.textContent='Podróż zapisana. Otworzysz ją także bez internetu w „Moich podróżach”.';}
+function saveFavorite(j){if(!j||!j.from||!j.to)return;travelData.favorites=travelData.favorites.filter(function(f){return f.from!==j.from||f.to!==j.to;});travelData.favorites.push({from:j.from,to:j.to});travelData.favorites=travelData.favorites.slice(-12);if(saveTravel())status.textContent='Trasa dodana do ulubionych. Przy kolejnym planowaniu wybierzesz nowy termin.';}
+function saveStart(name){if(!name)return;travelData.starts=travelData.starts.filter(function(s){return s!==name;});travelData.starts.push(name);travelData.starts=travelData.starts.slice(-8);if(saveTravel())status.textContent='Przystanek zapisany. Użyję go wtedy, gdy go wybierzesz.';}
+function closeLibrary(){if(libraryPanel)libraryPanel.remove();libraryPanel=null;}
+function useFavorite(f){var cat=rows(),from=cat.find(function(r){return r.key.indexOf('stop:')===0&&r.n===f.from;}),to=cat.find(function(r){return r.key.indexOf('stop:')===0&&r.n===f.to;});if(!from||!to){status.textContent='Tej trasy nie ma w załadowanym katalogu. Odśwież Odjazdy albo wybierz przystanki ponownie.';return;}stop();invalidateJourney();closeLibrary();state={from:from.n,to:to.n,fromCity:cityOf(from.n),toCity:cityOf(to.n)};say('Wybieram '+from.n+' → '+to.n,'user');advance();persist();}
+function useStart(name){var row=rows().find(function(r){return r.key.indexOf('stop:')===0&&r.n===name;});if(!row){status.textContent='Tego przystanku nie ma teraz w katalogu. Odśwież Odjazdy.';return;}closeLibrary();pickStop('from',row);}
+function shareNote(text){
+ text=String(text||'').slice(0,8000);if(!text)return;
+ try{if(w.IspinaNative&&typeof w.IspinaNative.shareTravelNote==='function'){var reply=JSON.parse(w.IspinaNative.shareTravelNote(text));if(reply.ok){status.textContent='Wybierz aplikację, w której chcesz udostępnić notatkę.';return;}}}catch(e){}
+ if(navigator.share){Promise.resolve(navigator.share({title:'Moja podróż z IL',text:text})).catch(function(e){if(e.name!=='AbortError')status.textContent='Udostępnianie jest niedostępne. Możesz skopiować notatkę.';});return;}
+ copy(text,false);status.textContent='Skopiuj notatkę i wklej ją w wybranej aplikacji.';
+}
+function showLibrary(mode){
+ closeMenu();closeLibrary();libraryPanel=el('section','pil-library');libraryPanel.id='pil-library';libraryPanel.setAttribute('aria-label',mode==='notes'?'Moje podróże':'Ulubione');libraryPanel.appendChild(el('strong','',mode==='notes'?'📌 Moje podróże':'⭐ Ulubione'));libraryPanel.appendChild(button('Zamknij listę',closeLibrary,'pil-small-action'));
+ if(mode==='notes'){
+  if(!travelData.notes.length)libraryPanel.appendChild(el('p','','Po wybraniu kursu naciśnij „Zapisz podróż”. Notatka zostanie na telefonie.'));
+  travelData.notes.slice().reverse().forEach(function(n){var item=el('details','pil-saved');item.appendChild(el('summary','',B.niceDate(B.dateString(new Date(n.journey.departure)))+' · '+n.journey.from+' → '+n.journey.to));item.appendChild(el('small','','Zapisana notatka. Godziny i pogoda pochodzą z dnia jej przygotowania.'));item.appendChild(el('div','pil-text',n.text));weatherCredit(item,n.text);item.appendChild(button('Udostępnij',function(){shareNote(n.text);},'pil-small-action'));item.appendChild(button('Zaplanuj tę trasę',function(){useFavorite(n.journey);},'pil-small-action'));item.appendChild(button('Usuń notatkę',function(){travelData.notes=travelData.notes.filter(function(x){return x!==n;});saveTravel();showLibrary('notes');},'pil-small-action'));libraryPanel.appendChild(item);});
+ }else{
+  if(!travelData.favorites.length&&!travelData.starts.length)libraryPanel.appendChild(el('p','','W notatce wybierz „Dodaj trasę do ulubionych” lub „Zapamiętaj przystanek startowy”.'));
+  travelData.favorites.slice().reverse().forEach(function(f){var item=el('div','pil-saved');item.appendChild(button(f.from+' → '+f.to,function(){useFavorite(f);},'pil-small-action'));item.appendChild(button('Usuń trasę',function(){travelData.favorites=travelData.favorites.filter(function(x){return x!==f;});saveTravel();showLibrary('favorites');},'pil-small-action'));libraryPanel.appendChild(item);});
+  travelData.starts.slice().reverse().forEach(function(name){var item=el('div','pil-saved');item.appendChild(button('Ruszam: '+name,function(){useStart(name);},'pil-small-action'));item.appendChild(button('Usuń przystanek',function(){travelData.starts=travelData.starts.filter(function(x){return x!==name;});saveTravel();showLibrary('favorites');},'pil-small-action'));libraryPanel.appendChild(item);});
+ }
+ log.insertBefore(libraryPanel,choices);libraryPanel.scrollIntoView&&libraryPanel.scrollIntoView({block:'start'});
+}
+function nativeReminders(){try{if(w.IspinaNative&&typeof w.IspinaNative.listTravelReminders==='function')return JSON.parse(w.IspinaNative.listTravelReminders());}catch(e){}return {ok:false,items:[]};}
+function showReminders(){closeMenu();closeLibrary();libraryPanel=el('section','pil-library');libraryPanel.id='pil-library';libraryPanel.appendChild(el('strong','','🔔 Moje przypomnienia'));libraryPanel.appendChild(button('Zamknij listę',closeLibrary,'pil-small-action'));var data=nativeReminders();if(!data.ok)libraryPanel.appendChild(el('p','','Przypomnienia wymagają nowego APK.'));else if(!data.items.length)libraryPanel.appendChild(el('p','','Nie masz zaplanowanych przypomnień. W notatce podróży wybierz „Przypomnij mi”.'));(data.items||[]).forEach(function(r){var item=el('div','pil-saved');item.appendChild(el('p','',B.niceDate(B.dateString(new Date(r.at)))+' · '+B.clock(r.at)+'\n'+r.body));item.appendChild(button('Usuń przypomnienie',function(){try{var reply=JSON.parse(w.IspinaNative.cancelTravelReminder(r.id));if(reply.ok)showReminders();else status.textContent='Nie udało się usunąć przypomnienia.';}catch(e){status.textContent='Nie udało się usunąć przypomnienia.';}},'pil-small-action'));libraryPanel.appendChild(item);});log.insertBefore(libraryPanel,choices);}
+function reminderForm(card,j){
+ var old=card.querySelector('.pil-reminder-form');if(old)old.remove();var form=el('div','pil-reminder-form');form.appendChild(el('strong','','🔔 Przypomnij mi o wyjściu'));form.appendChild(el('p','','Ustaw czas dojścia i dodatkowy zapas. Przypomnienie zostanie zapisane w Androidzie.'));
+ function minutes(label,value,max){var wrap=el('label','pil-minutes',label),input=el('input');input.type='number';input.min='0';input.max=String(max);input.step='1';input.value=String(value);input.setAttribute('aria-label',label);wrap.appendChild(input);form.appendChild(wrap);return input;}
+ var walk=minutes('Dojście do przystanku (min)',travelData.walkMinutes,120),extra=minutes('Dodatkowy zapas (min)',5,60),preview=el('p','pil-reminder-preview');form.appendChild(preview);
+ function calc(){try{var p=B.reminderPlan(j,Number(walk.value),Number(extra.value),Date.now());preview.textContent='Przypomnienie: '+B.niceDate(B.dateString(new Date(p.at)))+' o '+B.clock(p.at)+'. Autobus odjeżdża o '+B.clock(j.departure)+'.';return p;}catch(e){preview.textContent=e.message==='PAST_REMINDER'?'Ten czas przypomnienia już minął. Zmniejsz zapas albo wybierz późniejszy kurs.':'Podaj pełne minuty w dozwolonym zakresie.';return null;}}walk.addEventListener('input',calc);extra.addEventListener('input',calc);calc();
+ form.appendChild(button('Ustaw przypomnienie',function(){var p=calc();if(!p)return;try{if(!w.IspinaNative||typeof w.IspinaNative.scheduleTravelReminder!=='function')throw Error('NO_NATIVE');var reply=JSON.parse(w.IspinaNative.scheduleTravelReminder(JSON.stringify(p)));if(reply.ok){travelData.walkMinutes=Number(walk.value);saveTravel();preview.textContent='Przypomnienie zapisane na '+B.clock(p.at)+'. Zadziała także po zamknięciu IL.';}else if(reply.error==='NOTIFICATIONS_DISABLED'){preview.textContent='Włącz powiadomienia IL w ustawieniach telefonu i spróbuj ponownie.';if(!form.querySelector('[data-pil-settings]')){var settings=button('Ustawienia powiadomień',function(){w.IspinaNative.openTravelNotificationSettings();},'pil-small-action');settings.setAttribute('data-pil-settings','notifications');form.appendChild(settings);}}else if(reply.error==='EXACT_ALARM_PERMISSION'){preview.textContent='Android wymaga włączenia dokładnych przypomnień. Po zmianie wróć i naciśnij „Ustaw przypomnienie”.';if(!form.querySelector('[data-pil-settings]')){var settings=button('Ustawienia przypomnień',function(){w.IspinaNative.openTravelAlarmSettings();},'pil-small-action');settings.setAttribute('data-pil-settings','alarms');form.appendChild(settings);}}else preview.textContent='Nie udało się ustawić przypomnienia. Spróbuj ponownie.';}catch(e){preview.textContent='Przypomnienia wymagają nowego APK. Nie zostały ustawione.';}},'pil-small-action'));
+ form.appendChild(button('Zamknij',function(){form.remove();},'pil-small-action'));card.appendChild(form);form.scrollIntoView&&form.scrollIntoView({block:'nearest'});
+}
+function attachNoteTools(card,j){if(!card||!B.validJourney(j))return;card._pilJourney=j;if(card.querySelector('.pil-note-actions'))return;var tools=el('div','pil-note-actions');tools.appendChild(button('Zapisz podróż',function(){saveNote(card._pilJourney,card.querySelector('.pil-text').textContent);},'pil-small-action'));tools.appendChild(button('Udostępnij',function(){shareNote(card.querySelector('.pil-text').textContent);},'pil-small-action'));tools.appendChild(button('Przypomnij mi',function(){reminderForm(card,card._pilJourney);},'pil-small-action'));var more=el('details','pil-details');more.appendChild(el('summary','','⭐ Zapamiętaj trasę lub start'));more.appendChild(button('Dodaj trasę do ulubionych',function(){saveFavorite(card._pilJourney);},'pil-small-action'));more.appendChild(button('Zapamiętaj przystanek startowy',function(){saveStart(card._pilJourney.from);},'pil-small-action'));tools.appendChild(more);card.appendChild(tools);}
+function arrivalControls(){state.arriveBy=true;state.time=null;state.timeIsNow=false;if(state.arrivalMargin===undefined)state.arrivalMargin=10;askTime();}
+
+async function alternatives(kind){if(!lastJourney)return;var chosen=lastJourney,original=Object.assign({},state),opts=Object.assign({},state),job=begin();clearChoices();status.textContent=kind==='safe'?'Szukam spokojniejszej przesiadki…':'Szukam następnego kursu na tej trasie…';if(kind==='safe'){opts.minWait=Math.max(10,opts.minWait||1);opts.directOnly=false;}else{var after=Math.max(chosen.departure,Date.now());opts.afterDeparture=after;var when=new Date(after);opts.date=B.dateString(when);opts.time=B.clock(when);opts.arriveBy=false;opts.arrivalMargin=0;}try{var result=await api().journeys(opts,job.signal);if(job.id!==session)return;active=null;cancelButton.hidden=true;var list=kind==='safe'?result.items.filter(function(j){return !j.transfers||j.wait>=10;}):B.backupOptions(result.items,chosen,Date.now());list=list.filter(function(j){return !sameJourney(j,chosen);}).slice(0,4);say(kind==='safe'?'Szukałem połączeń z co najmniej 10 minutami na przesiadkę.':'To kolejne dostępne wyjazdy. Sprawdź godziny przyjazdu, bo mogą być późniejsze niż pierwotnie planowaliśmy.');if(!list.length)say(kind==='safe'?'Nie znalazłem spokojniejszego wariantu przy tych ustawieniach.':'Nie znalazłem późniejszego kursu w tym dniu. Możemy sprawdzić jutro.');list.forEach(function(j){tile(B.clock(j.departure)+' → '+B.clock(j.arrival)+' · '+j.line+(j.transfers?' · przesiadka '+j.wait+' min':' · bez przesiadki'),function(){state=Object.assign({},opts);delete state.afterDeparture;choose(j);});});tile('Zachowaj wybraną podróż',function(){state=original;choose(chosen);});if(kind==='backup'&&!list.length)tile('Sprawdź jutro',function(){state=original;ask('jutro po 00:00');});}catch(e){if(job.id===session){say('Nie udało się sprawdzić alternatywy. Twoja wybrana notatka pozostaje zapisana w rozmowie.');tile('Wróć do wybranej podróży',function(){state=original;choose(chosen);});}}finally{if(job.id===session){active=null;cancelButton.hidden=true;status.textContent='';}}}
+
+// Included in the helper closure. Revalidate every tap using the current clock.
+var timePicker=null;
+function useTime(value){
+ if(state.pending!=='time')return;
+ var now=new Date(),check={date:state.date,time:value,arriveBy:!!state.arriveBy,arrivalMargin:state.arrivalMargin||0,notBefore:state.notBefore},issue=B.travelTimeIssue(check,now);
+ if(issue){say(issue==='BEFORE_OUTBOUND_ARRIVAL'?'Ta godzina wypada przed przyjazdem wybranego kursu. Wybierzmy późniejszy powrót.':issue==='PAST_ARRIVAL_MARGIN'?'Ta godzina nie zostawia już wybranego zapasu przed przyjazdem. Wybierz późniejszą albo zmniejsz zapas.':'Ta godzina już minęła. Wybierzmy późniejszą lub inny dzień.');state.time=null;askTime(true);return;}
+ ask(state.arriveBy?'muszę być na miejscu przed '+value+' z zapasem '+(state.arrivalMargin||0)+' min':'po '+value);
+}
+function ensureTravelTime(){
+ if(state.timeIsNow&&!state.arriveBy){var now=new Date(Math.max(Date.now(),state.notBefore||0));if(+now>Date.now())now=new Date(Math.ceil(+now/60000)*60000);state.date=B.dateString(now);state.time=B.clock(+now);return true;}
+ var issue=B.travelTimeIssue(state,new Date());if(!issue)return true;
+ state.time=null;state.timeIsNow=false;
+ if(issue==='PAST_DATE'){state.date=null;say('Ten dzień już minął. Wybierzmy nowy termin.');askDate();}
+ else{say(issue==='BEFORE_OUTBOUND_ARRIVAL'?'Ta godzina wypada przed przyjazdem wybranego kursu. Wybierzmy późniejszy powrót.':issue==='PAST_ARRIVAL_MARGIN'?'Nie możemy już zdążyć z takim zapasem przed wskazaną godziną. Wybierz późniejszą albo zmniejsz zapas.':'Ta godzina już minęła. Podaj późniejszą albo wybierz inny dzień.');askTime(true);}
+ persist();return false;
+}
+function paintTimeChoices(){
+ if(!timePicker||state.pending!=='time'||!timePicker.node.isConnected)return;
+ if(state.date<B.dateString(new Date())){state.date=state.time=null;state.timeIsNow=false;timePicker=null;say('Rozpoczął się nowy dzień. Wybierzmy termin podróży ponownie.');askDate();return;}
+ var list=B.futureHours(state.date,new Date(),state.arriveBy?(state.arrivalMargin||0):0,state.notBefore),floor=B.timeFloor(state.date,new Date(),state.arriveBy?(state.arrivalMargin||0):0,state.notBefore),input=timePicker.input;
+ if(floor!==null){input.min=B.clock(floor);input.disabled=false;timePicker.apply.disabled=false;}else{input.removeAttribute('min');input.disabled=true;timePicker.apply.disabled=true;}
+ timePicker.node.textContent='';timePicker.page=Math.min(timePicker.page,Math.max(0,Math.ceil(list.length/8)-1));
+ var start=timePicker.page*8;
+ function offer(label,action){var b=button(label,action,'pil-tile');timePicker.node.appendChild(b);return b;}
+ list.slice(start,start+8).forEach(function(value){var b=offer((state.arriveBy?'Przyjazd do ':'Od ')+value,function(){useTime(value);});b.setAttribute('data-time-offer',value);});
+ if(start)offer('Poprzednie godziny',function(){timePicker.page--;paintTimeChoices();});
+ if(start+8<list.length)offer('Więcej godzin',function(){timePicker.page++;paintTimeChoices();});
+ if(!list.length){timePicker.node.appendChild(el('p','pil-hour-empty','Na ten dzień nie mam już późniejszych godzin do wyboru. Możesz wybrać inny dzień.'));}
+}
+function askTime(quiet){
+ if(!state.date||B.dateString(new Date(state.date+'T12:00:00'))!==state.date){state.date=null;askDate();return;}
+ state.pending='time';clearChoices();var mode=!!state.arriveBy;
+ if(!quiet){var tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);var day=state.date===B.dateString(new Date())?'Dzisiaj':state.date===B.dateString(tomorrow)?'Jutro':new Date(state.date+'T12:00:00').toLocaleDateString('pl-PL',{weekday:'long',day:'numeric',month:'long'});say(day+'. '+(mode?'O której najpóźniej chcesz być na miejscu?':'Od której godziny szukamy wyjazdu?')+' Wybierz lub wpisz godzinę.');}
+ tile(mode?'Szukaj według godziny wyjazdu':'Muszę dotrzeć na godzinę',function(){state.arriveBy=!mode;state.time=null;state.timeIsNow=false;if(state.arriveBy&&state.arrivalMargin===undefined)state.arrivalMargin=10;askTime();});
+ if(state.date===B.dateString(new Date())&&!mode)tile('Najbliższe połączenie',function(){ask('teraz');});
+ var area=el('div','pil-hour-list');area.id='pil-hour-list';choices.appendChild(area);
+ var input=el('input');input.type='time';input.setAttribute('aria-label',mode?'Najpóźniejszy przyjazd':'Godzina podróży');input.step='60';choices.appendChild(input);
+ var apply=tile(mode?'Przyjedź przed tą godziną':'Wybierz tę godzinę',function(){if(input.value)useTime(input.value);});
+ timePicker={date:state.date,page:0,node:area,input:input,apply:apply};paintTimeChoices();
+ tile('Wybierz inny dzień',function(){state.date=state.time=null;state.timeIsNow=false;askDate();});
+ if(state.date===B.dateString(new Date()))tile('Szukaj jutro',function(){var next=new Date();next.setDate(next.getDate()+1);state.date=B.dateString(next);state.time=null;state.timeIsNow=false;askTime();});
+ persist();
+}
+
+// Geometry of the map and a schematic stop sequence; no fabricated live movement.
+function busGeoPoint(latitude,longitude,level){
+ var lat=Number(latitude),lon=Number(longitude);
+ if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)return null;
+ lat=Math.max(-85.05112878,Math.min(85.05112878,lat));
+ var n=Math.pow(2,level),r=lat*Math.PI/180;
+ return {x:(lon+180)/360*n,y:(1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n};
+}
+function busMapLayout(vehicle,width,height,zoom){
+ var level=Math.ceil(zoom),size=256*Math.pow(2,zoom-level),n=Math.pow(2,level),center=busGeoPoint(vehicle.latitude,vehicle.longitude,level);
+ if(!center)return null;
+ function locate(lat,lon){var p=busGeoPoint(lat,lon,level);if(!p)return null;var dx=p.x-center.x;if(dx>n/2)dx-=n;if(dx<-n/2)dx+=n;return {x:width/2+dx*size,y:height/2+(p.y-center.y)*size};}
+ var tiles=[],minX=Math.floor(center.x-width/2/size),maxX=Math.floor(center.x+width/2/size),minY=Math.floor(center.y-height/2/size),maxY=Math.floor(center.y+height/2/size);
+ for(var x=minX;x<=maxX;x++)for(var y=minY;y<=maxY;y++)if(y>=0&&y<n)tiles.push({x:((x%n+n)%n),y:y,left:width/2+(x-center.x)*size,top:height/2+(y-center.y)*size,level:level,size:size});
+ var stops=(vehicle.stops||[]).map(function(st){var p=st.latitude===null||st.longitude===null?null:locate(st.latitude,st.longitude);return p?Object.assign({},st,p):null;}).filter(function(st){return st&&st.x>=8&&st.x<=width-8&&st.y>=8&&st.y<=height-24;});
+ stops.sort(function(a,b){return Number(b.index===vehicle.boardingIndex)-Number(a.index===vehicle.boardingIndex)||Number(b.index===vehicle.currentIndex)-Number(a.index===vehicle.currentIndex)||Math.hypot(a.x-width/2,a.y-height/2)-Math.hypot(b.x-width/2,b.y-height/2);});
+ var next=(vehicle.stops||[])[vehicle.currentIndex+(vehicle.atStop?1:0)],direction=next&&next.latitude!==null&&next.longitude!==null?locate(next.latitude,next.longitude):null;
+ if(direction&&Math.hypot(direction.x-width/2,direction.y-height/2)<3)direction=null;
+ return {tiles:tiles,stops:stops.slice(0,8),direction:direction,tileSize:size,level:level};
+}
+function busAxisRows(vehicle,full){
+ var stops=vehicle.stops||[],current=vehicle.currentIndex,boarding=vehicle.boardingIndex;
+ if(!stops.length||!Number.isInteger(current)||current<0||current>=stops.length)return [];
+ var indexes=full?stops.map(function(_,i){return i;}):[current-1,current,current+1,boarding].filter(function(i,p,a){return i>=0&&i<stops.length&&a.indexOf(i)===p;}).sort(function(a,b){return a-b;});
+ var rows=[],previous=-1;
+ indexes.forEach(function(index){
+  if(previous>=0&&index-previous>1)rows.push({type:'gap',count:index-previous-1});
+  if(index===current&&!vehicle.atStop)rows.push({type:'bus',name:'Autobus teraz',detail:vehicle.positionLabel+': '+stops[current].name});
+  rows.push({type:'stop',name:stops[index].name,index:index,boarding:index===boarding,current:index===current,bus:index===current&&vehicle.atStop,past:index<current});
+  previous=index;
+ });
+ return rows;
+}
+
+ // Dedicated MLD live vehicle conversation. Kept separate from trip planner state.
+ var BUS_FEED='https://gtfs.kolejemalopolskie.com.pl/?download=L2hvbWUvcmdfdXNlci9yZ191c2VyL0dURlMtUlQvdmVoaWNsZV9wb3NpdGlvbnMuanNvbg%3D%3D';
+ function busReadNative(job){
+  return new Promise(function(resolve){
+   var bridge=w.IspinaNative,started=Date.now(),timer=0,done=false,last=null;
+   function finish(value){if(done)return;done=true;clearTimeout(timer);if(job.signal)job.signal.removeEventListener('abort',cancel);resolve(value);}
+   function cancel(){finish(null);}
+   function poll(){
+    if(job.id!==session||job.signal&&job.signal.aborted){finish(null);return;}
+    try{var raw=bridge.getMldVehiclePositionsJson();if(raw&&raw.length<1048576){var value=JSON.parse(raw),age=Date.now()/1000-Number((value.header||{}).timestamp);if(Array.isArray(value.entity)&&age>=-30&&age<=240){last=value;if(age<=45){finish(value);return;}}}}catch(e){}
+    if(Date.now()-started>=16000){finish(last);return;}timer=setTimeout(poll,200);
+   }
+   if(job.signal)job.signal.addEventListener('abort',cancel);
+   try{bridge.requestMldVehiclePositions();}catch(e){finish(null);return;}poll();
+  });
+ }
+ function busIcon(){
+  var ns='http://www.w3.org/2000/svg',icon=d.createElementNS(ns,'svg');icon.setAttribute('viewBox','0 0 24 28');icon.setAttribute('width','24');icon.setAttribute('height','28');icon.setAttribute('aria-hidden','true');
+  [['rect',{x:3,y:2,width:18,height:22,rx:4,fill:'none',stroke:'white','stroke-width':2}],['rect',{x:6,y:6,width:12,height:8,rx:1,fill:'white'}],['circle',{cx:7,cy:19,r:1.5,fill:'white'}],['circle',{cx:17,cy:19,r:1.5,fill:'white'}],['path',{d:'M6 24v2m12-2v2',stroke:'white','stroke-width':2,'stroke-linecap':'round'}]].forEach(function(shape){var part=d.createElementNS(ns,shape[0]);Object.keys(shape[1]).forEach(function(k){part.setAttribute(k,String(shape[1][k]));});icon.appendChild(part);});return icon;
+ }
+ function busAxis(card,v){
+  if(!v.stops||!v.stops.length)return;
+  var section=el('section','pil-bus-route');section.setAttribute('aria-label','Schemat trasy autobusu');
+  section.appendChild(el('strong','pil-route-title','Autobus na trasie'));
+  function paint(parent,full){
+   var list=el('ol','pil-route-list');
+   busAxisRows(v,full).forEach(function(row){
+    var item=el('li','pil-route-row pil-route-'+row.type+(row.boarding?' pil-route-board':'')+(row.past?' pil-route-past':'')+(row.bus||row.type==='bus'?' pil-route-here':''));
+    if(row.type==='gap'){item.appendChild(el('span','pil-route-gap-text','⋮ '+row.count+' '+B.polishCount(row.count,'przystanek','przystanki','przystanków')));}
+    else{
+     var dot=el('span','pil-route-dot');dot.setAttribute('aria-hidden','true');if(row.bus||row.type==='bus')dot.appendChild(busIcon());item.appendChild(dot);
+     var label=el('div','pil-route-label');label.appendChild(el('span','pil-route-name',row.name));
+     if(row.type==='bus')label.appendChild(el('small','',row.detail));
+     else if(row.bus)label.appendChild(el('small','','Autobus przy przystanku'));
+     else if(row.boarding)label.appendChild(el('small','','Twój przystanek'));
+     else if(row.current)label.appendChild(el('small','','Następny przystanek autobusu'));
+     item.appendChild(label);
+    }list.appendChild(item);
+   });parent.appendChild(list);
+  }
+  paint(section,false);
+  section.appendChild(el('div','pil-route-goal','↓ Kierunek: '+v.direction));
+  var all=el('details','pil-route-all');all.appendChild(el('summary','','Wszystkie przystanki ('+v.stops.length+')'));var full=el('div','pil-route-full');paint(full,true);all.appendChild(full);section.appendChild(all);card.appendChild(section);
+ }
+ function busMap(card,v){
+  var map=el('div','pil-bus-map');map.setAttribute('role','group');map.setAttribute('aria-label','Mapa autobusu w kierunku '+v.direction+' z przystankami tego kursu');card.appendChild(map);
+  var zoom=13-Math.log(1.5)/Math.LN2,tiles=el('div','pil-map-tiles'),overlay=el('div','pil-map-stops'),fallback=el('span','pil-map-fallback','Tło mapy jest chwilowo niedostępne. Przystanki i kierunek znajdziesz na schemacie trasy.');
+  map.appendChild(tiles);map.appendChild(overlay);map.appendChild(fallback);
+  var marker=el('span','pil-bus-marker');marker.setAttribute('aria-label','Autobus — pozycja GPS');marker.appendChild(busIcon());map.appendChild(marker);
+  var controls=el('div','pil-map-controls'),plus=button('+',function(){zoom=Math.min(16,zoom+1);paint();}),minus=button('−',function(){zoom=Math.max(10,zoom-1);paint();});plus.setAttribute('aria-label','Powiększ mapę');minus.setAttribute('aria-label','Pomniejsz mapę');controls.appendChild(plus);controls.appendChild(minus);map.appendChild(controls);
+  var credit=el('a','pil-map-credit','© OpenStreetMap');credit.href='https://www.openstreetmap.org/copyright';credit.target='_blank';credit.rel='noopener';map.appendChild(credit);
+  var caption=el('small','pil-map-caption','Punkty na mapie: przystanki tego kursu. Strzałka: kierunek do kolejnego przystanku.');card.appendChild(caption);
+  var age=el('small','pil-gps-age');age.dataset.at=String(v.at);card.appendChild(age);
+  var generation=0,lastView='';
+  function paint(){
+   var width=map.clientWidth||Math.max(240,card.clientWidth-30),height=map.clientHeight||260,view=width+'|'+height+'|'+zoom;
+   if(view===lastView)return;lastView=view;var id=++generation,layout=busMapLayout(v,width,height,zoom),loaded=0;
+   if(!layout)return;tiles.textContent='';overlay.textContent='';map.classList.remove('pil-map-unavailable');map.style.setProperty('--pil-tile-size',layout.tileSize+'px');map.dataset.zoom=String(zoom);
+   layout.tiles.forEach(function(t){var img=el('img');img.alt='';img.setAttribute('aria-hidden','true');img.draggable=false;img.referrerPolicy='no-referrer';img.style.left=t.left+'px';img.style.top=t.top+'px';
+    img.addEventListener('load',function(){if(id===generation){loaded++;map.classList.remove('pil-map-unavailable');}});img.addEventListener('error',function(){if(id===generation&&!loaded)map.classList.add('pil-map-unavailable');});
+    img.src='https://tile.openstreetmap.org/'+t.level+'/'+t.x+'/'+t.y+'.png';tiles.appendChild(img);
+   });
+   var occupied=[{left:width/2-28,right:width/2+28,top:height/2-28,bottom:height/2+28},{left:width-60,right:width,top:0,bottom:105}];
+   layout.stops.forEach(function(st){
+    var dot=el('span','pil-map-stop'+(st.index===v.boardingIndex?' pil-map-board':''));dot.style.left=st.x+'px';dot.style.top=st.y+'px';dot.title=st.name;dot.setAttribute('aria-label',st.name+(st.index===v.boardingIndex?' — Twój przystanek':''));overlay.appendChild(dot);
+    var label=el('span','pil-map-stop-label'+(st.index===v.boardingIndex?' pil-map-board-label':''),st.name);label.style.maxWidth=Math.min(136,width-24)+'px';overlay.appendChild(label);
+    var lw=label.offsetWidth||120,lh=label.offsetHeight||24,left=Math.max(5,Math.min(width-lw-5,st.x-lw/2)),positions=[st.y+9,st.y-lh-10],placed=false;
+    positions.forEach(function(top){if(placed||top<5||top+lh>height-23)return;var rect={left:left,right:left+lw,top:top,bottom:top+lh};if(occupied.some(function(r){return rect.left<r.right+4&&rect.right>r.left-4&&rect.top<r.bottom+3&&rect.bottom>r.top-3;}))return;label.style.left=left+'px';label.style.top=top+'px';occupied.push(rect);placed=true;});
+    if(!placed)label.remove();
+   });
+   if(layout.direction){
+    var ns='http://www.w3.org/2000/svg',svg=d.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 '+width+' '+height);svg.setAttribute('class','pil-map-bearing');svg.setAttribute('aria-hidden','true');
+    var dx=layout.direction.x-width/2,dy=layout.direction.y-height/2,len=Math.hypot(dx,dy),ux=dx/len,uy=dy/len,cx=width/2,cy=height/2,tipX=cx+ux*55,tipY=cy+uy*55;
+    var line=d.createElementNS(ns,'path');line.setAttribute('d','M '+(cx+ux*24)+' '+(cy+uy*24)+' L '+tipX+' '+tipY);line.setAttribute('stroke','#174875');line.setAttribute('stroke-width','4');line.setAttribute('stroke-linecap','round');svg.appendChild(line);
+    var tip=d.createElementNS(ns,'polygon');tip.setAttribute('points',tipX+','+tipY+' '+(tipX-ux*12-uy*7)+','+(tipY-uy*12+ux*7)+' '+(tipX-ux*12+uy*7)+','+(tipY-uy*12-ux*7));tip.setAttribute('fill','#174875');svg.appendChild(tip);overlay.insertBefore(svg,overlay.firstChild);
+   }
+   plus.disabled=zoom>=16;minus.disabled=zoom<=10;
+  }
+  paint();busUpdateAges();
+  if(w.ResizeObserver){var observer=new w.ResizeObserver(function(){if(map.isConnected)paint();else observer.disconnect();});observer.observe(map);}
+ }
+ function busUpdateAges(){if(!log)return;log.querySelectorAll('.pil-gps-age').forEach(function(item){var seconds=Math.max(0,Math.floor((Date.now()-Number(item.dataset.at))/1000)),stale=seconds>240,card=item.closest('.pil-gps-card');item.textContent=stale?'Pozycja archiwalna. Odśwież, aby sprawdzić autobus.':'Pomiar sprzed '+(seconds<60?seconds+' s':Math.floor(seconds/60)+' min')+' · odśwież przyciskiem poniżej';if(card){card.classList.toggle('pil-gps-stale',stale);var badge=card.querySelector('.pil-gps-badge');if(badge)badge.textContent=stale?'POZYCJA ARCHIWALNA':'POTWIERDZONY GPS';}});}
+ function busData(){var a=api();return a&&a.busLines&&a.busDirections&&a.busStops&&a.busVehicle?a:null;}
+ function busNormalize(s){return B.norm(String(s||''));}
+ function busLines(){var data=busData();return data?data.busLines():[];}
+ function busSelectLine(line){state.bus={line:line,direction:null,stop:null,stage:'direction'};say(line==='GMINNA'?'Linia gminna':line,'user');busPrompt();persist();}
+ function busSelectDirection(direction){state.bus.direction=direction;state.bus.stage='stop';say('Kierunek: '+direction,'user');busPrompt();persist();}
+ function busSelectStop(name){if(busNormalize(name)==='ispina')name='Ispina Most';var b=state.bus;if(!b)return;b.stop=name;b.stage='done';field.value='';field.placeholder='Napisz kolejne pytanie…';say('Czekam na przystanku '+name,'user');busLookUp();persist();}
+ function busMatches(query){var b=state.bus,provider=busData();if(!b||!provider||!b.direction)return [];
+  var all=provider.busStops(b.line,b.direction),q=busNormalize(query).replace(/^(?:jestem|stoje|czekam|na|przystanek|przystanku|w|we|pod|przy|z)\s+/g,'').trim();
+  if(!q||q.length<3)return [];
+  var words=q.split(/\s+/).filter(Boolean),matches=all.filter(function(s){var n=busNormalize(s.name);return words.every(function(w){return n.includes(w);});});
+  matches.sort(function(a,b){var aa=busNormalize(a.name),bb=busNormalize(b.name);return Number(!aa.startsWith(q))-Number(!bb.startsWith(q))||a.name.localeCompare(b.name,'pl');});
+  return matches;
+ }
+ function busSuggestions(query){if(!state.bus||state.bus.stage!=='stop')return;
+  clearChoices();var found=busMatches(query),q=busNormalize(query);
+  if(q.length<3){tile('Pokaż przystanki tej linii',function(){busAllStops(0);});return;}
+  found.slice(0,9).forEach(function(s){tile('📍 '+s.name,function(){busSelectStop(s.name);});});
+  if(found.length>9)tile('Więcej pasujących przystanków',function(){busStopPage(found,9);});
+  if(!found.length)tile('Pokaż wszystkie obsługiwane przystanki',function(){busAllStops(0);});
+ }
+ function busStopPage(list,offset){clearChoices();list.slice(offset,offset+9).forEach(function(s){tile('📍 '+s.name,function(){busSelectStop(s.name);});});
+  if(offset>0)tile('Wcześniejsze',function(){busStopPage(list,Math.max(0,offset-9));});
+  if(list.length>offset+9)tile('Dalsze',function(){busStopPage(list,offset+9);});
+ }
+ function busAllStops(offset){var b=state.bus,provider=busData(),all=provider&&b?provider.busStops(b.line,b.direction):[];busStopPage(all,offset);if(!all.length)say('Nie widzę teraz przystanków tej linii w rozkładzie IL. Spróbuj odświeżyć rozkłady w Odjazdach.');}
+ function busPrompt(quiet){var b=state.bus;clearChoices();if(!b)return;
+  var data=busData();if(!data){if(!quiet)say('Nie mogę odczytać katalogu linii. Otwórz Odjazdy i odśwież rozkłady, a potem spróbuj ponownie.');return;}
+  if(b.stage==='line'){
+   var lines=busLines();if(!quiet)say('Która linia Cię interesuje? Wybierz poniżej albo wpisz np. A4.');
+   if(!lines.length){say('Brakuje aktualnego katalogu MLD. Odśwież rozkłady w Odjazdach.');return;}
+   lines.forEach(function(l){tile(l==='GMINNA'?'Linia gminna':l,function(){busSelectLine(l);});});field.placeholder='Linia, np. A4';
+  }else if(b.stage==='direction'){
+   var directions=data.busDirections(b.line);if(!quiet)say('W którym kierunku jedziesz linią '+(b.line==='GMINNA'?'gminną':b.line)+'?');
+   directions.slice(0,16).forEach(function(dir){tile('→ '+dir,function(){busSelectDirection(dir);});});
+   if(!directions.length)say('Nie znalazłem kierunków tej linii. Odśwież rozkłady w Odjazdach.');field.placeholder='Kierunek, np. Bochnia';
+  }else if(b.stage==='stop'){
+   if(!quiet)say('Gdzie czekasz na autobus? Wpisz przynajmniej 3 litery nazwy przystanku, np. „Isp”, „Gro” lub „Mos”. Pokażę pasujące przystanki do wyboru.');
+   field.placeholder='3 litery przystanku…';busSuggestions(field.value);
+  }persist();
+ }
+ function busStart(query){stop();var b={line:null,direction:null,stop:null,stage:'line'},m=String(query||'').toUpperCase().match(/\bA(?:4|7|50|57|65)\b/);if(m)b.line=m[0];else if(/\bgminn/i.test(query))b.line='GMINNA';
+  if(b.line&&busLines().indexOf(b.line)<0)b.line=null;
+  if(b.line)b.stage='direction';state.bus=b;try{if(w.IspinaNative&&w.IspinaNative.requestMldVehiclePositions)w.IspinaNative.requestMldVehiclePositions();}catch(e){}say('Sprawdźmy, gdzie jest Twój autobus. 🚌');busPrompt();}
+ function busMessage(query){var n=busNormalize(query),b=state.bus,trigger=/(?:gdzie|polozen|pozycj|sledz|lokalizacj|znajdz).*(?:autobus|bus|pojazd)|(?:autobus|bus).*(?:gdzie|teraz|pozycj|jedzie)/.test(n);
+  if(trigger){stop();closeMenu();field.value='';say(query,'user');busStart(query);return true;}
+  if(!b||b.stage==='done'){
+   if(b&&/^(?:odswiez|sprawdz ponownie|gdzie teraz|pokaz znowu)$/.test(n)){field.value='';say(query,'user');busLookUp();return true;}
+   return false;
+  }
+  if(/^(nowa podroz|zacznij od nowa|anuluj sledzenie|koniec sledzenia)$/.test(n)){state.bus=null;clearChoices();return false;}
+  stop();closeMenu();field.value='';say(query,'user');
+  if(b.stage==='line'){
+   var m=query.toUpperCase().match(/\bA(?:4|7|50|57|65)\b/),line=m&&m[0]||(/gminn/i.test(query)?'GMINNA':null);
+   if(line&&busLines().indexOf(line)>=0){b.line=line;b.stage='direction';busPrompt();return true;}
+   say('Nie rozpoznałem linii. Wybierz jedną z dostępnych poniżej.');busPrompt(true);return true;
+  }
+  if(b.stage==='direction'){
+   var dirs=busData()?busData().busDirections(b.line):[],q=busNormalize(query).replace(/^(?:do|na|kierunek|w strone)\s+/,'');
+   var matching=dirs.filter(function(s){return busNormalize(s)===q||busNormalize(s).includes(q);});
+   if(matching.length===1){b.direction=matching[0];b.stage='stop';busPrompt();return true;}
+   say(matching.length>1?'Widzę kilka podobnych kierunków. Wybierz właściwy.':'Nie widzę takiego kierunku dla tej linii. Wybierz z listy.');busPrompt(true);return true;
+  }
+  if(b.stage==='stop'){
+   var found=busMatches(query);if(busNormalize(query).length<3){say('Wpisz co najmniej trzy litery przystanku.');busPrompt(true);return true;}
+   say(found.length?'Wybierz swój przystanek z podpowiedzi:':'Nie widzę tego przystanku na wybranej trasie. Pokażę przystanki, które ta linia obsługuje.');busSuggestions(query);return true;
+  }
+  return false;
+ }
+ // Pokazujemy odpowiedź w czacie, nie otwieramy stron w czytniku.
+ function busFormatArrivals(arr,b){
+   var x=arr&&arr.items||[],now=Date.now(),out='🚌 '+(b.line==='GMINNA'?'Linia gminna':b.line)+' → '+b.direction+'\n🚏 '+b.stop+'\n';
+   if(!x.length)return out+'Nie znalazłem zaplanowanego odjazdu w zapisanym rozkładzie na najbliższe 24 godziny. To NIE potwierdza, że autobus nie kursuje. Sprawdź aktualność danych w Odjazdach.';
+   out+='Najbliższy odjazd: '+new Date(x[0].expected).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+   var minutes=Math.max(0,Math.ceil((x[0].expected-now)/60000));out+=' (za około '+minutes+' min)';
+   if(x[0].live){var delay=Math.round(x[0].delay/60);out+='\n🟢 Dane o opóźnieniu MLD: '+(delay>=0?'+':'')+delay+' min';if(x[0].rtAt)out+=' (aktualizacja '+new Date(x[0].rtAt).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'})+')';}
+   else out+='\n⚪ Godzina według rozkładu, bez bieżącej korekty opóźnienia.';
+   if(x[0].cancelled||x[0].skipped)out+='\nUwaga: komunikat LIVE o odwołaniu/pominięciu przystanku — sprawdź Odjazdy.';
+   if(x.length>1)out+='\nNastępne: '+x.slice(1).map(function(z){return new Date(z.expected).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'})+(z.live?' (LIVE)':'');}).join(', ');
+   if(arr.sourceUpdated&&now-arr.sourceUpdated>48*3600000)out+='\nℹ️ Rozkład może być nieaktualny — odśwież Odjazdy.';
+   return out;
+ }
+ async function busLookUp(){
+  var b=state.bus,provider=busData();if(!b||!b.line||!b.direction||!b.stop)return;
+  if(busNormalize(b.stop)==='ispina')b.stop='Ispina Most';
+  clearChoices();var job=begin();status.textContent='Sprawdzam najbliższy odjazd…';
+  try{
+    if(!provider||typeof provider.busArrivals!=='function')throw Error('NO_SCHEDULE_PROVIDER');
+    var arrival=provider.busArrivals(b.line,b.direction,b.stop,Date.now());
+    if(job.id!==session)return;
+    var scheduledTrips=(arrival&&arrival.items||[]).filter(function(x){return x&&x.tripId;});
+    var upcomingIds=scheduledTrips.map(function(x){return String(x.tripId);});
+    say(busFormatArrivals(arrival,b));
+    if(b.line==='GMINNA'){say('Linia gminna: nie mam potwierdzonego źródła GPS. Godzina powyżej pochodzi z rozkładu.');completed('✓ Sprawdzono rozkład');return;}
+    if(!upcomingIds.length){say('Nie mogę przypisać pozycji GPS do konkretnego najbliższego kursu. Podałem jedynie dostępny rozkład.');completed('✓ Sprawdzono rozkład');return;}
+    status.textContent='Sprawdzam dokładną pozycję GPS…';showTyping();
+    var feed=null;
+    try{if(w.IspinaNative&&typeof w.IspinaNative.getMldVehiclePositionsJson==='function'&&typeof w.IspinaNative.requestMldVehiclePositions==='function'){
+      feed=await busReadNative(job);
+    }else if(w.IspinaNative&&typeof w.IspinaNative.getMldVehiclePositionsJson==='function'){
+      var raw=w.IspinaNative.getMldVehiclePositionsJson();if(raw)feed=JSON.parse(raw);
+    }}catch(e){}
+    if(!feed&&w.fetch){var controller=w.AbortController?new w.AbortController():null;
+      var timer=setTimeout(function(){if(controller)controller.abort();},3500);
+      try{var response=await w.fetch(BUS_FEED,{method:'GET',mode:'cors',cache:'no-store',credentials:'omit',signal:controller?controller.signal:job.signal});if(response.ok)feed=await response.json();}catch(e){}finally{clearTimeout(timer);}
+    }
+    if(job.id!==session)return;
+    if(feed){var result=provider.busVehicle(feed,b.line,b.direction,b.stop,upcomingIds);
+      if(result.status==='live'&&result.vehicles.length){result.vehicles.slice(0,1).forEach(function(v){
+        var trip=scheduledTrips.filter(function(x){return String(x.tripId)===v.tripId;})[0];
+        var when=trip?new Date(trip.expected).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'}):'?';
+        var card=say(b.line+' → '+b.direction+'\n'+v.positionLabel+': '+v.place+'\nTwój przystanek: '+b.stop+'\nOdjazd według '+(trip&&trip.live?'danych LIVE':'rozkładu')+': '+when+'\nPomiar GPS: '+new Date(v.at).toLocaleDateString('pl-PL')+' '+new Date(v.at).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit',second:'2-digit'}));
+        card.classList.add('pil-gps-card');card.insertBefore(el('span','pil-gps-badge','POTWIERDZONY GPS'),card.firstChild);busAxis(card,v);busMap(card,v);
+      });completed('✓ Pozycja GPS potwierdzona');}
+      else{say('Nie mam świeżej pozycji GPS przypisanej do tych konkretnych kursów. Podane wyżej godziny pozostają rozkładowe, o ile nie oznaczyłem ich LIVE.');completed('✓ Sprawdzono odjazdy');}
+    }else{say('Nie udało się połączyć ze źródłem GPS MLD. Powyżej są godziny odjazdów z rozkładu, z osobnym oznaczeniem świeżego opóźnienia, jeśli jest dostępne. Nie potwierdzam pozycji pojazdu.');completed('✓ Sprawdzono odjazdy');}
+  }catch(e){if(job.id===session){say('Nie mogę teraz odczytać rozkładu dla '+b.stop+'. Otwórz Odjazdy i odśwież dane. Potem wróć tutaj — zapamiętam linię, kierunek i przystanek.');completed('! Brak danych odjazdów');}}
+  finally{if(job.id===session){hideTyping();active=null;cancelButton.hidden=true;
+    tile('↻ Sprawdź ponownie',busLookUp);
+    tile('Zmień przystanek',function(){b.stop=null;b.stage='stop';busPrompt();});
+    tile('Zmień kierunek',function(){b.direction=null;b.stop=null;b.stage='direction';busPrompt();});
+    tile('Inna linia',function(){state.bus={line:null,direction:null,stop:null,stage:'line'};busPrompt();});
+    persist();log.scrollTop=log.scrollHeight;
+  }}
+ }
+
+ function getJSON(url,job){return new Promise(function(resolve,reject){var xhr=new XMLHttpRequest();if(active){active.xhr=xhr;active.reject=reject;}xhr.open('GET',url,true);xhr.timeout=12000;xhr.onprogress=function(e){if(e.loaded>180000){xhr.abort();reject(Error('TOO_LARGE'));}};xhr.onload=function(){if(job.id!==session){reject(Error('CANCELLED'));return;}try{if(xhr.status!==200)throw Error('HTTP '+xhr.status);if(xhr.responseText.length>180000)throw Error('TOO_LARGE');resolve(JSON.parse(xhr.responseText));}catch(e){reject(e);}};xhr.onerror=function(){reject(Error('NETWORK'));};xhr.ontimeout=function(){reject(Error('TIMEOUT'));};xhr.onabort=function(){reject(Error('CANCELLED'));};xhr.send();});}
+ async function cachedJSON(url,job,ttl,force){var hit=!force&&weatherCache.filter(function(x){return x.url===url&&Date.now()>=x.at&&Date.now()-x.at<ttl;})[0];if(hit)return {data:hit.data,at:hit.at};var data=await getJSON(url,job),entry={url:url,at:Date.now(),data:data};weatherCache=weatherCache.filter(function(x){return x.url!==url;});weatherCache.push(entry);weatherCache=weatherCache.slice(-24);try{var encoded=JSON.stringify(weatherCache);while(encoded.length>190000&&weatherCache.length){weatherCache.shift();encoded=JSON.stringify(weatherCache);}localStorage.setItem(CACHE,encoded);}catch(e){}return entry;}
+ async function location(city,job,force){var url='https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(city)+ '&count=10&countryCode=PL&language=pl&format=json',response=await cachedJSON(url,job,30*86400000,force),data=response.data,same=(data.results||[]).filter(function(r){return B.norm(r.name)===B.norm(city)&&r.country_code==='PL'&&typeof r.latitude==='number'&&r.latitude>=-90&&r.latitude<=90&&typeof r.longitude==='number'&&r.longitude>=-180&&r.longitude<=180;}),regional=same.filter(function(r){return /malopol|lesser poland/.test(B.norm(r.admin1));});var candidates=regional.length?regional:same,municipality={grobla:'drwinia',ispina:'drwinia'}[B.norm(city)];if(municipality&&candidates.some(function(r){return typeof r.admin3==='string';}))candidates=candidates.filter(function(r){return B.norm(r.admin3)===municipality;});if(candidates.length!==1)throw Error('LOCATION_UNCLEAR');return candidates[0];}
+ async function weather(j,force){
+  var previous=d.getElementById('pil-weather-retry');if(previous)previous.remove();
+  var job=begin();active.weather=true;status.textContent='Sprawdzam pogodę na czas podróży…';
+  var overall=setTimeout(function(){if(job.id===session&&active){if(active.reject)active.reject(Error('TIMEOUT'));if(active.xhr)active.xhr.abort();}},30000);
+  var parts=[];
+  try{
+   if(navigator.onLine===false)throw Error('OFFLINE');
+   var places=[{city:cityOf(j.from),at:j.departure,label:'Wyjazd'},{city:cityOf(j.to),at:j.arrival,label:'Przyjazd'}],cache={};
+   for(var i=0;i<places.length;i++){
+    var p=places[i],geo=cache[p.city]||await location(p.city,job,force);cache[p.city]=geo;if(job.id!==session)return;
+    var date=B.dateString(new Date(p.at)),url='https://api.open-meteo.com/v1/forecast?latitude='+geo.latitude+'&longitude='+geo.longitude+'&hourly=temperature_2m,apparent_temperature,precipitation_probability,precipitation,wind_speed_10m&timezone=Europe%2FWarsaw&start_date='+date+'&end_date='+date;
+    var response=await cachedJSON(url,job,15*60000,force),f=B.forecastFor(response.data,p.at);if(!f)throw Error('FORECAST_RANGE');
+    parts.push(B.weatherNote(p.label,p.city,p.at,f));
+   }
+   if(job.id!==session)return;active.weather=false;journeySummary(parts.join('\n\n')+'\n\nPrognoza może się zmienić.',true);
+  }catch(e){
+   if(job.id!==session)return;active.weather=false;
+   var message=e.message==='LOCATION_UNCLEAR'?'Nie mam pewności, którą miejscowość wskazuje prognoza. Wolę nie podawać pogody dla niewłaściwego miejsca.':e.message==='FORECAST_RANGE'?'Na ten dzień nie ma jeszcze dostępnej prognozy. Zajrzyj do niej bliżej wyjazdu.':'Nie udało się pobrać prognozy. Trasę już mamy — pogodę możesz sprawdzić ponownie za chwilę.';
+   journeySummary(parts.length?parts.join('\n\n')+'\n\nNie udało się sprawdzić pogody dla pozostałej części podróży.':message,true);var retry=tile('Sprawdź pogodę ponownie',function(){weather(j,true);});retry.id='pil-weather-retry';
+  }finally{clearTimeout(overall);if(job.id===session){cancelButton.hidden=true;active=null;}}
+ }
+ function mount(){
+  if(!d.body||d.getElementById('pil-root'))return;
+  var css=el('style');css.textContent=w.IL_POMOCNIK_CSS||'';d.head.appendChild(css);
+  var root=el('aside');root.id='pil-root';var launch=button('Pomocnik IL',function(){open(true);});launch.id='pil-open';root.appendChild(launch);
+  panel=el('section');panel.id='pil-panel';panel.hidden=true;panel.setAttribute('aria-label','Pomocnik IL');
+  var head=el('header','pil-head'),title=el('div','pil-title');title.appendChild(el('strong','','Pomocnik IL'));title.appendChild(el('small','','Podróż zaczyna się od rozmowy'));head.appendChild(title);
+  var headButtons=el('div','pil-head-buttons'),more=button('⋯',function(){menu.hidden=!menu.hidden;more.setAttribute('aria-expanded',String(!menu.hidden));});more.id='pil-options';more.setAttribute('aria-label','Opcje rozmowy');more.setAttribute('aria-expanded','false');headButtons.appendChild(more);
+  var close=button('×',function(){open(false);});close.setAttribute('aria-label','Zamknij Pomocnika');headButtons.appendChild(close);head.appendChild(headButtons);panel.appendChild(head);
+  menu=el('div');menu.id='pil-menu';menu.hidden=true;menu.appendChild(button('Nowa podróż',function(){menu.hidden=true;ask('nowa podróż');}));
+  menu.appendChild(button('🚌 Gdzie jest mój autobus?',function(){closeMenu();ask('Gdzie jest mój autobus teraz?');}));
+  menu.appendChild(button('⭐ Ulubione',function(){showLibrary('favorites');}));menu.appendChild(button('📌 Moje podróże',function(){showLibrary('notes');}));menu.appendChild(button('🔔 Przypomnienia',showReminders));
+  menu.appendChild(button('Usuń rozmowę',function(){stop();closeLibrary();state={};messages=[];lastResults=lastJourney=null;lastNote='';noteCard=null;log.textContent='';log.appendChild(choices);clearChoices();try{localStorage.removeItem(KEY);localStorage.removeItem(CACHE);weatherCache=[];}catch(e){}menu.hidden=true;welcomeCard=say(B.greeting(new Date())+' Miło Cię widzieć! Skąd i dokąd chcesz pojechać?','assistant',false);persist();}));panel.appendChild(menu);
+  log=el('div');log.id='pil-log';log.setAttribute('role','log');log.setAttribute('aria-label','Rozmowa z Pomocnikiem IL');panel.appendChild(log);
+  choices=el('div');choices.id='pil-choices';choices.setAttribute('aria-label','Podpowiedzi do wyboru');log.appendChild(choices);
+  var bottom=el('div','pil-bottom'),compose=el('div','pil-compose');field=el('textarea');field.id='pil-field';field.rows=1;field.maxLength=800;field.placeholder='Dokąd jedziesz?';field.setAttribute('aria-label','Wiadomość do Pomocnika IL');compose.appendChild(field);compose.appendChild(button('Wyślij',function(){ask();},'pil-send'));bottom.appendChild(compose);
+  var statusRow=el('div','pil-status-row');status=el('p');status.id='pil-status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');statusRow.appendChild(status);cancelButton=button('Anuluj',function(){stop();},'pil-cancel');cancelButton.hidden=true;statusRow.appendChild(cancelButton);bottom.appendChild(statusRow);panel.appendChild(bottom);root.appendChild(panel);d.body.appendChild(root);
+  try{
+   travelData=B.readTravelData(localStorage.getItem(TRAVEL_KEY));
+   var rawSaved=localStorage.getItem(KEY)||'null';if(rawSaved.length>550000)throw Error('HISTORY_TOO_LARGE');var saved=JSON.parse(rawSaved);
+   if(saved&&Array.isArray(saved.messages)){
+    var source=saved.state&&typeof saved.state==='object'?saved.state:{};
+    ['fromCity','toCity','from','to','accessFrom'].forEach(function(k){if(typeof source[k]==='string'&&source[k].length<=160)state[k]=source[k];else if(source[k]===null)state[k]=null;});
+    if(typeof source.date==='string'&&/^20\d\d-\d\d-\d\d$/.test(source.date)&&B.dateString(new Date(source.date+'T12:00:00'))===source.date)state.date=source.date;
+    if(/^([01]\d|2[0-3]):[0-5]\d$/.test(source.time||''))state.time=source.time;
+    ['directOnly','arriveBy','timeIsNow'].forEach(function(k){if(typeof source[k]==='boolean')state[k]=source[k];});if(Number.isFinite(source.notBefore)&&source.notBefore>0&&source.notBefore<Date.now()+90*86400000)state.notBefore=source.notBefore;if(Number.isInteger(source.minWait)&&source.minWait>=1&&source.minWait<=60)state.minWait=source.minWait;if(Number.isInteger(source.arrivalMargin)&&source.arrivalMargin>=0&&source.arrivalMargin<=60)state.arrivalMargin=source.arrivalMargin;if(/^A(?:4|7|65|50|57)$/.test(source.line||''))state.line=source.line;
+    if(['originCity','destination','from','to','date','time','transfers','results'].includes(source.pending))state.pending=source.pending;
+    if(source.bus&&typeof source.bus==='object'&&/^A(?:4|7|65|50|57)$|^GMINNA$/.test(source.bus.line||'')&&['direction','stop','done'].includes(source.bus.stage)){state.bus={line:source.bus.line,direction:typeof source.bus.direction==='string'?source.bus.direction.slice(0,150):null,stop:typeof source.bus.stop==='string'?source.bus.stop.slice(0,150):null,stage:source.bus.stage};}
+    if(!(saved.version>=32)&&!state.from)state.fromCity=null;
+    messages=saved.messages.slice(-60).filter(function(m){return m&&['user','assistant'].includes(m.role)&&typeof m.text==='string'&&m.text.length<=8000&&!/^(Cześć! Pomogę Ci|Witaj! Pomogę Ci)/.test(m.text);});
+    messages.forEach(function(m){if(m.role==='assistant'&&/Pomiar GPS:/.test(m.text))m.text=m.text.replace(/\nGPS: -?\d+(?:\.\d+)?, -?\d+(?:\.\d+)?(?=\n|$)/g,'');var c=say(m.text,m.role,false,m.note);c._pilMessage=m;if(m.note)noteCard=c;});
+    lastNote=typeof saved.note==='string'?saved.note.slice(0,8000):'';
+    var j=saved.journey;if(j&&typeof j.from==='string'&&typeof j.to==='string'&&Number.isFinite(j.departure)&&Number.isFinite(j.arrival)&&j.arrival>=j.departure&&Number.isFinite(j.duration)&&Array.isArray(j.legs)&&j.legs.length>=1&&j.legs.length<=2&&j.legs.every(function(l){return l&&typeof l.from==='string'&&typeof l.to==='string'&&typeof l.line==='string'&&Number.isFinite(l.departure)&&Number.isFinite(l.arrival);}))lastJourney=j;
+    if(saved.version<37&&lastJourney&&noteCard){var weatherPart=(lastNote.split('POGODA\n')[1]||'').split(/\n\n(?:💡 )?WARTO WIEDZIEĆ/)[0].replace(/\n(?:Rozkład:|Pogoda:|Lokalizacje:)[\s\S]*$/,'').trim();lastNote=B.journeyNote(lastJourney,weatherPart||'Sprawdź pogodę ponownie dla wybranej podróży.',traffic(lastJourney),rows());var restored=noteCard.querySelector('.pil-text');restored.textContent='';richText(restored,lastNote,true);noteCard._pilMessage.text=lastNote;}
+   }
+  }catch(e){}
+  welcomeCard=say(B.greeting(new Date())+' Miło Cię widzieć! Napisz, skąd i dokąd chcesz pojechać — pomogę Ci ułożyć podróż.','assistant',false);
+  if(noteCard){weatherCredit(noteCard,lastNote);attachNoteTools(noteCard,lastJourney);}
+  var info=el('details','pil-details');info.appendChild(el('summary','','Jak pomagam?'));info.appendChild(el('div','',w.IL_POMOCNIK_AI&&w.IL_POMOCNIK_AI.configured?'Pomagam wybrać przystanki i znaleźć podróż w rozkładach IL. Prognoza wymaga internetu.':'Pomagam wybrać przystanki i znaleźć podróż w rozkładach IL. Połączenie z modelem AI nie jest jeszcze uruchomione. Prognoza wymaga internetu.'));menu.appendChild(info);
+  if(state.bus&&state.bus.stage!=='done')busPrompt(true);
+  else if(state.pending==='from'&&state.fromCity&&!state.from)stopPrompt('from','',true);
+  else if(state.pending==='to'&&state.toCity&&!state.to)stopPrompt('to','',true);
+  else if(state.pending==='originCity')cityPrompt('from','',true);
+  else if(state.pending==='destination')cityPrompt('to','',true);
+  else if(state.pending==='time'&&!state.time)askTime();
+  else if(state.pending==='date'&&!state.date)askDate();
+  else if(state.pending==='transfers'&&state.directOnly===undefined)advance();
+  else if(!state.from&&!state.to&&!state.fromCity&&!state.toCity){cityPrompt('to','',true);tile('🚌 Gdzie jest mój autobus?',function(){ask('Gdzie jest mój autobus teraz?');});}
+  else if(state.pending==='results')tile('Kontynuuj planowanie',function(){advance();});
+  w.setInterval(function(){if(!panel.hidden){busUpdateAges();if(state.pending==='time')paintTimeChoices();}},30000);d.addEventListener('visibilitychange',function(){if(!d.hidden){busUpdateAges();if(state.pending==='time')paintTimeChoices();}});
+  field.addEventListener('focus',closeMenu);
+  field.addEventListener('input',function(){if(state.bus&&state.bus.stage==='stop')busSuggestions(field.value);});
+  field.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();ask();}});
+  w.addEventListener('popstate',function(e){if(swallowPop){e.stopImmediatePropagation();swallowPop=false;if(pendingOpen){pendingOpen=false;open(true);}return;}if(!panel.hidden){e.stopImmediatePropagation();ownEntry=false;open(false);}},true);d.addEventListener('keydown',function(e){if(e.key==='Escape')open(false);});
+  if(w.visualViewport){var resize=function(){panel.style.height=Math.max(150,w.visualViewport.height-16)+'px';panel.style.bottom='auto';panel.style.top=w.visualViewport.offsetTop+8+'px';};w.visualViewport.addEventListener('resize',resize);w.visualViewport.addEventListener('scroll',resize);resize();}
+  w.IL_POMOCNIK={ask:ask,open:function(){open(true)},close:function(){open(false)},getState:function(){return Object.assign({},state)},getResults:function(){return lastResults},getNote:function(){return lastNote},showLibrary:showLibrary,alternatives:alternatives,copyNote:function(){return copy(lastNote,false)},choose:choose,cancel:stop,version:'47'};
+ }
+ if(d.readyState==='loading')d.addEventListener('DOMContentLoaded',mount);else mount();
+})();
+
+window.IL47_POLISH_CSS="/* Keep the assistant above real bottom controls, including a visible mini player. */\n#pil-root #pil-open{bottom:96px;bottom:calc(var(--il47-launch-bottom,96px) + env(safe-area-inset-bottom,0px))}\n#iaP #vcamera .cam-head{background:linear-gradient(120deg,#174875,#2f6c96)!important;color:#fff!important;opacity:1!important}\n#iaP #vcamera .cam-head>.h{color:#fff!important;opacity:1!important;text-shadow:none!important}\n#iaP #vcamera .cam-head>.p{color:#eaf4ff!important;opacity:1!important;text-shadow:none!important}\n#iaP #vmedia .il47-radio-heading{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;min-width:0}\n#iaP #vmedia #rtvNowName{flex:0 1 auto;min-width:0;color:#fff!important}\n#iaP #vmedia #il47RadioTrack{flex:1 1 180px;min-width:0;font-size:14px;font-weight:600;line-height:1.5;color:#eff9ff!important;overflow-wrap:anywhere}\n#iaP #vmedia #il47RadioTrack[data-current=\"0\"]{font-size:12px;font-weight:500;color:#d8eaf0!important}\n#iaP #vmedia .rtv-now small{color:#d8eaf0!important;opacity:1!important}\n\n#iaP #vmedia #il48RadioProgramme{font-size:13px;line-height:1.5;color:#dceefa!important;margin-top:5px;overflow-wrap:anywhere}\n";
+(function(){function launcherBottom47(viewHeight,blocks){
+ var bottom=14;
+ (blocks||[]).forEach(function(b){if(b.visible&&b.height>0&&b.top>=0&&b.top<viewHeight&&b.bottom>0)bottom=Math.max(bottom,viewHeight-b.top+12);});
+ return Math.ceil(bottom);
+}
+function radioClean47(value){
+ var s=typeof value==='string'?value:'';
+ if(/[\u00c2-\u00c5]/.test(s)&&Array.from(s).every(function(c){return c.charCodeAt(0)<=255;})){
+  try{s=decodeURIComponent(Array.from(s).map(function(c){return '%'+c.charCodeAt(0).toString(16).padStart(2,'0');}).join(''));}catch(e){}
+ }
+ return s.replace(/[\u0000-\u001f\u007f-\u009f]/g,' ').replace(/\s+/g,' ').trim().slice(0,300);
+}
+function radioDisplay47(value,station,playing,now){
+ var empty={text:playing?'Tytuł chwilowo niedostępny':'Odtwarzanie wstrzymane',live:false};
+ if(!value||radioClean47(value.name).toLowerCase()!==radioClean47(station).toLowerCase())return empty;
+ var at=Number(value.trackAt),age=Number(now)-at,track=radioClean47(value.track),artist=radioClean47(value.artist);
+ if(!at||age>90000||age< -30000||!track)return empty;
+ return {text:(playing?'':'Pauza · ')+(artist?artist+' — ':'')+track,live:!!playing};
+}
