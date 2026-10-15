@@ -53,23 +53,12 @@ jobs:
           cp native/classes.dex output/classes5.dex
           (cd output && zip -q -0 rebuilt.apk classes5.dex)
           "$SDK/build-tools/35.0.0/zipalign" -p -f 4 output/rebuilt.apk output/aligned.apk
-      - name: Restore existing permanent PA signing key; no replacement keys
-        env:
-          KEY_B64: ${{ secrets.PA_STABLE_KEYSTORE_B64 }}
-          KEY_PASS: ${{ secrets.PA_STABLE_KEYSTORE_PASS }}
+      - name: Export aligned APK for one-time external preview signing
         run: |
-          test -n "$KEY_B64" -a -n "$KEY_PASS"
-          printf '%s' "$KEY_B64" | base64 -d > stable.p12
-          CERT="$(keytool -list -v -storetype PKCS12 -keystore stable.p12 -storepass "$KEY_PASS" -alias pomocnik-alfa-stable | awk -F': ' '/SHA256:/{print $2;exit}')"
-          test "$CERT" = '36:14:42:C8:98:55:22:36:A7:D4:29:9E:ED:A5:C3:DC:27:5B:A1:F3:68:C0:11:29:2D:C0:7D:44:B2:E8:AC:E1'
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks stable.p12 --ks-type PKCS12 --ks-pass env:KEY_PASS --ks-key-alias pomocnik-alfa-stable --out output/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk output/aligned.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs output/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk > output/signature.txt
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging output/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk > output/badging.txt
-          sha256sum output/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk > output/SHA256SUMS.txt
-          unzip -t output/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk > output/zip-integrity.txt
-      - name: Compile independently signed instrumentation for the same target
-        env:
-          KEY_PASS: ${{ secrets.PA_STABLE_KEYSTORE_PASS }}
+          cp output/aligned.apk output/PA2-aligned-unsigned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging output/PA2-aligned-unsigned.apk > output/badging.txt
+          sha256sum output/PA2-aligned-unsigned.apk > output/SHA256-unsigned.txt
+      - name: Compile instrumentation for the same preview target
         run: |
           mkdir -p testsrc testclasses testdex
           cp helpers/pa2/PAProbe.java.test testsrc/PAProbe.java
@@ -78,8 +67,7 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/aapt" package -f -M helpers/pa2/test-manifest.xml -I "$ANDROID_HOME/platforms/android-35/android.jar" -F output/test-raw.apk
           (cd testdex && zip -q -0 ../output/test-raw.apk classes.dex)
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -p -f 4 output/test-raw.apk output/test-aligned.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks stable.p12 --ks-type PKCS12 --ks-pass env:KEY_PASS --ks-key-alias pomocnik-alfa-stable --out output/PA2-instrumentation.apk output/test-aligned.apk
-          rm -f stable.p12
+          cp output/test-aligned.apk output/PA2-instrumentation-unsigned.apk
       - name: Preserve complete reconstructed project and updateable data
         run: |
           cp -r helpers/pa2 decoded/pa2-build-sources
@@ -95,53 +83,10 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: PA2-real-build
+          name: PA2-unsigned-build
           path: |
-            output/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk
-            output/PA2-instrumentation.apk
+            output/PA2-aligned-unsigned.apk
+            output/PA2-instrumentation-unsigned.apk
             output/PA2-Reconstructed-Project.zip
             output/*.txt
-          retention-days: 60
-  android:
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        api: [29,30]
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: PA2-real-build
-          path: build
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - name: Install and exercise real app and preserved modules
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: ${{ matrix.api }}
-          arch: x86_64
-          target: google_apis
-          profile: pixel_2
-          disable-animations: true
-          emulator-boot-timeout: 700
-          script: |
-            mkdir -p results
-            adb install -r build/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk
-            adb install -r build/PA2-instrumentation.apk
-            adb logcat -c
-            adb shell am instrument -w com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/instrumentation.txt
-            adb logcat -d -b crash > results/crashes.txt
-            adb pull /sdcard/Android/data/com.senikolo.pomocniknowy/files/pa2-tests results/screenshots || true
-            grep -q 'TOTAL PASS system' results/instrumentation.txt
-            test ! -s results/crashes.txt || ! grep -q 'FATAL EXCEPTION' results/crashes.txt
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: PA2-Android-${{ matrix.api }}-test-results
-          path: results
           retention-days: 60

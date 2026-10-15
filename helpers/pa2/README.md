@@ -10,9 +10,11 @@ Run `.github/workflows/pa2-alpha.yml` on branch `work/pa2-20261015`.
 It preserves the binary base in a persistent technical GitHub release so future builds
 do not depend solely on expiring Actions artifacts. Java sources here compile to the
 isolated fifth DEX. `patch_project.py` changes only integration of the regional module.
-APK application ID is canonical `com.senikolo.pomocniknowy`, minSdk 29, targetSdk 34.
-The existing stable signing secret is required and its certificate is checked.
-No key is generated as a substitute.
+The preview uses `com.senikolo.pomocniknowy.pa2preview`, minSdk 29, targetSdk 34.
+Original PA remains installed; stable signing secrets were confirmed empty.
+The preview is signed once outside CI with its own retained preview key. Public
+detached signature proofs allow CI to verify the exact APK without accessing any
+private key. This key never signs the canonical production package.
 
 ## Scope
 

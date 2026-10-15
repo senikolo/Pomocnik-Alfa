@@ -1,0 +1,102 @@
+name: PA2 externally signed preview Android verification
+on:
+  push:
+    branches: ['work/pa2-20261015']
+    paths: ['helpers/pa2/signatures.json']
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Retrieve exact already-tested unsigned build and attach public signatures
+        run: |
+          RUN="$(python3 -c "import json;print(json.load(open('helpers/pa2/signatures.json'))['run'])")"
+          gh run download "$RUN" -n PA2-unsigned-build -D signed
+          python3 - <<'PY'
+          import json,sys
+          sys.path.insert(0,'helpers/pa2')
+          from detached_signature import apply
+          p=json.load(open('helpers/pa2/signatures.json'))
+          apply('signed/PA2-aligned-unsigned.apk',p['app'],'signed/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk')
+          apply('signed/PA2-instrumentation-unsigned.apk',p['test'],'signed/PA2-instrumentation.apk')
+          PY
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs signed/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk > signed/signature.txt
+          sha256sum signed/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk > signed/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PA2-signed-preview
+          path: |
+            signed/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk
+            signed/PA2-instrumentation.apk
+            signed/*.txt
+  android:
+    needs: assemble
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [29,30]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: PA2-signed-preview
+          path: build
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install and exercise real app and preserved modules
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          arch: x86_64
+          target: google_apis
+          profile: pixel_2
+          disable-animations: true
+          emulator-boot-timeout: 700
+          script: |
+            mkdir -p results
+            adb install -r build/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk
+            adb install -r build/PA2-instrumentation.apk
+            adb logcat -c
+            adb shell am instrument -w com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/instrumentation.txt
+            adb logcat -d -b crash > results/crashes.txt
+            adb pull /sdcard/Android/data/com.senikolo.pomocniknowy.pa2preview/files/pa2-tests results/screenshots || true
+            grep -q 'TOTAL PASS system' results/instrumentation.txt
+            test ! -s results/crashes.txt || ! grep -q 'FATAL EXCEPTION' results/crashes.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PA2-Android-${{ matrix.api }}-test-results
+          path: results
+          retention-days: 60
+  release:
+    needs: [assemble,android]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: PA2-signed-preview
+          path: signed
+      - name: Publish explicitly labelled preview after Android checks
+        run: |
+          cat > release-notes.md <<'TEXT'
+          Wersja alpha do testów, instalowana obok obecnego PA. Nie odinstalowuj dotychczasowej aplikacji.
+          Planer: Warszawa, Małopolska i kolej krajowa; 8 źródeł GTFS, kalendarze, przesiadki i ulubione.
+          Asystent lokalny obsługuje kontekst podróży, pogodę, notatki i przypomnienia.
+          Model AI online nie jest uruchomiony. Android 8/9 nie są obsługiwane w tym wydaniu.
+          Nowy trwały podpis dotyczy wyłącznie oddzielnego pakietu testowego; nie zastępuje brakującego klucza oryginalnego PA.
+          TEXT
+          gh release view pa-2.0.0-alpha.1 >/dev/null 2>&1 || gh release create pa-2.0.0-alpha.1 --target "$GITHUB_SHA" --prerelease --title 'Pomocnik Alfa 2.0 alpha.1 – oddzielna wersja testowa' --notes-file release-notes.md
+          gh release upload pa-2.0.0-alpha.1 signed/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk signed/SHA256SUMS.txt --clobber
