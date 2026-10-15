@@ -1,0 +1,850 @@
+  input.addEventListener('keydown',function(e){if(e.key==='Escape'){safeClose(box,input);} });
+ }
+ setup(f,fField,a,b);setup(t,tField,b,a);
+ // No smooth scrolling or forced focus. Only react to actual geometry changes.
+ place();window.addEventListener('resize',place,false);
+ d.addEventListener('click',function(e){if(!e.isTrusted&&e.target===d.getElementById('pgo'))return;if(e.target===f||e.target===t||a.contains(e.target)||b.contains(e.target)||e.target.closest('.il-r15-review'))return;safeClose(a,f);safeClose(b,t);},false);
+ window.IL_PLANNER_UI_VERSION='R9-20261009';
+})();
+
+/* Ispina Lokalnie R10 — keyboard-first search, stable fixed fields, soft motion.
+   Overlay styles original DOM in place to preserve active input, selection and
+   all R9 route / schedule logic. No menu/GTFS changes. */
+(function(){
+ 'use strict';
+ var d=document, p=d.getElementById('iaP'),v=d.getElementById('vplan'),
+     f=d.getElementById('pfrom'),t=d.getElementById('pto'),
+     a=d.getElementById('psfrom'),b=d.getElementById('psto');
+ if(!p||!v||!f||!t||!a||!b||d.getElementById('il-r10-style'))return;
+ var card=f.closest('.plcard'); if(!card)return;
+ var st=d.createElement('style');st.id='il-r10-style';st.textContent=[
+  '/* Focus panel stays under the native header, not under the keyboard. */',
+  '#iaP.il-r10-editing{contain:none!important;overflow:hidden!important}',
+  '#iaP.il-r10-editing #vplan .plhero{display:none!important}',
+  '#iaP.il-r10-editing #vplan .plcard{position:fixed!important;z-index:999!important;top:calc(70px + env(safe-area-inset-top) + 4px)!important;left:10px!important;right:10px!important;width:auto!important;max-width:740px!important;margin:0 auto!important;padding:10px 12px 13px!important;border:2px solid #89c8bc!important;border-radius:0 0 22px 22px!important;background:#fff!important;box-shadow:0 14px 26px rgba(18,74,65,.17)!important;transform:none!important;overflow:visible!important;animation:ilr10-arrive .20s ease-out both!important}',
+  '#iaP.il-r10-editing #vplan .plcard > :not(.pllabel):not(.plfield):not(.plswap):not(.plsugs):not(.il-r10-actions):not(.il-r14-field-error):not(.il-r15-review){display:none!important}',
+  '#iaP.il-r10-editing #vplan .pllabel{margin:3px 6px 3px!important;font-size:10px!important;letter-spacing:.09em!important}',
+  '#iaP.il-r10-editing #vplan .plfield{min-height:49px!important;height:49px!important;padding:3px 8px!important}',
+  '#iaP.il-r10-editing #vplan .plfield .pldot{width:30px!important;height:30px!important}',
+  '#iaP.il-r10-editing #vplan .plswap{width:32px!important;height:30px!important;min-height:30px!important;line-height:30px!important;padding:0!important;margin:2px auto!important;font-size:17px!important;box-shadow:0 2px 6px rgba(20,95,100,.17)!important;transform:none!important}',
+  '#iaP.il-r10-editing #vplan #pfrom,#iaP.il-r10-editing #vplan #pto{height:40px!important;min-height:40px!important;font-size:16px!important}',
+  '#iaP.il-r10-editing #vplan .plcard .plsugs{z-index:1001!important;max-height:var(--ilr10-listmax,150px)!important;overscroll-behavior:contain!important;border:2px solid #8bc7bb!important;box-shadow:0 12px 26px rgba(20,75,73,.21)!important}',
+  '#iaP.il-r10-editing #vplan .plcard .plsugs.on{animation:ilr10-options .17s ease-out both!important}',
+  '#iaP.il-r10-editing #vplan .plcard .plsug:active{transform:none!important;background:#dcf2e8!important}',
+  '#iaP.il-r10-editing #vplan .il-r10-actions{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:7px!important;margin-top:5px!important;padding:0 2px!important;min-height:23px!important}',
+  '#iaP.il-r10-editing #vplan .il-r10-actions span{font-size:10px!important;font-weight:650!important;color:#5b857b!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}',
+  '#iaP.il-r10-editing #vplan .il-r10-done{border:0!important;background:#e4f5ef!important;color:#176e65!important;border-radius:10px!important;padding:4px 13px!important;font-weight:800!important;font-size:12px!important;min-height:25px!important;touch-action:manipulation!important}',
+  '#iaP.il-r10-editing #vplan .il-r10-done:active{background:#c9eadf!important}',
+  '@keyframes ilr10-arrive{from{opacity:.88}to{opacity:1}}',
+  '@keyframes ilr10-options{from{opacity:.65;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}',
+  'body.senior #iaP.il-r10-editing #vplan .plfield{height:64px!important;min-height:64px!important}',
+  '@media(prefers-reduced-motion:reduce){#iaP.il-r10-editing #vplan .plcard,#iaP.il-r10-editing #vplan .plsugs.on{animation:none!important}}'
+ ].join('\n');(d.head||d.documentElement).appendChild(st);
+ var bar=d.createElement('div');bar.className='il-r10-actions';bar.style.display='none';
+ var hint=d.createElement('span');hint.textContent='Wpisz nazwę lub wybierz podpowiedź';
+ var done=d.createElement('button');done.type='button';done.className='il-r10-done';done.textContent='Gotowe';done.setAttribute('aria-label','Zakończ wpisywanie przystanków');
+ bar.appendChild(hint);bar.appendChild(done);
+ // Dropdowns already reparented into card by R8. Place actions above those absolutely positioned dropdowns.
+ card.insertBefore(bar,card.firstChild);
+ var closeTimer=0,resizeTimer=0,active=false;
+ function selected(){return d.activeElement===f||d.activeElement===t}
+ function visibleBottom(){
+  try{var vv=window.visualViewport;if(vv&&vv.height)return vv.offsetTop+vv.height;}catch(e){}
+  return window.innerHeight||600;
+ }
+ function align(){
+  if(!active)return;
+  var bb=card.getBoundingClientRect(),to=t.closest('.plfield').getBoundingClientRect();
+  var y=Math.round(to.bottom-bb.top+7);
+  var left=Math.max(8,Math.round(to.left-bb.left));
+  var right=Math.max(8,Math.round(bb.right-to.right));
+  a.style.top=b.style.top=y+'px';a.style.left=b.style.left=left+'px';a.style.right=b.style.right=right+'px';
+  card.style.setProperty('--ilr14-panelmax',Math.max(60,Math.floor(visibleBottom()-bb.top-8))+'px');
+  var available=Math.floor(visibleBottom()-to.bottom-18);
+  var cap=Math.min(320,Math.max(75,available));
+  card.style.setProperty('--ilr10-listmax',cap+'px');
+ }
+ function open(){
+  clearTimeout(closeTimer);
+  if(!active){active=true;p.classList.add('il-r10-editing');v.classList.add('il-r10-editing');d.documentElement.setAttribute('data-il-r15-editing','1');['ilDayBottom','ilSeniorBottom'].forEach(function(id){var nav=d.getElementById(id);if(nav)nav.style.setProperty('display','none','important')});}
+  // Keep underlying scroll in place; changing the active input's DOM parent is forbidden.
+  align();requestAnimationFrame(align);
+  setTimeout(align,65);setTimeout(align,270);
+ }
+ function leave(){
+  clearTimeout(closeTimer);
+  if(!active)return;
+  active=false;p.classList.remove('il-r10-editing');v.classList.remove('il-r10-editing');d.documentElement.removeAttribute('data-il-r15-editing');['ilDayBottom','ilSeniorBottom'].forEach(function(id){var nav=d.getElementById(id);if(nav)nav.style.removeProperty('display')});
+  if(f.ilClosePicker)f.ilClosePicker();if(t.ilClosePicker)t.ilClosePicker();
+  card.style.removeProperty('--ilr10-listmax');
+  // Undo inline popup geometry before next regular-screen focus.
+  requestAnimationFrame(function(){var r=t.closest('.plfield').getBoundingClientRect(),base=card.getBoundingClientRect();var y=Math.round(r.bottom-base.top+7);a.style.top=b.style.top=y+'px';});
+ }
+ function delayExit(){clearTimeout(closeTimer);closeTimer=setTimeout(function(){if(!selected() && !card.contains(d.activeElement))leave();},300);}
+ [f,t].forEach(function(input){
+  input.addEventListener('focus',open,false);
+  input.addEventListener('input',function(){if(!active)open(); requestAnimationFrame(align);},false);
+  input.addEventListener('blur',delayExit,false);
+  input.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();}else if(e.key==='Escape'){input.blur();leave();}},false);
+ });
+ done.addEventListener('pointerdown',function(e){e.preventDefault()},false);
+ done.addEventListener('click',function(e){e.preventDefault();(selected()?d.activeElement:f).blur();leave();},false);
+ window.addEventListener('resize',function(){if(active){clearTimeout(resizeTimer);resizeTimer=setTimeout(align,50)}},false);
+ if(window.visualViewport){window.visualViewport.addEventListener('resize',align,false);window.visualViewport.addEventListener('scroll',align,false);}
+ d.addEventListener('visibilitychange',function(){if(d.hidden&&active)leave();},false);
+ window.IL_PLANNER_UI_VERSION='R11-20261009';
+})();
+
+/* Ispina Lokalnie — Planer R13.2 MOTION RELIABLE: explicit time-based SVG drawing even when Android limits UI animations.
+   Progressive-enhancement layer over R11. No timetable or route algorithm changes. */
+(function(){
+ 'use strict';
+ var d=document, v=d.getElementById('vplan'), f=d.getElementById('pfrom'),t=d.getElementById('pto'),
+     pres=d.getElementById('pres'),mode=d.getElementById('ilTransferMode');
+ if(!v||!f||!t||!pres||!mode||d.getElementById('il-r12-style'))return;
+ var st=d.createElement('style');st.id='il-r12-style';st.textContent=[
+  '#vplan .il-r12-confirm-slot{flex:0 0 70px;width:70px;min-width:70px;display:flex;align-items:center;justify-content:center;height:36px;position:relative;box-sizing:border-box}',
+  '#vplan .il-r12-accept{display:inline-flex;align-items:center;justify-content:center;width:68px;height:32px;min-height:32px;border:1.5px solid #248b77;border-radius:11px;padding:0 3px!important;background:#e3f6ed;color:#126450;font-size:11px;line-height:1.15;font-weight:850;white-space:nowrap;touch-action:manipulation;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .16s ease,box-shadow .16s ease}',
+  '#vplan .il-r12-accept:active{background:#bde9d4;box-shadow:inset 0 2px 5px rgba(12,75,57,.14)}',
+  '#vplan .il-r12-confirm-slot.il-r12-empty .il-r12-accept,#vplan .il-r12-confirm-slot.il-r12-accepted .il-r12-accept{display:none}',
+  '#vplan .il-r12-tick{display:none;width:46px;height:44px;min-width:44px;min-height:44px;padding:0;border:0;align-items:center;justify-content:center;border-radius:10px;background:transparent;color:#168c4b;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}',
+  '#vplan .il-r12-confirm-slot.il-r12-accepted .il-r12-tick{display:flex}',
+  '#vplan .il-r12-tick svg{height:37px;width:37px;display:block;overflow:visible}',
+  '#vplan .il-r12-tick circle,#vplan .il-r12-tick path{fill:none;stroke:#168c4b;stroke-linecap:round;stroke-linejoin:round}',
+  '#vplan .plfield.il-r12-confirmed{border-color:#68bf8c!important;background:#f3fcf6!important;box-shadow:0 0 0 2px rgba(22,133,73,.10)!important}',
+  '#vplan .il-r12-direct-title{font-size:16px;font-weight:850;color:#185b52;margin:15px 0 8px;padding:9px 12px;border-left:5px solid #198c7a;border-radius:5px 11px 11px 5px;background:#eaf7f3}',
+  '#vplan #ilTransferResults{margin-top:20px;border-top:2px solid #badbd2;padding-top:12px}',
+  '#vplan #ilTransferResults .sectitle{font-size:16px;font-weight:850;color:#185b52;margin-bottom:7px;padding:9px 12px;border-left:5px solid #245e91;border-radius:5px 11px 11px 5px;background:#eef5fb}',
+  '#vplan .il-r10-actions{display:none!important}',
+  '/* R13.1: SVG line progress is set in JS via requestAnimationFrame (Android WebView-friendly). */',
+  '#vplan .il-r13-circle{stroke-width:2.5;transform:rotate(-90deg);transform-origin:16px 16px}',
+  '#vplan .il-r13-short{stroke-width:3.5}',
+  '#vplan .il-r13-long{stroke-width:3.5}',
+  '#vplan .il-r132-version{display:inline-block;vertical-align:middle;margin-left:9px;font-size:10px;font-weight:700;color:#168c4b;border:1px solid #c9e8d4;border-radius:20px;padding:2px 7px;background:#f2faf4;letter-spacing:.02em}',
+  '#vplan .il-r13-circle,#vplan .il-r13-short,#vplan .il-r13-long{stroke-dashoffset:100;stroke-dasharray:100 100;transition:none!important;animation:none!important}',
+  '#vplan .il-r13-complete .il-r12-tick{filter:drop-shadow(0 1px 2px rgba(22,140,75,.14))}',
+  '@media(max-width:350px){#vplan .il-r12-confirm-slot{flex-basis:64px;width:64px;min-width:64px}#vplan .il-r12-accept{width:62px;font-size:10px}}',
+  '@media(prefers-reduced-motion:reduce){#vplan .il-r12-tick{transition:none!important}}',
+  '#vplan.il-r15-senior .il-r12-confirm-slot{height:40px}#vplan.il-r15-senior .il-r12-accept{height:38px;font-size:12px}'
+ ].join('\n');(d.head||d.documentElement).appendChild(st);
+ // The old R10 "Gotowe" button is not needed: confirming the second field closes editing.
+ // Keep the detached button reference to invoke R10's existing, well-tested exit routine.
+ var oldDone=d.querySelector('.il-r10-done'),oldBar=d.querySelector('.il-r10-actions');
+ if(oldBar)oldBar.remove();
+ // A requested confirmation has its own default-on setting. Older generic
+ // motion/reduced-motion preferences must not skip the first Akceptuj drawing.
+ var destinationPending=false,startTouched=false;
+ var records=[],confirmationMotionKey='il_confirm_motion_v2',confirmationMotionEnabled=true;
+ try{confirmationMotionEnabled=localStorage.getItem(confirmationMotionKey)!=='0'}catch(e){}
+ function motionAllowed(){return confirmationMotionEnabled}
+ // A selected suggestion remains provisional. Start the existing Teraz flow
+ // once the new destination is accepted and its drawing has completed.
+ function searchAcceptedDestination(){
+  if(!destinationPending)return false;
+  var from=records.filter(function(x){return x.input===f})[0],to=records.filter(function(x){return x.input===t})[0];
+  if(!to||!to.accepted||to.accepted!==t.value.trim()){destinationPending=false;return false}
+  if(!v.classList.contains('on')){destinationPending=false;return false}
+  if(d.hidden||records.some(function(x){return x.slot.classList.contains('il-r13-animating')}))return false;
+  var startConfirmed=from&&from.accepted&&from.accepted===f.value.trim();
+  var savedStart=!startTouched;
+  if((!startConfirmed&&!savedStart)||!window.IL_STOP_RESOLVE(f.value))return false;
+  var now=d.getElementById('pnow');if(!now)return false;
+  destinationPending=false;if(oldDone)oldDone.click();else{f.blur();t.blur()}now.click();return true;
+ }
+ ['input','il-stop-selected'].forEach(function(name){f.addEventListener(name,function(){startTouched=true},false)});
+ ['pswap','phome','ilR7UseStop'].forEach(function(id){var button=d.getElementById(id);if(button)button.addEventListener('click',function(){startTouched=true},false)});
+ d.addEventListener('visibilitychange',function(){if(!d.hidden)searchAcceptedDestination()},false);
+ function init(input,other){
+  var field=input.closest('.plfield');if(!field)return;
+  var slot=d.createElement('span');slot.className='il-r12-confirm-slot il-r12-empty';
+  var button=d.createElement('button');button.className='il-r12-accept';button.type='button';button.textContent='Akceptuj';
+  button.setAttribute('aria-label',input===f?'Akceptuj miejsce startu':'Akceptuj cel podróży');
+  var ok=d.createElement('button');ok.type='button';ok.className='il-r12-tick';
+  ok.setAttribute('aria-label',input===f?'Start zaakceptowany. Powtórz animację':'Cel zaakceptowany. Powtórz animację');
+  ok.title='Powtórz animację potwierdzenia';
+  ok.innerHTML='<svg viewBox="0 0 32 32" aria-hidden="true"><circle class="il-r13-circle" cx="16" cy="16" r="13"/><path class="il-r13-short" d="M8.5 16.5 L13 20.8"/><path class="il-r13-long" d="M13 20.8 L24.2 9.4"/></svg>';
+  slot.appendChild(ok);
+  // Keep the preexisting R8 clear button on the right, in its original position.
+  var clear=field.querySelector('.il-r8-clear');if(clear)field.insertBefore(slot,clear);else field.appendChild(slot);
+  var review=d.createElement('div');review.className='il-r15-review';review.id=input.id+'-review';
+  var change=d.createElement('button');change.className='il-r15-change';change.type='button';change.textContent='Zmień';
+  change.setAttribute('aria-label',input===f?'Zmień miejsce startu':'Zmień cel podróży');
+  review.appendChild(button);review.appendChild(change);field.insertAdjacentElement('afterend',review);
+  var error=d.createElement('span');error.className='il-r14-field-error';error.id=input.id+'-error';error.setAttribute('role','status');review.insertAdjacentElement('afterend',error);input.setAttribute('aria-describedby',error.id);
+  var record={input:input,field:field,slot:slot,button:button,accepted:'',last:'',seq:0,raf:0,interval:0,timeout:0};records.push(record);
+  function cancelAnimation(){
+   record.seq++;
+   if(record.raf)cancelAnimationFrame(record.raf);
+   if(record.interval)clearInterval(record.interval);
+   if(record.timeout)clearTimeout(record.timeout);
+   record.raf=record.interval=record.timeout=0;
+   slot.classList.remove('il-r13-animating','il-r13-complete');
+   input.style.removeProperty('transition');input.style.removeProperty('transform');input.style.removeProperty('transform-origin');
+  }
+  function strokes(){
+   return [slot.querySelector('.il-r13-circle'),slot.querySelector('.il-r13-short'),slot.querySelector('.il-r13-long')];
+  }
+  function resetStrokes(){
+   // Fixed SVG geometry avoids APIs absent from older Android WebViews.
+   var els=strokes(),lengths=[2*Math.PI*13,Math.sqrt(4.5*4.5+4.3*4.3),Math.sqrt(11.2*11.2+11.4*11.4)];
+   for(var i=0;i<els.length;i++){
+    var length=lengths[i];
+    els[i].style.setProperty('stroke-dasharray',length+' '+length,'important');
+    els[i].style.setProperty('stroke-dashoffset',length,'important');
+   }
+   return {els:els,lengths:lengths};
+  }
+  function syncAfterEdit(){if(input.value.trim()!==record.accepted){if(input===t)destinationPending=false;cancelAnimation();input.removeAttribute('data-il-stop-key');input.removeAttribute('data-il-stop-label');input.removeAttribute('data-il-stop-ids');input.removeAttribute('aria-invalid');error.textContent=''}sync();}
+  function sync(){
+   var value=input.value.trim(),confirmed=!!value&&record.accepted===value,chosen=window.IL_STOP_RESOLVE&&window.IL_STOP_RESOLVE(value);
+   slot.classList.toggle('il-r12-empty',value.length<2);
+   slot.classList.toggle('il-r12-accepted',confirmed);
+   field.classList.toggle('il-r12-confirmed',confirmed);
+   button.disabled=!chosen||confirmed;
+   button.textContent=chosen?'Akceptuj: '+chosen.n:'Wybierz przystanek z listy';
+   button.setAttribute('aria-label',chosen?'Akceptuj: '+chosen.n:(input===f?'Wybierz miejsce startu z listy':'Wybierz cel podróży z listy'));
+   input.readOnly=confirmed;input.setAttribute('aria-readonly',String(confirmed));input.tabIndex=confirmed?-1:0;
+   review.classList.toggle('il-r15-visible',value.length>=2);
+   review.classList.toggle('il-r15-confirmed',confirmed);
+   review.classList.toggle('il-r15-active',d.activeElement===input||review.contains(d.activeElement));
+   change.disabled=!confirmed;
+   // A changed value immediately invalidates the prior confirmation.
+   if(record.accepted && !confirmed)record.accepted='';
+   record.last=value;
+  }
+  record.sync=sync;
+  function confirm(replay){
+   var chosen=window.IL_STOP_RESOLVE&&window.IL_STOP_RESOLVE(input.value);
+   if(!chosen){if(input.ilClosePicker)input.ilClosePicker();input.setAttribute('aria-invalid','true');error.textContent='Wybierz pełny przystanek z listy albo wszystkie przystanki miejscowości.';return}
+   var value=chosen.n;cancelAnimation();if(input===t&&!replay)destinationPending=true;record.accepted=value;input.value=value;input.setAttribute('data-il-stop-key',chosen.key);input.setAttribute('data-il-stop-label',value);input.setAttribute('data-il-stop-ids',JSON.stringify(chosen.ids));input.removeAttribute('aria-invalid');error.textContent='';sync();
+   var suggestions=d.getElementById(input===f?'psfrom':'psto');
+   if(input.ilClosePicker)input.ilClosePicker();else if(suggestions){suggestions.classList.remove('on');input.setAttribute('aria-expanded','false');}
+   var data=resetStrokes(),seq=record.seq;
+   slot.classList.add('il-r13-animating');
+   // Akceptuj and tick replay intentionally use exactly the same animation.
+   var total=790, lastFrame=Date.now(), elapsed=0, finished=false;
+   function clamp(x){return Math.max(0,Math.min(1,x));}
+   function ease(x){x=clamp(x);return 1-Math.pow(1-x,3);}
+   function progress(el,length,t,begin,duration){
+    var proportion=ease((t-begin)/duration);
+    el.style.setProperty('stroke-dashoffset',String(length*(1-proportion)),'important');
+   }
+   function finish(){
+    if(finished||seq!==record.seq||record.accepted!==input.value.trim())return;
+    finished=true;
+    if(record.interval)clearInterval(record.interval);record.interval=0;
+    if(record.timeout)clearTimeout(record.timeout);record.timeout=0;
+    for(var i=0;i<data.els.length;i++)data.els[i].style.setProperty('stroke-dashoffset','0','important');
+    input.style.removeProperty('transform');input.style.removeProperty('transform-origin');
+    slot.classList.remove('il-r13-animating');slot.classList.add('il-r13-complete');
+    if(searchAcceptedDestination())return;
+    var otherRecord=records.filter(function(x){return x.input!==input})[0];
+    if(otherRecord&&(!otherRecord.accepted||otherRecord.accepted!==otherRecord.input.value.trim())){
+     if(d.activeElement===input||d.activeElement===d.body)otherRecord.input.focus();
+    }else if(oldDone){oldDone.click();}
+    else{input.blur();}
+   }
+   function frame(){
+    if(finished||seq!==record.seq||record.accepted!==input.value.trim())return;
+    if(!motionAllowed()||d.hidden){finish();return}
+    // A stalled WebView must still paint the stages rather than skip to ✓.
+    var now=Date.now();elapsed+=Math.max(0,Math.min(45,now-lastFrame));lastFrame=now;
+    var t=elapsed;
+    // Pulse input by 5% while keeping its parent and the entire layout fixed.
+    var wave=t<180?Math.sin(Math.PI*clamp(t/180)):0;
+    input.style.setProperty('transform-origin','left center','important');
+    input.style.setProperty('transform','scale('+(1+0.05*wave).toFixed(4)+')','important');
+    // Stage 1: ring; stage 2: short LEFT arm; stage 3: long RIGHT arm.
+    progress(data.els[0],data.lengths[0],t,180,260);
+    progress(data.els[1],data.lengths[1],t,470,100);
+    progress(data.els[2],data.lengths[2],t,580,180);
+    if(t>=total)finish();
+   }
+   if(!motionAllowed()){finish();return}
+   frame();record.interval=setInterval(frame,26);
+   record.timeout=setTimeout(function watch(){if(finished||seq!==record.seq)return;frame();if(!finished)record.timeout=setTimeout(watch,1000);},total+1200);
+
+  }
+  input.addEventListener('il-stop-selected',syncAfterEdit,false);
+  function keepFocus(ev){if(ev.cancelable)ev.preventDefault()}
+  button.addEventListener('pointerdown',keepFocus,false);button.addEventListener('mousedown',keepFocus,false);
+  button.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();confirm();},false);
+  ok.addEventListener('pointerdown',function(ev){ev.preventDefault();},false);
+  ok.addEventListener('click',function(ev){ev.preventDefault();ev.stopPropagation();confirm(true);},false);
+  change.addEventListener('pointerdown',keepFocus,false);change.addEventListener('mousedown',keepFocus,false);
+  change.addEventListener('click',function(ev){
+   ev.preventDefault();ev.stopPropagation();cancelAnimation();record.accepted='';syncAfterEdit();
+   try{input.focus({preventScroll:true})}catch(e){input.focus()}
+   if(input.ilShowPicker)input.ilShowPicker();
+   try{input.setSelectionRange(0,input.value.length)}catch(e){}
+  },false);
+  input.addEventListener('focus',function(ev){
+   if(record.accepted&&record.accepted===input.value.trim()){input.blur();ev.stopImmediatePropagation();return}
+   records.forEach(function(x){x.sync()});
+  },true);
+  input.addEventListener('blur',function(){setTimeout(function(){records.forEach(function(x){x.sync()})},0)},false);
+  input.addEventListener('input',syncAfterEdit,false);
+  input.addEventListener('change',syncAfterEdit,false);
+  // The previous suggestion picker sets input.value programmatically.
+  var box=d.getElementById(input===f?'psfrom':'psto');
+  if(box){box.addEventListener('click',function(){setTimeout(syncAfterEdit,0);},false);box.addEventListener('touchend',function(){setTimeout(syncAfterEdit,0);},{passive:true});}
+  // Selecting or typing is provisional. Only the Akceptuj button confirms.
+  // Reset status on programmatic swap, destination chips, and near-stop alternatives.
+  var form=v.querySelector('.plcard');if(form)form.addEventListener('click',function(){setTimeout(syncAfterEdit,0);},false);
+  sync();
+  return record;
+ }
+ init(f,t);init(t,f);
+ function syncAll(){records.forEach(function(x){x.sync()});}
+ ['pswap','phome','pchips','ilR7UseStop'].forEach(function(id){var el=d.getElementById(id);if(el)el.addEventListener('click',function(){setTimeout(syncAll,0);},false);});
+ var sort=d.createElement('label');sort.className='il-r14-sort';sort.innerHTML='Sortuj wyniki <select id="ilPlannerSort"><option value="departure">Najbliższy odjazd</option><option value="arrival">Najszybszy przyjazd</option><option value="wait">Najmniej czekania</option></select>';v.querySelector('.plcard').appendChild(sort);
+ d.getElementById('ilPlannerSort').addEventListener('change',function(){d.getElementById('pgo').click()});
+ var marker=d.createElement('p');marker.id='ilR14Marker';marker.className='il-r14-version';marker.textContent='Wybierz przystanki i naciśnij Akceptuj. Po zatwierdzeniu celu wyszukam połączenia na teraz.';v.insertBefore(marker,v.firstChild);
+ var about=d.createElement('p');about.id='ilR14About';about.className='hint';about.textContent='Ispina Lokalnie • wersja '+window.IL_BUILD.versionName+' • wydanie stabilne';var settings=d.getElementById('vset');if(settings){settings.appendChild(about);var animation=d.createElement('label');animation.className='set';animation.innerHTML='<span><b>Animacja potwierdzenia przystanku</b><br><small>Po „Akceptuj”, niezależnie od animacji ekranów</small></span><input type="checkbox" class="sw" id="ilConfirmMotion">';settings.appendChild(animation);var toggle=d.getElementById('ilConfirmMotion');toggle.checked=motionAllowed();toggle.onchange=function(){confirmationMotionEnabled=this.checked;try{localStorage.setItem(confirmationMotionKey,this.checked?'1':'0')}catch(e){}}}
+ var css=d.createElement('style');css.id='il-r14-style';css.textContent='.il-r14-version{font-size:12px;color:#17683b;font-weight:800;margin:4px 0 10px}.il-r14-field-error{display:block;color:#9b2920;font-size:13px;line-height:1.4;margin:2px 4px 6px}.il-r14-field-error:empty{display:none}.plsug[aria-selected=true]{outline:3px solid #16766b;background:#e8f5ef}.il-r14-day{font-size:14px;margin:18px 0 8px;color:#285b52}.il-r14-sort{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:12px}.il-r14-sort select{font-size:16px;min-height:44px;max-width:100%}.il-r14-more{display:block;min-height:44px;width:100%;margin:12px 0;padding:12px;border:2px solid #247a70;border-radius:12px;background:#e7f4f1;color:#125b51;font-weight:800;font-size:14px}.il-r14-invalid,.il-r14-refresh-note{border:2px solid #a34d13;background:#fff3df;padding:10px;border-radius:12px}.prtime small,.prarr small,.il-transfer-leg small{font-size:11px;font-weight:600}.prtop{flex-wrap:wrap}.il-r12-accept{min-height:44px!important;width:70px!important;font-size:11px!important}.il-r12-confirm-slot{height:46px!important;flex-basis:72px!important;min-width:72px!important}.il-r8-clear{min-height:44px!important;min-width:36px!important}body.senior .il-r14-more,body.senior .il-r14-sort select{font-size:18px}body.noanim .il-r12-tick{transition:none!important}@media(max-width:350px){#vplan .plfield input{min-width:0!important;font-size:16px!important}#vplan .il-r12-confirm-slot{flex-basis:70px!important;min-width:70px!important}}#iaP.il-r10-editing #vplan .plcard{max-height:var(--ilr14-panelmax,calc(100vh - 90px))!important;overflow-y:auto!important;overscroll-behavior:contain}#iaP.il-r10-editing #vplan .plcard .plsugs{position:relative!important;top:auto!important;left:0!important;right:0!important;width:100%!important;margin-top:8px}#iaP.il-r10-editing #vplan .plcard > .il-r14-field-error:not(:empty){display:block!important}#vplan .plfield,#iaP.il-r10-editing #vplan .plfield{height:58px!important;min-height:58px!important}#vplan.il-r15-senior .plfield, #iaP.il-r10-editing #vplan.il-r15-senior .plfield{height:66px!important;min-height:66px!important}body.noanim #iaP.il-r10-editing #vplan .plcard,body.noanim #iaP.il-r10-editing #vplan .plsugs.on{animation:none!important;transition:none!important}';d.head.appendChild(css);
+ var safeStyle=d.createElement('style');safeStyle.id='il-r15-style';safeStyle.textContent=[
+  'html[data-il-r15-editing] #ilDayBottom,html[data-il-r15-editing] #ilSeniorBottom{display:none!important}html[data-il-r15-editing] #iaToast{pointer-events:none!important}',
+  '#vplan .il-r15-review{display:none!important;align-items:center;justify-content:flex-end;margin:6px 0 8px;box-sizing:border-box}',
+  '#vplan .il-r15-review.il-r15-visible,#iaP.il-r10-editing #vplan .plcard > .il-r15-review.il-r15-visible{display:flex!important}',
+  '#iaP.il-r10-editing #vplan .plcard > .il-r15-review:not(.il-r15-active){display:none!important}',
+  '#vplan .il-r15-review .il-r12-accept{display:block!important;width:100%!important;height:auto!important;min-height:54px!important;padding:11px 14px!important;font-size:15px!important;line-height:1.35!important;white-space:normal!important;overflow-wrap:anywhere;text-align:center;border-radius:13px}',
+  '#vplan .il-r15-review .il-r12-accept:disabled{opacity:.65;cursor:default}',
+  '#vplan .il-r15-change{display:none;min-height:44px;padding:8px 18px;border:1.5px solid #75ad98;border-radius:11px;background:#eef7f2;color:#155841;font-size:14px;font-weight:750;touch-action:manipulation;cursor:pointer}',
+  '#vplan .il-r15-review.il-r15-confirmed .il-r12-accept{display:none!important}',
+  '#vplan .il-r15-review.il-r15-confirmed .il-r15-change{display:block}',
+  '#vplan .il-r12-confirm-slot:not(.il-r12-accepted){display:none!important}',
+  '#vplan .plfield.il-r12-confirmed .il-r8-clear{display:none!important}',
+  '#vplan .plfield input[readonly]{cursor:default}',
+  '#vplan .plcard .plsugs,#iaP.il-r10-editing #vplan .plcard .plsugs{max-height:var(--ilr10-listmax,320px)!important;padding:8px!important;touch-action:pan-y!important;scroll-behavior:auto!important}',
+  '#vplan .plcard .plsug,#iaP.il-r10-editing #vplan .plcard .plsug{display:flex!important;flex-direction:column;align-items:flex-start!important;justify-content:center;gap:4px;min-height:66px!important;padding:12px 14px!important;margin:0 0 8px!important;border:1px solid #d4e6de!important;border-radius:12px!important;background:#f7fbf9!important;white-space:normal!important;text-align:left;touch-action:pan-y!important;transition:none!important;animation:none!important}',
+  '#vplan .plcard .plsug:last-child{margin-bottom:0!important}',
+  '#vplan .plcard .plsug > span:first-child{font-size:16px;line-height:1.35;font-weight:750;color:#183e32;overflow-wrap:anywhere}',
+  '#vplan .plcard .plsug .plsrc{font-size:11px;line-height:1.3;color:#47685b}',
+  '#vplan .plcard .plsug[aria-selected=true],#iaP.il-r10-editing #vplan .plcard .plsug[aria-selected=true]{border:2px solid #16766b!important;outline:none!important;background:#dff3e9!important}',
+  '#vplan .plcard .plsug.il-r15-chosen > span:first-child::before{content:"Wybrano: ";color:#12604a;font-weight:800}',
+  '#iaP.il-r10-editing #vplan .plcard .plsugs.on{animation:none!important;transition:none!important}',
+  '#vplan.il-r15-senior .plcard .plsug, #iaP.il-r10-editing #vplan.il-r15-senior .plcard .plsug{min-height:78px!important}#vplan.il-r15-senior .plcard .plsug > span:first-child, #iaP.il-r10-editing #vplan.il-r15-senior .plcard .plsug > span:first-child,#vplan.il-r15-senior .il-r15-review .il-r12-accept, #iaP.il-r10-editing #vplan.il-r15-senior .il-r15-review .il-r12-accept{font-size:20px!important}#vplan.il-r15-senior .il-r15-change{font-size:18px}',
+  '#vplan.il-r15-senior .plfield,#iaP.il-r10-editing #vplan.il-r15-senior .plfield{height:66px!important;min-height:66px!important}#vplan.il-r15-senior #pfrom,#vplan.il-r15-senior #pto,#iaP.il-r10-editing #vplan.il-r15-senior #pfrom,#iaP.il-r10-editing #vplan.il-r15-senior #pto{font-size:20px!important;height:48px!important;min-height:48px!important}',
+ ].join('\n');d.head.appendChild(safeStyle);
+ function syncSenior(){v.classList.toggle('il-r15-senior',!!d.body&&d.body.classList.contains('senior'))}
+ syncSenior();if(window.MutationObserver&&d.body)new MutationObserver(syncSenior).observe(d.body,{attributes:true,attributeFilter:['class']});
+ window.IL_PLANNER_UI_VERSION='R16-DESTINATION-NOW-20261010';
+})();
+
+;/* Ispina Lokalnie Live 2.0 FULL – klasyczny interfejs, wiarygodne informacje o rozkładach.
+   Rozszerzenie pełnej 1.83.20. Bez zastępowania Planera i istniejących modułów. */
+(function(){
+ 'use strict';
+ try {
+  var d=document;
+  if(!d||!d.body||d.getElementById('il20-polish-marker'))return;
+  var marker=d.createElement('meta');marker.id='il20-polish-marker';
+  (d.head||d.documentElement).appendChild(marker);
+  var css=d.createElement('style');css.id='il20-polish-style';
+  css.textContent=`
+  :root{--il20-navy:#132f60;--il20-blue:#1c68ab;--il20-paper:#f4f8fe;--il20-ink:#193955;--il20-line:#d5e2f2}
+  #iaBar,#iaD .dh{background:linear-gradient(115deg,#122c5b 0%,#154f93 64%,#277fbe 100%)!important}
+  #iaP{background:linear-gradient(180deg,#f5f9ff 0%,#edf4fd 100%)!important}
+  #ilDashHero1843{background:linear-gradient(135deg,#142e5d 0%,#1c5795 58%,#2b81bc 100%)!important;border:1px solid rgba(255,255,255,.16)!important;box-shadow:0 12px 30px rgba(13,48,96,.21)!important}
+  html #vdash #ilDashHero1843 .ildh-greet,html #vdash #ilDashHero1843 .ildh-date,html #vdash #ilDashHero1843 .ildh-sync{color:#f7fbff!important;font-size:12px!important;line-height:1.45!important}
+  #ilDashHero1843 .ildh-greet{font-size:clamp(21px,5.3vw,26px)!important;line-height:1.22!important;text-shadow:0 1px 2px rgba(0,0,0,.10)!important}
+  #ilDashHero1843 .ildh-date{font-size:12px!important;opacity:.94!important}
+  #ilDashHero1843 .ildh-sync{font-size:12px!important;line-height:1.5!important;color:#f0f7ff!important}
+  #ilDashHero1843 .ildh-state{background:rgba(255,255,255,.17)!important;color:white!important;font-size:11px!important}
+  #ilDashQuick1843{gap:9px!important}
+  #ilDashQuick1843 button{min-height:82px!important;padding:12px 6px!important;border:1px solid rgba(255,255,255,.28)!important;border-radius:17px!important;background:linear-gradient(145deg,#256eb1,#184f91)!important;color:#fff!important;font-size:12px!important;line-height:1.35!important;box-shadow:0 5px 12px rgba(12,38,82,.17),inset 0 1px 0 rgba(255,255,255,.15)!important;text-shadow:none!important}
+  #ilDashQuick1843 button:nth-child(1){background:linear-gradient(145deg,#276eb3,#174b86)!important}
+  #ilDashQuick1843 button:nth-child(2){background:linear-gradient(145deg,#3180c1,#1b609e)!important}
+  #ilDashQuick1843 button:nth-child(3){background:linear-gradient(145deg,#164a88,#122e60)!important}
+  #ilDashQuick1843 button:nth-child(4){background:linear-gradient(145deg,#4388c5,#27659f)!important}
+  html #vdash #ilDashQuick1843 button:nth-child(5){background:linear-gradient(135deg,#1a457a,#256aaa)!important;color:#fff!important}
+  #ilDashQuick1843 .ildq-main{font-weight:800!important;font-size:12px!important}
+  #ilDashQuick1843 .ildq-sub{font-size:10px!important;line-height:1.3!important;opacity:.91!important}
+  #ilDashQuick1843 button:focus-visible{outline:3px solid #fff!important;outline-offset:2px!important}
+  #vdash>.card,#vset>.card,#vdep>.card,#vplan>.card{background:#fff!important;border:1px solid #d5e2f2!important;border-radius:19px!important;box-shadow:0 6px 20px rgba(21,62,113,.075)!important}
+  #vdash>.card b,#vdep>.card b{color:#193e70}
+  #vdash .sectitle,#vdep .sectitle,#vset .sectitle,#vplan .sectitle{color:#1a4c83!important}
+  #vplan{color:#1c3b5b!important}
+  #vplan .plhero,#vplan .ilp-head1851{background:linear-gradient(130deg,#153669,#2062a4 70%,#2b82bd)!important}
+  #vplan .plcard,#vplan .pr{border-color:var(--il20-line)!important;box-shadow:0 6px 20px rgba(16,57,100,.07)!important}
+  #vplan .pllabel{color:#2b537d!important}
+  #vplan .plfield{background:#f7fbff!important;border-color:#bacfe7!important}
+  #vplan .plfield:focus-within{border-color:#277bbb!important;box-shadow:0 0 0 3px rgba(39,123,187,.15)!important}
+  #vplan .plfield input{font-size:16px!important;color:var(--il20-ink)!important}
+  #vplan .plgo,#vplan .plswap,#vplan .il-r15-review .il-r12-accept{background:linear-gradient(125deg,#194779,#2167ae)!important;color:#fff!important;box-shadow:0 5px 14px rgba(19,63,113,.18)!important}
+  #vplan .il-r15-review .il-r12-accept{min-height:54px!important;font-size:16px!important}
+  #vplan .plnow,#vplan .plhome{background:#eaf3ff!important;color:#18569a!important;border-color:#bfd8f2!important}
+  #vplan .plcard .plsug,#iaP.il-r10-editing #vplan .plcard .plsug{background:#f6faff!important;border-color:#c9dcf2!important}
+  #vplan .plcard .plsug[aria-selected="true"],#iaP.il-r10-editing #vplan .plcard .plsug[aria-selected="true"]{background:#dfeeff!important;border-color:#2073b8!important}
+  #vplan .plcard .plsug > span:first-child{color:#183d66!important}
+  #vplan .plchip{background:#edf5ff!important;color:#1f5a91!important;border-color:#caddf1!important;min-height:43px!important}
+  #vplan .plactions button,#vplan .plhome,#vdep button.btn{min-height:48px!important}
+  #vplan #pres .pr{border-radius:15px!important}
+  #vplan .il20-fullstop{display:block;margin:6px 1px 4px;padding:7px 10px;border-radius:9px;background:#edf5ff;border:1px solid #c9e0f7;color:#1c548e;font:650 12.5px/1.45 system-ui,sans-serif;overflow-wrap:anywhere}
+  html.il20-senior #vplan .il20-fullstop{font-size:16px!important;padding:10px}
+  #ilDashRefresh1844 .ilr-meta{font-size:12px!important;color:#eef6ff!important}
+  #ilDashRefresh1844 button{font-size:12px!important;min-height:42px!important}
+  #il20-freshness{margin:10px 0 13px;padding:13px 14px;border:1px solid #ccdff3;border-radius:18px;background:#fff;box-shadow:0 5px 18px rgba(14,56,106,.065);color:var(--il20-ink);font:inherit}
+  #il20-freshness .il20-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+  #il20-freshness h3{font-size:14px;line-height:1.3;letter-spacing:0;margin:0;color:#173d6e;font-weight:850}
+  #il20-freshness .il20-pill{padding:6px 9px;border-radius:999px;font-size:10px;font-weight:800;white-space:nowrap;background:#ebf4ff;color:#225d97}
+  #il20-freshness .il20-pill.il20-warn{background:#fff4dd;color:#876017}
+  #il20-freshness .il20-pill.il20-off{background:#e7edf5;color:#46617b}
+  #il20-freshness .il20-rows{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  #il20-freshness .il20-row{border:1px solid #e2ebf6;border-radius:11px;padding:9px 10px;background:#f8fbff;min-width:0}
+  #il20-freshness .il20-row strong{display:block;font-size:11px;color:#254b77;margin-bottom:3px}
+  #il20-freshness .il20-row span{display:block;font-size:11px;line-height:1.4;color:#48637e;overflow-wrap:break-word}
+  #il20-freshness .il20-note{font-size:10px;line-height:1.4;color:#57708a;margin:9px 1px 0}
+  @media(max-width:355px){#ilDashQuick1843{gap:6px!important}#ilDashQuick1843 button{min-height:79px!important;padding:10px 4px!important;font-size:11px!important}#il20-freshness .il20-rows{grid-template-columns:1fr}}
+  .il20-senior #ilDashQuick1843 button{min-height:96px!important;font-size:17px!important;padding:13px 6px!important}
+  html.il20-senior #vdash #ilDashQuick1843 .ildq-main{font-size:17px!important;line-height:1.35!important}
+  html.il20-senior #vdash #ilDashQuick1843 .ildq-sub{font-size:13px!important}
+  html.il20-senior #vdash #ilDashQuick1843 button{min-height:96px!important;font-size:17px!important}
+  html.il20-senior #vdash #ilDashHero1843 .ildh-greet{font-size:27px!important}
+  .il20-senior #ilDashQuick1843 .ildq-main{font-size:17px!important}
+  .il20-senior #ilDashQuick1843 .ildq-sub{font-size:13px!important}
+  .il20-senior #ilDashHero1843 .ildh-greet{font-size:27px!important}
+  .il20-senior #il20-freshness h3{font-size:18px!important}
+  .il20-senior #il20-freshness .il20-row strong{font-size:16px!important}
+  .il20-senior #il20-freshness .il20-row span,.il20-senior #il20-freshness .il20-note{font-size:14px!important}
+  .il20-senior #il20-freshness .il20-pill{font-size:13px!important}
+  .il20-senior #vplan .plfield input{font-size:20px!important}
+  @media(prefers-reduced-motion:reduce){#ilDashQuick1843 button,#vplan .plgo{animation:none!important;transition:none!important}}
+  `;
+  (d.head||d.documentElement).appendChild(css);
+
+  // The native bridge reports successful sync timestamps in epoch milliseconds.
+  // A manual click or navigator.onLine does not prove that fresh data arrived.
+  function epoch(value){var n=Number(value);if(!isFinite(n)||n<=0)return 0;if(n>1000000000&&n<10000000000)n*=1000;if(n<946684800000||n>Date.now()+3600000)return 0;return n}
+  function ago(ts){if(!ts)return 'brak potwierdzonej synchronizacji';var mins=Math.max(0,Math.floor((Date.now()-ts)/60000));if(mins<2)return 'przed chwilą';if(mins<60)return mins+' min temu';if(mins<1440)return Math.floor(mins/60)+' godz. temu';return new Date(ts).toLocaleString('pl-PL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
+  function readStatus(){try{var b=window.IspinaNative;if(b&&typeof b.getScheduleSyncStatus==='function'){var v=JSON.parse(b.getScheduleSyncStatus()||'{}');return {mld:epoch(v.mldLastSuccess),gminna:epoch(v.gminnaLastSuccess),source:'native'}}}catch(e){}return {mld:0,gminna:0,source:'unverified'}}
+  function freshness(st,online){var times=[st.mld,st.gminna].filter(Boolean);var missing=times.length!==2;var stale=times.some(function(t){return Date.now()-t>86400000});if(!online)return {label:'Tryb offline',type:'off'};if(!times.length)return {label:'Kopie rozkładów',type:'warn'};if(missing||stale)return {label:'Sprawdź daty',type:'warn'};return {label:'Zapisane rozkłady',type:'ok'}}
+  function panel(){var hero=d.getElementById('ilDashHero1843'),v=d.getElementById('vdash');if(!hero||!v)return null;var el=d.getElementById('il20-freshness');if(el)return el;el=d.createElement('section');el.id='il20-freshness';el.setAttribute('aria-label','Informacja o rozkładach');el.innerHTML='<div class="il20-top"><h3>Aktualność rozkładów</h3><span id="il20-pill" class="il20-pill">Sprawdzam</span></div><div class="il20-rows"><div class="il20-row"><strong>MLD · A4, A7, A65, A50, A57</strong><span id="il20-mld">Sprawdzam</span></div><div class="il20-row"><strong>Linia gminna</strong><span id="il20-gminna">Sprawdzam</span></div></div><p class="il20-note">Godzina synchronizacji nie jest potwierdzeniem punktualności autobusu na żywo.</p>';hero.parentNode.insertBefore(el,hero.nextSibling);return el}
+  var desired={};var observing={};
+  function setOnlyIfChanged(el,value){if(el&&el.textContent!==value)el.textContent=value}
+  function track(id){var el=d.getElementById(id);if(!el||observing[id]===el)return;observing[id]=el;if(typeof MutationObserver!=='undefined')new MutationObserver(function(){var value=desired[id];if(value!==undefined)setOnlyIfChanged(el,value)}).observe(el,{childList:true,characterData:true,subtree:true})}
+  // W narrow layouts a one-line input may visually truncate a confirmed stop.
+  // Keep the full official stop name visible under the field instead of shortening it.
+  function updateFullStops(){
+   ['pfrom','pto'].forEach(function(id){
+    var input=d.getElementById(id),field=input&&input.closest?input.closest('.plfield'):null;
+    if(!field)return;
+    var note=d.getElementById('il20-fullstop-'+id),full=String(input.value||'').trim();
+    var confirmed=!!(full&&input.readOnly&&field.classList.contains('il-r12-confirmed'));
+    var overflow=false;
+    if(confirmed){
+     try{var ctx=d.createElement('canvas').getContext('2d');ctx.font=getComputedStyle(input).font;overflow=ctx.measureText(full).width>input.clientWidth+1}catch(e){overflow=full.length>20}
+    }
+    if(!confirmed||!overflow){if(note&&note.parentNode)note.parentNode.removeChild(note);return}
+    if(!note){note=d.createElement('div');note.id='il20-fullstop-'+id;note.className='il20-fullstop';field.insertAdjacentElement('afterend',note)}
+    var label='Pełna nazwa: '+full;setOnlyIfChanged(note,label);
+   });
+  }
+
+  function update(){try{
+   updateFullStops();
+   var el=panel(),st=readStatus(),online=navigator.onLine!==false,cur=freshness(st,online);
+   if(!el)return;
+   var m=d.getElementById('il20-mld'),g=d.getElementById('il20-gminna'),p=d.getElementById('il20-pill');
+   setOnlyIfChanged(m,st.mld?'Zapis: '+ago(st.mld):'Rozkład wbudowany · brak daty');
+   setOnlyIfChanged(g,st.gminna?'Zapis: '+ago(st.gminna):'Rozkład wbudowany · brak daty');
+   setOnlyIfChanged(p,cur.label);p.className='il20-pill'+(cur.type==='warn'?' il20-warn':cur.type==='off'?' il20-off':'');
+   var header=online?(st.mld?'MLD: '+ago(st.mld):'MLD: brak daty synchronizacji'):'Offline · zapisane rozkłady';
+   var summary=online?(st.mld&&st.gminna&&!((Date.now()-st.mld)>86400000||Date.now()-st.gminna>86400000)?'Rozkłady zapisane. Aktualność kursu sprawdź przed wyjazdem.':'Pokazuję zapisane rozkłady. Sprawdź daty aktualizacji.'):'Bez internetu · pokazuję zapisane rozkłady.';
+   desired.ilDashRefreshTime1844=header;desired.ilDashSync1843=summary;
+   ['ilDashRefreshTime1844','ilDashSync1843'].forEach(function(id){track(id);setOnlyIfChanged(d.getElementById(id),desired[id])});
+  }catch(e){try{console.warn('IL 2 status:',e)}catch(_){}}}
+  function syncSenior(){try{d.documentElement.classList.toggle('il20-senior',!!(d.body&&d.body.classList.contains('senior')))}catch(e){}}
+  syncSenior();if(typeof MutationObserver!=='undefined'&&d.body)new MutationObserver(syncSenior).observe(d.body,{attributes:true,attributeFilter:['class']});
+  update();setTimeout(update,350);setTimeout(update,1600);setTimeout(update,4000);
+  setInterval(function(){if(!d.hidden)update()},10000);
+  d.addEventListener('visibilitychange',function(){if(!d.hidden)update()});
+  addEventListener('online',update);addEventListener('offline',update);addEventListener('resize',updateFullStops);
+  d.addEventListener('click',function(e){var t=e.target;if(t&&t.closest&&t.closest('#ilDashRefreshBtn1844,#refreshall,#ilWpSync1841')){setTimeout(update,120);setTimeout(update,1200);setTimeout(update,3500)}else if(t&&t.closest&&t.closest('#vplan .il-r12-accept,#vplan .il-r15-change,#vplan .plsug')){setTimeout(updateFullStops,160);setTimeout(updateFullStops,480)}},true);
+  window.IL20_FRESHNESS={epoch:epoch,freshness:freshness,ago:ago,readStatus:readStatus,refresh:update};
+ }catch(e){try{console.warn('IL 2 FULL POLISH:',e)}catch(_){}}
+})();
+
+/* Ispina Lokalnie Live 2.0 — Asystent podróży LIVE, Preview 3.
+ * Interactive foreground journey assistant; no claims of live traffic until a
+ * verified server-side provider and route geometries have been configured.
+ * Keeps all original planner rendering and route search untouched.
+ */
+;(function(){
+ 'use strict';
+ if(typeof document==='undefined'||window.IL20_TRAFFIC_ASSISTANT)return;
+ var d=document,active=null,timer=null,checking=false,lastAlert='',lastChecked=0,autoKey='',autoCheckedAt=0;
+ var POLL_MS=300000, FRESH_MS=180000, PREVIEW_NAME='IL 2.0 • Asystent podróży';
+ var autoResult=null;
+ // Intentionally empty until a secure HTTPS backend and verified bus routes exist.
+ var ENDPOINT=String(window.IL20_TRAFFIC_ENDPOINT||'').trim();
+ if(!/^https:\/\//i.test(ENDPOINT))ENDPOINT='';
+ function q(s,root){return (root||d).querySelector(s)}
+ function txt(tag,text,cls){var n=d.createElement(tag);if(cls)n.className=cls;n.textContent=text;return n}
+ function clean(v){return String(v||'').trim().slice(0,140)}
+ function getStops(route){return route&&Array.isArray(route.stops)&&route.stops.length>=2?route.stops:[]}
+ function mapPlace(name){
+   // The GTFS feed stores names, not coordinates. Add voivodeship to disambiguate
+   // e.g. Ispina from places that Google otherwise resolves around Kraków.
+   return clean(name)+', województwo małopolskie, Polska';
+ }
+ function mapUrl(points){
+   if(!points||points.length<2||points.length>5)return '';
+   var params=['api=1','origin='+encodeURIComponent(mapPlace(points[0])),
+     'destination='+encodeURIComponent(mapPlace(points[points.length-1])), 'travelmode=driving'];
+   if(points.length>2)params.push('waypoints='+points.slice(1,-1).map(function(n){return encodeURIComponent(mapPlace(n))}).join('%7C'));
+   return 'https://www.google.com/maps/dir/?'+params.join('&');
+ }
+ function routeSections(route){
+   var stops=getStops(route),sections=[];
+   // Max 3 intermediate stops in a mobile Google Maps URL. Do not silently
+   // drop stops: cover the COMPLETE journey with consecutive overlapping legs.
+   for(var i=0;i<stops.length-1;i+=4){
+     var last=Math.min(i+4,stops.length-1);
+     sections.push({first:i,last:last,stops:stops.slice(i,last+1),url:mapUrl(stops.slice(i,last+1))});
+   }
+   return sections;
+ }
+ function mapsHref(route){
+   var stops=getStops(route);if(!stops.length)return '';
+   // Quick overview uses a maximum of three TRUE stops on this actual run.
+   if(stops.length<=5)return mapUrl(stops);
+   var positions=[0,Math.round((stops.length-1)*0.25),Math.round((stops.length-1)*0.5),
+     Math.round((stops.length-1)*0.75),stops.length-1];
+   var selected=[];positions.forEach(function(i){if(!selected.length||selected[selected.length-1]!==i)selected.push(i)});
+   return mapUrl(selected.map(function(i){return stops[i]}));
+ }
+ function addMapLinks(parent,route){
+   if(!getStops(route).length){
+     parent.appendChild(txt('p','Nie mam pełnej kolejności przystanków tego kursu. Mapa nie będzie zgadywać trasy.','il20-traffic-disclaimer'));return;
+   }
+   var details=d.createElement('details');details.className='il20-traffic-stops';
+   var head=txt('summary','Przystanki tego kursu ('+route.stops.length+') · pokaż całą trasę');details.appendChild(head);
+   var note=txt('p','Przystanki pochodzą z wybranego kursu rozkładu. Google wyznacza drogę między punktami i może wskazać inny przebieg ulic. To podgląd orientacyjny, nie śledzenie autobusu.','il20-traffic-disclaimer');details.appendChild(note);
+   var list=d.createElement('ol');list.className='il20-traffic-stoplist';
+   route.stops.forEach(function(n,i){list.appendChild(txt('li',n))});details.appendChild(list);
+   var sections=routeSections(route);var group=d.createElement('div');group.className='il20-traffic-maplinks';
+   sections.forEach(function(seg,i){var a=txt('a','Mapa '+(i+1)+'/'+sections.length+' · przystanki '+(seg.first+1)+'–'+(seg.last+1),'il20-traffic-mapsegment');a.href=seg.url;a.target='_blank';a.rel='noopener noreferrer';a.addEventListener('click',function(e){e.stopPropagation()});group.appendChild(a)});
+   details.appendChild(group);parent.appendChild(details);
+   var link=txt('a','Mapa skrócona przez wybrane przystanki ↗','il20-traffic-link');link.href=mapsHref(route);link.target='_blank';link.rel='noopener noreferrer';link.addEventListener('click',function(e){e.stopPropagation()});parent.appendChild(link);
+ }
+ function createButton(label,kind){var b=txt('button',label,'il20-traffic-btn '+(kind||''));b.type='button';return b}
+ function summary(name,detail,variant){var b=d.createElement('div');b.className='il20-traf-status '+(variant||'neutral');b.setAttribute('role','status');b.appendChild(txt('strong',name));if(detail)b.appendChild(txt('small',detail));return b}
+ function sanitizeResponse(data){
+   if(!data||typeof data!=='object'||data.verifiedBusRoute!==true)return null;
+   if(data.source!=='google-routes'&&data.source!=='other-licensed')return null;
+   var checked=Date.parse(data.checkedAt);
+   if(!Number.isFinite(checked)||Math.abs(Date.now()-checked)>FRESH_MS)return null;
+   var status=String(data.status||'unknown');
+   if(['clear','slow','jam','unknown'].indexOf(status)<0)status='unknown';
+   var roadSegments=Array.isArray(data.segments)?data.segments.slice(0,8).map(function(s){return {name:clean(s.name),status:['slow','jam','clear'].includes(s.status)?s.status:'unknown'}}):[];
+   return {status:status,segments:roadSegments,checkedAt:checked,source:data.source};
+ }
+ function fetchTraffic(route,done){
+   if(!ENDPOINT){done(null,'Nie podłączono jeszcze źródła bieżących danych drogowych.');return}
+   if(navigator.onLine===false){done(null,'Brak internetu. Informacje o korkach są niedostępne.');return}
+   if(checking){done(null,'Sprawdzanie już trwa. Spróbuj ponownie za chwilę.');return;}
+   checking=true;
+   var control=typeof AbortController==='function'?new AbortController():null;
+   var timeout=setTimeout(function(){if(control)control.abort()},8500);
+   var url=ENDPOINT.replace(/\/$/,'')+'/v1/traffic?'+
+     'line='+encodeURIComponent(route.line)+'&from='+encodeURIComponent(route.from)+'&to='+encodeURIComponent(route.to);
+   fetch(url,{method:'GET',mode:'cors',cache:'no-store',credentials:'omit',headers:{'Accept':'application/json'},signal:control&&control.signal})
+    .then(function(res){if(!res.ok)throw new Error('service '+res.status);return res.json()})
+    .then(function(obj){var data=sanitizeResponse(obj);done(data,data?null:'Brak zweryfikowanych, aktualnych informacji o tej trasie.')})
+    .catch(function(){done(null,'Nie udało się pobrać danych drogowych. Spróbuj później.')})
+    .finally(function(){clearTimeout(timeout);checking=false});
+ }
+ function tripFromCard(card){
+  if(!card||!card.matches('[data-direct-index]'))return null;
+  var idx=Number(card.getAttribute('data-direct-index'));
+  var source=window.IL20_EXACT_ROUTES&&window.IL20_EXACT_ROUTES[idx];
+  var labels=card.querySelectorAll('.prroute b');
+  var from=clean(labels[0]&&labels[0].textContent),to=clean(labels[1]&&labels[1].textContent);
+  var line=clean(q('.prline',card)&&q('.prline',card).textContent);
+  if(!from||!to||!line)return null;
+  var stops=source&&source.points&&source.points.map(function(p){return clean(p.name)});
+  // One-to-one match to the actual selected run, never substitute a generic line path.
+  if(!source||source.line!==line.toUpperCase()||!Array.isArray(stops)||stops.length<2||!source.runId)stops=[];
+  return {line:line.toUpperCase(),from:from,to:to,stops:stops,
+    runId:source?source.runId:'',tripId:source?source.tripId:'',date:source?source.date:'',
+    departure:source?source.departure:0,arrival:source?source.arrival:0,selectedAt:Date.now()};
+ }
+ function labelFor(state){if(!state)return 'Brak danych LIVE';return state.status==='jam'?'Silny korek na trasie':state.status==='slow'?'Spowolnienie na trasie':state.status==='clear'?'Brak wykrytego istotnego spowolnienia':'Brak jednoznacznej oceny ruchu'}
+ function detailFor(state){if(!state)return 'Nie mogę ocenić ryzyka opóźnienia autobusu.';
+   if(state.status==='jam')return 'Wykryto zatory drogowe na zweryfikowanej trasie. Autobus może przyjechać później.';
+   if(state.status==='slow')return 'Wykryto spowolnienia na zweryfikowanej trasie. Możliwe opóźnienie.';
+   if(state.status==='clear')return 'Nie wykryto istotnego spowolnienia w momencie sprawdzenia. Nie jest to gwarancja punktualności.';
+   return 'Nie udało się określić wpływu ruchu drogowego na autobus.';
+ }
+ function panel(){var view=q('#vplan');if(!view)return null;var el=q('#il20-traffic-panel');if(el)return el;
+   el=d.createElement('section');el.id='il20-traffic-panel';el.className='il20-traffic-panel';el.setAttribute('aria-label','Asystent podróży LIVE');
+   var target=q('#pres');if(target&&target.parentNode)target.parentNode.insertBefore(el,target);else view.appendChild(el);
+   return el;
+ }
+ function showPanel(data,message){var el=panel();if(!el)return;el.textContent='';
+   var head=d.createElement('div');head.className='il20-traffic-head';head.appendChild(txt('strong','🚌 Asystent podróży'));head.appendChild(txt('span',active?'Podróż w toku (na ekranie)':'Informacje drogowe'));el.appendChild(head);
+   if(active){el.appendChild(txt('p',active.line+' · '+active.from+' → '+active.to,'il20-traffic-route'));
+     if(active.date&&active.departure)el.appendChild(txt('p','Wybrany kurs: '+new Date(active.departure).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'})+' · dzień '+active.date,'il20-traffic-disclaimer'));
+     var statusVariant=data&&data.status==='jam'?'jam':data&&data.status==='slow'?'slow':data&&data.status==='clear'?'clear':'unknown';
+     el.appendChild(summary(labelFor(data),message||detailFor(data),statusVariant));
+     if(data&&data.segments.length){var list=d.createElement('ul');list.className='il20-traffic-segments';data.segments.forEach(function(s){
+       var li=txt('li',(s.status==='jam'?'🔴 ':s.status==='slow'?'🟠 ':s.status==='clear'?'🟢 ':'⚪ ')+s.name+' · '+(s.status==='jam'?'korek':s.status==='slow'?'spowolnienie':s.status==='clear'?'bez istotnego spowolnienia':'brak danych'));list.appendChild(li);
+      });el.appendChild(list)}
+     if(data)el.appendChild(txt('p','Sprawdzono '+new Date(data.checkedAt).toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'})+' · źródło danych: '+(data.source==='google-routes'?'Google Routes API':'licencjonowany dostawca')+'. To ryzyko, nie potwierdzone opóźnienie autobusu.','il20-traffic-disclaimer'));
+     var actions=d.createElement('div');actions.className='il20-traffic-actions';
+     var refresh=createButton('Odśwież sytuację','secondary');refresh.onclick=function(){checkNow(true)};actions.appendChild(refresh);
+     var stop=createButton('Zakończ podróż','danger');stop.onclick=endTrip;actions.appendChild(stop);el.appendChild(actions);addMapLinks(el,active);
+     el.appendChild(txt('p','Kontrola co 5 min działa tylko gdy aplikacja jest otwarta i aktywna. Powiadomienia w tle wymagają osobnej usługi Androida.','il20-traffic-disclaimer'));
+   }else{
+     el.appendChild(summary('Kontrola korków na trasie','Wybierz kurs i naciśnij „Jadę tym autobusem”. '+(ENDPOINT?'Źródło LIVE podłączone.':'Dane LIVE wymagają konfiguracji dostawcy.'),'neutral'));
+     el.appendChild(txt('p','Sama czerwona droga w Mapach nie dowodzi, że wybrany autobus jest opóźniony.','il20-traffic-disclaimer'));
+   }
+ }
+ function notifyChanged(data){if(!data)return;var key=data.status+':'+data.segments.map(function(s){return s.name+'/'+s.status}).join(';');if(key===lastAlert)return;
+   lastAlert=key;
+   // Foreground-only non-intrusive announcement; never pretend to have Android background notifications.
+   if(data.status==='jam'||data.status==='slow'){
+    var el=q('#il20-traffic-panel');if(el)el.setAttribute('aria-live','polite');
+   }
+ }
+ function checkNow(manual){if(!active)return;var current=active;
+   if(!manual&&d.hidden)return;
+   showPanel(null,ENDPOINT?'Sprawdzam bieżące utrudnienia…':null);
+   fetchTraffic(current,function(data,error){if(active!==current)return;lastChecked=Date.now();showPanel(data,error||null);notifyChanged(data)});
+ }
+ function startTrip(route){active=route;lastAlert='';lastChecked=0;autoKey='';showPanel(null);checkNow(true);
+   try{q('#il20-traffic-panel').scrollIntoView({behavior:'smooth',block:'start'})}catch(e){}
+ }
+ function endTrip(){active=null;lastAlert='';lastChecked=0;showPanel(null)}
+ function autoPreview(card,route){
+   if(!card||q('.il20-traf-mini',card))return;
+   var note=txt('span',ENDPOINT?'Ruch drogowy: sprawdzanie dostępności…':'Ruch drogowy: dane LIVE niepodłączone','il20-traf-mini');
+   card.appendChild(note);
+   if(!ENDPOINT||active)return;
+   var date=q('#pdate'),clock=q('#ptime'),when=date&&date.value?Date.parse(date.value+'T'+(clock&&clock.value||'00:00')):Date.now();
+   if(!Number.isFinite(when)||Math.abs(Date.now()-when)>7200000){note.textContent='Bieżący ruch nie prognozuje sytuacji na wybrany dzień.';return;}
+   var key=[route.line,route.from,route.to].join('|');
+   if(autoKey===key && Date.now()-autoCheckedAt<120000){
+      note.textContent=autoResult?labelFor(autoResult):'Ruch drogowy: brak aktualnych danych LIVE';return;
+   }
+   autoKey=key;autoCheckedAt=Date.now();note.textContent='Ruch drogowy: sprawdzam…';
+   fetchTraffic(route,function(data){autoResult=data;
+      if(!note.isConnected)return;note.textContent=data?labelFor(data):'Ruch drogowy: brak aktualnych danych LIVE';
+      note.classList.toggle('il20-traf-mini-jam',!!(data&&data.status==='jam'));
+      note.classList.toggle('il20-traf-mini-slow',!!(data&&data.status==='slow'));
+   });
+ }
+ function markRecommended(pres){
+   // A conservative recommendation: among displayed DIRECT rides only.
+   // It does not claim to assess unavailable live traffic or transfers.
+   var candidates=[];
+   pres.querySelectorAll('[data-direct-index]').forEach(function(card){var index=Number(card.getAttribute('data-direct-index')),
+     r=window.IL20_EXACT_ROUTES&&window.IL20_EXACT_ROUTES[index];
+     if(r&&Number.isFinite(r.arrival)&&Number.isFinite(r.departure))candidates.push({card:card,row:r});
+   });
+   if(!candidates.length)return;
+   var arriveBy=window.IL20_ARRIVE_BY===true;
+   candidates.sort(function(a,b){return arriveBy?b.row.departure-a.row.departure:a.row.arrival-b.row.arrival});
+   var winner=candidates[0].card;
+   if(winner.querySelector('.il20-recommend'))return;
+   var tag=txt('div',arriveBy?'★ Najpóźniejszy odjazd przed wybraną godziną':'★ Najwcześniejszy przyjazd spośród widocznych bezpośrednich','il20-recommend');
+   winner.insertBefore(tag,winner.firstChild);
+ }
+ function decorate(){var pres=q('#pres');if(!pres)return;
+   pres.querySelectorAll('[data-direct-index]').forEach(function(card,i){
+     if(card.hasAttribute('data-il20-traffic'))return;
+     var route=tripFromCard(card);if(!route)return;
+     card.setAttribute('data-il20-traffic','true');var bar=d.createElement('div');bar.className='il20-traffic-choose';
+     var button=createButton('🚌 Jadę tym autobusem','primary');button.addEventListener('click',function(e){e.stopPropagation();startTrip(route)});bar.appendChild(button);
+     var link;if(mapsHref(route)){link=txt('a','Mapa przez przystanki ↗','il20-traffic-card-link');link.href=mapsHref(route);link.target='_blank';link.rel='noopener noreferrer';link.addEventListener('click',function(e){e.stopPropagation()});bar.appendChild(link)}else{bar.appendChild(txt('span','Mapa: brak dokładnej listy przystanków','il20-traffic-disclaimer'))}card.appendChild(bar);
+     if(i===0)autoPreview(card,route);
+   });
+   markRecommended(pres);
+   if(!q('#il20-traffic-panel'))showPanel(null);
+ }
+ function attach(){var pres=q('#pres');if(!pres||pres.__il20Traffic)return;
+   pres.__il20Traffic=true;decorate();
+   if(typeof MutationObserver!=='undefined')new MutationObserver(function(){decorate()}).observe(pres,{childList:true,subtree:true});
+ }
+ function init(){if(!q('#vplan'))return false;var css=d.createElement('style');css.id='il20-traffic-css';css.textContent=`
+ #vplan #il20-traffic-panel{background:#f8fbff;border:1px solid #c7dbf4;border-radius:19px;padding:15px;margin:12px 0 14px;box-shadow:0 5px 18px rgba(20,62,112,.08);color:#183d68}
+ #vplan .il20-traffic-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:16px}
+ #vplan .il20-traffic-head span{color:#59748d;font-size:11px;font-weight:750}
+ #vplan .il20-traffic-route{font-weight:800;font-size:13px;line-height:1.5;margin:8px 0;overflow-wrap:anywhere}
+ #vplan .il20-traf-status{border-radius:12px;background:#edf3fa;border:1px solid #d5e3f3;color:#25517c;padding:11px 12px;margin:10px 0;font-size:13px;line-height:1.45}
+ #vplan .il20-traf-status strong,#vplan .il20-traf-status small{display:block}
+ #vplan .il20-traf-status small{margin-top:3px;color:inherit;font-size:12px;font-weight:450;line-height:1.5}
+ #vplan .il20-traf-status.jam{background:#fff0ef;color:#8b2e29;border-color:#edc4c0}
+ #vplan .il20-traf-status.slow{background:#fff6e8;color:#8c540f;border-color:#edd8b8}
+ #vplan .il20-traf-status.clear{background:#edf8f2;color:#245f45;border-color:#cae7d5}
+ #vplan .il20-traffic-disclaimer{margin:8px 0 0;color:#56718c;font-size:11.5px;line-height:1.55}
+ #vplan .il20-traffic-segments{margin:8px 0;padding-left:18px;font-size:12px;line-height:1.7}
+ #vplan .il20-traf-mini{display:block;margin-top:9px;padding:6px 9px;border-radius:9px;color:#486581;background:#edf5ff;font-size:11px;font-weight:700}
+ #vplan .il20-traf-mini.il20-traf-mini-jam{background:#fff0ed;color:#952f29}
+ #vplan .il20-traf-mini.il20-traf-mini-slow{background:#fff4df;color:#84520a}
+ #vplan .il20-traffic-choose,#vplan .il20-traffic-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
+ #vplan .il20-traffic-btn{background:#1a568f;color:#fff;border:0;border-radius:11px;min-height:43px;padding:10px 13px;font-size:13px;font-weight:800;line-height:1.35;cursor:pointer}
+ #vplan .il20-traffic-btn.secondary{background:#e6f0fc;color:#184f83;border:1px solid #c6daf0}
+ #vplan .il20-traffic-btn.danger{background:#f4e5e5;color:#8a2c30}
+ #vplan .il20-recommend{font-size:11px;font-weight:900;color:#24577e;background:#e7f3ff;border-radius:9px;padding:7px 9px;margin-bottom:8px}
+ #vplan .il20-traffic-mapsegment{font-size:12px;font-weight:750;color:#165c9b;border:1px solid #caddf1;border-radius:10px;padding:10px 12px;background:#eef5fd;text-decoration:none;min-height:42px;display:inline-flex;align-items:center}
+ #vplan .il20-traffic-maplinks{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}
+ #vplan .il20-traffic-stops{background:#fff;border:1px solid #d8e4f2;border-radius:12px;padding:11px;margin-top:12px}
+ #vplan .il20-traffic-stops summary{font-weight:800;cursor:pointer;color:#194f86}
+ #vplan .il20-traffic-stoplist{padding-left:23px;margin:9px 0;max-height:230px;overflow:auto;font-size:12px;line-height:1.7;color:#234f7b}
+ #vplan .il20-traffic-link,#vplan .il20-traffic-card-link{color:#1e5b9a;font-size:12px;font-weight:800;text-decoration:underline;text-underline-offset:2px}
+ html.il20-senior #vplan .il20-traffic-btn{font-size:17px;min-height:54px}
+ @media(max-width:355px){#vplan .il20-traffic-head{font-size:14px}#vplan .il20-traffic-btn{flex:1}}
+ `;(d.head||d.documentElement).appendChild(css);
+ attach();if(typeof MutationObserver!=='undefined')new MutationObserver(function(){attach()}).observe(q('#vplan'),{childList:true,subtree:false});
+ if(!timer)timer=setInterval(function(){if(active&&!d.hidden&&Date.now()-lastChecked>=POLL_MS)checkNow(false)},60000);
+ d.addEventListener('visibilitychange',function(){if(!d.hidden&&active&&Date.now()-lastChecked>=POLL_MS)checkNow(false)});
+ return true;
+ }
+ function boot(){if(init())return;var tries=0,loop=setInterval(function(){tries++;if(init()||tries>50)clearInterval(loop)},200)}
+ if(d.readyState==='loading')d.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+ window.IL20_TRAFFIC_ASSISTANT={version:'preview-4',sanitizeResponse:sanitizeResponse,tripFromCard:tripFromCard,mapsHref:mapsHref,routeSections:routeSections,begin:startTrip,stop:endTrip,isMonitoring:function(){return !!active},isLiveConfigured:function(){return !!ENDPOINT}};
+})();
+
+/* Preview 4: favorite routes and arrival deadline, layered on full Planner.
+ * All selections are user-owned. Does not replace original stop confirmation.
+ */
+;(function(){
+'use strict';
+if(window.IL20_PLANNER_EXTRAS||typeof document==='undefined')return;
+var d=document, storage='il20-favorite-routes-v1', modeStore='il20-arrival-mode-v1', max=8;
+function q(s){return d.querySelector(s)}
+function el(tag,cls,text){var x=d.createElement(tag);if(cls)x.className=cls;if(text!==undefined)x.textContent=text;return x}
+function safeRead(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function safeWrite(k,v){try{localStorage.setItem(k,v);return true}catch(e){return false}}
+function favorites(){try{var raw=JSON.parse(safeRead(storage)||'[]');return Array.isArray(raw)?raw.filter(function(x){return x&&typeof x.from==='string'&&typeof x.to==='string'}).slice(0,max):[]}catch(e){return []}}
+function normalized(v){return String(v||'').trim().toLocaleLowerCase('pl-PL')}
+function validStop(v){return typeof window.IL_STOP_RESOLVE==='function'&&window.IL_STOP_RESOLVE(v)}
+function msg(t){var n=q('#il20-fav-msg');if(n)n.textContent=t}
+function search(from,to){
+  if(!validStop(from)||!validStop(to)){msg('Te przystanki nie są już dostępne w aktualnych rozkładach.');return}
+  var start=q('#pfrom'),dest=q('#pto'),go=q('#pgo');if(!start||!dest||!go)return;
+  start.value=from;dest.value=to;
+  // A changed choice must not inherit the previous confirmation metadata.
+  [start,dest].forEach(function(input){['data-il-stop-key','data-il-stop-label','data-il-stop-ids'].forEach(function(k){input.removeAttribute(k)});input.dispatchEvent(new Event('input',{bubbles:true}));input.dispatchEvent(new Event('change',{bubbles:true}))});
+  go.click();msg('Wyszukuję zapisaną trasę.');
+}
+function refresh(){var holder=q('#il20-favorites');if(!holder)return;holder.textContent='';
+  favorites().forEach(function(f,i){var line=el('div','il20-fav-row');
+   var open=el('button','il20-fav-open',f.from+' → '+f.to);open.type='button';open.onclick=function(){search(f.from,f.to)};line.appendChild(open);
+   var remove=el('button','il20-fav-remove','×');remove.type='button';remove.title='Usuń zapisaną trasę';remove.setAttribute('aria-label','Usuń trasę '+f.from+' do '+f.to);remove.onclick=function(){var all=favorites();all.splice(i,1);safeWrite(storage,JSON.stringify(all));refresh()};line.appendChild(remove);holder.appendChild(line)
+  });
+  if(!favorites().length)holder.appendChild(el('small','il20-fav-empty','Nie masz jeszcze zapisanych tras.'));
+}
+function applyMode(){var arrival=window.IL20_ARRIVE_BY===true;var btn=q('#il20-arrive-button'),label=q('#il20-arrive-hint');
+ if(btn){btn.setAttribute('aria-pressed',String(arrival));btn.textContent=arrival?'Przyjazd przed godziną ✓':'Przyjazd przed godziną';btn.classList.toggle('selected',arrival)}
+ if(label)label.textContent=arrival?'Podana godzina oznacza najpóźniejszy przyjazd w wybranym dniu.':'Podana godzina oznacza najwcześniejszy wyjazd.';
+ var dep=q('#il20-depart-button');if(dep)dep.setAttribute('aria-pressed',String(!arrival));
+}
+function init(){var view=q('#vplan'),results=q('#pres');if(!view||!results||q('#il20-extras'))return false;
+ var parent=el('section','il20-extras');parent.id='il20-extras';
+ var head=el('div','il20-extras-title','Wygodne planowanie');parent.appendChild(head);
+ var opts=el('div','il20-options');
+ var dep=el('button','il20-toggle','Wyjazd od godziny');dep.id='il20-depart-button';dep.type='button';dep.onclick=function(){window.IL20_ARRIVE_BY=false;safeWrite(modeStore,'depart');applyMode();q('#pgo')?.click()};opts.appendChild(dep);
+ var arrive=el('button','il20-toggle','Przyjazd przed godziną');arrive.id='il20-arrive-button';arrive.type='button';arrive.onclick=function(){window.IL20_ARRIVE_BY=true;safeWrite(modeStore,'arrive');applyMode();q('#pgo')?.click()};opts.appendChild(arrive);
+ parent.appendChild(opts);var hint=el('p','il20-extras-hint');hint.id='il20-arrive-hint';parent.appendChild(hint);
+ var favhead=el('div','il20-fav-title','★ Moje trasy');parent.appendChild(favhead);
+ var favs=el('div','il20-fav-list');favs.id='il20-favorites';parent.appendChild(favs);
+ var save=el('button','il20-save-route','☆ Zapisz wybrane Start i Cel');save.type='button';save.onclick=function(){
+   var from=q('#pfrom')?.value.trim(),to=q('#pto')?.value.trim();
+   if(!validStop(from)||!validStop(to)||normalized(from)===normalized(to)){msg('Najpierw wybierz dwa różne, pełne przystanki.');return}
+   var list=favorites();if(list.some(function(x){return normalized(x.from)===normalized(from)&&normalized(x.to)===normalized(to)})){msg('Ta trasa jest już zapisana.');return}
+   if(list.length>=max){msg('Maksymalnie '+max+' ulubionych tras. Usuń jedną, aby dodać nową.');return}
+   list.push({from:from,to:to});if(safeWrite(storage,JSON.stringify(list))){refresh();msg('Trasa zapisana.')}else msg('Nie udało się zapisać trasy w pamięci telefonu.');
+ };parent.appendChild(save);var m=el('p','il20-fav-msg','');m.id='il20-fav-msg';m.setAttribute('role','status');parent.appendChild(m);
+ results.parentNode.insertBefore(parent,results);
+ var css=el('style');css.textContent=`
+ #vplan .il20-extras{margin:13px 0;padding:14px;border:1px solid #d0e0f2;border-radius:17px;background:#f8fbff;box-shadow:0 4px 16px rgba(23,69,117,.055)}
+ #vplan .il20-extras-title{font-weight:900;color:#173f6b;font-size:16px;margin-bottom:9px}
+ #vplan .il20-options{display:flex;flex-wrap:wrap;gap:7px}
+ #vplan .il20-toggle{padding:9px 11px;min-height:42px;border:1px solid #bbd3ed;border-radius:11px;background:#edf5ff;color:#225b92;font-size:12px;font-weight:800;flex:1}
+ #vplan .il20-toggle.selected{background:#1b5796;color:#fff}
+ #vplan .il20-extras-hint{color:#516e89;font-size:11px;line-height:1.5;margin:9px 0 11px}
+ #vplan .il20-fav-title{font-size:14px;font-weight:900;color:#173f6b}
+ #vplan .il20-fav-list{margin:6px 0}.il20-fav-empty{color:#617890}
+ #vplan .il20-fav-row{display:flex;gap:6px;margin:6px 0}
+ #vplan .il20-fav-open{border:1px solid #d3e2f1;background:#fff;border-radius:10px;padding:9px 10px;min-height:43px;color:#1b4e7e;text-align:left;font-size:12px;flex:1;font-weight:700}
+ #vplan .il20-fav-remove{background:#f8ebeb;border:1px solid #ead6d6;color:#853d3d;border-radius:10px;min-width:40px;min-height:43px;font-size:19px}
+ #vplan .il20-save-route{background:#e7f2fc;color:#184d7f;border:1px solid #c6def3;border-radius:10px;font-weight:800;font-size:12px;padding:9px 12px;min-height:43px}
+ #vplan .il20-fav-msg{font-size:11px;color:#446d94;margin:6px 0 0;min-height:14px}
+ body.senior #vplan .il20-toggle,body.senior #vplan .il20-save-route,body.senior #vplan .il20-fav-open{font-size:17px;min-height:55px}
+ @media(max-width:355px){#vplan .il20-toggle{flex-basis:100%}}
+ `;(d.head||d.documentElement).appendChild(css);
+ window.IL20_ARRIVE_BY=safeRead(modeStore)==='arrive';applyMode();refresh();return true;
+}
+window.IL20_PLANNER_EXTRAS={version:'preview-4',favorites:favorites,search:search,applyMode:applyMode};
+if(d.readyState==='loading')d.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
+
+/* Ispina Lokalnie 2.0 FULL Preview 5 — Modern Classic.
+ * UI-only refinement layered on full 1.83.20 / Routes Preview 4.
+ * Keep the production search, stop acceptance, realtime and journey logic intact.
+ */
+;(function(){
+ 'use strict';
+ if(window.IL20_MODERN_CLASSIC||typeof document==='undefined')return;
+ var d=document,view=null,resultsObserver=null,trafficObserver=null;
+ function q(s,root){return (root||d).querySelector(s)}
+ function create(tag,klass,text){var e=d.createElement(tag);if(klass)e.className=klass;if(text!==undefined)e.textContent=text;return e}
+ function setAttrs(e,attrs){Object.keys(attrs).forEach(function(k){e.setAttribute(k,attrs[k])});return e}
+ function details(cls,title){var el=create('details',cls),s=create('summary','il20v5-summary',title);el.appendChild(s);return el}
+ function planner(){view=q('#vplan');var card=q('#vplan .plcard'),quick=q('#vplan #pchips'),extras=q('#vplan #il20-extras');
+  if(!view||!card||!extras||!quick||card.hasAttribute('data-il20v5'))return false;
+  card.setAttribute('data-il20v5','1');view.classList.add('il20v5');
+  var heading=q('#vplan .plhero .p');if(heading)heading.textContent='Wybierz przystanek z listy i kliknij „Akceptuj”. Po wyborze celu znajdę połączenia.';
+  var notice=q('#ilR14Marker');if(notice)notice.textContent='Wybierz przystanek z listy i kliknij „Akceptuj”. Po zatwierdzeniu celu wyszukam połączenia.';
+  // Quick destinations are available on demand, without blocking the primary form.
+  var shortcuts=details('il20v5-shortcuts','Szybkie cele · rozwiń');quick.parentNode.insertBefore(shortcuts,quick);shortcuts.appendChild(quick);
+  // Journey mode is more useful adjacent to date/time, not hidden below the form.
+  var opts=q('.il20-options',extras),hint=q('#il20-arrive-hint'),when=q('.plwhen',card);
+  if(opts&&when){var mode=create('div','il20v5-when-mode');var label=create('div','il20v5-mini-head','Kiedy podróżujesz?');mode.appendChild(label);mode.appendChild(opts);if(hint)mode.appendChild(hint);when.parentNode.insertBefore(mode,when)}
+  // Keep the existing favorites controller/listeners and selectors; only relocate them.
+  var fav=details('il20v5-favorites','☆ Moje zapisane trasy');
+  ['.il20-fav-title','#il20-favorites','.il20-save-route','#il20-fav-msg'].forEach(function(s){var item=q(s,extras);if(item)fav.appendChild(item)});
+  var actions=q('.plactions',card),home=q('#phome');if(home)home.insertAdjacentElement('afterend',fav);else if(actions)actions.insertAdjacentElement('afterend',fav);else card.appendChild(fav);
+  var transfer=q('.il-transfer-options',card);if(transfer){var advanced=details('il20v5-advanced','⚙ Opcje przesiadek');transfer.parentNode.insertBefore(advanced,transfer);advanced.appendChild(transfer)}
+  extras.remove();
+  // Expose favorites only when used, without modifying their data model.
+  var save=q('.il20-save-route',fav);if(save){save.addEventListener('click',function(){fav.open=true})}
+  if(q('#il20-favorites .il20-fav-row'))fav.open=true;
+  // Assistive UX: keep toolbars tappable and never auto-approve user choices.
+  setAttrs(shortcuts,{ 'aria-label':'Szybkie cele podróży'});
+  setAttrs(fav,{'aria-label':'Zapisane trasy'});
+  setAttrs(advanced,{'aria-label':'Opcje przesiadek'});
+  return true;
+ }
+ function dashboard(){var hero=q('#ilDashHero1843'),fresh=q('#il20-freshness');if(!hero||!fresh||fresh.hasAttribute('data-il20v5'))return false;
+  fresh.setAttribute('data-il20v5','1');
+  var rows=q('.il20-rows',fresh),note=q('.il20-note',fresh);
+  var det=details('il20v5-sync-details','Zobacz szczegóły synchronizacji');
+  if(rows){rows.parentNode.insertBefore(det,rows);det.appendChild(rows)}if(note)det.appendChild(note);
+  var service=q('#ilServicesTile1896');if(service)service.classList.add('il20v5-service');
+  return true;
+ }
+ function clock(t){var x=String(t||'').match(/\b(?:[01]?\d|2[0-3]):[0-5]\d\b/);return x?x[0]:'—'}
+ function enhanceResult(card){if(card.hasAttribute('data-il20v5-result'))return;
+  var top=q('.prtop',card),depart=q('.prtime',card),arrival=q('.prarr',card);
+  if(!top||!depart||!arrival)return;
+  card.setAttribute('data-il20v5-result','1');card.classList.add('il20v5-result');
+  var route=q('.prroute',card), stops=route?route.querySelectorAll('b'):[],from=stops.length?stops[0].textContent.trim():'Przystanek początkowy',to=stops.length?stops[stops.length-1].textContent.trim():'Przystanek docelowy';
+  var grid=create('div','il20v5-timegrid');
+  function column(title,time,stop){var item=create('div','il20v5-timecell');item.appendChild(create('span','il20v5-time-title',title));item.appendChild(create('strong','il20v5-clock',time));item.appendChild(create('span','il20v5-stopname',stop));return item}
+  grid.appendChild(column('ODJAZD',clock(depart.textContent),from));
+  grid.appendChild(column('PRZYJAZD',clock(arrival.textContent),to));
+  top.insertAdjacentElement('afterend',grid);
+  var meta=q('.prmeta',card);if(meta)meta.classList.add('il20v5-meta');
+  if(q('.il20-recommend',card))card.classList.add('il20v5-recommended');
+ }
+ function decorateResults(){var pres=q('#pres');if(!pres)return;pres.querySelectorAll('article.pr').forEach(enhanceResult)}
+ function watchTraffic(){var e=q('#il20-traffic-panel');if(!e)return;
+   function adjust(){var active=!!q('.il20-traffic-route',e);e.classList.toggle('il20v5-trip-active',active);view&&view.classList.toggle('il20v5-trip-on',active)}
+   adjust();if(trafficObserver)return;
+   if(window.MutationObserver){trafficObserver=new MutationObserver(adjust);trafficObserver.observe(e,{childList:true,subtree:false})}
+ }
+ function initial(){if(!planner())return false;dashboard();decorateResults();watchTraffic();
