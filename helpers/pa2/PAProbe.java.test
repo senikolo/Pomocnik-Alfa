@@ -9,6 +9,7 @@ public class PAProbe extends Instrumentation {
  void waitJs(Activity a,String expression,long max)throws Exception{long until=System.currentTimeMillis()+max;while(System.currentTimeMillis()<until){if("true".equals(js(a,expression)))return;Thread.sleep(300);}throw new AssertionError("UI timeout: "+expression+"; result="+js(a,"document.body.innerText.slice(-3000)"));}
  Activity launch(String name)throws Exception{Intent intent=new Intent().setClassName(getTargetContext().getPackageName(),"com.ispina.lokalnie."+name).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);Activity a=startActivitySync(intent);waitForIdleSync();Thread.sleep(900);require(a!=null,name+" did not start");return a;}
  void screenshot(String name)throws Exception{File dir=getTargetContext().getExternalFilesDir("pa2-tests");dir.mkdirs();Bitmap bitmap=getUiAutomation().takeScreenshot();if(bitmap!=null)try(FileOutputStream out=new FileOutputStream(new File(dir,name+".png"))){bitmap.compress(Bitmap.CompressFormat.PNG,100,out);}}
+ @Override public void onCreate(Bundle args){super.onCreate(args);start();}
  @Override public void onStart(){Bundle out=new Bundle();try{
   record("Android API "+Build.VERSION.SDK_INT+", package "+getTargetContext().getPackageName());
   Activity a=launch("MainActivity");record("PASS main launches");screenshot("main");runOnMainSync(()->a.finish());

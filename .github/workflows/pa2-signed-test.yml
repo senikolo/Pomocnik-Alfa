@@ -69,9 +69,13 @@ jobs:
             adb install -r build/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk
             adb install -r build/PA2-instrumentation.apk
             adb logcat -c
-            adb shell am instrument -w com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/instrumentation.txt
+            set +e
+            timeout 300s adb shell am instrument -w com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/instrumentation.txt
+            TEST_RESULT=${PIPESTATUS[0]}
             adb logcat -d -b crash > results/crashes.txt
+            adb logcat -d -s AndroidRuntime:E > results/runtime-errors.txt
             adb pull /sdcard/Android/data/com.senikolo.pomocniknowy.pa2preview/files/pa2-tests results/screenshots || true
+            test "$TEST_RESULT" = 0 || exit "$TEST_RESULT"
             grep -q 'TOTAL PASS system' results/instrumentation.txt
             test ! -s results/crashes.txt || ! grep -q 'FATAL EXCEPTION' results/crashes.txt
       - uses: actions/upload-artifact@v4
