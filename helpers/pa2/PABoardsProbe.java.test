@@ -1,0 +1,89 @@
+package com.ispina.lokalnie;
+import android.app.*;import android.content.*;import android.location.*;import android.os.*;import android.view.*;import android.widget.*;import android.graphics.Bitmap;import android.webkit.WebView;import org.json.*;import java.util.*;import java.util.concurrent.*;import java.io.*;import java.lang.reflect.*;
+/** Real installed APK instrumentation. Synthetic parser fixtures are explicitly separate from real GTFS UI. */
+public final class PABoardsProbe {
+ static void need(boolean yes,String m){if(!yes)throw new AssertionError(m);}
+ static Object get(Object o,String n)throws Exception{Field f=o.getClass().getDeclaredField(n);f.setAccessible(true);return f.get(o);}
+ static void set(Object o,String n,Object v)throws Exception{Field f=o.getClass().getDeclaredField(n);f.setAccessible(true);f.set(o,v);}
+ static PANearbyBoards controller()throws Exception{Field f=PANearbyBoards.class.getDeclaredField("installed");f.setAccessible(true);return (PANearbyBoards)f.get(null);}
+ static void call(Object o,String name,Class<?>[] types,Object...args)throws Exception{Method m=o.getClass().getDeclaredMethod(name,types);m.setAccessible(true);m.invoke(o,args);}
+ static int count(View v,String tag){int n=tag.equals(v.getTag())?1:0;if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++)n+=count(((ViewGroup)v).getChildAt(i),tag);return n;}
+ static View tagged(View v,String tag){if(tag.equals(v.getTag()))return v;if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++){View r=tagged(((ViewGroup)v).getChildAt(i),tag);if(r!=null)return r;}return null;}
+ static WebView web(View v){if(v instanceof WebView)return (WebView)v;if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++){WebView w=web(((ViewGroup)v).getChildAt(i));if(w!=null)return w;}return null;}
+ static String js(Instrumentation t,Activity a,String expression)throws Exception{CountDownLatch done=new CountDownLatch(1);String[] result={""};t.runOnMainSync(()->{WebView w=web(a.getWindow().getDecorView());if(w==null){done.countDown();return;}w.evaluateJavascript(expression,value->{result[0]=value;done.countDown();});});need(done.await(10,TimeUnit.SECONDS),"Full board JS callback");return result[0];}
+ static void waitFor(java.util.concurrent.Callable<Boolean> check,String name)throws Exception{long end=System.currentTimeMillis()+60000;while(System.currentTimeMillis()<end){if(check.call())return;Thread.sleep(150);}throw new AssertionError("Timed out: "+name);}
+ static void geometry(View v){
+  if(v instanceof TextView&&v.getTag()!=null&&"pa-board-title".equals(v.getTag())){TextView x=(TextView)v;need(x.getLayout()!=null,"Title laid out");for(int i=0;i<x.getLayout().getLineCount();i++)need(x.getLayout().getEllipsisCount(i)==0,"Uncut board title");need(x.getHeight()>=x.getLayout().getHeight(),"Title height includes all lines");}
+  if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++)geometry(((ViewGroup)v).getChildAt(i));
+ }
+ static void screen(Instrumentation t,String name)throws Exception{File dir=new File(t.getTargetContext().getFilesDir(),"pa2-tests");dir.mkdirs();Bitmap b=t.getUiAutomation().takeScreenshot();need(b!=null,"Screenshot unavailable");try(FileOutputStream out=new FileOutputStream(new File(dir,name+".png"))){b.compress(Bitmap.CompressFormat.PNG,100,out);}}
+ static byte[] var(long v)throws Exception{ByteArrayOutputStream o=new ByteArrayOutputStream();while((v&~127L)!=0){o.write((int)(v&127)|128);v>>>=7;}o.write((int)v);return o.toByteArray();}
+ static byte[] join(byte[]...xs)throws Exception{ByteArrayOutputStream o=new ByteArrayOutputStream();for(byte[] x:xs)o.write(x);return o.toByteArray();}
+ static byte[] num(int key,long n)throws Exception{return join(var(key*8),var(n));}
+ static byte[] bin(int key,byte[] b)throws Exception{return join(var(key*8+2),var(b.length),b);}
+ static byte[] str(int key,String s)throws Exception{return bin(key,s.getBytes("UTF-8"));}
+ static byte[] fixture(long now,String trip,String day,String stop,int kind)throws Exception{
+  byte[] descriptor=join(str(1,trip),str(3,day),num(4,kind==3?3:0));
+  byte[] event=bin(3,num(2,now+300));byte[] point=join(str(4,stop),kind==1?num(5,1):kind==2?num(5,2):event);
+  byte[] update=join(bin(1,descriptor),bin(2,point),num(4,now));return join(bin(1,join(str(1,"2.0"),num(3,now))),bin(2,bin(3,update)));
+ }
+ static void parserTests()throws Exception{
+  long now=System.currentTimeMillis()/1000;String day=java.time.Instant.ofEpochSecond(now).atZone(java.time.ZoneId.of("Europe/Warsaw")).toLocalDate().toString();
+  JSONObject q=new JSONObject().put("source","krakow_bus").put("trip","fixture-trip").put("serviceDay",day).put("stopId","krakow_bus:stop").put("plannedEpoch",now+120);
+  for(int kind:new int[]{0,1,2,3,4,5,6}){
+   PALive.cache.clear();PALive.fetched.clear();final int k=kind;byte[] data=fixture(k==4?now-300:now,k==5?"wrong-trip":"fixture-trip",k==6?"19990101":day.replace("-",""),"stop",kind);
+   JSONObject answer=PALive.lookup(new JSONObject().put("departures",new JSONArray().put(q)),(url,max)->{if(url.contains("VehiclePositions"))throw new IOException("offline position source");return data;}).getJSONArray("results").getJSONObject(0);
+   need(kind<=1||kind==3?answer.optBoolean("live"):!answer.optBoolean("live"),"GTFS-RT join kind "+kind);
+   if(kind==0)need(answer.optLong("eta")==now+300&&answer.optLong("delaySeconds")==180,"fresh exact ETA/delay even if GPS source fails");
+   if(kind==1)need(answer.optBoolean("skipped")&&answer.optLong("liveTimestamp")==now,"skipped timestamp");
+   if(kind==3)need(answer.optBoolean("cancelled")&&answer.optLong("liveTimestamp")==now,"cancel timestamp");
+  }
+  // Network unavailable: honest plan, never fabricated ETA.
+  PALive.cache.clear();PALive.fetched.clear();JSONObject no=PALive.lookup(new JSONObject().put("departures",new JSONArray().put(q)),(url,max)->{throw new IOException("no internet");}).getJSONArray("results").getJSONObject(0);need(!no.optBoolean("live")&&!no.has("eta"),"Offline does not invent LIVE");
+  // Night service and holiday exceptions are represented by the exact service mask, not weekday guesses.
+  JSONObject idx=new JSONObject("{\"schema\":2,\"days\":[\"2026-12-24\",\"2026-12-25\",\"2026-12-26\"],\"covered\":[true,true,false],\"sources\":[{\"id\":\"p\",\"covered\":[true,true,false]}],\"stops\":[[\"p:a\",\"Test\",\"01\",52,21,[0],\"p\",\"\"],[\"p:b\",\"End\",\"02\",52.01,21,[0],\"p\",\"\"]],\"routes\":[[\"p:r\",\"N1\",\"\",3,\"P\",\"p\"]]}");
+  JSONObject route=new JSONObject("{\"patterns\":[[[0,0,0,0,0],[1,600,600,0,0]]],\"runs\":[[1,\"End\",0,90000,\"night\",\"\"],[2,\"End\",0,7200,\"holiday\",\"\"]]}");
+  PANearbyData.Snapshot night=PANearbyData.load(idx,r->route,Arrays.asList(PANearbyData.stops(idx).get(0)),52,21,PANearbyRules.epoch("2026-12-25",1800));need(night.boards.get(0).departures.size()==2,"Night + holiday mask");need(night.boards.get(0).departures.get(0).day.equals("2026-12-24"),"Night retains previous service day");
+  PANearbyData.Snapshot holiday=PANearbyData.load(idx,r->route,Arrays.asList(PANearbyData.stops(idx).get(0)),52,21,PANearbyRules.epoch("2026-12-26",1800));need(holiday.boards.get(0).departures.isEmpty()&&!holiday.boards.get(0).covered,"No extrapolated holiday service");
+  PALive.cache.clear();PALive.fetched.clear();
+ }
+ public static String run(Instrumentation t,Activity home)throws Exception{
+  parserTests();StringBuilder log=new StringBuilder("PASS instrumented fixtures: fresh/stale/wrong-trip/wrong-date/no-data/cancelled/skipped/offline; midnight and holiday masks\n");
+  waitFor(()->controller()!=null&&get(controller(),"index")!=null,"home index");PANearbyBoards c=controller();need(count(home.getWindow().getDecorView(),"pa-smart-boards")==1,"Actual dashboard card hook");
+  String persisted=t.getTargetContext().getSharedPreferences("pa2_boards",0).getString("manual_stop","");
+  need(persisted.equals((String)get(c,"manualId")),"Saved manual stop restored after process restart");
+  // First installation has no GPS permission. The second run retains the granted
+  // permission and may legitimately have a provider fix from the weather module.
+  boolean hasGPS=t.getTargetContext().checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)==android.content.pm.PackageManager.PERMISSION_GRANTED;
+  if(!hasGPS){
+   waitFor(()->!((java.util.concurrent.atomic.AtomicBoolean)get(c,"computing")).get(),"no GPS idle");
+   t.runOnMainSync(()->{try{call(c,"cancelLocation",new Class[]{});set(c,"manualId","");set(c,"lastLocation",null);set(c,"lastRequest",System.currentTimeMillis());call(c,"showNearby",new Class[]{});}catch(Exception e){throw new RuntimeException(e);}});
+   waitFor(()->count(home.getWindow().getDecorView(),"pa-departure-board")==0,"Unavailable GPS has no presumed location");screen(t,"boards-no-gps");
+   log.append("PASS actual permission-denied GPS path with manual/GPS actions\n");
+  }else log.append("PASS retained GPS permission and restored manual stop on process restart\n");
+  t.getUiAutomation().grantRuntimePermission(t.getTargetContext().getPackageName(),android.Manifest.permission.ACCESS_FINE_LOCATION);
+  JSONObject index=(JSONObject)get(c,"index");List<PANearbyRules.Stop> all=PANearbyData.stops(index);Map<Integer,PANearbyRules.Stop> examples=new HashMap<>();
+  // Real GTFS coordinates and real installed route data; no demonstration departures in release code.
+  String[] names={"Berensona","Tarchomin","Ispina","Grobla","Rondo ONZ","Rondo Mogilskie","Kraków Główny","Sierosławice","Białołęka","Łuczanowice","Wawrzyszew"};
+  for(String name:names){for(PANearbyRules.Stop s:all)if(s.name.contains(name)){int n=PANearbyRules.choose(all,s.lat,s.lon).size();if(!examples.containsKey(n))examples.put(n,s);if(examples.size()==3)break;}if(examples.size()==3)break;}
+  need(examples.size()==3,"Real GTFS must supply 1/2/3 stop layouts");
+  for(int size=1;size<=3;size++){PANearbyRules.Stop s=examples.get(size);Location loc=new Location("gps");loc.setLatitude(s.lat);loc.setLongitude(s.lon);loc.setAccuracy(5);loc.setTime(System.currentTimeMillis()+5000);
+   waitFor(()->!((java.util.concurrent.atomic.AtomicBoolean)get(c,"computing")).get(),"prior calculation");
+   t.runOnMainSync(()->{try{call(c,"cancelLocation",new Class[]{});set(c,"lastRequest",System.currentTimeMillis());set(c,"manualId","");set(c,"lastLocation",loc);set(c,"signature","");call(c,"showNearby",new Class[]{});}catch(Exception e){throw new RuntimeException(e);}});
+   final int expected=size;waitFor(()->count(home.getWindow().getDecorView(),"pa-departure-board")==expected,"board count "+size);
+   t.runOnMainSync(()->{View v=tagged(home.getWindow().getDecorView(),"pa-smart-boards");v.requestRectangleOnScreen(new android.graphics.Rect(0,0,v.getWidth(),v.getHeight()),true);});Thread.sleep(500);t.runOnMainSync(()->geometry(home.getWindow().getDecorView()));screen(t,"boards-"+size);log.append("PASS real main dashboard "+size+" boards at "+s.name+" ["+s.id+"]\n");
+  }
+  // All active board cards use wrapping text and can scroll at a large system font.
+  need(count(home.getWindow().getDecorView(),"pa-departure-board")==3,"Three maximum");
+  // Manual selection persists without GPS; subsequent launch in PAProbe verifies it.
+  PANearbyRules.Stop manual=examples.get(2);t.getTargetContext().getSharedPreferences("pa2_boards",0).edit().putString("manual_stop",manual.id).commit();
+  waitFor(()->!((java.util.concurrent.atomic.AtomicBoolean)get(c,"computing")).get(),"manual idle");t.runOnMainSync(()->{try{set(c,"manualId",manual.id);call(c,"showNearby",new Class[]{});}catch(Exception e){throw new RuntimeException(e);}});
+  waitFor(()->count(home.getWindow().getDecorView(),"pa-departure-board")==1,"manual single board");screen(t,"boards-manual");
+  // Tap actual card: an Activity monitor observes the same regional planner, with selected stop ID.
+  Instrumentation.ActivityMonitor monitor=t.addMonitor(PARegionsActivity.class.getName(),null,false);
+  t.runOnMainSync(()->{View title=tagged(home.getWindow().getDecorView(),"pa-board-title");need(title!=null,"Board title");title.performClick();});Activity detail=monitor.waitForActivityWithTimeout(20000);t.removeMonitor(monitor);need(detail!=null,"Board click opens details");need(manual.id.equals(detail.getIntent().getStringExtra("pa_stop_id")),"Exact platform deep link");waitFor(()->"true".equals(js(t,detail,"document.getElementById('stopBoard')?.classList.contains('active') && document.querySelectorAll('#homeStopRows .card').length>0")),"Real full-stop rows loaded");screen(t,"board-full-stop");
+  need(!(Boolean)get(c,"visible"),"Background polling suspended");t.runOnMainSync(()->detail.finish());log.append("PASS manual stop persistence, exact stop click, full regional Activity and foreground-only lifecycle\n");t.runOnMainSync(()->PANearbyBoards.install(home));
+  waitFor(()->controller()!=c&&get(controller(),"index")!=null&&count(home.getWindow().getDecorView(),"pa-departure-board")==1,"Reattach dashboard after home rebuild");
+  need(count(home.getWindow().getDecorView(),"pa-smart-boards")==1,"No duplicate card after reattach");log.append("PASS repeated dashboard hook recreates one live card without duplicate refresh loops\n");return log.toString();
+ }
+}

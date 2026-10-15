@@ -11,7 +11,7 @@ function save(key,value){try{localStorage.setItem(key,JSON.stringify(value))}cat
 let toastTimer;function toast(text){clearTimeout(toastTimer);$('toast').textContent=text;$('toast').classList.remove('hidden');toastTimer=setTimeout(()=>$('toast').classList.add('hidden'),3200)}
 window.PANativeReply=(id,r)=>{const c=callbacks.get(id);if(!c)return;callbacks.delete(id);clearTimeout(c.timer);r.ok?c.resolve(r.data):c.reject(Error(r.message||'Czynność nie powiodła się.'))};
 function native(type,payload={}){return new Promise((resolve,reject)=>{if(!window.PADevice){if(type==='copy'&&navigator.clipboard){navigator.clipboard.writeText(payload.text).then(()=>resolve({saved:true}),reject);return}reject(Error('Ta funkcja działa w zainstalowanej aplikacji PA.'));return}const id=String(++requestNo),timer=setTimeout(()=>{callbacks.delete(id);reject(Error('Upłynął czas oczekiwania. Spróbuj ponownie.'))},type==='update'?180000:50000);callbacks.set(id,{resolve,reject,timer});PADevice.request(JSON.stringify({id,type,payload}))})}
-function tab(name){currentTab=name;document.body.classList.remove('keyboard-open');if(document.activeElement?.tagName==='TEXTAREA')document.activeElement.blur();document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===name));document.querySelectorAll('nav button').forEach(x=>{x.classList.toggle('active',x.dataset.tab===name);x.setAttribute('aria-current',x.dataset.tab===name?'page':'false')});if(name==='favorites')renderFavorites();window.scrollTo({top:0,behavior:'auto'});if(name==='assistant')scrollChat()}
+function tab(name){if(name!=='stopBoard'){const m=$('homeStopMap');if(m&&m.__mapCleanup)m.__mapCleanup()}currentTab=name;document.body.classList.remove('keyboard-open');if(document.activeElement?.tagName==='TEXTAREA')document.activeElement.blur();document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===name));document.querySelectorAll('nav button').forEach(x=>{x.classList.toggle('active',x.dataset.tab===name);x.setAttribute('aria-current',x.dataset.tab===name?'page':'false')});if(name==='favorites')renderFavorites();window.scrollTo({top:0,behavior:'auto'});if(name==='assistant')scrollChat()}
 window.PABack=()=>{if(!$('settings').classList.contains('hidden')){$('settings').classList.add('hidden');layoutChat();return}if(currentTab!=='planner'){tab('planner');return}native('back').catch(()=>{})};
 $('back').onclick=window.PABack;document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>tab(b.dataset.tab));$('settingsToggle').onclick=()=>{$('settings').classList.toggle('hidden');layoutChat()};
 function appearance(){const theme=$('theme').value,dark=theme==='dark'||theme==='auto'&&window.matchMedia('(prefers-color-scheme:dark)').matches;document.documentElement.dataset.theme=dark?'dark':'light';document.body.classList.toggle('senior',$('senior').value==='large');save('pa2-appearance',{theme,senior:$('senior').value});requestAnimationFrame(layoutChat)}
@@ -19,7 +19,7 @@ const style=load('pa2-appearance',{theme:'auto',senior:'normal'});$('theme').val
 function updateDateLabel(){const raw=$('departAt').value;if(!raw||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(raw)){$('dateDisplay').textContent='Wybierz datę i godzinę';return}const [d,t]=raw.split('T'),[yy,mm,dd]=d.split('-');const today=wallNow().slice(0,10);$('dateDisplay').textContent=(d===today?'Dzisiaj · ':'')+dd+'.'+mm+'.'+yy+' · '+t.slice(0,5)}
 $('departAt').value=wallNow();updateDateLabel();$('departAt').onchange=()=>{manualTime=true;updateDateLabel();if(start&&end)search()};$('now').onclick=()=>{manualTime=false;$('departAt').value=wallNow();updateDateLabel();if(start&&end)search()};
 function sourceNotice(idx){const dates=idx.days.filter((d,i)=>idx.covered[i]);$('coverage').textContent=idx.routes.length+' linii i relacji · rozkład '+dates[0]+' – '+dates.at(-1)+'. Dostępny offline.';$('sources').innerHTML=idx.sources.map(s=>'<p><b>'+esc(s.credit)+'</b><br>'+esc(s.url)+'<br>Pobrano '+esc(s.downloaded.slice(0,16).replace('T',' '))+'. Przetworzono do Planera PA.'+(s.attributions||[]).map(a=>'<br>'+esc(a.organization_name)+' '+esc(a.attribution_url||'')).join('')+'</p>').join('')}
-async function init(){try{const r=await fetch('/index_all.json',{cache:'no-store'});if(!r.ok)throw Error('Nie można odczytać bazy.');const idx=await r.json();if(idx.schema!==2)throw Error('Nieobsługiwana wersja rozkładu.');engine=new PATransit.Engine(idx,async id=>{const r=await fetch('/route_all_'+id+'.json',{cache:'no-store'});if(!r.ok)throw Error('Brakuje pliku rozkładu linii. Odśwież dane.');return r.json()});assistant=new PAConversation.Assistant(engine);sourceNotice(idx);restoreConversation();renderFavorites();}catch(e){$('coverage').textContent=e.message;$('progress').textContent='Nie udało się uruchomić Planera. Spróbuj ponownie otworzyć ten moduł.'}}
+async function init(){try{const r=await fetch('/index_all.json',{cache:'no-store'});if(!r.ok)throw Error('Nie można odczytać bazy.');const idx=await r.json();if(idx.schema!==2)throw Error('Nieobsługiwana wersja rozkładu.');engine=new PATransit.Engine(idx,async id=>{const r=await fetch('/route_all_'+id+'.json',{cache:'no-store'});if(!r.ok)throw Error('Brakuje pliku rozkładu linii. Odśwież dane.');return r.json()});assistant=new PAConversation.Assistant(engine);sourceNotice(idx);restoreConversation();renderFavorites();native("homeStop").then(r=>openHomeStop(r.stopId)).catch(()=>{});}catch(e){$('coverage').textContent=e.message;$('progress').textContent='Nie udało się uruchomić Planera. Spróbuj ponownie otworzyć ten moduł.'}}
 function groupSummary(g){const sources=[...new Set(g.stops.map(i=>engine.idx.stops[i][6]))],names={warsaw:'WTP Warszawa',mld:'MLD',krakow_bus:'Kraków',krakow_tram:'Kraków',krakow_mobilis:'Kraków',kmlrail:'Koleje Małopolskie',wkd:'WKD',polishrail:'kolej'};return [...new Set(sources.map(s=>names[s]||s))].join(' · ')}
 function suggest(which){const text=$(which).value,box=$('suggest'+(which==='from'?'From':'To'));box.innerHTML='';$(which).setAttribute('aria-expanded','false');if(!engine||norm(text).length<3){box.classList.remove('open');return}const groups=engine.match(text);box.classList.add('open');$(which).setAttribute('aria-expanded','true');if(!groups.length){box.innerHTML='<p class="small" style="padding:12px">Nie znaleziono przystanku. Spróbuj innej pisowni.</p>';return}groups.slice(0,12).forEach(g=>{const b=document.createElement('button');b.type='button';b.setAttribute('role','option');b.innerHTML=esc(g.name)+'<small>'+esc(groupSummary(g))+'</small>';b.onclick=()=>{$(which).value=g.name;box.classList.remove('open');$(which).setAttribute('aria-expanded','false');$('confirm'+(which==='from'?'From':'To')).focus()};box.appendChild(b)});if(groups.length>12){const more=document.createElement('p');more.className='small';more.style.padding='8px 12px';more.textContent='Wpisz dokładniejszą nazwę, aby zawęzić listę.';box.appendChild(more)}}
 function edit(which){if(which==='from')start=null;else end=null;$(which).setAttribute('aria-expanded','false');const suffix=which==='from'?'From':'To';$('status'+suffix).textContent='';$('confirm'+suffix).textContent='Akceptuj';$(which).readOnly=false;generation++;$('results').innerHTML=''}
@@ -162,8 +162,8 @@ function busChangeDirection(){busResetResults();$('checkBus').disabled=!(busStat
 function busDistanceMetres(lat1,lon1,lat2,lon2){const rad=Math.PI/180,phi=(lat2-lat1)*rad,dl=(lon2-lon1)*rad,a=Math.sin(phi/2)**2+Math.cos(lat1*rad)*Math.cos(lat2*rad)*Math.sin(dl/2)**2;return Math.round(12742000*Math.asin(Math.min(1,Math.sqrt(a))))}
 function busArrivalView(actual,d,checkedAt){
  const status=PALiveState.assess(d,actual,checkedAt);
- if(actual.cancelled)return '<div class="bus-eta unknown"><strong>Kurs odwołany</strong><small>Wybierz inny kurs.</small></div>';
- if(actual.skipped)return '<div class="bus-eta unknown"><strong>Przystanek pominięty</strong><small>Ten kurs się tutaj nie zatrzyma.</small></div>';
+ if(status.cancelled)return '<div class="bus-eta unknown"><strong>Kurs odwołany</strong><small>Wybierz inny kurs.</small></div>';
+ if(status.skipped)return '<div class="bus-eta unknown"><strong>Przystanek pominięty</strong><small>Ten kurs się tutaj nie zatrzyma.</small></div>';
  if(status.etaFresh)return '<div class="bus-eta live"><strong>'+icon('clock')+(status.etaMinutes===0?'Przyjazd teraz':'Przyjazd za '+status.etaMinutes+' min')+'</strong><small>Prognoza przewoźnika · sprawdzona '+status.age+' s temu</small></div>';
  return '<div class="bus-eta schedule"><strong>'+icon('clock')+(status.plannedMinutes<0?'Planowy odjazd już minął':status.plannedMinutes===0?'Planowo teraz':'Planowo za '+status.plannedMinutes+' min')+'</strong><small>Rozkład: '+clock(d.dep)+'. '+(status.plannedMinutes<0?'Brak potwierdzenia, czy pojazd już odjechał.':'Brak potwierdzonej prognozy przyjazdu.')+'</small></div>';
 }
@@ -174,7 +174,7 @@ function busStopCoords(d){
 function renderBusSnapshot(){
  const snap=busState.snapshot;if(!snap||!busState.stop)return;
  const rows=snap.departures.map(d=>{const actual=snap.live?.results?.find(v=>v.trip===d.trip&&v.serviceDay===d.serviceDay)||{...d,live:false};return{d,actual,status:PALiveState.assess(d,actual,snap.checked)}})
-  .filter(x=>x.actual.cancelled||x.actual.skipped||x.status.plannedMinutes>=0||x.status.gpsFresh||x.status.etaFresh);
+  .filter(x=>x.status.cancelled||x.status.skipped||x.status.plannedMinutes>=0||x.status.gpsFresh||x.status.etaFresh);
  rows.sort((a,b)=>Number(b.status.etaFresh||b.status.gpsFresh)-Number(a.status.etaFresh||a.status.gpsFresh)||a.d.dep-b.d.dep);
  if(!rows.length){clearBusMap();$('busResult').replaceChildren();$('busLoading').textContent='Wcześniejsze kursy już minęły. Odśwież dane, aby sprawdzić następne.';return}
  const first=rows[0],point=busStopCoords(first.d),position=first.status.gpsFresh?first.actual.position:null;
@@ -182,7 +182,7 @@ function renderBusSnapshot(){
  if(keep)old.remove();else clearBusMap();
  $('busResult').innerHTML=rows.slice(0,6).map(({d,actual,status},i)=>{
   const type=busTram(Number(d.mode))?'tram':'bus',label=type==='tram'?'Tramwaj':'Autobus';
-  const state=actual.cancelled?'Odwołany kurs':actual.skipped?'Przystanek pominięty':status.gpsFresh?'Świeża pozycja GPS':status.etaFresh?'Prognoza przyjazdu LIVE':status.hadPosition?'Pozycja GPS jest nieaktualna':'Rozkład planowy';
+  const state=status.cancelled?'Odwołany kurs':status.skipped?'Przystanek pominięty':status.gpsFresh?'Świeża pozycja GPS':status.etaFresh?'Prognoza przyjazdu LIVE':status.hadPosition?'Pozycja GPS jest nieaktualna':'Rozkład planowy';
   return '<article class="card trip"><div class="bus-card-header"><span class="bus-vehicle-line">'+icon(type)+esc(label+' '+d.line)+'</span><span class="pill">'+clock(d.dep)+'</span></div><p class="bus-destination">'+icon('arrow-right')+esc(d.headsign)+'</p><div class="bus-status '+(status.gpsFresh||status.etaFresh?'ok':'warn')+'">'+icon(status.gpsFresh?'pin':'clock')+esc(state)+'</div>'+busArrivalView(actual,d,snap.checked)+'<p class="small">Przystanek: <strong>'+esc(busState.stop.name)+'</strong>'+(d.platform?' · stanowisko '+esc(d.platform):'')+'</p>'+(status.gpsFresh?'<p class="small">Pomiar GPS sprzed '+status.positionAge+' s. Położenie nie jest prognozą przyjazdu.</p>':status.hadPosition?'<p class="small">Ostatni pomiar jest starszy niż 2 minuty. Znacznik pojazdu został ukryty.</p>':'')+(i===0?'<div id="osmLiveMap" role="region" aria-label="Mapa pojazdu i przystanku"></div>':'')+'<details class="bus-source"><summary>Źródło i status</summary>'+esc(actual.provenance||'Dane rozkładowe: '+d.source)+'</details></article>';
  }).join('');
  const node=$('osmLiveMap');if(keep)node.replaceWith(old);else if(point&&window.PAMap){node.dataset.mapKey=mapKey;PAMap.mount(node,{lat:point[3],lon:point[4]},position?{lat:position.latitude,lon:position.longitude}:null,{mode:first.d.mode,line:first.d.line})}
@@ -207,12 +207,35 @@ async function checkLiveBus(){
 }
 function tickBus(){if(!appVisible||document.hidden||currentTab!=='liveBus'||!busState.snapshot)return;renderBusSnapshot();if(!busState.inFlight&&Date.now()-busState.refreshed>=30000)checkLiveBus()}
 const liveTimer=setInterval(tickBus,5000);
-window.PAVisibility=visible=>{appVisible=!!visible;if(appVisible)tickBus()};
+window.PAVisibility=visible=>{appVisible=!!visible;if(appVisible){tickBus();if(currentTab==='stopBoard')refreshHomeStop()}};
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)tickBus()});
 window.addEventListener('pagehide',()=>{clearInterval(liveTimer);clearBusMap()});
 $('busStop').oninput=busStopList;$('busStop').onfocus=()=>{if(!busState.stop)busStopList()};
 $('busLine').onchange=busChangeLine;$('busDirection').onchange=busChangeDirection;
 $('checkBus').onclick=checkLiveBus;$('busRefresh').onclick=checkLiveBus;$('busQuick').onclick=()=>tab('liveBus');
+
+/* Full stop view opened from the native home board, within the existing regional module. */
+const homeBoard={stop:null,snapshot:null,inFlight:false,refreshed:0};
+async function openHomeStop(id){
+ if(!engine||!id)return;const sid=engine.idx.stops.findIndex(s=>s[0]===id);if(sid<0)return;const s=engine.idx.stops[sid];
+ homeBoard.stop={name:s[1],stops:[sid],routes:new Set(s[5])};$('homeStopTitle').textContent=s[1]+(s[2]?' · '+s[2]:'');tab('stopBoard');
+ PAMap.mount($('homeStopMap'),{lat:s[3],lon:s[4]},null);await refreshHomeStop();
+}
+async function refreshHomeStop(){
+ if(!homeBoard.stop||homeBoard.inFlight||!appVisible||currentTab!=='stopBoard')return;homeBoard.inFlight=true;
+ try{const departures=await engine.departures(homeBoard.stop,wallNow(),null,null,36,null,1800);homeBoard.snapshot={departures,live:null,checked:Date.now()/1000};renderHomeStop();
+  let live=null;try{live=await native('live',{departures:departures.slice(0,36)})}catch{}homeBoard.snapshot={departures,live,checked:live?.checkedAt||Date.now()/1000};homeBoard.refreshed=Date.now();renderHomeStop();
+ }catch(e){$('homeStopStatus').textContent=e.message}finally{homeBoard.inFlight=false}
+}
+function renderHomeStop(){
+ const snap=homeBoard.snapshot;if(!snap)return;
+ const rows=snap.departures.map(d=>{const actual=snap.live?.results?.find(a=>a.source===d.source&&a.trip===d.trip&&a.stopId===d.stopId&&a.serviceDay===d.serviceDay)||{};return{d,actual,status:PALiveState.assess(d,actual,snap.checked)}}).filter(x=>x.status.cancelled||x.status.skipped||x.status.etaFresh||x.status.plannedMinutes>=0).slice(0,16);
+ $('homeStopStatus').textContent=rows.length?'Rozkład planowy · prognozy LIVE tylko po potwierdzeniu':'Brak odjazdów w ciągu 24 godzin. Sprawdź ważność bazy w ustawieniach.';
+ $('homeStopRows').innerHTML=rows.map(({d,actual,status})=>'<article class="card"><div class="row wrap"><span class="pill">'+esc(mode(d.mode)+' '+d.line)+'</span><strong>'+clock(d.dep)+'</strong></div><p class="station">→ '+esc(d.headsign)+'</p>'+busArrivalView(actual,d,snap.checked)+(status.gpsFresh?'<p class="small">Pozycja GPS LIVE · brak potwierdzonego ETA</p>':'')+'</article>').join('');
+}
+$('homeStopRefresh').onclick=refreshHomeStop;$('homeStopBack').onclick=()=>native('back').catch(()=>{});
+const homeTimer=setInterval(()=>{if(!appVisible||document.hidden||currentTab!=='stopBoard')return;renderHomeStop();if(Date.now()-homeBoard.refreshed>=30000)refreshHomeStop()},5000);
+window.addEventListener('pagehide',()=>{clearInterval(homeTimer);const m=$('homeStopMap');if(m.__mapCleanup)m.__mapCleanup()});
 
 $('official').onclick=()=>native('official',{url:'https://portalpasazera.pl/'}).catch(e=>toast(e.message));$('goDashboard').onclick=()=>native('back').catch(e=>toast(e.message));
 $('chatInput').addEventListener('focus',()=>{document.body.classList.add('keyboard-open');setTimeout(scrollChat,100)});
