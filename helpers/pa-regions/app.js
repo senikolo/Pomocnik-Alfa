@@ -15,10 +15,16 @@ $("tabPlanner").onclick=()=>tab("planner");$("tabAssistant").onclick=()=>tab("as
 function groupIndex(idx){
  let map=new Map();
  idx.stops.forEach((s,i)=>{const k=norm(s[1]);if(!k)return;let g=map.get(k);if(!g){g={key:k,name:s[1],stops:[],routes:new Set()};map.set(k,g)}g.stops.push(i);(s[5]||[]).forEach(v=>g.routes.add(v))});
- if(idx.source==="mld" && map.has("ispina")){
-   const most=map.get("ispina");
-   most.name="Ispina Most"; // The operator's "Ispina" stop is Ispina Most.
-   for(const alias of ["ispina most","ispiny most","ispiny","ispini"])map.set(alias,most);
+ if(idx.source==="mld" && (map.has("ispina")||map.has("ispina most"))){
+   const most=map.get("ispina")||map.get("ispina most");
+   const other=map.get("ispina most");
+   // Merge both physical GTFS stop IDs. These names describe the same stop.
+   if(other && other!==most){
+     for(const sid of other.stops) if(!most.stops.includes(sid)) most.stops.push(sid);
+     for(const line of other.routes) most.routes.add(line);
+   }
+   most.name="Ispina Most";
+   for(const alias of ["ispina","ispina most","ispiny most","ispiny","ispini"])map.set(alias,most);
  }
  for(const [alias,to] of Object.entries(aliases[idx.source]||{})){if(!map.has(alias)&&map.has(to))map.set(alias,map.get(to))}
  idx.groups=map;return idx;
@@ -32,7 +38,7 @@ async function getData(provider){
 }
 async function getRoute(idx,routeId){
  if(idx.routeCache.has(routeId))return idx.routeCache.get(routeId);
- const promise=fetch("/route_"+idx.source+"_"+routeId+".json").then(r=>{if(!r.ok)throw new Error("Brakuje danych linii "+routeId);return r.json()}).then(o=>o.trips||[]);
+ const promise=fetch("/route_"+idx.source+"_"+routeId+".json").then(r=>{if(!r.ok)throw new Error("Brakuje danych linii "+routeId);return r.json()}).then(o=>o.trips||[]).catch(e=>{idx.routeCache.delete(routeId);throw e;});
  idx.routeCache.set(routeId,promise);
  return promise;
 }
@@ -238,17 +244,27 @@ async function assistant(){
   bubble(lastAnswer,"assistant");return;
  }
  let from=null,to=null;
- const pair=question.match(/(?:^|\s)(?:z|ze)\s+(.+?)\s+(?:do|na)\s+(.+?)(?=\s+(?:jutro|dzisiaj|dziś|dzis|po\s+\d|o\s+\d|około\s+\d|okolo\s+\d)|[.!?]|$)/i);
- if(pair){
-  const a=identifyStop(idx,pair[1]),b=identifyStop(idx,pair[2]);
-  dialogue.fromHint=pair[1];dialogue.toHint=pair[2];
+ const timeEnding="(?=\\s+(?:jutro|dzisiaj|dziś|dzis|po\\s+\\d|o\\s+\\d|około\\s+\\d|okolo\\s+\\d)|[.!?]|$)";
+ const pair=question.match(new RegExp("(?:^|\\s)(?:z|ze)\\s+(.+?)\\s+(?:do|na)\\s+(.+?)"+timeEnding,"i"));
+ const reverse=pair?null:question.match(new RegExp("(?:^|\\s)(?:do|na)\\s+(.+?)\\s+(?:z|ze)\\s+(.+?)"+timeEnding,"i"));
+ if(pair||reverse){
+  const origin=pair?pair[1]:reverse[2],destination=pair?pair[2]:reverse[1];
+  const a=identifyStop(idx,origin),b=identifyStop(idx,destination);
+  dialogue.fromHint=origin;dialogue.toHint=destination;
   dialogue.from=a.group;dialogue.to=b.group;
   dialogue.fromCandidates=a.candidates;dialogue.toCandidates=b.candidates;
  }else{
-  const identified=identifyStop(idx,question);
-  if(identified.group){
-   if(!dialogue.from)dialogue.from=identified.group;
-   else if(!dialogue.to)dialogue.to=identified.group;
+  // A follow-up may supply only one of the two missing stops.
+  const fromPart=question.match(new RegExp("(?:^|\\s)(?:z|ze)\\s+(.+?)"+timeEnding,"i"));
+  const toPart=question.match(new RegExp("(?:^|\\s)(?:do|na)\\s+(.+?)"+timeEnding,"i"));
+  if(fromPart&&!toPart){const a=identifyStop(idx,fromPart[1]);dialogue.from=a.group;dialogue.fromHint=fromPart[1];dialogue.fromCandidates=a.candidates;}
+  else if(toPart&&!fromPart){const b=identifyStop(idx,toPart[1]);dialogue.to=b.group;dialogue.toHint=toPart[1];dialogue.toCandidates=b.candidates;}
+  else{
+   const identified=identifyStop(idx,question);
+   if(identified.group){
+    if(!dialogue.from)dialogue.from=identified.group;
+    else if(!dialogue.to)dialogue.to=identified.group;
+   }
   }
  }
  from=dialogue.from||start;to=dialogue.to||end;
