@@ -20,6 +20,13 @@ final class PALive {
   double decimal(int k){return Float.intBitsToFloat((int)number(k,0));}
  }
  static boolean fresh(long stamp,long now){return stamp>0&&stamp<=now+20&&now-stamp<=120;}
+ static boolean matchesDate(String descriptor,String expected,long now){
+  if(!expected.matches("[0-9]{8}"))return false;
+  if(!descriptor.isEmpty())return descriptor.equals(expected);
+  java.text.SimpleDateFormat day=new java.text.SimpleDateFormat("yyyyMMdd",java.util.Locale.ROOT);day.setTimeZone(java.util.TimeZone.getTimeZone("Europe/Warsaw"));
+  return expected.equals(day.format(new java.util.Date(now*1000)));
+ }
+
  static JSONObject lookup(JSONObject p,Reader reader)throws Exception{
   JSONArray candidates=p.optJSONArray("departures");if(candidates==null||candidates.length()>12)throw new IOException("Nieprawidłowe kursy do sprawdzenia LIVE.");Map<String,List<Msg>> vehicles=new HashMap<>(),updates=new HashMap<>();Map<String,Long> stamps=new HashMap<>();Set<String> attempted=new HashSet<>();JSONArray results=new JSONArray();long now=System.currentTimeMillis()/1000;
   for(int i=0;i<candidates.length();i++){
@@ -34,8 +41,8 @@ final class PALive {
     }catch(Exception ignored){} // Unavailable/stale is returned as scheduled; never reported as LIVE.
    }
    boolean live=false;
-   for(Msg v:vehicles.getOrDefault(source,Collections.emptyList())){Msg d=v.sub(1);String sd=d.text(3);long stamp=v.number(5,stamps.getOrDefault(source,0L));if(!d.text(1).equals(trip)||(!sd.isEmpty()&&!sd.equals(date))||!fresh(stamp,now))continue;Msg pos=v.sub(2);double lat=pos.decimal(1),lon=pos.decimal(2);if(lat<48||lat>56||lon<13||lon>25)continue;result.put("position",new JSONObject().put("latitude",lat).put("longitude",lon).put("timestamp",stamp).put("age",now-stamp));live=true;break;}
-   for(Msg u:updates.getOrDefault(source,Collections.emptyList())){Msg d=u.sub(1);String sd=d.text(3);long stamp=u.number(4,stamps.getOrDefault(source,0L));if(!d.text(1).equals(trip)||(!sd.isEmpty()&&!sd.equals(date))||!fresh(stamp,now))continue;if(d.number(4,0)==3){result.put("cancelled",true);live=true;break;}
+   for(Msg v:vehicles.getOrDefault(source,Collections.emptyList())){Msg d=v.sub(1);String sd=d.text(3);long stamp=v.number(5,stamps.getOrDefault(source,0L));if(!d.text(1).equals(trip)||!matchesDate(sd,date,now)||!fresh(stamp,now))continue;Msg pos=v.sub(2);double lat=pos.decimal(1),lon=pos.decimal(2);if(lat<48||lat>56||lon<13||lon>25)continue;result.put("position",new JSONObject().put("latitude",lat).put("longitude",lon).put("timestamp",stamp).put("age",now-stamp));live=true;break;}
+   for(Msg u:updates.getOrDefault(source,Collections.emptyList())){Msg d=u.sub(1);String sd=d.text(3);long stamp=u.number(4,stamps.getOrDefault(source,0L));if(!d.text(1).equals(trip)||!matchesDate(sd,date,now)||!fresh(stamp,now))continue;if(d.number(4,0)==3){result.put("cancelled",true);live=true;break;}
     String stop=c.optString("stopId");int colon=stop.indexOf(':');if(colon>=0)stop=stop.substring(colon+1);
     for(Msg s:u.all(2)){if(!s.text(4).equals(stop))continue;if(s.number(5,0)==1){result.put("skipped",true);live=true;break;}Msg event=s.one(3)!=null?s.sub(3):s.sub(2);long eta=event.number(2,0);if(eta>=now-30&&eta<now+86400){result.put("eta",eta);result.put("liveTimestamp",stamp);live=true;}break;}
    }

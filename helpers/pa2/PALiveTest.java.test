@@ -3,6 +3,7 @@ public class PALiveTest{
  public static void main(String[] args)throws Exception{
   long now=1770000000L;
   if(!PALive.fresh(now-120,now)||PALive.fresh(now-121,now)||PALive.fresh(now+21,now)||PALive.fresh(0,now))throw new AssertionError("Freshness bounds");
+  if(!PALive.matchesDate("20261016","20261016",now)||PALive.matchesDate("20261015","20261016",now)||PALive.matchesDate("","20350101",now))throw new AssertionError("Trip date matching");
   // GTFS-RT-like nested message with original trip ID and start_date.
   byte[] trip=new byte[]{10,3,'A','4','x',26,8,'2','0','2','6','1','0','1','5'};
   PALive.Msg m=new PALive.Msg(trip);
