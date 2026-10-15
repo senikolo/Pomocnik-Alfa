@@ -8,7 +8,7 @@ public final class PANearbyBoards implements Application.ActivityLifecycleCallba
  private LinearLayout content;private TextView subtitle;private volatile boolean visible=true,disposed;private volatile JSONObject index;private volatile String folder="";private Location lastLocation;private long lastRequest;private LocationListener listener;private LocationManager manager;private String manualId="",signature="";private PANearbyData.Snapshot snapshot;private HorizontalScrollView pager;private final List<Runnable> tickers=new ArrayList<>();
  private final Runnable refresh=new Runnable(){public void run(){if(disposed||!visible)return;showNearby();main.postDelayed(this,30000);}};
  private final Runnable tick=new Runnable(){public void run(){if(disposed||!visible)return;if(snapshot!=null)render(snapshot);for(Runnable r:new ArrayList<>(tickers))r.run();main.postDelayed(this,1000);}};
- public static void install(Activity a){if(installed!=null&&installed.activity==a&&!installed.disposed)return;if(installed!=null)installed.dispose();installed=new PANearbyBoards(a);a.getApplication().registerActivityLifecycleCallbacks(installed);installed.locate(0);}
+ public static void install(Activity a){if(installed!=null&&installed.activity==a&&!installed.disposed)return;if(installed!=null)installed.dispose();PANearbyBoards next=new PANearbyBoards(a);installed=next;a.getApplication().registerActivityLifecycleCallbacks(next);next.main.post(()->next.locate(0));}
  private PANearbyBoards(Activity a){activity=a;manualId=a.getSharedPreferences("pa2_boards",0).getString("manual_stop","");}
  private int dp(float x){return Math.round(x*activity.getResources().getDisplayMetrics().density);}
  private GradientDrawable shape(int color,int stroke,int radius){GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(radius));if(stroke!=0)d.setStroke(dp(1),stroke);return d;}
@@ -20,7 +20,7 @@ public final class PANearbyBoards implements Application.ActivityLifecycleCallba
  private void locate(int attempt){if(disposed)return;View root=activity.findViewById(android.R.id.content);TextView title=root==null?null:find(root,"Przystanki w pobliżu");if(title==null){if(attempt<15)main.postDelayed(()->locate(attempt+1),100);return;}
   View current=title;ViewGroup parent=null;while(current.getParent() instanceof ViewGroup){ViewGroup p=(ViewGroup)current.getParent();if(p instanceof LinearLayout&&find(p,"Planer i Alfa")!=null&&find(current,"Planer i Alfa")==null){parent=p;break;}current=p;}
   // Unknown layouts retain the original shortcut. Never add an unrelated fake dashboard.
-  if(parent==null)return;
+  if(parent==null){if(attempt<15)main.postDelayed(()->locate(attempt+1),100);return;}
   LinearLayout panel=col();panel.setTag("pa-smart-boards");panel.setPadding(dp(14),dp(16),dp(14),dp(12));panel.setBackground(shape(0xffffffff,0xffe4dceb,23));panel.setElevation(dp(2));panel.addView(text("Przystanki w pobliżu",20,INK,true));
   subtitle=text("Twoje najbliższe odjazdy",12,MUTED,false);subtitle.setPadding(0,dp(5),0,dp(8));panel.addView(subtitle);content=col();panel.addView(content,new LinearLayout.LayoutParams(-1,-2));
   LinearLayout actions=row();LinearLayout.LayoutParams ap=new LinearLayout.LayoutParams(0,-2,1);ap.rightMargin=dp(5);actions.addView(button("Wybierz przystanek",this::manualPicker),ap);actions.addView(button("Użyj GPS",this::useGPS),new LinearLayout.LayoutParams(0,-2,1));LinearLayout.LayoutParams alp=new LinearLayout.LayoutParams(-1,-2);alp.topMargin=dp(8);panel.addView(actions,alp);

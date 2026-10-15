@@ -10,6 +10,10 @@ public final class PABoardsProbe {
  static int count(View v,String tag){int n=tag.equals(v.getTag())?1:0;if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++)n+=count(((ViewGroup)v).getChildAt(i),tag);return n;}
  static View tagged(View v,String tag){if(tag.equals(v.getTag()))return v;if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++){View r=tagged(((ViewGroup)v).getChildAt(i),tag);if(r!=null)return r;}return null;}
  static void waitFor(java.util.concurrent.Callable<Boolean> check,String name)throws Exception{long end=System.currentTimeMillis()+60000;while(System.currentTimeMillis()<end){if(check.call())return;Thread.sleep(150);}throw new AssertionError("Timed out: "+name);}
+ static void geometry(View v){
+  if(v instanceof TextView&&v.getTag()!=null&&"pa-board-title".equals(v.getTag())){TextView x=(TextView)v;need(x.getLayout()!=null,"Title laid out");for(int i=0;i<x.getLayout().getLineCount();i++)need(x.getLayout().getEllipsisCount(i)==0,"Uncut board title");need(x.getHeight()>=x.getLayout().getHeight(),"Title height includes all lines");}
+  if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++)geometry(((ViewGroup)v).getChildAt(i));
+ }
  static void screen(Instrumentation t,String name)throws Exception{File dir=t.getTargetContext().getExternalFilesDir("pa2-tests");dir.mkdirs();Bitmap b=t.getUiAutomation().takeScreenshot();need(b!=null,"Screenshot unavailable");try(FileOutputStream out=new FileOutputStream(new File(dir,name+".png"))){b.compress(Bitmap.CompressFormat.PNG,100,out);}}
  static byte[] var(long v)throws Exception{ByteArrayOutputStream o=new ByteArrayOutputStream();while((v&~127L)!=0){o.write((int)(v&127)|128);v>>>=7;}o.write((int)v);return o.toByteArray();}
  static byte[] join(byte[]...xs)throws Exception{ByteArrayOutputStream o=new ByteArrayOutputStream();for(byte[] x:xs)o.write(x);return o.toByteArray();}
@@ -44,8 +48,11 @@ public final class PABoardsProbe {
  public static String run(Instrumentation t,Activity home)throws Exception{
   parserTests();StringBuilder log=new StringBuilder("PASS instrumented fixtures: fresh/stale/wrong-trip/wrong-date/no-data/cancelled/skipped/offline; midnight and holiday masks\n");
   waitFor(()->controller()!=null&&get(controller(),"index")!=null,"home index");PANearbyBoards c=controller();need(count(home.getWindow().getDecorView(),"pa-smart-boards")==1,"Actual dashboard card hook");
-  // Permission-denied path on the real main screen (CI grants GPS only after this check).
-  t.runOnMainSync(()->{try{call(c,"message",new Class[]{String.class},"Brak aktualnej lokalizacji. Wybierz przystanek ręcznie albo użyj GPS.");}catch(Exception e){throw new RuntimeException(e);}});screen(t,"boards-no-gps");
+  // Actual unavailable-location path, invoked through the production controller.
+  waitFor(()->!((java.util.concurrent.atomic.AtomicBoolean)get(c,"computing")).get(),"no GPS idle");
+  t.runOnMainSync(()->{try{call(c,"cancelLocation",new Class[]{});set(c,"manualId","");set(c,"lastLocation",null);set(c,"lastRequest",System.currentTimeMillis());call(c,"showNearby",new Class[]{});}catch(Exception e){throw new RuntimeException(e);}});
+  waitFor(()->!((java.util.concurrent.atomic.AtomicBoolean)get(c,"computing")).get(),"no GPS message");
+  need(count(home.getWindow().getDecorView(),"pa-departure-board")==0,"No presumed location");screen(t,"boards-no-gps");
   t.getUiAutomation().grantRuntimePermission(t.getTargetContext().getPackageName(),android.Manifest.permission.ACCESS_FINE_LOCATION);
   JSONObject index=(JSONObject)get(c,"index");List<PANearbyRules.Stop> all=PANearbyData.stops(index);Map<Integer,PANearbyRules.Stop> examples=new HashMap<>();
   // Real GTFS coordinates and real installed route data; no demonstration departures in release code.
@@ -56,7 +63,7 @@ public final class PABoardsProbe {
    waitFor(()->!((java.util.concurrent.atomic.AtomicBoolean)get(c,"computing")).get(),"prior calculation");
    t.runOnMainSync(()->{try{call(c,"cancelLocation",new Class[]{});set(c,"lastRequest",System.currentTimeMillis());set(c,"manualId","");set(c,"lastLocation",loc);set(c,"signature","");call(c,"showNearby",new Class[]{});}catch(Exception e){throw new RuntimeException(e);}});
    final int expected=size;waitFor(()->count(home.getWindow().getDecorView(),"pa-departure-board")==expected,"board count "+size);
-   t.runOnMainSync(()->{View v=tagged(home.getWindow().getDecorView(),"pa-smart-boards");v.requestRectangleOnScreen(new android.graphics.Rect(0,0,v.getWidth(),v.getHeight()),true);});Thread.sleep(500);screen(t,"boards-"+size);log.append("PASS real main dashboard "+size+" boards at "+s.name+" ["+s.id+"]\n");
+   t.runOnMainSync(()->{View v=tagged(home.getWindow().getDecorView(),"pa-smart-boards");v.requestRectangleOnScreen(new android.graphics.Rect(0,0,v.getWidth(),v.getHeight()),true);});Thread.sleep(500);t.runOnMainSync(()->geometry(home.getWindow().getDecorView()));screen(t,"boards-"+size);log.append("PASS real main dashboard "+size+" boards at "+s.name+" ["+s.id+"]\n");
   }
   // All active board cards use wrapping text and can scroll at a large system font.
   need(count(home.getWindow().getDecorView(),"pa-departure-board")==3,"Three maximum");
