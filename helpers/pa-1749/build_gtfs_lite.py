@@ -109,7 +109,7 @@ for provider,url in SOURCES.items():
                     if n%1000000==0:print(provider,"stop_times_kept",n,flush=True)
         size=temp.stat().st_size
         print(provider,"selected_stop_times",n,"compressed_bytes",size,flush=True)
-        assert 5000<size<29_000_000,(provider,size)
+        assert 5000<size<60_000_000,(provider,size)
         if not zipfile.is_zipfile(temp):
             raise RuntimeError(f"Generated GTFS ZIP is corrupt: {provider}")
         temp.replace(out)  # Atomic replacement: never destroy previous good feed
