@@ -14,6 +14,10 @@ public class PAProbe extends Instrumentation {
   record("Android API "+Build.VERSION.SDK_INT+", package "+getTargetContext().getPackageName());
   Activity a=launch("MainActivity");record("PASS main launches");screenshot("main");runOnMainSync(()->a.finish());
   Activity planner=launch("PARegionsActivity");waitJs(planner,"document.getElementById('coverage').innerText.includes('offline')",30000);record("PASS WebView, all GTFS indexes and ES2017 client load");
+   require("true".equals(js(planner,"/\\d{2}\\.\\d{2}\\.\\d{4}/.test(document.getElementById('dateDisplay').textContent)")),"Polish date format not visible");
+   require("true".equals(js(planner,"document.getElementById('from').getAttribute('role')==='combobox' && document.getElementById('suggestFrom').getAttribute('role')==='listbox'")),"Stop search ARIA missing");
+   require("true".equals(js(planner,"getComputedStyle(document.querySelector('header')).backgroundImage.includes('linear-gradient')")),"Branded header absent");
+   record("PASS UX polish date, stop list accessibility and cohesive header");
   js(planner,"document.getElementById('from').value='Szwedzka';document.getElementById('from').dispatchEvent(new Event('input'));true");
   waitJs(planner,"document.getElementById('suggestFrom').innerText.includes('Warszawa')&&document.getElementById('suggestFrom').innerText.includes('Kraków')",10000);record("PASS identical stop names require Warsaw/Kraków geographic choice");
   js(planner,"document.getElementById('from').value='Tarchomin';document.getElementById('from').dispatchEvent(new Event('input'));document.getElementById('confirmFrom').click();document.getElementById('to').value='Dw. Centralny';document.getElementById('confirmTo').click();true");
