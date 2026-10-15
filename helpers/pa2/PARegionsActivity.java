@@ -26,7 +26,7 @@ public final class PARegionsActivity extends Activity {
  private final String HOST="pa-bus.invalid";
  private static final String DATA_URL="https://github.com/senikolo/Pomocnik-Alfa/releases/download/pa2-data/pa2-data.zip";
  private static final String SERVICE_URL="https://raw.githubusercontent.com/senikolo/Pomocnik-Alfa/main/data/pa2-service.json";
- @Override public void onCreate(Bundle state){super.onCreate(state);getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+ @Override public void onCreate(Bundle state){super.onCreate(state);getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);getWindow().setStatusBarColor(0xff493075);getWindow().setNavigationBarColor(0xff1b142a);getWindow().getDecorView().setSystemUiVisibility(0);
   String folder=getPreferences(0).getString("data_folder","");if(folder.matches("data-[0-9]+")){File f=new File(getFilesDir(),folder);if(new File(f,"index_all.json").isFile())active=f;}
   web=new WebView(this);web.setBackgroundColor(0xfff3f7fc);WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);s.setAllowFileAccess(false);s.setAllowContentAccess(false);s.setJavaScriptCanOpenWindowsAutomatically(false);s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);s.setMediaPlaybackRequiresUserGesture(true);if(Build.VERSION.SDK_INT>=26)s.setSafeBrowsingEnabled(true);
   web.setWebChromeClient(new WebChromeClient());web.setWebViewClient(new WebViewClient(){
