@@ -1,0 +1,105 @@
+name: PA 1.7.69 Regional Planner Assistant
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.issue.title == 'TRIGGER PA WARSAW MLD PLANNER 20261015' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Build GTFS-based real journeys index for Warsaw and MLD
+        run: |
+          set -euxo pipefail
+          node --check helpers/pa-regions/app.js
+          python3 -m py_compile helpers/pa-regions/build_index.py helpers/pa-regions/patch_apk.py
+          python3 helpers/pa-regions/build_index.py build/pa-regions data/pa-gtfs | tee gtfs-summary.txt
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          for src in ('warsaw','mld'):
+              root=Path('build/pa-regions')
+              data=json.loads((root/('index_'+src+'.json')).read_text())
+              routes=data['routes']
+              assert len(data['stops'])>100 and len(routes)>20
+              assert any(data['covered']), (src, data['days'])
+              assert len(list(root.glob('route_'+src+'_*.json')))==len(routes)
+              assert all(len(s)==6 for s in data['stops'])
+              assert all(len(r)==3 for r in routes)
+              n=sum((root/('route_'+src+'_'+str(i)+'.json')).stat().st_size for i in range(len(routes)))
+              print('PASS',src,'routes',len(routes),'stops',len(data['stops']),'payload bytes',n,flush=True)
+              if src=='warsaw':assert any(r[1]=='102' for r in routes)
+              if src=='mld':assert any(r[1]=='A4' for r in routes)
+          PY
+
+      - name: Download real PA 1.7.66 base and apktool
+        run: |
+          set -euxo pipefail
+          mkdir -p baseline tools output
+          gh run download 37921731880 -R "$GITHUB_REPOSITORY" -n Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-UNSIGNED -D baseline
+          gh release download v2.12.1 -R iBotPeaches/Apktool -p 'apktool_2.12.1.jar' -D tools
+          unzip -t baseline/Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-UNSIGNED.apk > /dev/null
+      - name: Add PA in-app regional planner and assistant
+        run: |
+          set -euxo pipefail
+          java -Xmx4g -jar tools/apktool_2.12.1.jar d -f -o decoded baseline/Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-UNSIGNED.apk
+          python3 helpers/pa-regions/patch_apk.py decoded build/pa-regions
+          grep -F 'PARegionsActivity' decoded/AndroidManifest.xml
+          test -s decoded/assets/pa_regions/index_warsaw.json
+          test -s decoded/assets/pa_regions/index_mld.json
+      - name: Compile native activity and dex (Java 8 compatible)
+        run: |
+          set -euxo pipefail
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          test -s "$SDK/platforms/android-35/android.jar"
+          mkdir -p classes newdex
+          javac -source 8 -target 8 -encoding UTF-8 -cp "$SDK/platforms/android-35/android.jar" -d classes \
+            helpers/pa-regions/PARegionsActivity.java helpers/pa-regions/PARegionsClick.java
+          find classes -name '*.class' -print0 | xargs -0 "$SDK/build-tools/35.0.0/d8" --min-api 29 --lib "$SDK/platforms/android-35/android.jar" --output newdex
+          cp newdex/classes.dex output/classes5.dex
+      - name: Rebuild complete PA with untouched existing modules
+        run: |
+          set -euxo pipefail
+          java -Xmx4g -jar tools/apktool_2.12.1.jar b decoded -o output/rebuilt.apk
+          (cd output && zip -q -0 rebuilt.apk classes5.dex)
+          unzip -t output/rebuilt.apk > /dev/null
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -p -f 4 output/rebuilt.apk output/aligned.apk
+      - name: Sign separate test app; validate resources and signature
+        run: |
+          set -euxo pipefail
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          keytool -genkeypair -noprompt -storetype PKCS12 -keystore test.p12 -storepass android -keypass android -alias pa-regions -keyalg RSA -keysize 3072 -validity 365 -dname "CN=PA Warsaw MLD Preview,OU=Testing,O=Pomocnik Alfa"
+          "$BT/apksigner" sign --ks test.p12 --ks-type PKCS12 --ks-pass pass:android --key-pass pass:android --ks-key-alias pa-regions \
+            --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true \
+            --out output/Pomocnik-Alfa-1.7.69-Planer-Warszawa-MLD-Asystent-TEST.apk output/aligned.apk
+          "$BT/apksigner" verify --verbose --print-certs output/Pomocnik-Alfa-1.7.69-Planer-Warszawa-MLD-Asystent-TEST.apk | tee output/signature.txt
+          "$BT/aapt" dump badging output/Pomocnik-Alfa-1.7.69-Planer-Warszawa-MLD-Asystent-TEST.apk | head -8 | tee output/badging.txt
+          grep "name='com.senikolo.pomocniknowy.regionspreview'" output/badging.txt
+          unzip -l output/Pomocnik-Alfa-1.7.69-Planer-Warszawa-MLD-Asystent-TEST.apk | grep -E 'classes5.dex|pa_regions/app.js|pa_regions/index_warsaw.json|pa_regions/index_mld.json|pa_gtfs/warsaw-lite.zip|pa_gtfs/mld-lite.zip' | tee output/resources.txt
+          sha256sum output/Pomocnik-Alfa-1.7.69-Planer-Warszawa-MLD-Asystent-TEST.apk > output/sha256.txt
+          cp gtfs-summary.txt output/gtfs-summary.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PA-1.7.69-WARSAW-MLD-RESULT
+          path: |
+            output/Pomocnik-Alfa-1.7.69-Planer-Warszawa-MLD-Asystent-TEST.apk
+            output/signature.txt
+            output/badging.txt
+            output/resources.txt
+            output/sha256.txt
+            output/gtfs-summary.txt
+          retention-days: 30
