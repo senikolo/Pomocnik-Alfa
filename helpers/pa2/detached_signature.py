@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
-"""Move only a public APK v2/v3 signature, never a private signing key.
-Input hash lease makes replay on changed APK impossible.
+"""Public APK signing delta, covering signature blocks and signer ZIP alignment.
+No private key enters CI; SHA-256 leases bind the delta to one exact APK.
+Requires standard bsdiff/bspatch (Debian bsdiff package).
 """
-import sys,struct,json,base64,hashlib
+import sys,json,base64,hashlib,subprocess,tempfile,os,shutil
 from pathlib import Path
-def layout(b):
- e=b.rfind(b'PK\x05\x06');assert e>=0 and e+22+struct.unpack_from('<H',b,e+20)[0]==len(b)
- cd=struct.unpack_from('<I',b,e+16)[0];return cd,e
+def digest(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 def detach(unsigned,signed):
- a=Path(unsigned).read_bytes();b=Path(signed).read_bytes();ca,ea=layout(a);cb,eb=layout(b)
- assert b[cb-16:cb]==b'APK Sig Block 42';n=struct.unpack_from('<Q',b,cb-24)[0]+8;begin=cb-n
- assert a[:ca]==b[:begin], 'Signer changed ZIP entries; cannot detach'
- assert a[ca:ea]==b[cb:eb], 'Signer changed central directory'
- result={'input_sha256':hashlib.sha256(a).hexdigest(),'output_sha256':hashlib.sha256(b).hexdigest(),'block':base64.b64encode(b[begin:cb]).decode(),'eocd':base64.b64encode(b[eb:]).decode()}
- return result
+ tool=os.environ.get('BSDIFF_PATH') or shutil.which('bsdiff')
+ if not tool:raise RuntimeError('bsdiff is required to prepare the public signature delta')
+ with tempfile.TemporaryDirectory() as folder:
+  patch=Path(folder)/'public-signature.patch'
+  subprocess.run([tool,unsigned,signed,str(patch)],check=True)
+  return {'format':'BSDIFF40','input_sha256':digest(unsigned),'output_sha256':digest(signed),'public_signature_delta':base64.b64encode(patch.read_bytes()).decode()}
 def apply(source,proof,target):
- a=Path(source).read_bytes();assert hashlib.sha256(a).hexdigest()==proof['input_sha256'],'APK changed; signature cannot be reused'
- cd,e=layout(a);out=a[:cd]+base64.b64decode(proof['block'])+a[cd:e]+base64.b64decode(proof['eocd']);assert hashlib.sha256(out).hexdigest()==proof['output_sha256'];Path(target).write_bytes(out)
+ assert digest(source)==proof['input_sha256'],'APK changed; signature cannot be reused'
+ assert proof['format']=='BSDIFF40'
+ tool=os.environ.get('BSPATCH_PATH') or shutil.which('bspatch')
+ if not tool:raise RuntimeError('bspatch is required; install the bsdiff package')
+ with tempfile.TemporaryDirectory() as folder:
+  p=Path(folder)/'public-signature.patch';p.write_bytes(base64.b64decode(proof['public_signature_delta'],validate=True));subprocess.run([tool,source,target,str(p)],check=True)
+ assert digest(target)==proof['output_sha256'],'Signature delta failed output validation'
 if __name__=='__main__':
  if sys.argv[1]=='detach':print(json.dumps(detach(*sys.argv[2:4])))
  else:apply(sys.argv[2],json.loads(Path(sys.argv[3]).read_text()),sys.argv[4])

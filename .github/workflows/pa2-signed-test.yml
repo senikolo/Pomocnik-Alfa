@@ -16,6 +16,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Retrieve exact already-tested unsigned build and attach public signatures
         run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bsdiff
           RUN="$(python3 -c "import json;print(json.load(open('helpers/pa2/signatures.json'))['run'])")"
           gh run download "$RUN" -n PA2-unsigned-build -D signed
           python3 - <<'PY'
