@@ -82,6 +82,8 @@ public final class PABoardsProbe {
   // Tap actual card: an Activity monitor observes the same regional planner, with selected stop ID.
   Instrumentation.ActivityMonitor monitor=t.addMonitor(PARegionsActivity.class.getName(),null,false);
   t.runOnMainSync(()->{View title=tagged(home.getWindow().getDecorView(),"pa-board-title");need(title!=null,"Board title");title.performClick();});Activity detail=monitor.waitForActivityWithTimeout(20000);t.removeMonitor(monitor);need(detail!=null,"Board click opens details");need(manual.id.equals(detail.getIntent().getStringExtra("pa_stop_id")),"Exact platform deep link");waitFor(()->"true".equals(js(t,detail,"document.getElementById('stopBoard')?.classList.contains('active') && document.querySelectorAll('#homeStopRows .card').length>0")),"Real full-stop rows loaded");screen(t,"board-full-stop");
-  need(!(Boolean)get(c,"visible"),"Background polling suspended");t.runOnMainSync(()->detail.finish());log.append("PASS manual stop persistence, exact stop click, full regional Activity and foreground-only lifecycle\n");return log.toString();
+  need(!(Boolean)get(c,"visible"),"Background polling suspended");t.runOnMainSync(()->detail.finish());log.append("PASS manual stop persistence, exact stop click, full regional Activity and foreground-only lifecycle\n");t.runOnMainSync(()->PANearbyBoards.install(home));
+  waitFor(()->controller()!=c&&get(controller(),"index")!=null&&count(home.getWindow().getDecorView(),"pa-departure-board")==1,"Reattach dashboard after home rebuild");
+  need(count(home.getWindow().getDecorView(),"pa-smart-boards")==1,"No duplicate card after reattach");log.append("PASS repeated dashboard hook recreates one live card without duplicate refresh loops\n");return log.toString();
  }
 }
