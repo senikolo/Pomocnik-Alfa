@@ -8,8 +8,9 @@ function parseTime(q,previous,now=wallNow()){
  const n=norm(q);let d=localDate(previous||now),explicit=false,relative=false;
  if(/\bteraz\b/.test(n)){d=localDate(now);explicit=true}
  const offset=/\bpojutrze\b/.test(n)?2:/\bjutro\b/.test(n)?1:/\bdzis(?:iaj)?\b/.test(n)?0:null;
- if(offset!==null){d=localDate(now);d.setDate(d.getDate()+offset);explicit=true}
- const iso=q.match(/\b(20\d{2})-(\d{2})-(\d{2})\b/),pol=q.match(/\b(\d{1,2})[./](\d{1,2})(?:[./](20\d{2}))?\b/);
+ if(offset!==null){const keep=[d.getHours(),d.getMinutes()];d=localDate(now);d.setDate(d.getDate()+offset);if(previous)d.setHours(...keep);explicit=true}
+ const timeFree=q.replace(/\b(?:po|o|od|na|około|okolo|godzinie|godzina|godz\.?)\s+\d{1,2}[.:]\d{2}\b/gi,'');
+ const iso=q.match(/\b(20\d{2})-(\d{2})-(\d{2})\b/),pol=timeFree.match(/\b(\d{1,2})[./](\d{1,2})(?:[./](20\d{2}))?\b/);
  if(iso||pol){const y=Number(iso?iso[1]:pol[3]||d.getFullYear()),m=Number(iso?iso[2]:pol[2]),day=Number(iso?iso[3]:pol[1]);const nd=new Date(y,m-1,day,d.getHours(),d.getMinutes());if(nd.getMonth()!==m-1||nd.getDate()!==day)return{error:'Ta data nie istnieje. Podaj dzień, miesiąc i godzinę.'};d=nd;explicit=true}
  const weekdays={poniedzialek:1,wtorek:2,srode:3,sroda:3,czwartek:4,piatek:5,sobote:6,sobota:6,niedziele:0,niedziela:0};const w=n.match(/\b(?:w|we)\s+(poniedzialek|wtorek|srode|sroda|czwartek|piatek|sobote|sobota|niedziele|niedziela)\b/);if(w){d=localDate(now);let shift=(weekdays[w[1]]-d.getDay()+7)%7;if(/przyszl/.test(n)&&shift===0)shift=7;d.setDate(d.getDate()+shift);explicit=true}
  const hour=q.match(/\b(?:po|o|od|na|około|okolo|godzinie|godzina|godz\.?)\s+(\d{1,2})(?:[:.](\d{2}))?(?=\s|[!?.,]|$)/i)||q.match(/\b(\d{1,2}):(\d{2})\b/);
@@ -21,10 +22,13 @@ function parseTime(q,previous,now=wallNow()){
  return{when:format(d),explicit,relative}
 }
 function locations(q){
- const end='(?=\\s+(?:jutro|pojutrze|dziś|dzis|dzisiaj|wieczorem|rano|po\\s+\\d|o\\s+\\d|od\\s+\\d|około\\s+\\d|w\\s+(?:poniedziałek|wtorek|środę|czwartek|piątek|sobotę|niedzielę))|[!?]|$)';
- const a=q.match(new RegExp('(?:^|\\s)(?:z|ze)\\s+(.+?)\\s+(?:do|na)\\s+(.+?)'+end,'i'));if(a)return{from:a[1],to:a[2].replace(/[.]$/,'')};
- const b=q.match(new RegExp('(?:^|\\s)(?:do|na)\\s+(.+?)\\s+(?:z|ze)\\s+(.+?)'+end,'i'));if(b)return{from:b[2],to:b[1].replace(/[.]$/,'')};
- const f=q.match(new RegExp('(?:^|\\s)(?:z|ze)\\s+(.+?)'+end,'i')),t=q.match(new RegExp('(?:^|\\s)do\\s+(.+?)'+end,'i'));return{from:f?f[1].replace(/[.]$/,''):null,to:t?t[1].replace(/[.]$/,''):null}
+ const clean=q.replace(/\b(?:w kierunku|kierunek|w stronę|w strone)\s+.+?(?=\s+(?:jutro|pojutrze|dzisiaj|dziś|po\s+\d|o\s+\d)|[?!]|$)/gi,' § ')
+  .replace(/\b20\d{2}-\d{2}-\d{2}\b|\b\d{1,2}[./]\d{1,2}(?:[./]20\d{2})?\b/g,' § ')
+  .replace(/\b(?:po|o|od|około|okolo|godz\.?)\s+\d{1,2}(?:[.:]\d{2})?\b/gi,' § ');
+ const end='(?=\\s+(?:do|na|z|ze|§|jutro|pojutrze|dziś|dzis|dzisiaj|wieczorem|rano|w\\s+(?:poniedziałek|wtorek|środę|czwartek|piątek|sobotę|niedzielę))\\b|\\s+§|[!?]|$)';
+ const f=clean.match(new RegExp('(?:^|\\s)(?:z|ze)\\s+(.+?)'+end,'i'));
+ const t=clean.match(new RegExp('(?:^|\\s)(?:do|na)\\s+(.+?)'+end,'i'));
+ return{from:f?f[1].trim().replace(/[.,]$/,''):null,to:t?t[1].trim().replace(/[.,]$/,''):null};
 }
 class Assistant{
  constructor(engine){this.engine=engine;this.reset();this.history=[]}
@@ -51,7 +55,7 @@ class Assistant{
    const place=q.match(/\b(?:w|we|dla)\s+(.+?)(?=\s+(?:jutro|pojutrze|dziś|dzisiaj|będzie|bedzie)|[?!]|$)/i);let city=place?canonical(place[1]):null;
    if(!city&&s.to)city=s.to.name;return city?{type:'weather',city,offset:/pojutrze/.test(n)?2:/jutro/.test(n)?1:0}:{type:'answer',message:'Dla jakiej miejscowości sprawdzić pogodę? Napisz np. „Pogoda jutro w Warszawie”.'}
   }
-  const loc=locations(q),travel=!!(loc.from||loc.to)||/\b(dojade|dojechac|jechac|jade|podroz|trasa|polaczeni|nastepn\w*|odjazd\w*|kiedy.*a\d|gdzie.*autobus|autobus|tramwaj|metro|pociag)\b/.test(n),follow=/pozniej|wczesniej|^(?:a )?(?:o|po|od) \d|w druga strone|powrot|zamien/.test(n),isAnswer=!!s.asked;
+  const loc=locations(q),travel=!!(loc.from||loc.to)||/\b(dojade|dojechac|jechac|jade|podroz|trasa|polaczeni|nastepn\w*|odjazd\w*|kiedy.*a\d|gdzie.*autobus|autobus|tramwaj|metro|pociag)\b/.test(n),follow=!!s.from&&/\b(?:jutro|pojutrze|dzis|dzisiaj|teraz|w poniedzialek|we wtorek|w srode|w czwartek|w piatek|w sobote|w niedziele)\b/.test(n)||/pozniej|wczesniej|^(?:a )?(?:o|po|od) \d|w druga strone|powrot|zamien/.test(n),isAnswer=!!s.asked;
   if(model&&['route','departure','vehicle'].includes(model.intent)){
    if(model.from&&!loc.from)loc.from=model.from;if(model.to&&!loc.to)loc.to=model.to;
   }
@@ -60,6 +64,7 @@ class Assistant{
   const newTrip=!!(loc.from&&loc.to);if(newTrip){s.line=null;s.direction=null;s.intent='route';s.asked='';if(!t.explicit)s.when=wallNow()}
   if(t.explicit||!s.when)s.when=t.when;
   if(model&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(model.when)&&!t.explicit)s.when=model.when;
+  const oldFrom=s.from;
   const lm=n.match(/\b(?:linia|linie|linii|autobus|autobusu|tramwaj|tramwaju|numer|nr)\s*(a\d{1,3}|n\d{1,3}|m[12]|s\d{1,2}|\d{1,3})\b/)||n.match(/\b(a\d{1,3}|n\d{1,3}|m[12]|s\d{1,2})\b/);
   if(lm)s.line=lm[1].toUpperCase();else if(model&&model.line)s.line=String(model.line).slice(0,16);
   const vehicle=/\bgdzie\b.*\b(autobus|bus|tramwaj|pociag)\b|\bgps\b/.test(n)||model?.intent==='vehicle';
@@ -67,6 +72,7 @@ class Assistant{
   if(vehicle||departure){const previous=s.to;s.intent=vehicle?'vehicle':'departure';s.to=null;if(!s.direction&&previous)s.direction=previous.name.split(' ')[0];}
   const direction=q.match(/(?:w kierunku|kierunek|w stronę|w strone)\s+(.+?)(?=\s+(?:jutro|dzisiaj|po \d|o \d)|[?!]|$)/i);if(direction)s.direction=direction[1].trim();
   for(const which of ['from','to'])if(loc[which]){const r=this.engine.resolve(loc[which]);if(['bochnia','warszawa','krakow'].includes(canonical(loc[which]))&&this.engine.match(loc[which],20).length>1){r.group=null;r.candidates=this.engine.match(loc[which],8)}s[which]=r.group;s[which+'Hint']=loc[which];s[which+'Candidates']=r.candidates;if(r.correction)s.correction='Sprawdź pisownię nazwy. Wybierz właściwy przystanek z podpowiedzi.'}
+  if(s.from&&oldFrom&&s.from.key!==oldFrom.key){if(!direction)s.direction=null;if(!lm&&s.line&&![...s.from.routes].some(id=>norm(this.engine.idx.routes[id][1])===norm(s.line)))s.line=null;}
   if(!loc.from&&!loc.to&&isAnswer){
    if(s.asked==='line'){const line=n.match(/\b(a\d{1,3}|n\d{1,3}|m[12]|s\d{1,2}|\d{1,3})\b/);if(line)s.line=line[1].toUpperCase()}
    else if(s.asked==='direction')s.direction=q;

@@ -1,4 +1,4 @@
-# Pomocnik Alfa 2.0 alpha.1
+# Pomocnik Alfa 2.0 alpha.6
 
 This extends the existing full PA APK. It does not replace native media, notes,
 reminders, weather, reader, senior features or settings. Full original late-version
@@ -6,7 +6,7 @@ Java source is missing; the preserved base is decoded to smali/resources and reb
 
 ## Build
 
-Run `.github/workflows/pa2-alpha.yml` on branch `work/pa2-20261015`.
+Run `.github/workflows/pa2-alpha.yml` on branch `work/pa2-alpha6-fixes-ux-20261015`.
 It preserves the binary base in a persistent technical GitHub release so future builds
 do not depend solely on expiring Actions artifacts. Java sources here compile to the
 isolated fifth DEX. `patch_project.py` changes only integration of the regional module.
@@ -31,8 +31,7 @@ The local conversation is a transparent task assistant, not an LLM. Structured s
 retains stops/time/line/direction across messages. Native bridges integrate existing
 notepad and reminder scheduler. Weather uses Open-Meteo's noncommercial API; general
 retrieval uses Polish Wikipedia. Neither is described as unrestricted web search.
-Optional Cloudflare Workers AI backend is prepared separately; it is not active until
-an owner connects/provisions the service. Users do not supply paid API keys. No secrets
+The inactive online-AI toggle has been removed from the shipped UI. The local assistant and Wikipedia tools remain available. Users do not supply paid API keys. No secrets
 are stored in APK. Puter is not an always-free alternative: users pay beyond allowances.
 
 ## Updates and LIVE
@@ -49,3 +48,7 @@ original trip/date/stop IDs and expire after 120 seconds. GPS never generates an
 native screens on Android 10/11 in CI. Network playback on a physical device is not
 claimed by these checks. Android 8/9 is not enabled without rebuilding and testing
 older native dependencies; minSdk is not lowered by editing the manifest alone.
+
+## Alpha.6 repairs
+
+Journey buttons retain immutable trips; Polish dates, dot-times and follow-ups are supported. Live candidates include a bounded past window while normal scheduled departures exclude past trips. GPS and ETA expire by timestamp; visible vehicle screens refresh every 30 seconds and pause in background. Tram/map/dashboard icons match their function. Native modules and the original cat launcher are preserved. The package uses the retained PA2 preview key, signed locally; CI receives only exact-build public signing deltas.

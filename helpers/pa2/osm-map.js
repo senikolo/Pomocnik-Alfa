@@ -9,29 +9,30 @@ const fromMerc=(x,y,z)=>{const n=TILE*Math.pow(2,z);return{lon:x/n*360-180,lat:M
 const deg=(a,b,c,d)=>{const rad=Math.PI/180,dy=(c-a)*rad,dx=(d-b)*rad;
  return Math.round(12742000*Math.asin(Math.min(1,Math.sqrt(Math.sin(dy/2)**2+Math.cos(a*rad)*Math.cos(c*rad)*Math.sin(dx/2)**2))))};
 function initialZoom(dist){return dist<350?16:dist<1000?15:dist<2500?14:dist<7000?13:dist<15000?12:11}
-function mount(node,stop,vehicle){
+function mount(node,stop,vehicle,options={}){
  if(!node||!stop||!Number.isFinite(stop.lat)||!Number.isFinite(stop.lon))return;
  if(node.__mapCleanup)node.__mapCleanup();
+ const tram=Number(options.mode)===0||(Number(options.mode)>=900&&Number(options.mode)<=906),kind=tram?'Tramwaj':'Autobus',kindLower=tram?'tramwaju':'autobusu';
  const dist=vehicle?deg(stop.lat,stop.lon,vehicle.lat,vehicle.lon):0;
  let z=initialZoom(dist),center={lat:vehicle?(stop.lat+vehicle.lat)/2:stop.lat,lon:vehicle?(stop.lon+vehicle.lon)/2:stop.lon};
  const panel=document.createElement('div');panel.className='osm-map';
  const header=document.createElement('div');header.className='osm-toolbar';
- const title=document.createElement('strong');title.textContent=vehicle?'Autobus i Twój przystanek':'Twój przystanek (brak GPS autobusu)';
+ const title=document.createElement('strong');title.textContent=vehicle?kind+(options.line?' '+options.line:'')+' i przystanek':'Twój przystanek · brak świeżego GPS';
  const buttons=document.createElement('div');buttons.className='osm-buttons';
  const plus=document.createElement('button'),minus=document.createElement('button'),reset=document.createElement('button');
  for(const [b,label,desc] of [[plus,'+','Powiększ mapę'],[minus,'−','Pomniejsz mapę'],[reset,'⌖','Wyśrodkuj mapę']]){
   b.type='button';b.textContent=label;b.setAttribute('aria-label',desc);buttons.appendChild(b)}
  header.appendChild(title);header.appendChild(buttons);
  const view=document.createElement('div');view.className='osm-viewport';view.setAttribute('role','img');
- view.setAttribute('aria-label',vehicle?'Mapa OpenStreetMap: autobus i przystanek':'Mapa OpenStreetMap: lokalizacja przystanku');
+ view.setAttribute('aria-label',vehicle?'Mapa OpenStreetMap: '+kindLower+' i przystanku':'Mapa OpenStreetMap: lokalizacja przystanku');
  const layer=document.createElement('div');layer.className='osm-layer';view.appendChild(layer);
- const markStop=document.createElement('div');markStop.className='osm-marker osm-stop';markStop.textContent='P';markStop.title='Twój przystanek';view.appendChild(markStop);
+ const markStop=document.createElement('div');markStop.className='osm-marker osm-stop';markStop.innerHTML='<svg class="vicon" viewBox="0 0 24 24" aria-hidden="true"><use href="#pa-pin"></use></svg>';markStop.title='Twój przystanek';view.appendChild(markStop);
  let markVehicle=null;
- if(vehicle){markVehicle=document.createElement('div');markVehicle.className='osm-marker osm-bus';markVehicle.textContent='🚌';markVehicle.title='Potwierdzony GPS autobusu';view.appendChild(markVehicle)}
+ if(vehicle){markVehicle=document.createElement('div');markVehicle.className='osm-marker osm-bus';markVehicle.innerHTML='<svg class="vicon" viewBox="0 0 24 24" aria-hidden="true"><use href="#pa-'+(tram?'tram':'bus')+'"></use></svg>';markVehicle.title='Potwierdzony GPS '+kindLower;view.appendChild(markVehicle)}
  const attribution=document.createElement('div');attribution.className='osm-attribution';attribution.textContent='© OpenStreetMap contributors';view.appendChild(attribution);
  const hint=document.createElement('p');hint.className='osm-hint';hint.textContent='Przesuwaj mapę palcem, rozsuń dwa palce albo użyj + i −. Znaczniki pokazują położenie, nie trasę przejazdu.';
  panel.appendChild(header);panel.appendChild(view);panel.appendChild(hint);node.replaceChildren(panel);
- const tiles=new Map();
+ const tiles=new Map();let loaded=0;const unavailable=document.createElement('div');unavailable.className='osm-unavailable hidden';unavailable.textContent='Mapa chwilowo niedostępna. Rozkład i opis kursu są nadal widoczne.';unavailable.setAttribute('role','status');view.appendChild(unavailable);
  function update(){
   const w=Math.max(260,view.clientWidth||320),h=Math.max(200,view.clientHeight||260),p=merc(center.lat,center.lon,z),n=1<<z;
   const x0=Math.floor((p.x-w/2)/TILE),x1=Math.floor((p.x+w/2)/TILE);
@@ -41,7 +42,7 @@ function mount(node,stop,vehicle){
    if(++count>20)break;
    const rx=(ix%n+n)%n,key=z+'/'+rx+'/'+iy;wanted.add(key);
    let tile=tiles.get(key);if(!tile){tile=document.createElement('img');tile.alt='';tile.decoding='async';tile.draggable=false;
-     tile.width=TILE;tile.height=TILE;tile.style.position='absolute';tile.src='/osm/'+key+'.png';layer.appendChild(tile);tiles.set(key,tile)}
+     tile.onload=()=>{loaded++;unavailable.classList.add('hidden')};tile.onerror=()=>{if(!loaded)unavailable.classList.remove('hidden')};tile.width=TILE;tile.height=TILE;tile.style.position='absolute';tile.src='/osm/'+key+'.png';layer.appendChild(tile);tiles.set(key,tile)}
    tile.style.left=Math.round(ix*TILE-p.x+w/2)+'px';tile.style.top=Math.round(iy*TILE-p.y+h/2)+'px';
   }
   for(const [key,img] of tiles)if(!wanted.has(key)){img.remove();tiles.delete(key)}

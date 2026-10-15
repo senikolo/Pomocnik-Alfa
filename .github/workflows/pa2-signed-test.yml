@@ -1,8 +1,8 @@
 name: PA2 externally signed preview Android verification
 on:
   push:
-    branches: ['work/pa2-20261015']
-    paths: ['helpers/pa2/signatures.json', '.github/workflows/pa2-signed-test.yml']
+    branches: ['work/pa2-alpha6-fixes-ux-20261015']
+    paths: ['helpers/pa2/signatures.json']
   workflow_dispatch:
 permissions:
   contents: write
@@ -25,16 +25,16 @@ jobs:
           sys.path.insert(0,'helpers/pa2')
           from detached_signature import apply
           p=json.load(open('helpers/pa2/signatures.json'))
-          apply('signed/PA2-aligned-unsigned.apk',p['app'],'signed/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk')
+          apply('signed/PA2-aligned-unsigned.apk',p['app'],'signed/Pomocnik-Alfa-2.0.0-alpha.6-POPRAWKI-TEST.apk')
           apply('signed/PA2-instrumentation-unsigned.apk',p['test'],'signed/PA2-instrumentation.apk')
           PY
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs signed/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk > signed/signature.txt
-          sha256sum signed/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk > signed/SHA256SUMS.txt
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs signed/Pomocnik-Alfa-2.0.0-alpha.6-POPRAWKI-TEST.apk > signed/signature.txt
+          sha256sum signed/Pomocnik-Alfa-2.0.0-alpha.6-POPRAWKI-TEST.apk > signed/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
           name: PA2-signed-preview
           path: |
-            signed/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk
+            signed/Pomocnik-Alfa-2.0.0-alpha.6-POPRAWKI-TEST.apk
             signed/PA2-instrumentation.apk
             signed/*.txt
   android:
@@ -61,7 +61,7 @@ jobs:
           #!/usr/bin/env bash
           set -euo pipefail
           mkdir -p results
-          adb install -r build/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk
+          adb install -r build/Pomocnik-Alfa-2.0.0-alpha.6-POPRAWKI-TEST.apk
           adb install -r build/PA2-instrumentation.apk
           adb logcat -c
           set +e
@@ -91,25 +91,3 @@ jobs:
           name: PA2-Android-${{ matrix.api }}-test-results
           path: results
           retention-days: 60
-  release:
-    needs: [assemble,android]
-    runs-on: ubuntu-latest
-    env:
-      GH_TOKEN: ${{ github.token }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: PA2-signed-preview
-          path: signed
-      - name: Publish explicitly labelled preview after Android checks
-        run: |
-          cat > release-notes.md <<'TEXT'
-          Wersja alpha do testów, instalowana obok obecnego PA. Nie odinstalowuj dotychczasowej aplikacji.
-          Planer: Warszawa, Małopolska i kolej krajowa; 8 źródeł GTFS, kalendarze, przesiadki i ulubione.
-          Asystent lokalny obsługuje kontekst podróży, pogodę, notatki i przypomnienia.
-          Model AI online nie jest uruchomiony. Android 8/9 nie są obsługiwane w tym wydaniu.
-          Nowy trwały podpis dotyczy wyłącznie oddzielnego pakietu testowego; nie zastępuje brakującego klucza oryginalnego PA.
-          TEXT
-          gh release view pa-2.0.0-alpha.1 >/dev/null 2>&1 || gh release create pa-2.0.0-alpha.1 --target "$GITHUB_SHA" --prerelease --title 'Pomocnik Alfa 2.0 alpha.1 – oddzielna wersja testowa' --notes-file release-notes.md
-          gh release upload pa-2.0.0-alpha.1 signed/Pomocnik-Alfa-2.0.0-alpha.1-TEST.apk signed/SHA256SUMS.txt --clobber

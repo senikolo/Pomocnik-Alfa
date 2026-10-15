@@ -1,8 +1,8 @@
-name: PA 2.0 alpha.5 fixed line and tram picker
+name: PA 2.0 alpha.6 repairs and ergonomic UI
 on:
   workflow_dispatch:
   push:
-    branches: ['work/pa2-alpha5-lines-trams-20261015']
+    branches: ['work/pa2-alpha6-fixes-ux-20261015']
     paths: ['helpers/pa2/**', '.github/workflows/pa2-alpha.yml']
 permissions:
   contents: write
@@ -39,6 +39,9 @@ jobs:
           python3 helpers/pa2/fetch_data.py feeds
           python3 helpers/pa2/build_data.py feeds build/data | tee output/data-build.txt
           TZ=Europe/Warsaw node helpers/pa2/test.cjs build/data | tee output/logic-tests.txt
+          TZ=Europe/Warsaw node helpers/pa2/test-fixes.cjs build/data | tee output/audit-fixes-tests.txt
+          npm install --prefix build/test-runtime jsdom@26.1.0
+          PA_JSDOM_PATH="$PWD/build/test-runtime/node_modules/jsdom" TZ=Europe/Warsaw node helpers/pa2/test-ui.cjs build/data | tee output/dom-tests.txt
           python3 -m py_compile helpers/pa2/*.py
           python3 helpers/pa2/test_data.py
           node --check helpers/pa2/backend/worker.mjs
@@ -78,16 +81,9 @@ jobs:
           (cd testdex && zip -q -0 ../output/test-raw.apk classes.dex)
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -p -f 4 output/test-raw.apk output/test-aligned.apk
           cp output/test-aligned.apk output/PA2-instrumentation-unsigned.apk
-      - name: Sign separately installable PA2 LIVE alpha.3 test APK
+      - name: Export public signing tool for local stable-key signing
         run: |
-          keytool -genkeypair -noprompt -keystore output/pa2live-temp.jks -storepass alpha3Preview2026 -keypass alpha3Preview2026 -alias testpreview -keyalg RSA -keysize 3072 -validity 3650 -dname "CN=PA2 LIVE Test,OU=Development,O=Pomocnik Alfa,C=PL"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks output/pa2live-temp.jks --ks-key-alias testpreview --ks-pass pass:alpha3Preview2026 --key-pass pass:alpha3Preview2026 --out output/Pomocnik-Alfa-2.0.0-alpha.5-TRAM-LINES-TEST.apk output/PA2-aligned-unsigned.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks output/pa2live-temp.jks --ks-key-alias testpreview --ks-pass pass:alpha3Preview2026 --key-pass pass:alpha3Preview2026 --out output/PA2-OSM-instrumentation.apk output/PA2-instrumentation-unsigned.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose output/Pomocnik-Alfa-2.0.0-alpha.5-TRAM-LINES-TEST.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging output/Pomocnik-Alfa-2.0.0-alpha.5-TRAM-LINES-TEST.apk > output/ux-badging.txt
-          grep -q 'com.senikolo.pomocniknowy.pa2linespreview' output/ux-badging.txt
-          sha256sum output/Pomocnik-Alfa-2.0.0-alpha.5-TRAM-LINES-TEST.apk > output/PA2-LIVE-SHA256.txt
-          rm output/pa2live-temp.jks
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" output/apksigner.jar
       - name: Preserve complete reconstructed project and updateable data
         run: |
           cp -r helpers/pa2 decoded/pa2-build-sources
@@ -106,65 +102,8 @@ jobs:
           name: PA2-unsigned-build
           path: |
             output/PA2-aligned-unsigned.apk
-            output/Pomocnik-Alfa-2.0.0-alpha.5-TRAM-LINES-TEST.apk
-            output/PA2-OSM-instrumentation.apk
+            output/apksigner.jar
             output/PA2-instrumentation-unsigned.apk
             output/PA2-Reconstructed-Project.zip
             output/*.txt
-          retention-days: 60
-
-  android:
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 36
-    strategy:
-      fail-fast: false
-      matrix:
-        api: [29,30]
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: PA2-unsigned-build
-          path: build
-      - name: Enable hardware emulation
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - name: Write bounded real-device-test script
-        run: |
-          cat > pa2-ux-smoke.sh <<'BASH'
-          #!/usr/bin/env bash
-          set -euo pipefail
-          mkdir -p results
-          adb install -r build/Pomocnik-Alfa-2.0.0-alpha.5-TRAM-LINES-TEST.apk
-          adb install -r build/PA2-OSM-instrumentation.apk
-          adb logcat -c
-          set +e
-          timeout 300s adb shell am instrument -w com.senikolo.pa2test/com.senikolo.pa2test.PAProbe > results/instrumentation.txt 2>&1
-          TEST_RESULT=$?
-          set -e
-          cat results/instrumentation.txt
-          adb logcat -d -b crash > results/crashes.txt
-          adb logcat -d -s AndroidRuntime:E > results/runtime-errors.txt
-          adb pull /sdcard/Android/data/com.senikolo.pomocniknowy.pa2linespreview/files/pa2-tests results/screenshots || true
-          test "$TEST_RESULT" -eq 0
-          grep -q 'TOTAL PASS system' results/instrumentation.txt
-          test ! -s results/crashes.txt || ! grep -q 'FATAL EXCEPTION' results/crashes.txt
-          BASH
-      - name: Check signed APK and preserved modules on Android
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: ${{ matrix.api }}
-          arch: x86_64
-          target: google_apis
-          profile: pixel_2
-          disable-animations: true
-          emulator-boot-timeout: 700
-          script: bash pa2-ux-smoke.sh
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: PA2-LINES-Android-${{ matrix.api }}-results
-          path: results
           retention-days: 60

@@ -25,7 +25,6 @@ public final class PARegionsActivity extends Activity {
  private final ExecutorService jobs=Executors.newFixedThreadPool(3);
  private final String HOST="pa-bus.invalid";
  private static final String DATA_URL="https://github.com/senikolo/Pomocnik-Alfa/releases/download/pa2-data/pa2-data.zip";
- private static final String SERVICE_URL="https://raw.githubusercontent.com/senikolo/Pomocnik-Alfa/main/data/pa2-service.json";
  @Override public void onCreate(Bundle state){super.onCreate(state);getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);getWindow().setStatusBarColor(0xff493075);getWindow().setNavigationBarColor(0xff1b142a);getWindow().getDecorView().setSystemUiVisibility(0);
   String folder=getPreferences(0).getString("data_folder","");if(folder.matches("data-[0-9]+")){File f=new File(getFilesDir(),folder);if(new File(f,"index_all.json").isFile())active=f;}
   web=new WebView(this);web.setBackgroundColor(0xfff3f7fc);WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);s.setAllowFileAccess(false);s.setAllowContentAccess(false);s.setJavaScriptCanOpenWindowsAutomatically(false);s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);s.setMediaPlaybackRequiresUserGesture(true);if(Build.VERSION.SDK_INT>=26)s.setSafeBrowsingEnabled(true);
@@ -33,7 +32,7 @@ public final class PARegionsActivity extends Activity {
    @Override public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest r){return !local(r.getUrl());}
    @Override public WebResourceResponse shouldInterceptRequest(WebView v,WebResourceRequest r){
     Uri u=r.getUrl();if(!local(u))return error();String path=u.getPath();if(path==null)return error();String name=path.substring(1);if(path.startsWith("/osm/"))return PAOSMTiles.load(PARegionsActivity.this,path);
-    if(!name.matches("(?:app\\.html|app\\.js|transit-core\\.js|conversation\\.js|osm-map\\.js|index_all\\.json|route_all_[0-9]+\\.json|manifest\\.json|summary\\.json)"))return error();
+    if(!name.matches("(?:app\\.html|app\\.js|transit-core\\.js|conversation\\.js|osm-map\\.js|live-state\\.js|index_all\\.json|route_all_[0-9]+\\.json|manifest\\.json|summary\\.json)"))return error();
     String mime=name.endsWith(".html")?"text/html":name.endsWith(".js")?"application/javascript":"application/json";
     try{InputStream in;File current=active;if(name.endsWith(".json")&&current!=null)in=new FileInputStream(new File(current,name));else in=getAssets().open("pa_regions/"+name);
      Map<String,String> h=new HashMap<>();h.put("Cache-Control","no-store");h.put("X-Content-Type-Options","nosniff");h.put("Content-Security-Policy","default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'");return new WebResourceResponse(mime,"UTF-8",200,"OK",h,in);
@@ -60,7 +59,6 @@ public final class PARegionsActivity extends Activity {
   if(type.equals("search"))return search(p.optString("query"));
   if(type.equals("live"))return PALive.lookup(p,(u,max)->read(u,max));
   if(type.equals("update"))return update();
-  if(type.equals("ai"))return ai(p);
   if(type.equals("back")){runOnUiThread(()->finish());return new JSONObject();}
   if(type.equals("module")){final String name=p.optString("name");final Map<String,String> names=new HashMap<>();names.put("notes","NotesActivity");names.put("reminders","RemindersActivity");names.put("weather","WeatherActivity");names.put("radio","RadioActivity");names.put("tv","TvActivity");if(!names.containsKey(name))throw new IOException("Nieznany moduł.");runOnUiThread(()->{try{startActivity(new Intent(this,Class.forName("com.ispina.lokalnie."+names.get(name))));}catch(Exception e){Toast.makeText(this,"Moduł niedostępny",Toast.LENGTH_SHORT).show();}});return new JSONObject();}
   if(type.equals("official")){final String url=p.optString("url");if(!Arrays.asList("https://portalpasazera.pl/","https://www.wtp.waw.pl/","https://ztp.krakow.pl/","https://www.kolejemalopolskie.com.pl/").contains(url))throw new IOException("Nieznany serwis.");runOnUiThread(()->startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url))));return new JSONObject();}
@@ -79,10 +77,6 @@ public final class PARegionsActivity extends Activity {
   // Wikipedia retrieval, explicitly never presented as general web/news coverage or LLM reasoning.
   JSONObject r=new JSONObject(new String(read("https://pl.wikipedia.org/w/api.php?action=query&format=json&generator=search&gsrsearch="+enc(query)+"&gsrlimit=3&prop=extracts%7Cinfo&exintro=1&explaintext=1&exsentences=3&inprop=url",500000),StandardCharsets.UTF_8));JSONArray out=new JSONArray();JSONObject pages=r.optJSONObject("query");pages=pages==null?null:pages.optJSONObject("pages");if(pages!=null){Iterator<String> keys=pages.keys();while(keys.hasNext()){JSONObject x=pages.getJSONObject(keys.next());String extract=x.optString("extract");out.put(new JSONObject().put("title",x.optString("title")).put("text",extract.substring(0,Math.min(extract.length(),1600))).put("url",x.optString("fullurl")));}}
   return new JSONObject().put("results",out).put("source","Wikipedia • wyszukiwanie encyklopedyczne, bez modelu AI").put("checkedAt",System.currentTimeMillis());
- }
- private JSONObject ai(JSONObject p)throws Exception{
-  JSONObject config=new JSONObject(new String(read(SERVICE_URL,8192),StandardCharsets.UTF_8));String endpoint=config.optString("endpoint");URI u=new URI(endpoint);if(!"https".equals(u.getScheme())||u.getHost()==null||!u.getHost().matches("[a-z0-9-]+\\.[a-z0-9-]+\\.workers\\.dev")||u.getUserInfo()!=null||u.getPort()!=-1)throw new IOException("Model AI online nie został jeszcze uruchomiony. Planer i narzędzia lokalne działają niezależnie.");
-  byte[] body=p.toString().getBytes(StandardCharsets.UTF_8);HttpURLConnection c=(HttpURLConnection)new URL(endpoint+"/chat").openConnection();c.setInstanceFollowRedirects(false);c.setConnectTimeout(8000);c.setReadTimeout(35000);c.setRequestMethod("POST");c.setDoOutput(true);c.setRequestProperty("Content-Type","application/json");c.setRequestProperty("Origin","https://"+HOST);try{c.getOutputStream().write(body);int code=c.getResponseCode();byte[] bytes=bounded(code<400?c.getInputStream():c.getErrorStream(),100000);JSONObject r=new JSONObject(new String(bytes,StandardCharsets.UTF_8));if(code>=400)throw new IOException(r.optString("message","Usługa AI jest chwilowo niedostępna."));return r;}finally{c.disconnect();}
  }
  private synchronized JSONObject update()throws Exception{
   File stage=new File(getFilesDir(),"data-"+System.currentTimeMillis());stage.mkdirs();boolean installed=false;
@@ -104,5 +98,7 @@ public final class PARegionsActivity extends Activity {
  }
  static byte[] bounded(InputStream in,int max)throws Exception{if(in==null)throw new IOException("Pusta odpowiedź źródła.");ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] buffer=new byte[16384];int n,total=0;while((n=in.read(buffer))!=-1){total+=n;if(total>max)throw new IOException("Przekroczono limit odpowiedzi źródła.");out.write(buffer,0,n);}return out.toByteArray();}
  @Override public void onBackPressed(){if(web!=null){web.evaluateJavascript("window.PABack?window.PABack():false",null);}else super.onBackPressed();}
+ @Override protected void onPause(){super.onPause();if(web!=null)web.evaluateJavascript("window.PAVisibility&&window.PAVisibility(false)",null);}
+ @Override protected void onResume(){super.onResume();if(web!=null)web.evaluateJavascript("window.PAVisibility&&window.PAVisibility(true)",null);}
  @Override protected void onDestroy(){destroyed=true;jobs.shutdownNow();if(web!=null){web.removeJavascriptInterface("PADevice");web.stopLoading();web.destroy();web=null;}super.onDestroy();}
 }

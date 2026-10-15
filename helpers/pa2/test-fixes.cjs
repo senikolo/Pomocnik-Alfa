@@ -1,0 +1,18 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('fs');global.PATransit=require('./transit-core.js');
+const {Assistant,parseTime}=require('./conversation.js'),live=require('./live-state.js');
+const dir=process.argv[2],idx=JSON.parse(fs.readFileSync(dir+'/index_all.json'));
+const e=new PATransit.Engine(idx,async id=>JSON.parse(fs.readFileSync(dir+'/route_all_'+id+'.json'))),today=idx.generated;
+let checks=0;const check=(name,fn)=>{fn();checks++;console.log('PASS',name)};
+check('godzina z kropką nie staje się datą',()=>assert.equal(parseTime('jutro o 9.30',null,'2026-10-15T15:00').when,'2026-10-16T09:30'));
+for(const date of ['16.10.2026','2026-10-16'])check('data po nazwie celu '+date,()=>{const r=new Assistant(e).parse('Z Ispiny do Bochni Dworzec PKP '+date+' o 9');assert.equal(r.type,'route');assert.equal(r.to.name,'Bochnia Dworzec PKP');assert.equal(r.when,'2026-10-16T09:00')});
+check('start, linia i kierunek w jednym pytaniu',()=>{const r=new Assistant(e).parse('Gdzie jest autobus 186 z Tarchomina w kierunku Szczęśliwice?');assert.equal(r.type,'vehicle');assert.equal(r.from.name,'Tarchomin');assert.equal(r.direction,'Szczęśliwice');assert.equal(r.line,'186')});
+check('odmiana Nowodworów',()=>{const r=new Assistant(e).parse('Z Tarchomina do Nowodworów jutro o 9');assert.equal(r.type,'route');assert.equal(r.to.name,'Nowodwory')});
+check('kontynuacja zmienia dzień i zachowuje godzinę',()=>{const a=new Assistant(e);a.parse('Z Ispiny do Bochni Dworzec PKP dzisiaj o 9');let r=a.parse('A jutro?');assert.equal(r.type,'route');assert(r.when.endsWith('T09:00'));r=a.parse('A pojutrze o tej samej godzinie?');assert.equal(r.type,'route');assert(r.when.endsWith('T09:00'))});
+check('zmiana regionu nie przenosi A4',()=>{const a=new Assistant(e);a.parse('Z Ispiny do Bochni Dworzec PKP jutro o 9');a.parse('Kiedy następna A4?');const r=a.parse('Z Tarchomina');assert.notEqual(r.line,'A4');assert.equal(a.state.direction,null)});
+const now=Date.parse('2026-10-15T13:00:00Z')/1000,d={queryDay:'2026-10-15',serviceDay:'2026-10-15',dep:15*3600+300};
+check('GPS wygasa po 120 sekundach',()=>{const a={live:true,position:{timestamp:now,latitude:52,longitude:21}};assert(live.assess(d,a,now,now).gpsFresh);assert(!live.assess(d,a,now,now+121).gpsFresh)});
+check('ETA i odliczanie wygasają oraz zmieniają się z czasem',()=>{const a={live:true,eta:now+300,liveTimestamp:now};assert.equal(live.assess(d,a,now,now).etaMinutes,5);assert.equal(live.assess(d,a,now,now+60).etaMinutes,4);assert(!live.assess(d,a,now,now+121).etaFresh)});
+check('miniony kurs bez LIVE nie wraca jako odjazd teraz',()=>assert(live.assess({...d,dep:14*3600},{live:false},now,now).plannedMinutes<0));
+check('odliczanie respektuje strefę Warszawy i dzień następny',()=>{assert.equal(live.epoch('2026-10-15',15*3600),now);assert.equal(live.epoch('2026-10-15',24*3600+60),Date.parse('2026-10-15T22:01:00Z')/1000)});
+(async()=>{const stop=e.resolve('Tarchomin').group,when=today+'T15:00';const schedule=await e.departures(stop,when,'186',null,72),candidates=await e.departures(stop,when,'186',null,72,null,1800);assert(schedule.every(x=>x.dep>=15*3600));assert(candidates.some(x=>x.dep<15*3600));checks++;console.log('PASS opóźniony pojazd pozostaje kandydatem LIVE, lista planowa bez minionych kursów');console.log('TOTAL PASS audit fixes',checks)})().catch(e=>{console.error(e);process.exitCode=1});
