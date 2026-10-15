@@ -4,6 +4,12 @@ public class PAProbe extends Instrumentation {
  StringBuilder log=new StringBuilder();
  void record(String s){log.append(s).append('\n');Bundle b=new Bundle();b.putString("stream",s+"\n");sendStatus(0,b);}
  void require(boolean condition,String why){if(!condition)throw new AssertionError(why);}
+ int countText(View v,String wanted){
+  int found=0;
+  if(v instanceof android.widget.TextView && wanted.equals(((android.widget.TextView)v).getText().toString()))found++;
+  if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++)found+=countText(((ViewGroup)v).getChildAt(i),wanted);
+  return found;
+ }
  WebView web(View v){if(v instanceof WebView)return(WebView)v;if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++){WebView w=web(((ViewGroup)v).getChildAt(i));if(w!=null)return w;}return null;}
  String js(Activity a,String source)throws Exception{CountDownLatch latch=new CountDownLatch(1);String[] result={""};runOnMainSync(()->{WebView w=web(a.getWindow().getDecorView());if(w==null){latch.countDown();return;}w.evaluateJavascript(source,v->{result[0]=v;latch.countDown();});});if(!latch.await(10,TimeUnit.SECONDS))throw new AssertionError("WebView callback timeout");return result[0];}
  void waitJs(Activity a,String expression,long max)throws Exception{long until=System.currentTimeMillis()+max;while(System.currentTimeMillis()<until){if("true".equals(js(a,expression)))return;Thread.sleep(300);}throw new AssertionError("UI timeout: "+expression+"; result="+js(a,"document.body.innerText.slice(-3000)"));}
@@ -15,7 +21,11 @@ public class PAProbe extends Instrumentation {
   String iconRes=getTargetContext().getResources().getResourceEntryName(getTargetContext().getApplicationInfo().icon);
   require("ic_launcher".equals(iconRes)||"ic_launcher_round".equals(iconRes),"Original Alfa cat launcher was replaced: "+iconRes);
   record("PASS original adaptive cat launcher restored");
-  Activity a=launch("MainActivity");record("PASS main launches");screenshot("main");runOnMainSync(()->a.finish());
+  Activity a=launch("MainActivity");record("PASS main launches");
+  require(countText(a.getWindow().getDecorView(),"Planer i Alfa")==1,"Regional planner tile missing or duplicated");
+  require(countText(a.getWindow().getDecorView(),"Przystanki w pobliżu")==1,"Nearby-stop tile missing or duplicated");
+  record("PASS distinct regional planner and nearby-stop dashboard cards");
+  screenshot("main");runOnMainSync(()->a.finish());
   Activity planner=launch("PARegionsActivity");waitJs(planner,"document.getElementById('coverage').innerText.includes('offline')",30000);record("PASS WebView, all GTFS indexes and ES2017 client load");
    require("true".equals(js(planner,"/\\d{2}\\.\\d{2}\\.\\d{4}/.test(document.getElementById('dateDisplay').textContent)")),"Polish date format not visible");
    require("true".equals(js(planner,"document.getElementById('from').getAttribute('role')==='combobox' && document.getElementById('suggestFrom').getAttribute('role')==='listbox'")),"Stop search ARIA missing");
