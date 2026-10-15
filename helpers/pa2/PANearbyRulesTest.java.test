@@ -1,0 +1,20 @@
+package com.ispina.lokalnie;
+import java.util.*;
+public class PANearbyRulesTest {
+ static PANearbyRules.Stop s(int i,double metres){return new PANearbyRules.Stop(i,"p:"+i,"p","Stop",""+i,52+metres/111195.0,21,1);}
+ static void require(boolean b,String m){if(!b)throw new AssertionError(m);}
+ public static void main(String[] args){
+  require(PANearbyRules.choose(Arrays.asList(s(1,0),s(2,150)),52,21).size()==1,"1 separated");
+  require(PANearbyRules.choose(Arrays.asList(s(1,0),s(2,60)),52,21).size()==2,"2 within 60m");
+  List<PANearbyRules.Stop> triple=Arrays.asList(s(1,0),s(2,45),s(3,95));require(PANearbyRules.choose(triple,52,21).size()==3,"3 diameter100");
+  require(PANearbyRules.choose(Arrays.asList(s(1,0),s(2,20),s(3,40),s(4,60)),52,21).size()==3,"4 max3");
+  require(PANearbyRules.choose(Arrays.asList(s(1,0),s(2,80),s(3,160)),52,21).size()==2,"No chain clusters");
+  require(PANearbyRules.choose(Arrays.asList(s(1,0),s(1,0),s(2,60)),52,21).size()==2,"No duplicate stop IDs");
+  require(PANearbyRules.choose(triple,52+95/111195.0,21).get(0).index==3,"GPS relocation");
+  require(PANearbyRules.choose(triple,Double.NaN,21).isEmpty(),"No assumed GPS");
+  require(PANearbyRules.fresh(1000,1120)&&!PANearbyRules.fresh(1000,1121)&&!PANearbyRules.fresh(2000,1000),"stale/future");
+  require(PANearbyRules.epoch("2026-10-15",25*3600)==PANearbyRules.epoch("2026-10-16",3600),"GTFS after midnight");
+  require(PANearbyRules.epoch("2026-10-25",12*3600)==java.time.ZonedDateTime.of(2026,10,25,12,0,0,0,java.time.ZoneId.of("Europe/Warsaw")).toEpochSecond(),"DST noon semantics");
+  System.out.println("PASS rules: 1/2/3/max3, pairwise diameter, duplicate IDs, moved GPS, missing GPS, freshness, midnight, DST");
+ }
+}

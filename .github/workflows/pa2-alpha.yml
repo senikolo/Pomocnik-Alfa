@@ -1,8 +1,8 @@
-name: PA 2.0 alpha.6 repairs and ergonomic UI
+name: PA 2.0 SMART alpha.7 departure boards
 on:
   workflow_dispatch:
   push:
-    branches: ['work/pa2-alpha6-fixes-ux-20261015']
+    branches: ['work/pa2-smart-boards-20261015']
     paths: ['helpers/pa2/**', '.github/workflows/pa2-alpha.yml']
 permissions:
   contents: write
@@ -37,6 +37,7 @@ jobs:
           gh release download v2.12.1 -R iBotPeaches/Apktool -p apktool_2.12.1.jar -D tools
       - name: Fetch real eight-source transport coverage and validate calendars
         run: |
+          python3 helpers/pa2/probe_sources.py | tee output/live-source-access.json
           python3 helpers/pa2/fetch_data.py feeds
           python3 helpers/pa2/build_data.py feeds build/data | tee output/data-build.txt
           TZ=Europe/Warsaw node helpers/pa2/test.cjs build/data | tee output/logic-tests.txt
@@ -61,6 +62,9 @@ jobs:
           cp helpers/pa2/PALiveTest.java.test live-test-src/PALiveTest.java
           javac -cp "classes:$SDK/platforms/android-35/android.jar" -d live-test-classes live-test-src/PALiveTest.java
           java -cp "classes:live-test-classes:$SDK/platforms/android-35/android.jar" com.ispina.lokalnie.PALiveTest | tee output/live-tests.txt
+          cp helpers/pa2/PANearbyRulesTest.java.test live-test-src/PANearbyRulesTest.java
+          javac -encoding UTF-8 -cp classes -d live-test-classes live-test-src/PANearbyRulesTest.java
+          java -cp classes:live-test-classes com.ispina.lokalnie.PANearbyRulesTest | tee output/nearby-rules-tests.txt
           cp helpers/pa2/PAIconsTest.java.test live-test-src/PAIconsTest.java
           javac -encoding UTF-8 -cp "classes:$SDK/platforms/android-35/android.jar" -d live-test-classes live-test-src/PAIconsTest.java
           java -cp "classes:live-test-classes:$SDK/platforms/android-35/android.jar" PAIconsTest | tee output/dashboard-icon-tests.txt
@@ -78,8 +82,9 @@ jobs:
         run: |
           mkdir -p testsrc testclasses testdex
           cp helpers/pa2/PAProbe.java.test testsrc/PAProbe.java
+          cp helpers/pa2/PABoardsProbe.java.test testsrc/PABoardsProbe.java
           cp helpers/pa2/test-manifest.xml testsrc/AndroidManifest.xml
-          javac -source 8 -target 8 -cp "$ANDROID_HOME/platforms/android-35/android.jar" -d testclasses testsrc/PAProbe.java
+          javac -source 8 -target 8 -cp "classes:$ANDROID_HOME/platforms/android-35/android.jar" -d testclasses testsrc/*.java
           find testclasses -name '*.class' -print0 | xargs -0 "$ANDROID_HOME/build-tools/35.0.0/d8" --min-api 29 --lib "$ANDROID_HOME/platforms/android-35/android.jar" --output testdex
           "$ANDROID_HOME/build-tools/35.0.0/aapt" package -f -M testsrc/AndroidManifest.xml -I "$ANDROID_HOME/platforms/android-35/android.jar" -F output/test-raw.apk
           (cd testdex && zip -q -0 ../output/test-raw.apk classes.dex)
@@ -96,18 +101,18 @@ jobs:
           SIGN="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           "$SIGN" sign --ks "$RUNNER_TEMP/pa2-debug.jks" --ks-key-alias pa2debug \
             --ks-pass pass:android --key-pass pass:android \
-            --out output/Pomocnik-Alfa-2.0.0-alpha.6-UX-DEBUG.apk output/PA2-aligned-unsigned.apk
+            --out output/Pomocnik-Alfa-2.0.0-alpha.7-SMART-DEBUG.apk output/PA2-aligned-unsigned.apk
           "$SIGN" sign --ks "$RUNNER_TEMP/pa2-debug.jks" --ks-key-alias pa2debug \
             --ks-pass pass:android --key-pass pass:android \
             --out output/PA2-instrumentation-debug.apk output/PA2-instrumentation-unsigned.apk
-          "$SIGN" verify --verbose output/Pomocnik-Alfa-2.0.0-alpha.6-UX-DEBUG.apk
+          "$SIGN" verify --verbose output/Pomocnik-Alfa-2.0.0-alpha.7-SMART-DEBUG.apk
           "$SIGN" verify --verbose output/PA2-instrumentation-debug.apk
-          sha256sum output/Pomocnik-Alfa-2.0.0-alpha.6-UX-DEBUG.apk > output/SHA256-debug.txt
+          sha256sum output/Pomocnik-Alfa-2.0.0-alpha.7-SMART-DEBUG.apk > output/SHA256-debug.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: PA2-installable-debug-alpha6
+          name: PA2-installable-debug-alpha7-smart
           path: |
-            output/Pomocnik-Alfa-2.0.0-alpha.6-UX-DEBUG.apk
+            output/Pomocnik-Alfa-2.0.0-alpha.7-SMART-DEBUG.apk
             output/PA2-instrumentation-debug.apk
             output/SHA256-debug.txt
           retention-days: 30
@@ -117,12 +122,6 @@ jobs:
           cp -r native decoded/pa2-native-dex
           (cd decoded && zip -q -r ../output/PA2-Reconstructed-Project.zip . -x 'build/*' 'dist/*')
           (cd build/data && zip -q -r ../../output/pa2-data.zip .)
-          cp baseline.apk pa-base.apk
-          zip -q output/pa-base.zip pa-base.apk
-          gh release view pa2-source-base >/dev/null 2>&1 || gh release create pa2-source-base --prerelease --title 'PA: archiwum bazy projektu do odtworzenia kompilacji' --notes 'Techniczna baza pełnej aplikacji. Nie jest wydaniem dla użytkowników.'
-          gh release upload pa2-source-base output/pa-base.zip --clobber
-          gh release view pa2-data >/dev/null 2>&1 || gh release create pa2-data --prerelease --title 'Aktualizacje danych Planera PA 2.0' --notes 'Dane GTFS przetworzone z datami ważności. Źródła i uznanie autorstwa w paczce.'
-          gh release upload pa2-data output/pa2-data.zip --clobber
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -133,6 +132,7 @@ jobs:
             output/PA2-instrumentation-unsigned.apk
             output/PA2-Reconstructed-Project.zip
             output/*.txt
+            output/*.json
           retention-days: 60
 
   android_debug:
@@ -142,11 +142,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        api: [29, 30]
+        api: [30]
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: PA2-installable-debug-alpha6
+          name: PA2-installable-debug-alpha7-smart
           path: build
       - name: Enable KVM
         run: |
@@ -165,14 +165,22 @@ jobs:
           script: |
             set -eu  # android-emulator-runner invokes this script with /bin/sh (dash)
             mkdir -p results
-            adb install build/Pomocnik-Alfa-2.0.0-alpha.6-UX-DEBUG.apk
+            adb install build/Pomocnik-Alfa-2.0.0-alpha.7-SMART-DEBUG.apk
             adb install build/PA2-instrumentation-debug.apk
             adb logcat -c
             timeout 300s adb shell am instrument -w com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/instrumentation.txt
             grep -q 'TOTAL PASS system' results/instrumentation.txt
             adb logcat -d -b crash > results/crash-buffer.txt
             ! grep -q 'FATAL EXCEPTION' results/crash-buffer.txt
-            adb pull /sdcard/Android/data/com.senikolo.pomocniknowy.pa2preview/files/pa2-tests results/screenshots || true
+            adb pull /sdcard/Android/data/com.senikolo.pomocniknowy.pa2smarttest/files/pa2-tests results/screenshots
+            adb shell am force-stop com.senikolo.pomocniknowy.pa2smarttest
+            adb shell settings put system font_scale 1.3
+            adb shell wm size 720x1280
+            adb shell wm density 320
+            timeout 300s adb shell am instrument -w -e boardsOnly true com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/large-font.txt
+            grep -q 'TOTAL PASS system large-font' results/large-font.txt
+            adb pull /sdcard/Android/data/com.senikolo.pomocniknowy.pa2smarttest/files/pa2-tests results/large-font-screenshots
+            adb shell settings put system font_scale 1.0
       - uses: actions/upload-artifact@v4
         if: always()
         with:

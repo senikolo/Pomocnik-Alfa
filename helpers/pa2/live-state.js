@@ -8,10 +8,11 @@
  function assess(d,actual,checked,now=Date.now()/1000){
   const stamp=Number(actual.position?.timestamp||0),positionAge=stamp?Math.max(0,Math.floor(now-stamp)):Infinity;
   const age=Math.max(0,Math.floor(now-Number(actual.liveTimestamp||checked||0)));
-  const valid=!actual.cancelled&&!actual.skipped;
+  const liveStamp=Number(actual.liveTimestamp||0),confirmed=liveStamp>0&&liveStamp<=now+20&&now-liveStamp<=120;
+  const cancelled=confirmed&&!!actual.cancelled,skipped=confirmed&&!!actual.skipped,valid=!cancelled&&!skipped;
   const gpsFresh=valid&&stamp>0&&stamp<=now+20&&now-stamp<=120&&Number.isFinite(actual.position.latitude)&&Number.isFinite(actual.position.longitude);
-  const etaFresh=valid&&actual.live&&age<=120&&Number(actual.eta)>=now-30&&Number(actual.eta)<now+86400;
-  return{gpsFresh,hadPosition:!!actual.position,positionAge,etaFresh,age,etaMinutes:Math.max(0,Math.ceil((Number(actual.eta)-now)/60)),plannedMinutes:Math.ceil((epoch(d.queryDay||d.serviceDay,d.dep)-now)/60)};
+  const etaFresh=valid&&confirmed&&actual.live&&age<=120&&Number(actual.eta)>=now-30&&Number(actual.eta)<now+86400;
+  return{cancelled,skipped,gpsFresh,hadPosition:!!actual.position,positionAge,etaFresh,age,etaMinutes:Math.max(0,Math.ceil((Number(actual.eta)-now)/60)),plannedMinutes:Math.ceil((epoch(d.queryDay||d.serviceDay,d.dep)-now)/60)};
  }
  root.PALiveState=Object.freeze({epoch,assess});if(typeof module!=='undefined')module.exports=root.PALiveState;
 })(typeof globalThis!=='undefined'?globalThis:this);

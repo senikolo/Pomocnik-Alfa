@@ -43,15 +43,19 @@ main.write_text(s)
 p=root/'AndroidManifest.xml';m=p.read_text()
 m=m.replace('com.senikolo.pomocniknowy.regionspreview','com.senikolo.pomocniknowy')
 assert 'package="com.senikolo.pomocniknowy"' in m
-m=m.replace('com.senikolo.pomocniknowy','com.senikolo.pomocniknowy.pa2preview')
+m=m.replace('com.senikolo.pomocniknowy','com.senikolo.pomocniknowy.pa2smarttest')
 if 'android:name="com.ispina.lokalnie.PARegionsActivity"' not in m:
  m=m.replace('<application ', '<application ',1).replace('        <activity ', '        <activity android:exported="false" android:name="com.ispina.lokalnie.PARegionsActivity" android:windowSoftInputMode="adjustResize"/>\n        <activity ',1)
-m=re.sub(r'android:label="(?:Pomocnik Alfa 1\.7\.66|Pomocnik PA Regiony TEST)"','android:label="Pomocnik Alfa 2.0 TEST"',m)
+m=re.sub(r'android:label="(?:Pomocnik Alfa 1\.7\.66|Pomocnik PA Regiony TEST)"','android:label="Pomocnik Alfa SMART TEST"',m)
 # Restore the original Alfa cat, preserving the base APK's existing adaptive launcher.
 # ic_launcher_foreground.xml uses ic_launcher_cat_foreground.png from the original PA.
 m=re.sub(r'android:icon="[^"]+"','android:icon="@mipmap/ic_launcher"',m,count=1)
 m=re.sub(r'android:roundIcon="[^"]+"','android:roundIcon="@mipmap/ic_launcher_round"',m,count=1)
-m=re.sub(r'android:label="(?:Pomocnik Alfa 2.0 TEST|Pomocnik Alfa 1\\.7\\.66|Pomocnik PA Regiony TEST)"','android:label="Pomocnik Alfa 2.0 TEST"',m)
+m=re.sub(r'android:label="(?:Pomocnik Alfa SMART TEST|Pomocnik Alfa 1\\.7\\.66|Pomocnik PA Regiony TEST)"','android:label="Pomocnik Alfa SMART TEST"',m)
 p.write_text(m)
-p=root/'apktool.yml';s=p.read_text();s=re.sub(r'versionCode:.*',"versionCode: '20006'",s,count=1);s=re.sub(r'versionName:.*','versionName: 2.0.0-alpha.6',s,count=1);p.write_text(s)
+p=root/'apktool.yml';s=p.read_text();s=re.sub(r'versionCode:.*',"versionCode: '20007'",s,count=1);s=re.sub(r'versionName:.*','versionName: 2.0.0-alpha.7-smart',s,count=1);p.write_text(s)
 print('PASS: isolated module replaced; all other activities/services/receivers/assets preserved; minSdk 29 unchanged')
+
+# Integrate actual boards in the existing dashboard card.
+import subprocess
+subprocess.run([sys.executable,str(here/"nearby_patch.py"),str(root)],check=True)

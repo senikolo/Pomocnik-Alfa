@@ -27,26 +27,44 @@ final class PALive {
   return expected.equals(day.format(new java.util.Date(now*1000)));
  }
 
+ static final class Feed {final List<Msg> entities;final long stamp;Feed(List<Msg> e,long s){entities=e;stamp=s;}}
+ static final Map<String,Feed> cache=new HashMap<>();static final Map<String,Long> fetched=new HashMap<>();
+ static synchronized Feed feed(String url,int entityField,Reader reader,long now){
+  if(now-fetched.getOrDefault(url,0L)<25)return cache.get(url);
+  fetched.put(url,now);Feed result=null;
+  try{Msg raw=new Msg(reader.read(url,12*1024*1024));long stamp=raw.sub(1).number(3,0);
+   if(fresh(stamp,now)){List<Msg> rows=new ArrayList<>();for(Msg e:raw.all(2))if(e.number(2,0)==0&&e.one(entityField)!=null)rows.add(e.sub(entityField));result=new Feed(rows,stamp);}
+  }catch(Exception ignored){}if(result==null)cache.remove(url);else cache.put(url,result);return result;
+ }
  static JSONObject lookup(JSONObject p,Reader reader)throws Exception{
-  JSONArray candidates=p.optJSONArray("departures");if(candidates==null||candidates.length()>12)throw new IOException("Nieprawidłowe kursy do sprawdzenia LIVE.");Map<String,List<Msg>> vehicles=new HashMap<>(),updates=new HashMap<>();Map<String,Long> stamps=new HashMap<>();Set<String> attempted=new HashSet<>();JSONArray results=new JSONArray();long now=System.currentTimeMillis()/1000;
+  JSONArray candidates=p.optJSONArray("departures");if(candidates==null||candidates.length()>36)throw new IOException("Nieprawidłowe kursy do sprawdzenia LIVE.");
+  Map<String,Feed> vehicles=new HashMap<>(),updates=new HashMap<>();Set<String> attempted=new HashSet<>();JSONArray results=new JSONArray();long now=System.currentTimeMillis()/1000;
   for(int i=0;i<candidates.length();i++){
    JSONObject c=candidates.getJSONObject(i);String source=c.optString("source"),trip=c.optString("trip"),date=c.optString("serviceDay").replace("-","");JSONObject result=new JSONObject(c.toString());
+   // Never accept caller-supplied LIVE flags when joining a fresh source response.
+   for(String key:new String[]{"position","eta","liveTimestamp","cancelled","skipped","delaySeconds"})result.remove(key);
    String prefix=source.equals("krakow_bus")?"A":source.equals("krakow_tram")?"T":source.equals("krakow_mobilis")?"M":"";
    if(attempted.add(source)){
-    try{
-     String vu=source.equals("warsaw")?"https://mkuran.pl/gtfs/warsaw/vehicles.pb":!prefix.isEmpty()?"https://gtfs.ztp.krakow.pl/VehiclePositions_"+prefix+".pb":"";
-     if(!vu.isEmpty()){Msg feed=new Msg(reader.read(vu,12*1024*1024));long stamp=feed.sub(1).number(3,0);if(fresh(stamp,now)){List<Msg> list=new ArrayList<>();for(Msg entity:feed.all(2))if(entity.one(4)!=null)list.add(entity.sub(4));vehicles.put(source,list);stamps.put(source,stamp);}}
-     String tu=!prefix.isEmpty()?"https://gtfs.ztp.krakow.pl/TripUpdates_"+prefix+".pb":source.equals("wkd")?"https://mkuran.pl/gtfs/wkd.pb":source.equals("polishrail")?"https://mkuran.pl/gtfs/polish_trains/updates.pb":"";
-     if(!tu.isEmpty()){Msg feed=new Msg(reader.read(tu,12*1024*1024));long stamp=feed.sub(1).number(3,0);if(fresh(stamp,now)){List<Msg> list=new ArrayList<>();for(Msg entity:feed.all(2))if(entity.one(3)!=null)list.add(entity.sub(3));updates.put(source,list);stamps.put(source,stamp);}}
-    }catch(Exception ignored){} // Unavailable/stale is returned as scheduled; never reported as LIVE.
+    String vu=source.equals("warsaw")?"https://mkuran.pl/gtfs/warsaw/vehicles.pb":!prefix.isEmpty()?"https://gtfs.ztp.krakow.pl/VehiclePositions_"+prefix+".pb":"";
+    String tu=!prefix.isEmpty()?"https://gtfs.ztp.krakow.pl/TripUpdates_"+prefix+".pb":source.equals("wkd")?"https://mkuran.pl/gtfs/wkd.pb":source.equals("polishrail")?"https://mkuran.pl/gtfs/polish_trains/updates.pb":"";
+    // Position failure must not suppress an independently available TripUpdate.
+    if(!vu.isEmpty())vehicles.put(source,feed(vu,4,reader,now));if(!tu.isEmpty())updates.put(source,feed(tu,3,reader,now));
    }
-   boolean live=false;
-   for(Msg v:vehicles.getOrDefault(source,Collections.emptyList())){Msg d=v.sub(1);String sd=d.text(3);long stamp=v.number(5,stamps.getOrDefault(source,0L));if(!d.text(1).equals(trip)||!matchesDate(sd,date,now)||!fresh(stamp,now))continue;Msg pos=v.sub(2);double lat=pos.decimal(1),lon=pos.decimal(2);if(lat<48||lat>56||lon<13||lon>25)continue;result.put("position",new JSONObject().put("latitude",lat).put("longitude",lon).put("timestamp",stamp).put("age",now-stamp));live=true;break;}
-   for(Msg u:updates.getOrDefault(source,Collections.emptyList())){Msg d=u.sub(1);String sd=d.text(3);long stamp=u.number(4,stamps.getOrDefault(source,0L));if(!d.text(1).equals(trip)||!matchesDate(sd,date,now)||!fresh(stamp,now))continue;if(d.number(4,0)==3){result.put("cancelled",true);live=true;break;}
+   boolean live=false;Feed vf=vehicles.get(source),uf=updates.get(source);
+   if(vf!=null&&fresh(vf.stamp,now))for(Msg v:vf.entities){Msg d=v.sub(1);long stamp=v.number(5,vf.stamp);if(!d.text(1).equals(trip)||!matchesDate(d.text(3),date,now)||!fresh(stamp,now))continue;Msg pos=v.sub(2);double lat=pos.decimal(1),lon=pos.decimal(2);if(lat<48||lat>56||lon<13||lon>25)continue;result.put("position",new JSONObject().put("latitude",lat).put("longitude",lon).put("timestamp",stamp).put("age",now-stamp));live=true;break;}
+   if(uf!=null&&fresh(uf.stamp,now))for(Msg u:uf.entities){Msg d=u.sub(1);long stamp=u.number(4,uf.stamp);if(!d.text(1).equals(trip)||!matchesDate(d.text(3),date,now)||!fresh(stamp,now))continue;
+    if(d.number(4,0)==3){result.put("cancelled",true).put("liveTimestamp",stamp);live=true;break;}
+    if(d.number(4,0)!=0)continue;
     String stop=c.optString("stopId");int colon=stop.indexOf(':');if(colon>=0)stop=stop.substring(colon+1);
-    for(Msg s:u.all(2)){if(!s.text(4).equals(stop))continue;if(s.number(5,0)==1){result.put("skipped",true);live=true;break;}Msg event=s.one(3)!=null?s.sub(3):s.sub(2);long eta=event.number(2,0);if(eta>=now-30&&eta<now+86400){result.put("eta",eta);result.put("liveTimestamp",stamp);live=true;}break;}
+    for(Msg point:u.all(2)){if(!point.text(4).equals(stop))continue;long relation=point.number(5,0);if(relation==1){result.put("skipped",true).put("liveTimestamp",stamp);live=true;break;}if(relation!=0)break;
+     Msg event=point.one(3)!=null?point.sub(3):point.sub(2);long eta=event.number(2,0),planned=c.optLong("plannedEpoch",0);
+     if(planned==0){try{planned=PANearbyRules.epoch(c.optString("queryDay",c.optString("serviceDay")),c.optInt("dep"));}catch(Exception ignored){}}
+     if(eta==0&&event.one(1)!=null&&planned>0)eta=planned+(int)event.number(1,0);
+     // High uncertainty is not a confirmed minute-level arrival prediction.
+     if(event.number(3,0)<=120&&eta>=now-30&&eta<now+86400){result.put("eta",eta).put("liveTimestamp",stamp);if(planned>0)result.put("delaySeconds",eta-planned);live=true;}break;
+    }
    }
-   result.put("live",live);result.put("provenance",source.startsWith("krakow")?"ZTP Kraków • GTFS-RT":source.equals("warsaw")?"Miasto Stołeczne Warszawa • https://api.um.warszawa.pl • GTFS-RT: Mikołaj Kuranowski"+(stamps.containsKey(source)?" • czas źródła: "+java.time.Instant.ofEpochSecond(stamps.get(source)).toString():""):"GTFS-RT: Mikołaj Kuranowski / dane przewoźników");results.put(result);
+   result.put("live",live);result.put("provenance",source.startsWith("krakow")?"ZTP Kraków • GTFS-RT":source.equals("warsaw")?"Miasto Stołeczne Warszawa • https://api.um.warszawa.pl • GTFS-RT: Mikołaj Kuranowski":"GTFS-RT: Mikołaj Kuranowski / dane przewoźników");results.put(result);
   }
   return new JSONObject().put("results",results).put("checkedAt",now).put("notice","Brak zgodnego i świeżego pomiaru oznacza odjazd rozkładowy. Pozycja GPS nie jest prognozą przyjazdu.");
  }
