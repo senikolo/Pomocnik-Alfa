@@ -12,6 +12,9 @@ public class PAProbe extends Instrumentation {
  @Override public void onCreate(Bundle args){super.onCreate(args);start();}
  @Override public void onStart(){Bundle out=new Bundle();try{
   record("Android API "+Build.VERSION.SDK_INT+", package "+getTargetContext().getPackageName());
+  String iconRes=getTargetContext().getResources().getResourceEntryName(getTargetContext().getApplicationInfo().icon);
+  require("ic_launcher".equals(iconRes),"Original Alfa cat launcher was replaced: "+iconRes);
+  record("PASS original adaptive cat launcher restored");
   Activity a=launch("MainActivity");record("PASS main launches");screenshot("main");runOnMainSync(()->a.finish());
   Activity planner=launch("PARegionsActivity");waitJs(planner,"document.getElementById('coverage').innerText.includes('offline')",30000);record("PASS WebView, all GTFS indexes and ES2017 client load");
    require("true".equals(js(planner,"/\\d{2}\\.\\d{2}\\.\\d{4}/.test(document.getElementById('dateDisplay').textContent)")),"Polish date format not visible");
@@ -27,7 +30,12 @@ public class PAProbe extends Instrumentation {
   js(planner,"document.querySelector('#busStops button').click();true");
   waitJs(planner,"document.getElementById('busStopConfirmed').innerText.includes('Wybrano') && document.getElementById('busLine').options.length>1",12000);
   require("true".equals(js(planner,"document.querySelectorAll('nav .vicon').length===4 && document.getElementById('pa-bus')!==null && document.getElementById('busLine').options.length>1")),"LIVE bus icon/diagram utilities missing");
-  screenshot("where-is-my-bus");record("PASS bus tab, icon family, real stop selection and non-geocoded relative diagram");
+  js(planner,"document.getElementById('busResult').innerHTML='<div id=\\\"osmProbe\\\"></div>';PAMap.mount(document.getElementById('osmProbe'),{lat:52.2,lon:21.0},{lat:52.201,lon:21.001});true");
+  waitJs(planner,"document.querySelectorAll('#osmProbe .osm-layer img').length>0 && document.querySelectorAll('#osmProbe .osm-marker').length===2",12000);
+  String zoomBefore=js(planner,"document.querySelector('#osmProbe .osm-layer img').src");
+  js(planner,"document.querySelector('#osmProbe .osm-buttons button').click();true");
+  require(!zoomBefore.equals(js(planner,"document.querySelector('#osmProbe .osm-layer img').src")),"OpenStreetMap zoom control did not update tiles");
+  screenshot("where-is-my-bus");record("PASS interactive OSM tile viewport, controls, stops, icons and vehicle markers");
   js(planner,"document.getElementById('tabAssistant').click();document.getElementById('chatInput').value='Chcę jutro po 9 jechać z Ispiny do Bochni';document.getElementById('ask').click();true");
   waitJs(planner,"document.getElementById('messages').innerText.includes('09:00')",20000);record("PASS chat retains requested date/time while clarifying Bochnia stop");
   js(planner,"document.getElementById('chatInput').value='Bochnia Dworzec PKP';document.getElementById('ask').click();true");
