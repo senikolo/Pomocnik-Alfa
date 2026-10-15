@@ -1,0 +1,28 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Planer autobusów · Pomocnik Alfa</title>
+<style>body{margin:0;background:#f3f7fc;font-family:system-ui,sans-serif;color:#20344a}#pa-message{max-width:600px;margin:70px auto;padding:25px}#pa-message h1{font-size:21px}#pa-message p{font-size:15px;line-height:1.5}</style>
+<script>window.IL_BUILD={versionName:"2.0.0-premium.52",versionCode:20323};window.IL_APP_VERSION=window.IL_BUILD.versionName;</script>
+</head><body><main id="pa-message"><h1>Planer autobusów jak w Ispina Lokalnie</h1><p>Wybierz początek, cel, datę i godzinę. Rozkład jest wbudowany w aplikację. Informacja LIVE pojawia się wyłącznie po potwierdzeniu bieżących danych.</p></main>
+<script src="/__pa_transit/main_ui.js"></script>
+<script>
+(function(){
+ var tries=0,done=false;
+ function openPlanner(){
+  if(done)return;tries++;
+  var drawer=document.getElementById('iaD');
+  var buttons=drawer?drawer.querySelectorAll('button'):[];
+  for(var i=0;i<buttons.length;i++){
+   if(/Planer podróży/i.test(buttons[i].textContent||'')){
+    done=true;buttons[i].click();return;
+   }
+  }
+  if(tries>=35){
+    var msg=document.getElementById('pa-message');
+    if(msg)msg.innerHTML='<h1>Nie udało się uruchomić planera</h1><p>Przywróć poprzedni ekran przyciskiem Wstecz. Nie pokazuję niezweryfikowanych odjazdów.</p>';
+  }
+ }
+ var timer=setInterval(function(){openPlanner();if(done||tries>=35)clearInterval(timer);},200);
+ openPlanner();
+})();
+</script></body></html>
