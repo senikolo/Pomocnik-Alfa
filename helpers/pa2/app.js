@@ -94,6 +94,100 @@ $('ask').onclick=()=>ask();$('chatInput').onkeydown=e=>{if(e.key==='Enter'&&!e.s
 $('aiOnline').onchange=()=>{$('aiStatus').textContent=$('aiOnline').checked?'AI online: sprawdzę dostępność przy pytaniu':'Planer i narzędzia lokalne · bez modelu AI'};
 $('clearChat').onclick=()=>{generation++;assistant?.reset();history=[];$('messages').innerHTML='';try{sessionStorage.removeItem('pa2-session')}catch{}bubble('Zaczynamy nową rozmowę. W czym pomóc?')};
 $('update').onclick=async()=>{$('update').disabled=true;$('updateStatus').textContent='Pobieram i sprawdzam aktualne rozkłady. Obecna baza pozostaje dostępna.';try{const r=await native('update');$('updateStatus').textContent='Zapisano rozkłady z '+r.generated+'.';generation++;await init();setPoints(null,null);$('results').innerHTML='';$('progress').textContent='Dane odświeżone. Wybierz trasę.';}catch(e){$('updateStatus').textContent=e.message}finally{$('update').disabled=false}};
+
+/* Dedicated verified vehicle lookup: stop -> route -> direction -> matched LIVE trip.
+   No GPS invented from a published timetable, no street-distance-based ETA. */
+const busState={stop:null,departures:[],seq:0,lastQuery:null};
+const busModes=new Set([3,700,701,702,704,714]);
+const busOpt=(value,label)=>{const o=document.createElement('option');o.value=value;o.textContent=label;return o};
+function busResetResults(message=''){busState.seq++;$('busResult').innerHTML='';$('busLoading').textContent=message;$('busRefresh').disabled=true}
+function busStopList(){
+ const q=$('busStop').value,box=$('busStops');busState.stop=null;busState.departures=[];busResetResults();
+ $('busStopConfirmed').textContent='';$('busLine').replaceChildren(busOpt('','Najpierw wybierz przystanek'));$('busLine').disabled=true;
+ $('busDirection').replaceChildren(busOpt('','Wybierz linię'));$('busDirection').disabled=true;$('checkBus').disabled=true;box.replaceChildren();
+ $('busStop').setAttribute('aria-expanded','false');
+ if(!engine||norm(q).length<3){box.classList.remove('open');return}
+ const groups=engine.match(q,12);if(!groups.length){box.innerHTML='<p class="small" style="padding:12px">Nie znaleziono przystanku. Wpisz dokładniejszą nazwę.</p>';box.classList.add('open');$('busStop').setAttribute('aria-expanded','true');return}
+ box.classList.add('open');$('busStop').setAttribute('aria-expanded','true');
+ for(const g of groups){const b=document.createElement('button');b.type='button';b.setAttribute('role','option');b.className='list-option';b.innerHTML=esc(g.name)+'<small>'+esc(groupSummary(g))+'</small>';b.onclick=()=>busChooseStop(g);box.appendChild(b)}
+}
+function busChooseStop(g){
+ busState.stop=g;busState.departures=[];busResetResults();$('busStop').value=g.name;$('busStop').setAttribute('aria-expanded','false');$('busStops').classList.remove('open');
+ $('busStopConfirmed').textContent='✓ Wybrano: '+g.name;
+ const lines=[...new Set([...g.routes].filter(id=>busModes.has(engine.idx.routes[id][3])).map(id=>String(engine.idx.routes[id][1])))].sort((a,b)=>a.localeCompare(b,'pl',{numeric:true}));
+ $('busLine').replaceChildren(busOpt('','Wybierz linię'),...lines.map(x=>busOpt(x,x)));$('busLine').disabled=lines.length===0;
+ $('busDirection').replaceChildren(busOpt('','Wybierz linię'));$('busDirection').disabled=true;$('checkBus').disabled=true;
+ if(!lines.length)$('busLoading').textContent='Ten przystanek nie ma autobusów w aktualnej bazie. Wybierz inny przystanek.';
+}
+async function busChangeLine(){
+ const line=$('busLine').value,group=busState.stop,seq=++busState.seq;busState.departures=[];
+ $('busDirection').replaceChildren(busOpt('','Wczytuję kierunki…'));$('busDirection').disabled=true;$('checkBus').disabled=true;$('busResult').innerHTML='';$('busRefresh').disabled=true;
+ if(!line||!group){$('busDirection').replaceChildren(busOpt('','Wybierz linię'));$('busLoading').textContent='';return}
+ $('busLoading').textContent='Sprawdzam dostępne kierunki linii '+line+'…';
+ try{
+   const dep=await engine.departures(group,wallNow(),line,null);if(seq!==busState.seq)return;
+   busState.departures=dep;
+   const dir=[...new Set(dep.map(x=>x.headsign).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pl'));
+   $('busDirection').replaceChildren(busOpt('','Wybierz kierunek'),...dir.map(x=>busOpt(x,x)));$('busDirection').disabled=!dir.length;
+   $('busLoading').textContent=dir.length?'Wybierz kierunek i sprawdź autobus.':'Nie ma najbliższych odjazdów tej linii w dostępnej bazie na ten dzień.';
+   $('busProvider').textContent=dep.some(d=>['warsaw','krakow_bus','krakow_mobilis','krakow_tram'].includes(d.source))?'Dla części kursów dostępny jest świeży GPS i LIVE.':'Dla tej linii może być dostępny tylko rozkład planowy.';
+ }catch(e){if(seq!==busState.seq)return;$('busDirection').replaceChildren(busOpt('','Brak danych'));$('busLoading').textContent=e.message||'Nie mogę odczytać kierunków.'}
+}
+function busChangeDirection(){busResetResults();$('checkBus').disabled=!(busState.stop&&$('busLine').value&&$('busDirection').value);if(!$('checkBus').disabled)$('busLoading').textContent='Gotowe. Sprawdź najbliższy autobus.'}
+function busDistanceMetres(lat1,lon1,lat2,lon2){const rad=Math.PI/180,phi=(lat2-lat1)*rad,dl=(lon2-lon1)*rad,a=Math.sin(phi/2)**2+Math.cos(lat1*rad)*Math.cos(lat2*rad)*Math.sin(dl/2)**2;return Math.round(12742000*Math.asin(Math.min(1,Math.sqrt(a))))}
+function busSchematic(lat,lon,stopLat,stopLon){
+ // diagrammatic positions only; never imply an actual road route
+ const meanLat=(lat+stopLat)*Math.PI/360,spanX=(lon-stopLon)*Math.cos(meanLat),spanY=lat-stopLat;
+ const scale=Math.max(Math.abs(spanX),Math.abs(spanY),.00015);const x=160+spanX/scale*93,y=69-spanY/scale*42;
+ return '<div class="bus-map" role="img" aria-label="Schemat: autobus i przystanek, położenie względne, nie rzeczywista mapa ulic"><svg viewBox="0 0 320 140" focusable="false" aria-hidden="true"><path class="road" d="M160 69 L'+x.toFixed(1)+' '+y.toFixed(1)+'"/><circle class="station" cx="160" cy="69" r="9"/><circle class="vehicle" cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="11"/><text class="map-label" x="160" y="91" text-anchor="middle">Przystanek</text><text class="map-label" x="'+x.toFixed(1)+'" y="'+Math.max(13,y-17).toFixed(1)+'" text-anchor="middle">Autobus</text><text class="map-foot" x="160" y="125" text-anchor="middle">Schemat względnego położenia · bez dróg i nawigacji</text></svg></div>';
+}
+function busStopCoords(d){
+ const group=busState.stop;const candidates=group.stops.map(id=>engine.idx.stops[id]);const exact=candidates.find(s=>String(s[0])===String(d.stopId)||String(s[0]).split(':').at(-1)===String(d.stopId).split(':').at(-1));
+ return exact||candidates[0];
+}
+async function checkLiveBus(){
+ if(!engine||!busState.stop||!$('busLine').value||!$('busDirection').value)return;
+ const seq=++busState.seq,now=wallNow(),line=$('busLine').value,direction=$('busDirection').value;
+ $('busResult').innerHTML='';$('checkBus').disabled=true;$('busRefresh').disabled=true;
+ $('busLoading').textContent='Sprawdzam pozycję kursu w danych przewoźnika…';
+ try{
+  const all=await engine.departures(busState.stop,now,line,null);if(seq!==busState.seq)return;
+  const nowMin=Number(now.slice(11,13))*60+Number(now.slice(14,16));
+  const relevant=all.filter(d=>d.headsign===direction&&d.dep>=nowMin*60-240&&d.dep<=nowMin*60+120*60).slice(0,6);
+  if(!relevant.length){$('busLoading').textContent='Brak pasującego kursu w pobliżu bieżącej godziny. Wybierz inny kierunek, przystanek lub spróbuj później.';return}
+  let live;
+  try{live=await native('live',{departures:relevant})}
+  catch(e){if(seq!==busState.seq)return;$('busLoading').textContent='Nie udało się pobrać LIVE: '+(e.message||'brak połączenia')+'. Poniżej wyłącznie rozkład planowy.'}
+  if(seq!==busState.seq)return;
+  const checked=Number(live?.checkedAt||Date.now()/1000);
+  const output=relevant.map((d,i)=>{
+    const actual=live?.results?.find(v=>v.trip===d.trip&&v.serviceDay===d.serviceDay)||{...d,live:false};
+    const cancelled=!!actual.cancelled,skipped=!!actual.skipped;
+    const haveGps=!!(actual.position&&Number.isFinite(actual.position.latitude)&&Number.isFinite(actual.position.longitude)&&Number(actual.position.age)<=120&&Number(actual.position.age)>=0);
+    const coords=busStopCoords(d);const location=haveGps&&coords&&Number.isFinite(coords[3])&&Number.isFinite(coords[4]);
+    const dist=location?busDistanceMetres(actual.position.latitude,actual.position.longitude,coords[3],coords[4]):null;
+    const status=cancelled?'Odwołany kurs':skipped?'Przystanek pominięty':haveGps?'Pozycja GPS potwierdzona':actual.eta?'Godzina LIVE potwierdzona':'Brak świeżej pozycji GPS · kurs planowy';
+    const eta=actual.eta?new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Warsaw',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(actual.eta*1000)):null;
+    const updateTime=haveGps?new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Warsaw',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date(actual.position.timestamp*1000)):'';
+    return '<article class="card trip"><div class="bus-card-header"><span class="bus-vehicle-line">'+esc(d.line)+' → '+esc(d.headsign)+'</span><span class="pill">'+clock(d.dep)+'</span></div>'+
+     '<div class="bus-status '+(haveGps||eta?'ok':'warn')+'">'+esc(status)+'</div>'+
+     '<p>Przystanek: <strong>'+esc(busState.stop.name)+'</strong><br>Odjazd planowy: <strong>'+clock(d.dep)+'</strong>'+
+       (eta?'<br>Przyjazd według LIVE: <strong>'+esc(eta)+'</strong>':'')+'</p>'+
+     (haveGps?'<p><strong>Gdzie jest autobus?</strong> Pozycja GPS z '+esc(updateTime)+' (sprzed '+Math.round(actual.position.age)+' s).'+(dist===null?'':' Od przystanku dzieli go około <strong>'+ (dist>=1000?(dist/1000).toFixed(1)+' km':dist+' m')+'</strong> w linii prostej.')+'</p>':'<p class="small">Nie ma potwierdzonej pozycji tego kursu. Nie wyznaczam lokalizacji na podstawie rozkładu.</p>')+
+     (location?busSchematic(actual.position.latitude,actual.position.longitude,coords[3],coords[4]):'')+
+     '<p class="bus-source">'+esc(actual.provenance||('Dane GTFS: '+d.source))+' · '+(actual.live?'Potwierdzono LIVE':'Bez potwierdzenia LIVE')+'</p></article>';
+  }).join('');
+  $('busResult').innerHTML=output;
+  if(live?.results?.some(x=>x.live))$('busLoading').textContent='Sprawdzono aktualne dane LIVE. Wyświetlam tylko kursy pasujące do kierunku i przystanku.';
+  else if(live)$('busLoading').textContent='Źródło nie podało świeżej pozycji wybranego kursu. Pokazuję wyłącznie rozkład planowy.';
+  $('busProvider').textContent='Dane sprawdzone: '+new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Warsaw',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(checked*1000));
+ }catch(e){if(seq===busState.seq)$('busLoading').textContent=e.message||'Nie mogę teraz sprawdzić kursu.'}
+ finally{if(seq===busState.seq){$('checkBus').disabled=false;$('busRefresh').disabled=false}}
+}
+$('busStop').oninput=busStopList;$('busStop').onfocus=()=>{if(!busState.stop)busStopList()};
+$('busLine').onchange=busChangeLine;$('busDirection').onchange=busChangeDirection;
+$('checkBus').onclick=checkLiveBus;$('busRefresh').onclick=checkLiveBus;
+
 $('official').onclick=()=>native('official',{url:'https://portalpasazera.pl/'}).catch(e=>toast(e.message));document.querySelectorAll('.module').forEach(b=>b.onclick=()=>native('module',{name:b.dataset.module}).catch(e=>toast(e.message)));
 $('chatInput').addEventListener('focus',()=>{document.body.classList.add('keyboard-open');setTimeout(scrollChat,100)});
 $('chatInput').addEventListener('blur',()=>{document.body.classList.remove('keyboard-open');setTimeout(layoutChat,100)});
