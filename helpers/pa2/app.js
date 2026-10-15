@@ -186,7 +186,7 @@ async function checkLiveBus(){
 }
 $('busStop').oninput=busStopList;$('busStop').onfocus=()=>{if(!busState.stop)busStopList()};
 $('busLine').onchange=busChangeLine;$('busDirection').onchange=busChangeDirection;
-$('checkBus').onclick=checkLiveBus;$('busRefresh').onclick=checkLiveBus;
+$('checkBus').onclick=checkLiveBus;$('busRefresh').onclick=checkLiveBus;$('busQuick').onclick=()=>tab('liveBus');
 
 $('official').onclick=()=>native('official',{url:'https://portalpasazera.pl/'}).catch(e=>toast(e.message));document.querySelectorAll('.module').forEach(b=>b.onclick=()=>native('module',{name:b.dataset.module}).catch(e=>toast(e.message)));
 $('chatInput').addEventListener('focus',()=>{document.body.classList.add('keyboard-open');setTimeout(scrollChat,100)});
