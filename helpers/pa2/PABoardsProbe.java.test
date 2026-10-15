@@ -1,5 +1,5 @@
 package com.ispina.lokalnie;
-import android.app.*;import android.content.*;import android.location.*;import android.os.*;import android.view.*;import android.widget.*;import android.graphics.Bitmap;import org.json.*;import java.util.*;import java.util.concurrent.*;import java.io.*;import java.lang.reflect.*;
+import android.app.*;import android.content.*;import android.location.*;import android.os.*;import android.view.*;import android.widget.*;import android.graphics.Bitmap;import android.webkit.WebView;import org.json.*;import java.util.*;import java.util.concurrent.*;import java.io.*;import java.lang.reflect.*;
 /** Real installed APK instrumentation. Synthetic parser fixtures are explicitly separate from real GTFS UI. */
 public final class PABoardsProbe {
  static void need(boolean yes,String m){if(!yes)throw new AssertionError(m);}
@@ -9,6 +9,8 @@ public final class PABoardsProbe {
  static void call(Object o,String name,Class<?>[] types,Object...args)throws Exception{Method m=o.getClass().getDeclaredMethod(name,types);m.setAccessible(true);m.invoke(o,args);}
  static int count(View v,String tag){int n=tag.equals(v.getTag())?1:0;if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++)n+=count(((ViewGroup)v).getChildAt(i),tag);return n;}
  static View tagged(View v,String tag){if(tag.equals(v.getTag()))return v;if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++){View r=tagged(((ViewGroup)v).getChildAt(i),tag);if(r!=null)return r;}return null;}
+ static WebView web(View v){if(v instanceof WebView)return (WebView)v;if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++){WebView w=web(((ViewGroup)v).getChildAt(i));if(w!=null)return w;}return null;}
+ static String js(Instrumentation t,Activity a,String expression)throws Exception{CountDownLatch done=new CountDownLatch(1);String[] result={""};t.runOnMainSync(()->{WebView w=web(a.getWindow().getDecorView());if(w==null){done.countDown();return;}w.evaluateJavascript(expression,value->{result[0]=value;done.countDown();});});need(done.await(10,TimeUnit.SECONDS),"Full board JS callback");return result[0];}
  static void waitFor(java.util.concurrent.Callable<Boolean> check,String name)throws Exception{long end=System.currentTimeMillis()+60000;while(System.currentTimeMillis()<end){if(check.call())return;Thread.sleep(150);}throw new AssertionError("Timed out: "+name);}
  static void geometry(View v){
   if(v instanceof TextView&&v.getTag()!=null&&"pa-board-title".equals(v.getTag())){TextView x=(TextView)v;need(x.getLayout()!=null,"Title laid out");for(int i=0;i<x.getLayout().getLineCount();i++)need(x.getLayout().getEllipsisCount(i)==0,"Uncut board title");need(x.getHeight()>=x.getLayout().getHeight(),"Title height includes all lines");}
@@ -79,7 +81,7 @@ public final class PABoardsProbe {
   waitFor(()->count(home.getWindow().getDecorView(),"pa-departure-board")==1,"manual single board");screen(t,"boards-manual");
   // Tap actual card: an Activity monitor observes the same regional planner, with selected stop ID.
   Instrumentation.ActivityMonitor monitor=t.addMonitor(PARegionsActivity.class.getName(),null,false);
-  t.runOnMainSync(()->{View title=tagged(home.getWindow().getDecorView(),"pa-board-title");need(title!=null,"Board title");title.performClick();});Activity detail=monitor.waitForActivityWithTimeout(20000);t.removeMonitor(monitor);need(detail!=null,"Board click opens details");need(manual.id.equals(detail.getIntent().getStringExtra("pa_stop_id")),"Exact platform deep link");Thread.sleep(2500);screen(t,"board-full-stop");
+  t.runOnMainSync(()->{View title=tagged(home.getWindow().getDecorView(),"pa-board-title");need(title!=null,"Board title");title.performClick();});Activity detail=monitor.waitForActivityWithTimeout(20000);t.removeMonitor(monitor);need(detail!=null,"Board click opens details");need(manual.id.equals(detail.getIntent().getStringExtra("pa_stop_id")),"Exact platform deep link");waitFor(()->"true".equals(js(t,detail,"document.getElementById('stopBoard')?.classList.contains('active') && document.querySelectorAll('#homeStopRows .card').length>0")),"Real full-stop rows loaded");screen(t,"board-full-stop");
   need(!(Boolean)get(c,"visible"),"Background polling suspended");t.runOnMainSync(()->detail.finish());log.append("PASS manual stop persistence, exact stop click, full regional Activity and foreground-only lifecycle\n");return log.toString();
  }
 }

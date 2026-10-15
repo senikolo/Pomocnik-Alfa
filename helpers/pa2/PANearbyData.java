@@ -10,9 +10,10 @@ final class PANearbyData {
  }
  static final class Board {PANearbyRules.Stop stop;double distance;boolean covered;final List<Departure> departures=new ArrayList<>();}
  static final class Snapshot {final List<Board> boards=new ArrayList<>();String day;long checked;}
+ static String platform(JSONArray row){String p=row.optString(2),id=row.optString(0);return p.isEmpty()&&id.matches("warsaw:[0-9]{6}")?id.substring(id.length()-2):p;}
  static List<PANearbyRules.Stop> stops(JSONObject index)throws Exception{
   JSONArray rows=index.getJSONArray("stops");ArrayList<PANearbyRules.Stop> all=new ArrayList<>();
-  for(int i=0;i<rows.length();i++){JSONArray s=rows.getJSONArray(i);if(s.getJSONArray(5).length()==0)continue;all.add(new PANearbyRules.Stop(i,s.getString(0),s.optString(6),s.optString(1),s.optString(2),s.getDouble(3),s.getDouble(4),s.getJSONArray(5).length()));}return all;
+  for(int i=0;i<rows.length();i++){JSONArray s=rows.getJSONArray(i);if(s.getJSONArray(5).length()==0)continue;all.add(new PANearbyRules.Stop(i,s.getString(0),s.optString(6),s.optString(1),platform(s),s.getDouble(3),s.getDouble(4),s.getJSONArray(5).length()));}return all;
  }
  static Snapshot load(JSONObject index,Reader reader,List<PANearbyRules.Stop> selected,double lat,double lon,long now)throws Exception{
   Snapshot out=new Snapshot();out.checked=now;out.day=java.time.Instant.ofEpochSecond(now).atZone(java.time.ZoneId.of("Europe/Warsaw")).toLocalDate().toString();
