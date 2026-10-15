@@ -1,0 +1,52 @@
+name: PA source baseline backup
+on:
+  workflow_dispatch:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.issue.title == 'TRIGGER PA SOURCE BASE BACKUP 20261015' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download legacy source base and verify before committing
+        run: |
+          set -euo pipefail
+          URL="https://f366ae4b-1478-4dc8-b5e5-0c4f287fe888.sandbox.floot.app/_cdn/static/8c9b84bd-d903-41e1-b51b-6f52ccf67725-pa176-compile-micro.tar.xz"
+          mkdir -p source-archives
+          curl -fL --retry 4 --retry-delay 3 --connect-timeout 15 "$URL" -o source-archives/pa-1.7.6-source-base.tar.xz
+          test "$(stat -c %s source-archives/pa-1.7.6-source-base.tar.xz)" -gt 50000
+          tar -tJf source-archives/pa-1.7.6-source-base.tar.xz | grep -F 'app/src/main/java/com/ispina/lokalnie/MainActivity.java'
+          tar -tJf source-archives/pa-1.7.6-source-base.tar.xz | grep -F 'app/build.gradle'
+          sha256sum source-archives/pa-1.7.6-source-base.tar.xz > source-archives/pa-1.7.6-source-base.sha256
+          cat > source-archives/README.md <<'TXT'
+          # Pomocnik Alfa — archiwum źródłowe
+
+          `pa-1.7.6-source-base.tar.xz` is a permanent archived **older** buildable
+          source baseline (without large binary audio assets), restored from the
+          owner's original Floot-hosted project. It is **not** the source of PA
+          1.7.66 and must never be called a full reconstruction.
+
+          Future PA source archives should be committed/versioned here or otherwise
+          stored durably. GitHub Actions artifacts with 3–7 day retention are not
+          an acceptable sole copy of essential project sources.
+
+          PA 1.7.66 source restoration is still blocked by expired
+          `Pomocnik-Alfa-1.7.36-CZYTNIK-ALFA-SOURCE` (run 37574069132).
+          TXT
+      - name: Commit if new
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add source-archives
+          if git diff --cached --quiet; then echo "Backup is already present"; exit 0; fi
+          git commit -m "Archive original PA 1.7.6 source baseline to prevent expiration"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
