@@ -14,7 +14,7 @@ public final class PABoardsProbe {
   if(v instanceof TextView&&v.getTag()!=null&&"pa-board-title".equals(v.getTag())){TextView x=(TextView)v;need(x.getLayout()!=null,"Title laid out");for(int i=0;i<x.getLayout().getLineCount();i++)need(x.getLayout().getEllipsisCount(i)==0,"Uncut board title");need(x.getHeight()>=x.getLayout().getHeight(),"Title height includes all lines");}
   if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++)geometry(((ViewGroup)v).getChildAt(i));
  }
- static void screen(Instrumentation t,String name)throws Exception{File dir=t.getTargetContext().getExternalFilesDir("pa2-tests");dir.mkdirs();Bitmap b=t.getUiAutomation().takeScreenshot();need(b!=null,"Screenshot unavailable");try(FileOutputStream out=new FileOutputStream(new File(dir,name+".png"))){b.compress(Bitmap.CompressFormat.PNG,100,out);}}
+ static void screen(Instrumentation t,String name)throws Exception{File dir=new File(t.getTargetContext().getFilesDir(),"pa2-tests");dir.mkdirs();Bitmap b=t.getUiAutomation().takeScreenshot();need(b!=null,"Screenshot unavailable");try(FileOutputStream out=new FileOutputStream(new File(dir,name+".png"))){b.compress(Bitmap.CompressFormat.PNG,100,out);}}
  static byte[] var(long v)throws Exception{ByteArrayOutputStream o=new ByteArrayOutputStream();while((v&~127L)!=0){o.write((int)(v&127)|128);v>>>=7;}o.write((int)v);return o.toByteArray();}
  static byte[] join(byte[]...xs)throws Exception{ByteArrayOutputStream o=new ByteArrayOutputStream();for(byte[] x:xs)o.write(x);return o.toByteArray();}
  static byte[] num(int key,long n)throws Exception{return join(var(key*8),var(n));}

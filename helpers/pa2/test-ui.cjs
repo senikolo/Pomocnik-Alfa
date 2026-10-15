@@ -8,8 +8,10 @@ const w=d.window,doc=w.document,OriginalDate=w.Date;w.Date=class extends Origina
 w.matchMedia=()=>({matches:false,addEventListener(){},addListener(){}});w.scrollTo=()=>{};w.HTMLElement.prototype.scrollTo=function(){};w.HTMLElement.prototype.scrollIntoView=function(){};
 Object.defineProperty(w.HTMLElement.prototype,'innerText',{get(){return this.textContent},set(s){this.textContent=s},configurable:true});
 w.fetch=async url=>{try{let b=fs.readFileSync(data+new URL(url,'https://pa-bus.invalid').pathname);return {ok:true,json:async()=>JSON.parse(b)}}catch{return {ok:false}}};
+const homeId=JSON.parse(fs.readFileSync(data+'/index_all.json','utf8')).stops.find(s=>s[1]==='Tarchomin'&&s[5].length)[0];
 let liveEnabled=true;const requests=[];w.PADevice={request(raw){let x=JSON.parse(raw);requests.push(x);let result;
- if(x.type==='live')result={checkedAt:Math.floor(clock/1000),results:x.payload.departures.map(c=>({...c,live:liveEnabled,...(liveEnabled?{position:{latitude:52.32,longitude:20.97,timestamp:Math.floor(clock/1000),age:0}}:{} )}))};
+ if(x.type==='homeStop')result={stopId:homeId};
+ else if(x.type==='live')result={checkedAt:Math.floor(clock/1000),results:x.payload.departures.map(c=>({...c,live:liveEnabled,...(liveEnabled?{position:{latitude:52.32,longitude:20.97,timestamp:Math.floor(clock/1000),age:0}}:{} )}))};
  else if(x.type==='weather')result={city:'Bochnia',date:'2026-10-16',min:7,max:14,rain:40,source:'fixture'};
  else result={saved:true,results:[]};
  setTimeout(()=>w.PANativeReply(x.id,{ok:true,data:result}),1);
@@ -25,6 +27,7 @@ async function check(){const old=requests.length;$('checkBus').click();await unt
 async function ask(q){$('chatInput').value=q;$('ask').click();await until(()=>!$('ask').disabled);}
 (async()=>{
  await until(()=>$('coverage').textContent.includes('offline'));
+ await until(()=>$('stopBoard').classList.contains('active')&&doc.querySelectorAll('#homeStopRows .card').length>0);assert($('homeStopTitle').textContent.startsWith('Tarchomin'));record('dashboard exact-stop full board',{pass:true,stopId:homeId,rows:doc.querySelectorAll('#homeStopRows .card').length});
  $('busQuick').click();await chooseStop('Tarchomin');
  record('Tarchomin bus/tram picker',{lines:[...$('busLine').options].map(x=>x.textContent)});
  await chooseLine('186');let o=[...$('busDirection').options].find(x=>x.textContent==='Szczęśliwice');$('busDirection').value=o.value;$('busDirection').dispatchEvent(new w.Event('change'));await check();

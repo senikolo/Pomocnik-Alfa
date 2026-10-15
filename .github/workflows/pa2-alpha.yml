@@ -166,6 +166,9 @@ jobs:
           script: |
             set -eu  # android-emulator-runner invokes this script with /bin/sh (dash)
             mkdir -p results
+            adb root
+            adb wait-for-device
+            adb shell id
             adb install build/Pomocnik-Alfa-2.0.0-alpha.7-SMART-DEBUG.apk
             adb install build/PA2-instrumentation-debug.apk
             adb logcat -c
@@ -173,14 +176,14 @@ jobs:
             grep -q 'TOTAL PASS system' results/instrumentation.txt
             adb logcat -d -b crash > results/crash-buffer.txt
             ! grep -q 'FATAL EXCEPTION' results/crash-buffer.txt
-            adb pull /sdcard/Android/data/com.senikolo.pomocniknowy.pa2smarttest/files/pa2-tests results/screenshots
+            adb pull /data/user/0/com.senikolo.pomocniknowy.pa2smarttest/files/pa2-tests results/screenshots
             adb shell am force-stop com.senikolo.pomocniknowy.pa2smarttest
             adb shell settings put system font_scale 1.3
             adb shell wm size 720x1280
             adb shell wm density 320
             timeout 300s adb shell am instrument -w -e boardsOnly true com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/large-font.txt
             grep -q 'TOTAL PASS system large-font' results/large-font.txt
-            adb pull /sdcard/Android/data/com.senikolo.pomocniknowy.pa2smarttest/files/pa2-tests results/large-font-screenshots
+            adb pull /data/user/0/com.senikolo.pomocniknowy.pa2smarttest/files/pa2-tests results/large-font-screenshots
             adb shell settings put system font_scale 1.0
       - uses: actions/upload-artifact@v4
         if: always()
