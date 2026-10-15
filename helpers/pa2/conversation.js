@@ -18,6 +18,7 @@ function parseTime(q,previous,now=wallNow()){
  if(!hour&&/\bwieczorem\b/.test(n)){d.setHours(18,0,0,0);explicit=true}if(!hour&&/\brano\b/.test(n)){d.setHours(7,0,0,0);explicit=true}
  const shift=n.match(/\b(?:(\d+)\s*(godzin\w*|minut\w*|min)|(?:godzine|godzina))\s+(pozniej|wczesniej)\b/);
  if(shift){const amount=(shift[1]?Number(shift[1]):1)*(shift[2]&&shift[2].startsWith('min')?1:60);d.setMinutes(d.getMinutes()+(shift[3]==='wczesniej'?-amount:amount));explicit=relative=true}
+ const half=n.match(/\b(poltorej|pol)\s+godziny\s+(pozniej|wczesniej)\b/);if(half){d.setMinutes(d.getMinutes()+(half[1]==='poltorej'?90:30)*(half[2]==='wczesniej'?-1:1));explicit=relative=true}
  const za=n.match(/\bza\s+(\d+)\s*(minut\w*|min|godzin\w*)\b/);if(za){d=localDate(now);d.setMinutes(d.getMinutes()+Number(za[1])*(za[2].startsWith('godzin')?60:1));explicit=relative=true}
  return{when:format(d),explicit,relative}
 }
@@ -55,7 +56,12 @@ class Assistant{
    const place=q.match(/\b(?:w|we|dla)\s+(.+?)(?=\s+(?:jutro|pojutrze|dziś|dzisiaj|będzie|bedzie)|[?!]|$)/i);let city=place?canonical(place[1]):null;
    if(!city&&s.to)city=s.to.name;return city?{type:'weather',city,offset:/pojutrze/.test(n)?2:/jutro/.test(n)?1:0}:{type:'answer',message:'Dla jakiej miejscowości sprawdzić pogodę? Napisz np. „Pogoda jutro w Warszawie”.'}
   }
-  const loc=locations(q),travel=!!(loc.from||loc.to)||/\b(dojade|dojechac|jechac|jade|podroz|trasa|polaczeni|nastepn\w*|odjazd\w*|kiedy.*a\d|gdzie.*autobus|autobus|tramwaj|metro|pociag)\b/.test(n),follow=!!s.from&&/\b(?:jutro|pojutrze|dzis|dzisiaj|teraz|w poniedzialek|we wtorek|w srode|w czwartek|w piatek|w sobote|w niedziele)\b/.test(n)||/pozniej|wczesniej|^(?:a )?(?:o|po|od) \d|w druga strone|powrot|zamien/.test(n),isAnswer=!!s.asked;
+  const loc=locations(q);
+  // Stop-name phrases carry the departure point even without the word 'z'.
+  // Never assume the user's actual GPS position from a conversational phrase.
+  const atStop=q.match(/\b(?:na|przy|z|ze)\s+przystanku\s+(.+?)(?=\s+(?:w\s+kierunku|w\s+stron[ęe]|jutro|pojutrze|dzisiaj|dziś|teraz|o\s+\d|po\s+\d)|[?!]|$)/i);
+  if(atStop&&!loc.from)loc.from=atStop[1].trim();
+  const travel=!!(loc.from||loc.to)||/\b(dojade|dojechac|jechac|jade|podroz|trasa|polaczeni|nastepn\w*|odjazd\w*|kiedy.*a\d|gdzie.*autobus|autobus|tramwaj|metro|pociag)\b/.test(n),follow=!!s.from&&/\b(?:jutro|pojutrze|dzis|dzisiaj|teraz|w poniedzialek|we wtorek|w srode|w czwartek|w piatek|w sobote|w niedziele)\b/.test(n)||/pozniej|wczesniej|^(?:a )?(?:o|po|od) \d|w druga strone|powrot|zamien/.test(n),isAnswer=!!s.asked;
   if(model&&['route','departure','vehicle'].includes(model.intent)){
    if(model.from&&!loc.from)loc.from=model.from;if(model.to&&!loc.to)loc.to=model.to;
   }
@@ -66,11 +72,15 @@ class Assistant{
   if(model&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(model.when)&&!t.explicit)s.when=model.when;
   const oldFrom=s.from;
   const lm=n.match(/\b(?:linia|linie|linii|autobus|autobusu|tramwaj|tramwaju|numer|nr)\s*(a\d{1,3}|n\d{1,3}|m[12]|s\d{1,2}|\d{1,3})\b/)||n.match(/\b(a\d{1,3}|n\d{1,3}|m[12]|s\d{1,2})\b/);
-  if(lm)s.line=lm[1].toUpperCase();else if(model&&model.line)s.line=String(model.line).slice(0,16);
+  if(lm){const line=lm[1].toUpperCase();if(s.line&&s.line!==line)s.direction=null;s.line=line}
+  else if(model&&model.line){const line=String(model.line).slice(0,16);if(s.line&&s.line!==line)s.direction=null;s.line=line}
   const vehicle=/\bgdzie\b.*\b(autobus|bus|tramwaj|pociag)\b|\bgps\b/.test(n)||model?.intent==='vehicle';
   const departure=/\b(kiedy|nastepn\w*|odjazd\w*|najblizsz\w*)\b/.test(n)&&!loc.to||model?.intent==='departure';
   if(vehicle||departure){const previous=s.to;s.intent=vehicle?'vehicle':'departure';s.to=null;if(!s.direction&&previous)s.direction=previous.name.split(' ')[0];}
   const direction=q.match(/(?:w kierunku|kierunek|w stronę|w strone)\s+(.+?)(?=\s+(?:jutro|dzisiaj|po \d|o \d)|[?!]|$)/i);if(direction)s.direction=direction[1].trim();
+  // 'A do Nowodworów?' after checking a vehicle is a new route, not another LIVE lookup.
+  // A route's old line and direction are not constraints on a newly selected destination.
+  if(loc.to&&!vehicle&&!departure){if(s.intent!=='route'||(s.to&&canonical(s.to.name)!==canonical(loc.to))){if(!lm&&!model?.line)s.line=null;s.direction=null}s.intent='route'}
   for(const which of ['from','to'])if(loc[which]){const r=this.engine.resolve(loc[which]);if(['bochnia','warszawa','krakow'].includes(canonical(loc[which]))&&this.engine.match(loc[which],20).length>1){r.group=null;r.candidates=this.engine.match(loc[which],8)}s[which]=r.group;s[which+'Hint']=loc[which];s[which+'Candidates']=r.candidates;if(r.correction)s.correction='Sprawdź pisownię nazwy. Wybierz właściwy przystanek z podpowiedzi.'}
   if(s.from&&oldFrom&&s.from.key!==oldFrom.key){if(!direction)s.direction=null;if(!lm&&s.line&&![...s.from.routes].some(id=>norm(this.engine.idx.routes[id][1])===norm(s.line)))s.line=null;}
   if(!loc.from&&!loc.to&&isAnswer){
