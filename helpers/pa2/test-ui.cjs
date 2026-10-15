@@ -35,6 +35,7 @@ async function ask(q){$('chatInput').value=q;$('ask').click();await until(()=>!$
  await chooseStop('Rondo ONZ');await chooseLine('17').catch(async()=>{let o=[...$('busLine').options].find(x=>x.textContent.includes('Tramwaj'));$('busLine').value=o.value;$('busLine').dispatchEvent(new w.Event('change'));await until(()=>$('busDirection').options.length>1)});
  $('busDirection').selectedIndex=1;$('busDirection').dispatchEvent(new w.Event('change'));await check();record('tram map language',{selected:$('busLine').selectedOptions[0].textContent,mapTitle:doc.querySelector('.osm-toolbar strong')?.textContent,marker:doc.querySelector('.osm-bus')?.textContent});
  assert(doc.querySelector('.osm-toolbar strong').textContent.startsWith('Tramwaj'));assert(doc.querySelector('.osm-bus use').getAttribute('href')==='#pa-tram');
+ $('tabFavorites').click();assert.equal(doc.querySelectorAll('#favorites [data-module]').length,0,'Native modules must not be repeated in favorites');assert($('goDashboard'),'There must be a way back to the full PA dashboard');$('goDashboard').click();await until(()=>requests.some(x=>x.type==='back'));record('favorites has no duplicate module shortcuts',{pass:true,backToDashboard:true});
  $('tabAssistant').click();await ask('Z Ispiny do Bochni Dworzec PKP jutro o 9');
  const firstMessage=$('messages').lastElementChild,oldButton=[...firstMessage.querySelectorAll('button')].find(b=>b.textContent.includes('Wybieram'));
  if(!oldButton)throw Error('No first trip selection '+firstMessage.textContent);
