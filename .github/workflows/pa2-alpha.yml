@@ -1,8 +1,8 @@
-name: PA 2.0 UX alpha.2 source build
+name: PA 2.0 alpha.3 LIVE + icons build
 on:
   workflow_dispatch:
   push:
-    branches: ['work/pa2-ux-alpha2-20261015']
+    branches: ['work/pa2-live-icons-alpha3-20261015']
     paths: ['helpers/pa2/**', '.github/workflows/pa2-alpha.yml']
 permissions:
   contents: write
@@ -77,16 +77,16 @@ jobs:
           (cd testdex && zip -q -0 ../output/test-raw.apk classes.dex)
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -p -f 4 output/test-raw.apk output/test-aligned.apk
           cp output/test-aligned.apk output/PA2-instrumentation-unsigned.apk
-      - name: Sign separately installable PA2 UX alpha.2 test APK
+      - name: Sign separately installable PA2 LIVE alpha.3 test APK
         run: |
-          keytool -genkeypair -noprompt -keystore output/pa2ux-temp.jks -storepass alpha2Preview2026 -keypass alpha2Preview2026 -alias testpreview -keyalg RSA -keysize 3072 -validity 3650 -dname "CN=PA2 UX Test,OU=Development,O=Pomocnik Alfa,C=PL"
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks output/pa2ux-temp.jks --ks-key-alias testpreview --ks-pass pass:alpha2Preview2026 --key-pass pass:alpha2Preview2026 --out output/Pomocnik-Alfa-2.0.0-alpha.2-UX-TEST.apk output/PA2-aligned-unsigned.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks output/pa2ux-temp.jks --ks-key-alias testpreview --ks-pass pass:alpha2Preview2026 --key-pass pass:alpha2Preview2026 --out output/PA2-UX-instrumentation.apk output/PA2-instrumentation-unsigned.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose output/Pomocnik-Alfa-2.0.0-alpha.2-UX-TEST.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging output/Pomocnik-Alfa-2.0.0-alpha.2-UX-TEST.apk > output/ux-badging.txt
-          grep -q 'com.senikolo.pomocniknowy.pa2uxpreview' output/ux-badging.txt
-          sha256sum output/Pomocnik-Alfa-2.0.0-alpha.2-UX-TEST.apk > output/PA2-UX-SHA256.txt
-          rm output/pa2ux-temp.jks
+          keytool -genkeypair -noprompt -keystore output/pa2live-temp.jks -storepass alpha3Preview2026 -keypass alpha3Preview2026 -alias testpreview -keyalg RSA -keysize 3072 -validity 3650 -dname "CN=PA2 LIVE Test,OU=Development,O=Pomocnik Alfa,C=PL"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks output/pa2live-temp.jks --ks-key-alias testpreview --ks-pass pass:alpha3Preview2026 --key-pass pass:alpha3Preview2026 --out output/Pomocnik-Alfa-2.0.0-alpha.3-LIVE-TEST.apk output/PA2-aligned-unsigned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks output/pa2live-temp.jks --ks-key-alias testpreview --ks-pass pass:alpha3Preview2026 --key-pass pass:alpha3Preview2026 --out output/PA2-LIVE-instrumentation.apk output/PA2-instrumentation-unsigned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose output/Pomocnik-Alfa-2.0.0-alpha.3-LIVE-TEST.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging output/Pomocnik-Alfa-2.0.0-alpha.3-LIVE-TEST.apk > output/ux-badging.txt
+          grep -q 'com.senikolo.pomocniknowy.pa2buspreview' output/ux-badging.txt
+          sha256sum output/Pomocnik-Alfa-2.0.0-alpha.3-LIVE-TEST.apk > output/PA2-LIVE-SHA256.txt
+          rm output/pa2live-temp.jks
       - name: Preserve complete reconstructed project and updateable data
         run: |
           cp -r helpers/pa2 decoded/pa2-build-sources
@@ -105,8 +105,8 @@ jobs:
           name: PA2-unsigned-build
           path: |
             output/PA2-aligned-unsigned.apk
-            output/Pomocnik-Alfa-2.0.0-alpha.2-UX-TEST.apk
-            output/PA2-UX-instrumentation.apk
+            output/Pomocnik-Alfa-2.0.0-alpha.3-LIVE-TEST.apk
+            output/PA2-LIVE-instrumentation.apk
             output/PA2-instrumentation-unsigned.apk
             output/PA2-Reconstructed-Project.zip
             output/*.txt
@@ -136,8 +136,8 @@ jobs:
           #!/usr/bin/env bash
           set -euo pipefail
           mkdir -p results
-          adb install -r build/Pomocnik-Alfa-2.0.0-alpha.2-UX-TEST.apk
-          adb install -r build/PA2-UX-instrumentation.apk
+          adb install -r build/Pomocnik-Alfa-2.0.0-alpha.3-LIVE-TEST.apk
+          adb install -r build/PA2-LIVE-instrumentation.apk
           adb logcat -c
           set +e
           timeout 300s adb shell am instrument -w com.senikolo.pa2test/com.senikolo.pa2test.PAProbe > results/instrumentation.txt 2>&1
@@ -146,7 +146,7 @@ jobs:
           cat results/instrumentation.txt
           adb logcat -d -b crash > results/crashes.txt
           adb logcat -d -s AndroidRuntime:E > results/runtime-errors.txt
-          adb pull /sdcard/Android/data/com.senikolo.pomocniknowy.pa2uxpreview/files/pa2-tests results/screenshots || true
+          adb pull /sdcard/Android/data/com.senikolo.pomocniknowy.pa2buspreview/files/pa2-tests results/screenshots || true
           test "$TEST_RESULT" -eq 0
           grep -q 'TOTAL PASS system' results/instrumentation.txt
           test ! -s results/crashes.txt || ! grep -q 'FATAL EXCEPTION' results/crashes.txt
@@ -164,6 +164,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: PA2-UX-Android-${{ matrix.api }}-results
+          name: PA2-LIVE-Android-${{ matrix.api }}-results
           path: results
           retention-days: 60
