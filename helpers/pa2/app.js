@@ -125,7 +125,7 @@ async function busChangeLine(){
  if(!line||!group){$('busDirection').replaceChildren(busOpt('','Wybierz linię'));$('busLoading').textContent='';return}
  $('busLoading').textContent='Sprawdzam dostępne kierunki linii '+line+'…';
  try{
-   const dep=await engine.departures(group,wallNow(),line,null);if(seq!==busState.seq)return;
+   const dep=await engine.departures(group,wallNow(),line,null,48);if(seq!==busState.seq)return;
    busState.departures=dep;
    const dir=[...new Set(dep.map(x=>x.headsign).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pl'));
    $('busDirection').replaceChildren(busOpt('','Wybierz kierunek'),...dir.map(x=>busOpt(x,x)));$('busDirection').disabled=!dir.length;
@@ -151,7 +151,7 @@ async function checkLiveBus(){
  $('busResult').innerHTML='';$('checkBus').disabled=true;$('busRefresh').disabled=true;
  $('busLoading').textContent='Sprawdzam pozycję kursu w danych przewoźnika…';
  try{
-  const all=await engine.departures(busState.stop,now,line,null);if(seq!==busState.seq)return;
+  const all=await engine.departures(busState.stop,now,line,null,48);if(seq!==busState.seq)return;
   const nowMin=Number(now.slice(11,13))*60+Number(now.slice(14,16));
   const relevant=all.filter(d=>d.headsign===direction&&d.dep>=nowMin*60-240&&d.dep<=nowMin*60+120*60).slice(0,6);
   if(!relevant.length){$('busLoading').textContent='Brak pasującego kursu w pobliżu bieżącej godziny. Wybierz inny kierunek, przystanek lub spróbuj później.';return}
