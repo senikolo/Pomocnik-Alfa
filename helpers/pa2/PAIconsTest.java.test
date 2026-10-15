@@ -1,0 +1,36 @@
+import com.ispina.lokalnie.PAIcons;
+public class PAIconsTest {
+ private static int count;
+ private static void eq(String name, String icon) {
+  String got=PAIcons.glyph(name);
+  if (!got.equals(icon)) throw new AssertionError("For "+name+" expected "+icon+" got "+got);
+  count++;
+ }
+ public static void main(String[] args) {
+  eq("Planer i Alfa", "🧭");
+  eq("Przystanki w pobliżu", "🚌");
+  eq("Odjazdy LIVE", "🚌");
+  eq("Gdzie jest mój autobus?", "🚌");
+  eq("Tramwaje", "🚋");
+  eq("Pociągi", "🚆");
+  eq("Alfa Kids", "🧸");
+  eq("Alfa Tube", "▶");
+  eq("Mapa korków", "🗺");
+  eq("Asystent Alfa", "💬");
+  eq("Telewizja", "📺");
+  eq("Radio", "📻");
+  eq("Pogoda na dziś", "🌤");
+  eq("Łowca Promocji", "🛒");
+  eq("Przypomnienia", "🔔");
+  eq("Notatnik", "📝");
+  eq("Czytnik", "📖");
+  eq("Smart Saver", "🔋");
+  eq("Oszczędzacz", "💰");
+  eq("Tryb Senior", "👓");
+  eq("Ustawienia", "⚙");
+  eq("Dźwięki", "🎵");
+  eq("Wschód słońca", "🌅");
+  eq("", "📱");
+  System.out.println("PASS: "+count+" dashboard icon mappings");
+ }
+}
