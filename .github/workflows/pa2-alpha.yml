@@ -1,8 +1,8 @@
-name: PA 2.0 SMART alpha.7 departure boards
+name: PA 2.0 SMART alpha.8 saved stops build
 on:
   workflow_dispatch:
   push:
-    branches: ['work/pa2-smart-boards-20261015']
+    branches: ['work/pa2-my-stops-20261016']
     paths: ['helpers/pa2/**', '.github/workflows/pa2-alpha.yml']
 permissions:
   contents: write
@@ -35,11 +35,16 @@ jobs:
           test -s baseline.apk
           sha256sum baseline.apk > output/base-sha256.txt
           gh release download v2.12.1 -R iBotPeaches/Apktool -p apktool_2.12.1.jar -D tools
-      - name: Fetch real eight-source transport coverage and validate calendars
+      - name: Reuse valid shared GTFS generation, probe LIVE and validate calendars
         run: |
           python3 helpers/pa2/probe_sources.py | tee output/live-source-access.json
-          python3 helpers/pa2/fetch_data.py feeds
-          python3 helpers/pa2/build_data.py feeds build/data | tee output/data-build.txt
+          mkdir -p coverage
+          if gh release download pa2-smart-alpha7-20261015-51 -p Pomocnik-Alfa-2.0.0-alpha.7-SMART-TEST.apk -D coverage && python3 helpers/pa2/reuse_validated_data.py coverage/*.apk build/data > output/data-build.txt; then
+            cat output/data-build.txt
+          else
+            python3 helpers/pa2/fetch_data.py feeds
+            python3 helpers/pa2/build_data.py feeds build/data | tee output/data-build.txt
+          fi
           TZ=Europe/Warsaw node helpers/pa2/test.cjs build/data | tee output/logic-tests.txt
           TZ=Europe/Warsaw node helpers/pa2/test-fixes.cjs build/data | tee output/audit-fixes-tests.txt
           npm install --prefix build/test-runtime jsdom@26.1.0
@@ -93,30 +98,6 @@ jobs:
       - name: Export public signing tool for local stable-key signing
         run: |
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" output/apksigner.jar
-      - name: Sign temporary standalone Android test build
-        run: |
-          keytool -genkeypair -noprompt -alias pa2debug -keyalg RSA -keysize 3072 -validity 30 \
-            -keystore "$RUNNER_TEMP/pa2-debug.jks" -storepass android -keypass android \
-            -dname "CN=PA2 temporary test, OU=Android CI, O=Pomocnik Alfa"
-          SIGN="$ANDROID_HOME/build-tools/35.0.0/apksigner"
-          "$SIGN" sign --ks "$RUNNER_TEMP/pa2-debug.jks" --ks-key-alias pa2debug \
-            --ks-pass pass:android --key-pass pass:android \
-            --out output/Pomocnik-Alfa-2.0.0-alpha.7-SMART-DEBUG.apk output/PA2-aligned-unsigned.apk
-          "$SIGN" sign --ks "$RUNNER_TEMP/pa2-debug.jks" --ks-key-alias pa2debug \
-            --ks-pass pass:android --key-pass pass:android \
-            --out output/PA2-instrumentation-debug.apk output/PA2-instrumentation-unsigned.apk
-          "$SIGN" verify --verbose --print-certs output/Pomocnik-Alfa-2.0.0-alpha.7-SMART-DEBUG.apk | tee output/signature.txt
-          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -v 4 output/Pomocnik-Alfa-2.0.0-alpha.7-SMART-DEBUG.apk > output/zipalign-check.txt
-          "$SIGN" verify --verbose output/PA2-instrumentation-debug.apk
-          sha256sum output/Pomocnik-Alfa-2.0.0-alpha.7-SMART-DEBUG.apk > output/SHA256-debug.txt
-      - uses: actions/upload-artifact@v4
-        with:
-          name: PA2-installable-debug-alpha7-smart
-          path: |
-            output/Pomocnik-Alfa-2.0.0-alpha.7-SMART-DEBUG.apk
-            output/PA2-instrumentation-debug.apk
-            output/SHA256-debug.txt
-          retention-days: 30
       - name: Preserve complete reconstructed project and updateable data
         run: |
           cp -r helpers/pa2 decoded/pa2-build-sources
@@ -135,89 +116,3 @@ jobs:
             output/*.txt
             output/*.json
           retention-days: 60
-
-  android_debug:
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        api: [30]
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: PA2-installable-debug-alpha7-smart
-          path: build
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - name: Run installation and screen smoke tests
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: ${{ matrix.api }}
-          arch: x86_64
-          target: google_apis
-          profile: pixel_2
-          disable-animations: true
-          emulator-boot-timeout: 700
-          script: |
-            set -eu  # android-emulator-runner invokes this script with /bin/sh (dash)
-            mkdir -p results
-            adb root
-            adb wait-for-device
-            adb shell id
-            adb install build/Pomocnik-Alfa-2.0.0-alpha.7-SMART-DEBUG.apk
-            adb install build/PA2-instrumentation-debug.apk
-            adb logcat -c
-            timeout 300s adb shell am instrument -w com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/instrumentation.txt
-            grep -q 'TOTAL PASS system' results/instrumentation.txt
-            adb logcat -d -b crash > results/crash-buffer.txt
-            ! grep -q 'FATAL EXCEPTION' results/crash-buffer.txt
-            adb pull /data/user/0/com.senikolo.pomocniknowy.pa2smarttest/files/pa2-tests results/screenshots
-            adb shell am force-stop com.senikolo.pomocniknowy.pa2smarttest
-            adb shell settings put system font_scale 1.3
-            adb shell wm size 720x1280
-            adb shell wm density 320
-            timeout 300s adb shell am instrument -w -e boardsOnly true com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/large-font.txt
-            grep -q 'TOTAL PASS system large-font' results/large-font.txt
-            adb pull /data/user/0/com.senikolo.pomocniknowy.pa2smarttest/files/pa2-tests results/large-font-screenshots
-            adb shell settings put system font_scale 1.0
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: PA2-debug-Android-${{ matrix.api }}-screenshots-tests
-          path: results
-          retention-days: 30
-
-  publish_test:
-    needs: [build, android_debug]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: PA2-installable-debug-alpha7-smart
-          path: release
-      - uses: actions/download-artifact@v4
-        with:
-          name: PA2-debug-Android-30-screenshots-tests
-          path: emulator
-      - uses: actions/download-artifact@v4
-        with:
-          name: PA2-unsigned-build
-          path: evidence
-      - name: Publish separately installable, emulator-verified SMART test APK
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          TAG="pa2-smart-alpha7-20261015-${{ github.run_number }}"
-          cp release/Pomocnik-Alfa-2.0.0-alpha.7-SMART-DEBUG.apk release/Pomocnik-Alfa-2.0.0-alpha.7-SMART-TEST.apk
-          python3 helpers/pa2/release_report.py evidence emulator release "$GITHUB_SHA" "${{ github.run_id }}"
-          (cd emulator && zip -qr ../release/PA-SMART-Android11-testy-zrzuty.zip .)
-          cp evidence/live-source-access.json release/
-          cp evidence/signature.txt release/
-          gh release create "$TAG" --target "$GITHUB_SHA" --prerelease --title 'Pomocnik Alfa 2.0 SMART alpha.7 TEST – tablice 1–3' --notes-file release/PA-SMART-RAPORT.md
-          gh release upload "$TAG" release/Pomocnik-Alfa-2.0.0-alpha.7-SMART-TEST.apk release/PA-SMART-RAPORT.md release/PA-SMART-Android11-testy-zrzuty.zip release/signature.txt release/live-source-access.json emulator/screenshots/boards-1.png emulator/screenshots/boards-2.png emulator/screenshots/boards-3.png
