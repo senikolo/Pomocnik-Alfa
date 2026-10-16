@@ -1,71 +1,65 @@
-# Pomocnik Alfa 2.0 SMART alpha.8 – Moje przystanki
+# Pomocnik Alfa 2.0 SMART alpha.9 — GPS and My Stops tabs
 
-Extends the existing full PA APK. Native media, notes, reminders, weather,
-reader, senior features, settings, cat artwork and launcher remain in the base.
-The complete late-version Java source is unavailable: the preserved base is
-decoded to smali/resources and rebuilt, with the native regional module in DEX 5.
+Extends the existing full PA APK, preserving native media, notes, reminders,
+weather, reader, settings, the original cat and launcher. The preserved base is
+decoded to smali/resources and rebuilt; the native regional module uses DEX 5.
 
-## Saved stops
+## Dashboard
 
-The existing nearby card includes “Moje przystanki”. Save/remove an exact
-platform using its star, tap a shortcut to open its board without typing or GPS,
-or use the manual chooser with its default save checkbox. “Edytuj” removes
-unchecked entries. Source + stop ID, name, platform and provider are persisted
-in `pa2_boards/saved_stops`; the last chosen stop is retained separately.
-Duplicate IDs are not inserted. Different platforms remain independent. Missing
-IDs show an explanation while keeping shortcuts available. Rapid selections
-respect the latest tap when an earlier load finishes.
+The existing native card is now titled “Tablice odjazdów”. It contains two real
+view selectors, “W pobliżu · GPS” and “Moje przystanki”, with a visible selected
+state and accessible text. GPS continues automatic 1–3 nearby boards. Saving a
+star does not change the active GPS tab. My Stops contains saved shortcuts,
+Add/Edit and the exact selected platform board, without requiring GPS.
 
-Only IDs and labels are stored; departures still use the one active, validated
-GTFS generation shared with the planner. No background GPS tracking is added.
-LIVE refresh runs every 30 seconds on the visible dashboard and pauses offscreen.
+`pa2_boards/saved_stops` retains source + stop IDs and display labels, while
+`manual_stop` retains the last manually chosen platform. `boards_tab` remembers
+the selected view; a legacy alpha.8 upgrade initially uses GPS without erasing
+its existing saves. Switching to GPS never clears the manual choice. A revision
+token rejects late results from a previously selected tab. Deleting the current
+save selects another save or displays an empty My Stops view, with no GPS fallback.
+
+The card reattaches by its stable view tag after the main dashboard is rebuilt.
+Stop details still open the regional Activity with the exact platform ID and OSM.
 
 ## Build and signing
 
-Branch `work/pa2-my-stops-20261016`, workflow `pa2-alpha.yml`, builds alpha.8
-(versionCode 20008). It restores the complete `pa2-source-base` release, integrates
-sources, runs logic/DOM/Java tests, rebuilds and zipaligns the unsigned APK.
-For this UI change, `reuse_validated_data.py` reuses alpha.7's shared timetable
-only after checking the pinned APK hash, all 814 manifest entries and current
-coverage of all eight sources. Otherwise CI fetches a fresh generation.
+Branch `work/pa2-stops-tabs-20261016`, versionCode 20009, package
+`com.senikolo.pomocniknowy.pa2preview`, minSdk 29, targetSdk 34.
+`pa2-alpha.yml` restores the complete base, validates the shared GTFS generation,
+runs logic/DOM/Java tests, rebuilds and zipaligns the unsigned APK. An unexpired
+alpha.7 timetable is reused only after the pinned APK hash, all 814 manifest
+entries and current coverage are verified; otherwise a new generation is fetched.
 
-The package is `com.senikolo.pomocniknowy.pa2preview`, minSdk 29, targetSdk 34.
-A retained, separate PA2 preview key signs locally. Only exact-build public
-signature deltas go into `signatures.json`; the private key never enters GitHub.
-That commit triggers `pa2-signed-test.yml`, which reconstructs the signed APK,
-verifies its certificate and alignment, installs that exact file on Android 11,
-exercises saves, restarts the process with denied GPS and large fonts, and
-publishes a prerelease only after the tests pass.
+The retained PA2 preview key signs locally. Only exact-build public signature
+deltas enter `signatures.json`; the private key never enters GitHub or CI.
+`pa2-signed-test.yml` reconstructs and verifies the exact signed APK, tests it on
+Android 11 and publishes a prerelease only after all checks pass.
+Alpha.9 updates alpha.8 in place using the same key and package. Never uninstall
+alpha.8 to update. The original production PA and alpha.7 `.pa2smarttest` remain
+separate applications; the preview key never signs the production package.
 
-The alpha.7 `.pa2smarttest` APK used a one-time CI key and cannot be updated by
-this key. Alpha.8 installs beside it and the main PA, without deleting either.
-It can update an older `.pa2preview` signed with the retained preview key.
-Other packages' private data are not copied automatically. Keep the retained
-preview key for future upgrades; never use it on the production package.
+## Data and assistant
 
-## Transport and assistant
+One active GTFS generation is shared by dashboard and planner. Eight feeds cover
+WTP Warsaw, MLD, three Krakow feeds, Koleje Małopolskie, WKD and national rail.
+Trips retain original IDs, service masks and source attribution. Updates validate
+SHA-256 and install atomically. Expired or missing coverage is reported honestly.
+Vehicle GPS does not create ETA or confirmed delays; real TripUpdates require
+exact trip/date/stop matching and expire after 120 seconds. Foreground refresh is
+30 seconds; no background GPS tracking is added.
 
-Eight GTFS feeds: WTP Warsaw (all published modes), MLD, three Krakow feeds,
-Koleje Małopolskie rail, WKD and national rail. Trips preserve original IDs,
-boarding/alighting restrictions, calendar masks and source attribution.
-Data updates validate per-file SHA-256 and install atomically. Missing/expired
-coverage is reported honestly. Foot transfers estimate geographic proximity.
-Vehicle positions and TripUpdates match trip/date/stop IDs and expire after
-120 seconds. Vehicle GPS never creates an ETA or confirmed delay.
-
-The local assistant retains route/time/line/direction context and integrates
-native notes and reminders. Weather uses Open-Meteo; general retrieval uses
-Polish Wikipedia. It is a task assistant, not an unrestricted online LLM.
+The local task assistant retains route/time/line/direction context and integrates
+native notes/reminders. Weather uses Open-Meteo; general retrieval uses Wikipedia.
 
 ## Verification
 
-Logic and DOM checks are separate from actual APK instrumentation. The latter
-clicks save, manual chooser, quick selection and removal; checks unique IDs,
-missing-stop recovery, restored shortcuts and exact boards after home recreation
-and process restart; opens stop details and preserved native modules. The same
-signed APK is tested on API 30 at standard size and 360 dp/font_scale 1.3.
-Screenshots use real GTFS with explicitly injected test locations. Protobuf
-fixtures test parser behavior and do not represent current real vehicles.
-Physical-device GPS, every media stream and future reminder firing are not
-asserted by the emulator smoke checks. Do not call a release tested until the
-installation, instrumentation, signature and zipalign checks pass.
+Logic and DOM tests are separate from actual installation and UI instrumentation.
+CI first installs the released alpha.8 and saves real platforms through its UI.
+It upgrades with `adb install -r`, compares byte-identical preferences, then tests
+alpha.9 tabs, independent selections, add/remove, rapid switching, unavailable
+stops, main recreation and both tab choices across process restarts without GPS.
+The same APK is tested at 360 dp/font_scale 1.3 and exercises the existing planner,
+assistant, notes and preserved native screens. Screenshots use real GTFS with
+explicitly injected test positions. Parser fixtures do not represent real vehicles.
+Physical-device GPS, every media stream and future reminder firing are not asserted.

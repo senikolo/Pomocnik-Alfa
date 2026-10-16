@@ -1,8 +1,8 @@
-name: PA 2.0 SMART alpha.8 saved stops build
+name: PA 2.0 SMART alpha.9 GPS and My Stops tabs build
 on:
   workflow_dispatch:
   push:
-    branches: ['work/pa2-my-stops-20261016']
+    branches: ['work/pa2-stops-tabs-20261016']
     paths: ['helpers/pa2/**', '.github/workflows/pa2-alpha.yml']
 permissions:
   contents: write

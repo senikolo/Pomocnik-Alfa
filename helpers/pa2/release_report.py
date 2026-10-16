@@ -1,68 +1,62 @@
-"""Build the public report only after successful APK and Android 11 jobs."""
+"""Publish evidence only after exact signed APK installation and tab tests pass."""
 import sys,json,pathlib,hashlib
 src,emu,out=map(pathlib.Path,sys.argv[1:4]);sha,run=sys.argv[4:6]
-log=(emu/'instrumentation.txt').read_text();large=(emu/'large-font.txt').read_text()
-assert 'TOTAL PASS system installation' in log and 'TOTAL PASS system large-font' in large
-apk=out/'Pomocnik-Alfa-2.0.0-alpha.8-Moje-Przystanki-TEST.apk'
-sources=json.loads((src/'live-source-access.json').read_text())
+logs={n:(emu/n).read_text() for n in ['upgrade.txt','instrumentation.txt','large-font.txt','gps-restart.txt']}
+for name,marker in [('upgrade.txt','byte-identical'),('instrumentation.txt','TOTAL PASS system installation'),('large-font.txt','TOTAL PASS system large-font'),('gps-restart.txt','TOTAL PASS GPS tab process restart')]:
+    assert marker in logs[name] and 'FAIL' not in logs[name], name
+assert 'FATAL EXCEPTION' not in (emu/'final-crash-buffer.txt').read_text()
+apk=out/'Pomocnik-Alfa-2.0.0-alpha.9-Zakladki-Przystankow-TEST.apk'
 proof=json.loads(pathlib.Path('helpers/pa2/signatures.json').read_text())
-text=f'''# Pomocnik Alfa SMART alpha.8 – Moje przystanki – raport wydania testowego
+sources=json.loads((src/'live-source-access.json').read_text())
+text=f'''# Pomocnik Alfa SMART alpha.9 — zakładki GPS i Moje przystanki
 
-APK: `{apk.name}`. Rozmiar: {apk.stat().st_size:,} bajtów.
+APK: `{apk.name}` — {apk.stat().st_size:,} bajtów.
 SHA-256: `{hashlib.sha256(apk.read_bytes()).hexdigest()}`.
-Commit wydania: `{sha}`. Źródła APK: `{proof["source_sha"]}`. [Kompilacja](https://github.com/senikolo/Pomocnik-Alfa/actions/runs/{proof["run"]}) · [Test dokładnie tego podpisanego APK](https://github.com/senikolo/Pomocnik-Alfa/actions/runs/{run}).
+Źródła: `{proof['source_sha']}`. Commit wydania: `{sha}`.
+[Kompilacja i testy logiki](https://github.com/senikolo/Pomocnik-Alfa/actions/runs/{proof['run']}) · [Instalacja i test dokładnie tego podpisanego APK](https://github.com/senikolo/Pomocnik-Alfa/actions/runs/{run}).
 
-## Instalacja
+## Zmiana
 
-Oddzielny pakiet `com.senikolo.pomocniknowy.pa2preview`, Android 10+ (minSdk 29 zachowane), sprawdzony na Androidzie 11 API 30.
-Zachowany klucz PA2 preview (SHA-256 certyfikatu: 2b8b84ea2f39891532f6a76b4ebe5bf847acc534b50f69c4302801b291228603) umożliwia kolejne aktualizacje tego pakietu. Różni się od jednorazowego podpisu alpha.7 SMART TEST i głównego PA. APK instaluje się OBOK alpha.7 i głównego PA, bez ich odinstalowania. Może aktualizować starszą alpha.6 preview podpisaną tym samym zachowanym kluczem. Dane innych pakietów nie są kopiowane automatycznie. Dokładnie ten podpisany APK zainstalowano i przetestowano w emulatorze; prywatny klucz nie trafia do repozytorium ani CI.
-Weryfikacja podpisu i zipalign zakończyła się pomyślnie; certyfikat opisano w signature.txt.
+Na właściwym pulpicie są dwie osobne zakładki:
 
-## Moje przystanki
+- **W pobliżu · GPS** — automatyczny wybór 1–3 najbliższych tablic. Zapisanie gwiazdką nie przełącza widoku GPS.
+- **Moje przystanki** — zapisana lista, przyciski Dodaj i Edytuj oraz tablica wybranego stanowiska. Działa bez GPS i bez ponownego wpisywania nazwy.
 
-Na właściwym pulpicie dodano sekcję „Moje przystanki”. Gwiazdka na tablicy zapisuje dokładne stanowisko (ID źródła + ID przystanku), nazwę, słupek i przewoźnika. Przewijane skróty otwierają tablicę bez wpisywania i bez GPS. Wybór ręczny ma domyślnie zaznaczone zapisanie przystanku; ponowne dodanie nie tworzy duplikatu. „Edytuj” pozwala odznaczyć i usunąć wybrane pozycje. Lista i ostatnia tablica zostają po odtworzeniu pulpitu i ponownym uruchomieniu procesu. Szybkie przełączanie podczas odczytu danych respektuje ostatni wybór.
-Nie powstała druga baza odjazdów: zapamiętane są tylko identyfikatory i etykiety, a odjazdy nadal pochodzą ze wspólnego, ważnego i zweryfikowanego zestawu GTFS. W tym wydaniu ponownie użyto ważnej generacji z 15.10.2026, a każdy plik sprawdzono względem manifestu SHA-256. Mechanizm aktualizacji Planera pozostał dostępny.
+Powrót do GPS zachowuje listę i ostatni ręczny wybór. Powrót do Moich przystanków przywraca ten wybór. Ostatnia zakładka zostaje po ponownym uruchomieniu. Na pierwszym uruchomieniu po alpha.8 domyślny jest GPS, a dotychczasowe zapisy są nadal dostępne w drugiej zakładce. Pusta lista nie przełącza samoczynnie na GPS. Późna odpowiedź poprzedniego widoku nie zastępuje aktualnie wybranej zakładki.
 
-## Wdrożenie
+Ten sam GTFS/LIVE, oryginalna grafika kota, Planer, Alfa, pogoda i pozostałe moduły. Bez drugiej bazy rozkładów i bez śledzenia GPS w tle. Rozkład działa lokalnie w zakresie potwierdzonych kalendarzy; aktualizacje bazy nadal obsługuje Planer. GPS pojazdu nie tworzy potwierdzonego ETA ani opóźnienia. LIVE wygasa według timestampów.
 
-Istniejący główny kafelek Przystanki w pobliżu zawiera od jednej do trzech tablic. Pierwsza dotyczy najbliższego stanowiska; każda para stanowisk w zestawie jest oddalona o najwyżej 100 m. Duplikaty fizycznego stanowiska są scalane; przeciwne stanowiska pozostają osobne. Przy większym zespole brana jest pod uwagę liczba linii i różnorodność przewoźników.
-Pięć najbliższych odjazdów na tablicę; przewijane tablice i przyciski nazw przystanków. Godziny, odliczanie, kierunki, kolor i tekst statusu, pomiar LIVE. Wybór ręczny bez GPS jest zapamiętywany. Kliknięcie otwiera to stanowisko w regionalnym module z OSM.
-Wspólny zestaw schema-2 i wspólna aktywna generacja danych z Planerem. Bez śledzenia GPS w tle; zapytania LIVE co 30 s tylko na widocznym pulpicie, odliczanie co sekundę. Brak nowego niezależnego magazynu rozkładów.
-Zachowano pozostałe moduły i oryginalne grafiki kota. Dostępność ekranów potwierdzono testami; odtwarzania każdej stacji TV/radia ani alarmów w przyszłości nie potwierdza ten test.
+## Instalacja i aktualizacja
 
-## Testy
+Pakiet `com.senikolo.pomocniknowy.pa2preview`, wersja `2.0.0-alpha.9-smart`, versionCode 20009, minSdk 29 i targetSdk 34. Sprawdzono Android 11 API 30.
 
-| Scenariusz | Wykonana weryfikacja |
-|---|---|
-| Moje przystanki | Rzeczywiste kliknięcia gwiazdki, dwa odrębne stanowiska, zapis bez duplikatów, ręczny wybór z zapisem, szybkie przełączanie, usunięcie wybranej pozycji, ponowne otwarcie i restart procesu z odmową GPS; także duża czcionka |
-| 1: oddalony drugi przystanek | Test reguł Java oraz prawdziwy pulpit z realnym GTFS |
-| 2: dwa stanowiska, 60 m | Dokładny fixture Java; realny pulpit z dwoma stanowiskami |
-| 3: trzy stanowiska w 100 m | Fixture Java; realny pulpit z trzema tablicami |
-| 4: więcej stanowisk | Test reguł max 3 i braku łańcuchowego grupowania |
-| 5: brak GPS | Kod kontrolera na rzeczywistym pulpicie; przyciski GPS i wyboru ręcznego |
-| 6: brak internetu | Instrumentowany fixture odrzucający żądania LIVE; lokalne pliki GTFS nadal służą tablicom. Nie jest to pełny test telefonu w trybie samolotowym |
-| 7: brak LIVE | Instrumentowany fallback bez fikcyjnych ETA/opóźnień |
-| 8: świeże RT | Instrumentowany protobuf z dokładnym trip/date/stop, ETA i opóźnieniem |
-| 9: stare RT | Stary nagłówek oraz timestamp odrzucony; JS wygasza status i ETA |
-| 10: zmiana lokalizacji | Wstrzyknięte współrzędne realnych przystanków, pulpit zmienia 1/2/3 tablice |
-| 11: północ, święta, DST | Fixture kalendarzy i kursu 25:00; test Java czasu GTFS i zmiany DST |
-| 12: ponowne otwarcie | Zamknięcie i odtworzenie MainActivity; zapisany ręczny przystanek |
-| 13: współistnienie | Ten sam zainstalowany APK: Planer, asystent, notatnik, ekran pogody i tablice; brak FATAL EXCEPTION. Nie potwierdza każdego wyniku sieciowego pogody |
-| 14: Android 11 i większa czcionka | Emulator API 30; ponowny test tablic na ekranie 360 dp z font_scale 1.3, kontrola braku ucięcia tytułów i zrzuty |
-| 15: pozostałe funkcje i kot | Uruchomienie modułów oraz kontrola oryginalnej ikony launchera; zakres odtwarzania multimediów ograniczony jak powyżej |
+**Aktualizuje alpha.8 bez odinstalowania i z zachowaniem zapisów.** Certyfikat preview jest ten sam: SHA-256 `2b8b84ea2f39891532f6a76b4ebe5bf847acc534b50f69c4302801b291228603`. Klucz prywatny pozostaje poza GitHub i CI. Podpis i zipalign są poprawne. Oryginalny PA i alpha.7 z innym pakietem pozostają osobnymi aplikacjami.
 
-Testy jednostkowe/logiki i DOM są oddzielone od faktycznej instalacji emulatora. Fixture RT potwierdza parser, nie stan rzeczywistego autobusu.
-Zrzuty boards-1/2/3 powstały w emulatorze na właściwym pulpicie, z rozkładów źródłowych i testowo ustawioną pozycją. To nie jest rzeczywista lokalizacja użytkownika. Jeżeli RT brak, ekrany uczciwie pozostają planowe.
+## Wykonane testy
 
-## Źródła LIVE – stan z kompilacji
+Testy jednostkowe i DOM uruchamia etap kompilacji, oddzielnie od testów instalacji. Obejmują Planer, kontekst rozmowy, GTFS/kalendarze, GTFS-RT i wygasanie LIVE, ikony oraz reguły wyboru 1/2/3 stanowisk.
+
+Na emulatorze zainstalowano rzeczywisty alpha.8 i jego instrumentację. Interfejs alpha.8 zapisał testowe, prawdziwe stanowiska. Następnie `adb install -r` zaktualizował go dokładnie tym alpha.9, bez odinstalowania. Plik preferencji tablic był identyczny bajtowo przed i po aktualizacji; nowa aplikacja odczytała wcześniejszą listę i ręczny wybór.
+
+Instrumentacja alpha.9 sprawdziła:
+
+- obie widoczne zakładki oraz zachowanie GPS po zapisaniu gwiazdką;
+- osobne stanowiska, dodawanie, brak duplikatów, edycję i pustą listę;
+- wybór zapisanej tablicy bez GPS, niezależny wybór GPS, powrót do ostatniego przystanku;
+- szybkie przełączanie zakładek i odrzucenie spóźnionej odpowiedzi poprzedniego widoku;
+- brak domyślnego miasta bez lokalizacji, 1/2/3 tablice z rzeczywistych GTFS;
+- odtworzenie pulpitu i restart procesu z zapamiętaną zakładką Moje przystanki oraz osobno GPS;
+- pełny widok właściwego stanowiska z odjazdami i OSM;
+- Planer, asystenta, kontekst rozmowy, notatki i uruchomienie dotychczasowych modułów;
+- ekran 360 dp i font_scale 1.3. Brak FATAL EXCEPTION.
+
+Zrzuty pochodzą z emulatora, z rzeczywistych rozkładów i jawnie wstrzykniętej lokalizacji testowej. Fixture protobuf sprawdza parser, a nie bieżący stan rzeczywistego pojazdu. Testy nie potwierdzają każdego strumienia radia/TV, przyszłych alarmów ani fizycznego GPS telefonu. Brak internetu symulowano dla pobierania LIVE; nie jest to pełny test trybu samolotowego.
+
+## Dostępność źródeł podczas kompilacji
 
 '''
-for s in sources:text+=f"- {s['url']}: "+(f"HTTP {s['status']}, wiek nagłówka {s.get('age_seconds','?')} s, świeże: {s.get('fresh',False)}" if 'status' in s else s.get('error','brak danych'))+'\n'
-text+='''
-Warszawski endpoint pozycji nie daje w tym module potwierdzonej prognozy ETA. TripUpdates Krakowa są używane wyłącznie po ścisłym dopasowaniu kursu, dnia i stanowiska oraz kontroli wieku 120 s. MLD/Koleje Małopolskie nie otrzymują wymyślonego LIVE, gdy skonfigurowane źródło go nie dostarcza. Godziny planowe pozostają dostępne offline przez okres ważności paczki; po jego zakończeniu odśwież bazę w Planerze.
-
-## Log instalacji i UI
-
-```text
-'''+log+'\n```\n\n## Duża czcionka i mały ekran\n\n```text\n'+large+'\n```\n'
+for s in sources:
+    status=f"HTTP {s['status']}, wiek {s.get('age_seconds','?')} s, świeże: {s.get('fresh',False)}" if 'status' in s else s.get('error','brak danych')
+    text+=f"- {s['url']}: {status}\n"
+for name,log in logs.items():text+='\n## '+name+'\n\n```text\n'+log+'\n```\n'
 (out/'PA-SMART-RAPORT.md').write_text(text)

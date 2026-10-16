@@ -1,7 +1,7 @@
 package com.senikolo.pa2test;
 import android.app.*;import android.os.*;import android.content.*;import android.view.*;import android.webkit.*;import android.graphics.Bitmap;import java.io.*;import java.util.concurrent.*;
 public class PAProbe extends Instrumentation {
- boolean boardsOnly;
+ boolean boardsOnly,verifyGpsRestart;
  StringBuilder log=new StringBuilder();
  void record(String s){log.append(s).append('\n');Bundle b=new Bundle();b.putString("stream",s+"\n");sendStatus(0,b);}
  void require(boolean condition,String why){if(!condition)throw new AssertionError(why);}
@@ -16,7 +16,7 @@ public class PAProbe extends Instrumentation {
  void waitJs(Activity a,String expression,long max)throws Exception{long until=System.currentTimeMillis()+max;while(System.currentTimeMillis()<until){if("true".equals(js(a,expression)))return;Thread.sleep(300);}throw new AssertionError("UI timeout: "+expression+"; result="+js(a,"document.body.innerText.slice(-3000)"));}
  Activity launch(String name)throws Exception{Intent intent=new Intent().setClassName(getTargetContext().getPackageName(),"com.ispina.lokalnie."+name).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);Activity a=startActivitySync(intent);waitForIdleSync();Thread.sleep(900);require(a!=null,name+" did not start");return a;}
  void screenshot(String name)throws Exception{File dir=new File(getTargetContext().getFilesDir(),"pa2-tests");dir.mkdirs();Bitmap bitmap=getUiAutomation().takeScreenshot();if(bitmap!=null)try(FileOutputStream out=new FileOutputStream(new File(dir,name+".png"))){bitmap.compress(Bitmap.CompressFormat.PNG,100,out);}}
- @Override public void onCreate(Bundle args){super.onCreate(args);boardsOnly=args!=null&&"true".equals(args.getString("boardsOnly"));start();}
+ @Override public void onCreate(Bundle args){super.onCreate(args);boardsOnly=args!=null&&"true".equals(args.getString("boardsOnly"));verifyGpsRestart=args!=null&&"true".equals(args.getString("verifyGpsRestart"));start();}
  @Override public void onStart(){Bundle out=new Bundle();try{
   record("Android API "+Build.VERSION.SDK_INT+", package "+getTargetContext().getPackageName());
   String iconRes=getTargetContext().getResources().getResourceEntryName(getTargetContext().getApplicationInfo().icon);
@@ -24,12 +24,13 @@ public class PAProbe extends Instrumentation {
   record("PASS original adaptive cat launcher restored");
   Activity a=launch("MainActivity");record("PASS main launches");
   require(countText(a.getWindow().getDecorView(),"Planer i Alfa")==1,"Regional planner tile missing or duplicated");
-  require(countText(a.getWindow().getDecorView(),"Przystanki w pobliżu")==1,"Nearby-stop tile missing or duplicated");
+  require(countText(a.getWindow().getDecorView(),"Tablice odjazdów")==1,"Nearby-stop tile missing or duplicated");
   record("PASS distinct regional planner and nearby-stop dashboard cards");
+  if(verifyGpsRestart){record(com.ispina.lokalnie.PABoardsProbe.verifyGpsRestart(this,a));record("TOTAL PASS GPS tab process restart");out.putString("stream",log.toString());finish(Activity.RESULT_OK,out);return;}
   record(com.ispina.lokalnie.PABoardsProbe.run(this,a));
-  if(boardsOnly){record("TOTAL PASS system large-font small-screen boards");out.putString("stream",log.toString());finish(Activity.RESULT_OK,out);return;}
+  if(boardsOnly){com.ispina.lokalnie.PABoardsProbe.leaveGps(this,a);record("TOTAL PASS system large-font small-screen boards");out.putString("stream",log.toString());finish(Activity.RESULT_OK,out);return;}
   screenshot("main");runOnMainSync(()->a.finish());
-  Activity reopened=launch("MainActivity");com.ispina.lokalnie.PABoardsProbe.verifySaved(this,reopened);require(countText(reopened.getWindow().getDecorView(),"Przystanki w pobliżu")==1,"Reopen home");screenshot("home-reopened");runOnMainSync(()->reopened.finish());record("PASS main close and reopen with all saved shortcuts and exact manual platform");
+  Activity reopened=launch("MainActivity");com.ispina.lokalnie.PABoardsProbe.verifySaved(this,reopened);require(countText(reopened.getWindow().getDecorView(),"Tablice odjazdów")==1,"Reopen home");screenshot("home-reopened");runOnMainSync(()->reopened.finish());record("PASS main close and reopen with all saved shortcuts and exact manual platform");
   Activity planner=launch("PARegionsActivity");waitJs(planner,"document.getElementById('coverage').innerText.includes('offline')",30000);record("PASS WebView, all GTFS indexes and ES2017 client load");
    require("true".equals(js(planner,"/\\d{2}\\.\\d{2}\\.\\d{4}/.test(document.getElementById('dateDisplay').textContent)")),"Polish date format not visible");
    require("true".equals(js(planner,"document.getElementById('from').getAttribute('role')==='combobox' && document.getElementById('suggestFrom').getAttribute('role')==='listbox'")),"Stop search ARIA missing");
