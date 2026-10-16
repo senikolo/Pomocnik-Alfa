@@ -5,11 +5,12 @@ log=(emu/'instrumentation.txt').read_text();large=(emu/'large-font.txt').read_te
 assert 'TOTAL PASS system installation' in log and 'TOTAL PASS system large-font' in large
 apk=out/'Pomocnik-Alfa-2.0.0-alpha.8-Moje-Przystanki-TEST.apk'
 sources=json.loads((src/'live-source-access.json').read_text())
+proof=json.loads(pathlib.Path('helpers/pa2/signatures.json').read_text())
 text=f'''# Pomocnik Alfa SMART alpha.8 – Moje przystanki – raport wydania testowego
 
 APK: `{apk.name}`. Rozmiar: {apk.stat().st_size:,} bajtów.
 SHA-256: `{hashlib.sha256(apk.read_bytes()).hexdigest()}`.
-Commit: `{sha}`. [Kompilacja i testy](https://github.com/senikolo/Pomocnik-Alfa/actions/runs/{run}).
+Commit wydania: `{sha}`. Źródła APK: `{proof["source_sha"]}`. [Kompilacja](https://github.com/senikolo/Pomocnik-Alfa/actions/runs/{proof["run"]}) · [Test dokładnie tego podpisanego APK](https://github.com/senikolo/Pomocnik-Alfa/actions/runs/{run}).
 
 ## Instalacja
 
