@@ -57,6 +57,33 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      - name: Prepare bounded tests with failure screenshots
+        run: |
+          cat > pa2-smoke.sh <<'BASH'
+          set -euo pipefail
+          mkdir -p results
+          trap 'adb logcat -d -b crash > results/final-crash-buffer.txt; adb pull /data/user/0/com.senikolo.pomocniknowy.pa2preview/files/pa2-tests results/last-state || true' EXIT
+          adb root
+          adb wait-for-device
+          adb install build/Pomocnik-Alfa-2.0.0-alpha.8-Moje-Przystanki-TEST.apk
+          adb install build/PA2-instrumentation.apk
+          adb logcat -c
+          timeout 300s adb shell am instrument -w com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/instrumentation.txt
+          grep -q 'TOTAL PASS system installation' results/instrumentation.txt
+          adb logcat -d -b crash > results/crash-buffer.txt
+          ! grep -q 'FATAL EXCEPTION' results/crash-buffer.txt
+          adb pull /data/user/0/com.senikolo.pomocniknowy.pa2preview/files/pa2-tests results/screenshots
+          adb shell am force-stop com.senikolo.pomocniknowy.pa2preview
+          adb shell pm revoke com.senikolo.pomocniknowy.pa2preview android.permission.ACCESS_FINE_LOCATION
+          adb shell pm revoke com.senikolo.pomocniknowy.pa2preview android.permission.ACCESS_COARSE_LOCATION
+          adb shell settings put system font_scale 1.3
+          adb shell wm size 720x1280
+          adb shell wm density 320
+          timeout 300s adb shell am instrument -w -e boardsOnly true com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/large-font.txt
+          grep -q 'TOTAL PASS system large-font' results/large-font.txt
+          adb pull /data/user/0/com.senikolo.pomocniknowy.pa2preview/files/pa2-tests results/large-font-screenshots
+          adb shell settings put system font_scale 1.0
+          BASH
       - name: Install exact retained-key APK and exercise saved stops and preserved modules
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -66,29 +93,7 @@ jobs:
           profile: pixel_2
           disable-animations: true
           emulator-boot-timeout: 700
-          script: |
-            set -eu
-            mkdir -p results
-            adb root
-            adb wait-for-device
-            adb install build/Pomocnik-Alfa-2.0.0-alpha.8-Moje-Przystanki-TEST.apk
-            adb install build/PA2-instrumentation.apk
-            adb logcat -c
-            timeout 300s adb shell am instrument -w com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/instrumentation.txt
-            grep -q 'TOTAL PASS system installation' results/instrumentation.txt
-            adb logcat -d -b crash > results/crash-buffer.txt
-            ! grep -q 'FATAL EXCEPTION' results/crash-buffer.txt
-            adb pull /data/user/0/com.senikolo.pomocniknowy.pa2preview/files/pa2-tests results/screenshots
-            adb shell am force-stop com.senikolo.pomocniknowy.pa2preview
-            adb shell pm revoke com.senikolo.pomocniknowy.pa2preview android.permission.ACCESS_FINE_LOCATION
-            adb shell pm revoke com.senikolo.pomocniknowy.pa2preview android.permission.ACCESS_COARSE_LOCATION
-            adb shell settings put system font_scale 1.3
-            adb shell wm size 720x1280
-            adb shell wm density 320
-            timeout 300s adb shell am instrument -w -e boardsOnly true com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/large-font.txt
-            grep -q 'TOTAL PASS system large-font' results/large-font.txt
-            adb pull /data/user/0/com.senikolo.pomocniknowy.pa2preview/files/pa2-tests results/large-font-screenshots
-            adb shell settings put system font_scale 1.0
+          script: bash pa2-smoke.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
