@@ -55,7 +55,7 @@ jobs:
           name: PA2-signed-preview
           path: build
       - name: Download alpha.8 to verify data-preserving upgrade
-        run: gh run download 38852777582 -n PA2-signed-preview -D alpha8
+        run: gh run download 38852777582 -R senikolo/Pomocnik-Alfa -n PA2-signed-preview -D alpha8
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
