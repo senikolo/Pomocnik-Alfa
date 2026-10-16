@@ -76,3 +76,20 @@ preview. The normal long-term signing key is not in CI.
 Do not call a build tested or usable until both emulator checks and APK
 signature verification complete in GitHub Actions; real carrier GPS and
 playback on physical devices still require field testing.
+
+
+## Alpha.8 – Moje przystanki
+
+The existing native nearby card now includes persistent exact-platform shortcuts.
+Use the star to save/remove, tap a saved stop to open its board without GPS, or
+use the manual chooser with its save checkbox. The editor removes selected saves.
+Only stop IDs and labels are persisted; shared GTFS/RT and other modules are unchanged.
+Rapid selection during an in-flight load reloads the latest chosen platform.
+
+Branch `work/pa2-my-stops-20261016` builds alpha.8 (20008), package `.pa2preview`.
+The retained PA2 preview key signs locally; public exact-build deltas trigger
+`pa2-signed-test.yml`, which installs that exact APK on Android 11, tests favorite
+UI, process restart with denied GPS and large fonts, then publishes a prerelease.
+The alpha.7 `.pa2smarttest` temporary-key install cannot be updated in place;
+alpha.8 installs beside it without removing its data. Future preview releases
+must keep the retained key. Never use the production package for a test-key build.

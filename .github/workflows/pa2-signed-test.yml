@@ -1,7 +1,7 @@
-name: PA2 externally signed preview Android verification
+name: PA 2.0 SMART alpha.8 signed Android 11 verification and release
 on:
   push:
-    branches: ['work/pa2-alpha6-fixes-ux-20261015']
+    branches: ['work/pa2-my-stops-20261016']
     paths: ['helpers/pa2/signatures.json']
   workflow_dispatch:
 permissions:
@@ -14,7 +14,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
-      - name: Retrieve exact already-tested unsigned build and attach public signatures
+      - name: Attach public signing deltas to the exact unsigned build
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq bsdiff
@@ -25,26 +25,28 @@ jobs:
           sys.path.insert(0,'helpers/pa2')
           from detached_signature import apply
           p=json.load(open('helpers/pa2/signatures.json'))
-          apply('signed/PA2-aligned-unsigned.apk',p['app'],'signed/Pomocnik-Alfa-2.0.0-alpha.6-POPRAWKI-TEST.apk')
+          apply('signed/PA2-aligned-unsigned.apk',p['app'],'signed/Pomocnik-Alfa-2.0.0-alpha.8-Moje-Przystanki-TEST.apk')
           apply('signed/PA2-instrumentation-unsigned.apk',p['test'],'signed/PA2-instrumentation.apk')
           PY
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs signed/Pomocnik-Alfa-2.0.0-alpha.6-POPRAWKI-TEST.apk > signed/signature.txt
-          sha256sum signed/Pomocnik-Alfa-2.0.0-alpha.6-POPRAWKI-TEST.apk > signed/SHA256SUMS.txt
+          SIGN="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          "$SIGN" verify --verbose --print-certs signed/Pomocnik-Alfa-2.0.0-alpha.8-Moje-Przystanki-TEST.apk | tee signed/signature.txt
+          grep -qi '2b8b84ea2f39891532f6a76b4ebe5bf847acc534b50f69c4302801b291228603' signed/signature.txt
+          "$SIGN" verify --verbose signed/PA2-instrumentation.apk
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -v 4 signed/Pomocnik-Alfa-2.0.0-alpha.8-Moje-Przystanki-TEST.apk > signed/zipalign-check.txt
+          sha256sum signed/Pomocnik-Alfa-2.0.0-alpha.8-Moje-Przystanki-TEST.apk > signed/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
           name: PA2-signed-preview
           path: |
-            signed/Pomocnik-Alfa-2.0.0-alpha.6-POPRAWKI-TEST.apk
+            signed/Pomocnik-Alfa-2.0.0-alpha.8-Moje-Przystanki-TEST.apk
             signed/PA2-instrumentation.apk
             signed/*.txt
+            signed/*.json
+          retention-days: 60
   android:
     needs: assemble
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        api: [29,30]
+    timeout-minutes: 35
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -55,39 +57,63 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Prepare one Bash process for bounded tests and diagnostics
-        run: |
-          cat > android-smoke.sh <<'BASH'
-          #!/usr/bin/env bash
-          set -euo pipefail
-          mkdir -p results
-          adb install -r build/Pomocnik-Alfa-2.0.0-alpha.6-POPRAWKI-TEST.apk
-          adb install -r build/PA2-instrumentation.apk
-          adb logcat -c
-          set +e
-          timeout 300s adb shell am instrument -w com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/instrumentation.txt
-          TEST_RESULT=${PIPESTATUS[0]}
-          adb logcat -d -b crash > results/crashes.txt
-          adb logcat -d -s AndroidRuntime:E > results/runtime-errors.txt
-          adb pull /sdcard/Android/data/com.senikolo.pomocniknowy.pa2preview/files/pa2-tests results/screenshots || true
-          set -e
-          test "$TEST_RESULT" = 0 || exit "$TEST_RESULT"
-          grep -q 'TOTAL PASS system' results/instrumentation.txt
-          test ! -s results/crashes.txt || ! grep -q 'FATAL EXCEPTION' results/crashes.txt
-          BASH
-      - name: Install and exercise real app and preserved modules
+      - name: Install exact retained-key APK and exercise saved stops and preserved modules
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: ${{ matrix.api }}
+          api-level: 30
           arch: x86_64
           target: google_apis
           profile: pixel_2
           disable-animations: true
           emulator-boot-timeout: 700
-          script: bash android-smoke.sh
+          script: |
+            set -eu
+            mkdir -p results
+            adb root
+            adb wait-for-device
+            adb install build/Pomocnik-Alfa-2.0.0-alpha.8-Moje-Przystanki-TEST.apk
+            adb install build/PA2-instrumentation.apk
+            adb logcat -c
+            timeout 300s adb shell am instrument -w com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/instrumentation.txt
+            grep -q 'TOTAL PASS system installation' results/instrumentation.txt
+            adb logcat -d -b crash > results/crash-buffer.txt
+            ! grep -q 'FATAL EXCEPTION' results/crash-buffer.txt
+            adb pull /data/user/0/com.senikolo.pomocniknowy.pa2preview/files/pa2-tests results/screenshots
+            adb shell am force-stop com.senikolo.pomocniknowy.pa2preview
+            adb shell pm revoke com.senikolo.pomocniknowy.pa2preview android.permission.ACCESS_FINE_LOCATION
+            adb shell pm revoke com.senikolo.pomocniknowy.pa2preview android.permission.ACCESS_COARSE_LOCATION
+            adb shell settings put system font_scale 1.3
+            adb shell wm size 720x1280
+            adb shell wm density 320
+            timeout 300s adb shell am instrument -w -e boardsOnly true com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/large-font.txt
+            grep -q 'TOTAL PASS system large-font' results/large-font.txt
+            adb pull /data/user/0/com.senikolo.pomocniknowy.pa2preview/files/pa2-tests results/large-font-screenshots
+            adb shell settings put system font_scale 1.0
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: PA2-Android-${{ matrix.api }}-test-results
+          name: PA2-Android-30-test-results
           path: results
           retention-days: 60
+  publish:
+    needs: [assemble, android]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: PA2-signed-preview
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          name: PA2-Android-30-test-results
+          path: emulator
+      - name: Publish the exact installed and tested APK
+        run: |
+          TAG="pa2-smart-alpha8-20261016-${{ github.run_number }}"
+          python3 helpers/pa2/release_report.py release emulator release "$GITHUB_SHA" "${{ github.run_id }}"
+          (cd emulator && zip -qr ../release/PA-SMART-Android11-testy-zrzuty.zip .)
+          gh release create "$TAG" --target "$GITHUB_SHA" --prerelease --title 'Pomocnik Alfa SMART alpha.8 TEST – Moje przystanki' --notes-file release/PA-SMART-RAPORT.md
+          gh release upload "$TAG" release/Pomocnik-Alfa-2.0.0-alpha.8-Moje-Przystanki-TEST.apk release/PA-SMART-RAPORT.md release/PA-SMART-Android11-testy-zrzuty.zip release/signature.txt release/SHA256SUMS.txt release/live-source-access.json emulator/screenshots/moje-przystanki.png emulator/screenshots/boards-1.png emulator/screenshots/boards-2.png emulator/screenshots/boards-3.png

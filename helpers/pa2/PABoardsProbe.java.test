@@ -47,11 +47,30 @@ public final class PABoardsProbe {
   PANearbyData.Snapshot holiday=PANearbyData.load(idx,r->route,Arrays.asList(PANearbyData.stops(idx).get(0)),52,21,PANearbyRules.epoch("2026-12-26",1800));need(holiday.boards.get(0).departures.isEmpty()&&!holiday.boards.get(0).covered,"No extrapolated holiday service");
   PALive.cache.clear();PALive.fetched.clear();
  }
+ public static void verifySaved(Instrumentation t,Activity home)throws Exception{
+  waitFor(()->controller()!=null&&get(controller(),"index")!=null,"restored home index");PANearbyBoards c=controller();JSONArray saved=new JSONArray(t.getTargetContext().getSharedPreferences("pa2_boards",0).getString("saved_stops","[]"));need(saved.length()>0,"Saved stops survive restart");need(((Map<?,?>)get(c,"savedStops")).size()==saved.length(),"All saved IDs restored");for(int i=0;i<saved.length();i++)need(tagged(home.getWindow().getDecorView(),"pa-saved-stop:"+saved.getJSONObject(i).getString("id"))!=null,"Saved shortcut restored");String manual=t.getTargetContext().getSharedPreferences("pa2_boards",0).getString("manual_stop","");need(manual.equals(get(c,"manualId")),"Last selection restored");waitFor(()->get(c,"snapshot")!=null&&((PANearbyData.Snapshot)get(c,"snapshot")).boards.size()==1&&((PANearbyData.Snapshot)get(c,"snapshot")).boards.get(0).stop.id.equals(manual),"Restored exact platform board without GPS");
+ }
+ static void favorites(Instrumentation t,Activity home,PANearbyBoards c,StringBuilder log)throws Exception{
+  // Remove existing test saves through the actual editor, after restart checks.
+  if(!((Map<?,?>)get(c,"savedStops")).isEmpty())t.runOnMainSync(()->{try{tagged(home.getWindow().getDecorView(),"pa-manage-stops").performClick();AlertDialog d=(AlertDialog)get(c,"savedDialog");ListView l=d.getListView();for(int i=0;i<l.getCount();i++)l.performItemClick(l.getChildAt(i),i,l.getAdapter().getItemId(i));d.getButton(AlertDialog.BUTTON_POSITIVE).performClick();}catch(Exception e){throw new RuntimeException(e);}});
+  PANearbyData.Snapshot shown=(PANearbyData.Snapshot)get(c,"snapshot");PANearbyRules.Stop first=shown.boards.get(0).stop,second=shown.boards.get(1).stop;need(!first.id.equals(second.id),"Separate platform identity");
+  t.runOnMainSync(()->{tagged(home.getWindow().getDecorView(),"pa-save-stop:"+first.id).performClick();tagged(home.getWindow().getDecorView(),"pa-save-stop:"+second.id).performClick();});need(((Map<?,?>)get(c,"savedStops")).size()==2,"Two separate platforms saved");need(new JSONArray(t.getTargetContext().getSharedPreferences("pa2_boards",0).getString("saved_stops","[]")).length()==2,"Saved to persistent preferences");
+  t.runOnMainSync(()->{View v=tagged(home.getWindow().getDecorView(),"pa-my-stops");v.requestRectangleOnScreen(new android.graphics.Rect(0,0,v.getWidth(),v.getHeight()),true);});Thread.sleep(400);screen(t,"moje-przystanki");
+  // The real manual chooser saves idempotently, without a duplicate entry.
+  t.runOnMainSync(()->{try{call(c,"manualPicker",new Class[]{});AlertDialog d=(AlertDialog)get(c,"pickerDialog");((EditText)tagged(d.getWindow().getDecorView(),"pa-stop-search")).setText(first.id);ListView list=(ListView)tagged(d.getWindow().getDecorView(),"pa-stop-results");need(list.getAdapter().getCount()==1,"Exact platform manual search");need(((CheckBox)tagged(d.getWindow().getDecorView(),"pa-save-picked-stop")).isChecked(),"Manual selection offers saving");list.performItemClick(list.getChildAt(0),0,list.getAdapter().getItemId(0));}catch(Exception e){throw new RuntimeException(e);}});
+  waitFor(()->!((java.util.concurrent.atomic.AtomicBoolean)get(c,"computing")).get()&&get(c,"snapshot")!=null,"Saved manual selection");need(((Map<?,?>)get(c,"savedStops")).size()==2,"Repeated save has no duplicate");
+  // Fast taps while a load is running must display the latest selected ID.
+  long requested=(Long)get(c,"lastRequest");t.runOnMainSync(()->{try{call(c,"cancelLocation",new Class[]{});set(c,"lastLocation",null);tagged(home.getWindow().getDecorView(),"pa-saved-stop:"+second.id).performClick();tagged(home.getWindow().getDecorView(),"pa-saved-stop:"+first.id).performClick();}catch(Exception e){throw new RuntimeException(e);}});
+  waitFor(()->!((java.util.concurrent.atomic.AtomicBoolean)get(c,"computing")).get()&&get(c,"snapshot")!=null&&((PANearbyData.Snapshot)get(c,"snapshot")).boards.get(0).stop.id.equals(first.id),"Latest quick selection wins");need((Long)get(c,"lastRequest")==requested,"Saved stops do not request GPS");need(count(home.getWindow().getDecorView(),"pa-departure-board")==1,"Quick selection opens only exact platform");
+  t.runOnMainSync(()->{try{tagged(home.getWindow().getDecorView(),"pa-manage-stops").performClick();AlertDialog d=(AlertDialog)get(c,"savedDialog");ListView l=d.getListView();l.performItemClick(l.getChildAt(1),1,l.getAdapter().getItemId(1));d.getButton(AlertDialog.BUTTON_POSITIVE).performClick();}catch(Exception e){throw new RuntimeException(e);}});need(((Map<?,?>)get(c,"savedStops")).size()==1&&((Map<?,?>)get(c,"savedStops")).containsKey(first.id),"Editor removes only unchecked platform");need(first.id.equals(get(c,"manualId")),"Editing saves preserves current board");
+  log.append("PASS actual saved-stop UI: two distinct platforms, persistent save, idempotent manual chooser, quick selection without GPS, latest rapid tap, selective removal\n");
+ }
  public static String run(Instrumentation t,Activity home)throws Exception{
   parserTests();StringBuilder log=new StringBuilder("PASS instrumented fixtures: fresh/stale/wrong-trip/wrong-date/no-data/cancelled/skipped/offline; midnight and holiday masks\n");
   waitFor(()->controller()!=null&&get(controller(),"index")!=null,"home index");PANearbyBoards c=controller();need(count(home.getWindow().getDecorView(),"pa-smart-boards")==1,"Actual dashboard card hook");
   String persisted=t.getTargetContext().getSharedPreferences("pa2_boards",0).getString("manual_stop","");
   need(persisted.equals((String)get(c,"manualId")),"Saved manual stop restored after process restart");
+  if(new JSONArray(t.getTargetContext().getSharedPreferences("pa2_boards",0).getString("saved_stops","[]")).length()>0){verifySaved(t,home);log.append("PASS saved shortcuts and exact platform restored after process restart, including denied GPS permission\n");}
   // First installation has no GPS permission. The second run retains the granted
   // permission and may legitimately have a provider fix from the weather module.
   boolean hasGPS=t.getTargetContext().checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)==android.content.pm.PackageManager.PERMISSION_GRANTED;
@@ -75,15 +94,17 @@ public final class PABoardsProbe {
   }
   // All active board cards use wrapping text and can scroll at a large system font.
   need(count(home.getWindow().getDecorView(),"pa-departure-board")==3,"Three maximum");
+  favorites(t,home,c,log);
   // Manual selection persists without GPS; subsequent launch in PAProbe verifies it.
   PANearbyRules.Stop manual=examples.get(2);t.getTargetContext().getSharedPreferences("pa2_boards",0).edit().putString("manual_stop",manual.id).commit();
   waitFor(()->!((java.util.concurrent.atomic.AtomicBoolean)get(c,"computing")).get(),"manual idle");t.runOnMainSync(()->{try{set(c,"manualId",manual.id);call(c,"showNearby",new Class[]{});}catch(Exception e){throw new RuntimeException(e);}});
   waitFor(()->count(home.getWindow().getDecorView(),"pa-departure-board")==1,"manual single board");screen(t,"boards-manual");
+  t.runOnMainSync(()->{try{if(!((Map<?,?>)get(c,"savedStops")).containsKey(manual.id))tagged(home.getWindow().getDecorView(),"pa-save-stop:"+manual.id).performClick();}catch(Exception e){throw new RuntimeException(e);}});
   // Tap actual card: an Activity monitor observes the same regional planner, with selected stop ID.
   Instrumentation.ActivityMonitor monitor=t.addMonitor(PARegionsActivity.class.getName(),null,false);
   t.runOnMainSync(()->{View title=tagged(home.getWindow().getDecorView(),"pa-board-title");need(title!=null,"Board title");title.performClick();});Activity detail=monitor.waitForActivityWithTimeout(20000);t.removeMonitor(monitor);need(detail!=null,"Board click opens details");need(manual.id.equals(detail.getIntent().getStringExtra("pa_stop_id")),"Exact platform deep link");waitFor(()->"true".equals(js(t,detail,"document.getElementById('stopBoard')?.classList.contains('active') && document.querySelectorAll('#homeStopRows .card').length>0")),"Real full-stop rows loaded");screen(t,"board-full-stop");
   need(!(Boolean)get(c,"visible"),"Background polling suspended");t.runOnMainSync(()->detail.finish());log.append("PASS manual stop persistence, exact stop click, full regional Activity and foreground-only lifecycle\n");t.runOnMainSync(()->PANearbyBoards.install(home));
   waitFor(()->controller()!=c&&get(controller(),"index")!=null&&count(home.getWindow().getDecorView(),"pa-departure-board")==1,"Reattach dashboard after home rebuild");
-  need(count(home.getWindow().getDecorView(),"pa-smart-boards")==1,"No duplicate card after reattach");log.append("PASS repeated dashboard hook recreates one live card without duplicate refresh loops\n");return log.toString();
+  need(count(home.getWindow().getDecorView(),"pa-smart-boards")==1,"No duplicate card after reattach");verifySaved(t,home);log.append("PASS repeated dashboard hook restores saved stops and recreates one live card without duplicate refresh loops\n");return log.toString();
  }
 }

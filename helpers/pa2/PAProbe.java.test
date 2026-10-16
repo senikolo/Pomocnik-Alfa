@@ -29,7 +29,7 @@ public class PAProbe extends Instrumentation {
   record(com.ispina.lokalnie.PABoardsProbe.run(this,a));
   if(boardsOnly){record("TOTAL PASS system large-font small-screen boards");out.putString("stream",log.toString());finish(Activity.RESULT_OK,out);return;}
   screenshot("main");runOnMainSync(()->a.finish());
-  Activity reopened=launch("MainActivity");Thread.sleep(2500);require(countText(reopened.getWindow().getDecorView(),"Przystanki w pobliżu")==1,"Reopen home");screenshot("home-reopened");runOnMainSync(()->reopened.finish());record("PASS main close and reopen with saved manual stop");
+  Activity reopened=launch("MainActivity");com.ispina.lokalnie.PABoardsProbe.verifySaved(this,reopened);require(countText(reopened.getWindow().getDecorView(),"Przystanki w pobliżu")==1,"Reopen home");screenshot("home-reopened");runOnMainSync(()->reopened.finish());record("PASS main close and reopen with all saved shortcuts and exact manual platform");
   Activity planner=launch("PARegionsActivity");waitJs(planner,"document.getElementById('coverage').innerText.includes('offline')",30000);record("PASS WebView, all GTFS indexes and ES2017 client load");
    require("true".equals(js(planner,"/\\d{2}\\.\\d{2}\\.\\d{4}/.test(document.getElementById('dateDisplay').textContent)")),"Polish date format not visible");
    require("true".equals(js(planner,"document.getElementById('from').getAttribute('role')==='combobox' && document.getElementById('suggestFrom').getAttribute('role')==='listbox'")),"Stop search ARIA missing");

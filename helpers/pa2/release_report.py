@@ -3,9 +3,9 @@ import sys,json,pathlib,hashlib
 src,emu,out=map(pathlib.Path,sys.argv[1:4]);sha,run=sys.argv[4:6]
 log=(emu/'instrumentation.txt').read_text();large=(emu/'large-font.txt').read_text()
 assert 'TOTAL PASS system installation' in log and 'TOTAL PASS system large-font' in large
-apk=out/'Pomocnik-Alfa-2.0.0-alpha.7-SMART-TEST.apk'
+apk=out/'Pomocnik-Alfa-2.0.0-alpha.8-Moje-Przystanki-TEST.apk'
 sources=json.loads((src/'live-source-access.json').read_text())
-text=f'''# Pomocnik Alfa SMART alpha.7 – raport wydania testowego
+text=f'''# Pomocnik Alfa SMART alpha.8 – Moje przystanki – raport wydania testowego
 
 APK: `{apk.name}`. Rozmiar: {apk.stat().st_size:,} bajtów.
 SHA-256: `{hashlib.sha256(apk.read_bytes()).hexdigest()}`.
@@ -13,9 +13,14 @@ Commit: `{sha}`. [Kompilacja i testy](https://github.com/senikolo/Pomocnik-Alfa/
 
 ## Instalacja
 
-Oddzielny pakiet `com.senikolo.pomocniknowy.pa2smarttest`, Android 10+ (minSdk 29 zachowane), sprawdzony na Androidzie 11 API 30.
-Nowy testowy podpis CI różni się od alpha.6 i podpisu głównego PA. APK instaluje się OBOK obu wcześniejszych aplikacji. Nie odinstalowuj ich. Dane wcześniejszych pakietów nie są kopiowane automatycznie.
+Oddzielny pakiet `com.senikolo.pomocniknowy.pa2preview`, Android 10+ (minSdk 29 zachowane), sprawdzony na Androidzie 11 API 30.
+Zachowany klucz PA2 preview (SHA-256 certyfikatu: 2b8b84ea2f39891532f6a76b4ebe5bf847acc534b50f69c4302801b291228603) umożliwia kolejne aktualizacje tego pakietu. Różni się od jednorazowego podpisu alpha.7 SMART TEST i głównego PA. APK instaluje się OBOK alpha.7 i głównego PA, bez ich odinstalowania. Może aktualizować starszą alpha.6 preview podpisaną tym samym zachowanym kluczem. Dane innych pakietów nie są kopiowane automatycznie. Dokładnie ten podpisany APK zainstalowano i przetestowano w emulatorze; prywatny klucz nie trafia do repozytorium ani CI.
 Weryfikacja podpisu i zipalign zakończyła się pomyślnie; certyfikat opisano w signature.txt.
+
+## Moje przystanki
+
+Na właściwym pulpicie dodano sekcję „Moje przystanki”. Gwiazdka na tablicy zapisuje dokładne stanowisko (ID źródła + ID przystanku), nazwę, słupek i przewoźnika. Przewijane skróty otwierają tablicę bez wpisywania i bez GPS. Wybór ręczny ma domyślnie zaznaczone zapisanie przystanku; ponowne dodanie nie tworzy duplikatu. „Edytuj” pozwala odznaczyć i usunąć wybrane pozycje. Lista i ostatnia tablica zostają po odtworzeniu pulpitu i ponownym uruchomieniu procesu. Szybkie przełączanie podczas odczytu danych respektuje ostatni wybór.
+Nie powstała druga baza odjazdów: zapamiętane są tylko identyfikatory i etykiety, a odjazdy nadal pochodzą ze wspólnego, ważnego i zweryfikowanego zestawu GTFS. W tym wydaniu ponownie użyto ważnej generacji z 15.10.2026, a każdy plik sprawdzono względem manifestu SHA-256. Mechanizm aktualizacji Planera pozostał dostępny.
 
 ## Wdrożenie
 
@@ -28,6 +33,7 @@ Zachowano pozostałe moduły i oryginalne grafiki kota. Dostępność ekranów p
 
 | Scenariusz | Wykonana weryfikacja |
 |---|---|
+| Moje przystanki | Rzeczywiste kliknięcia gwiazdki, dwa odrębne stanowiska, zapis bez duplikatów, ręczny wybór z zapisem, szybkie przełączanie, usunięcie wybranej pozycji, ponowne otwarcie i restart procesu z odmową GPS; także duża czcionka |
 | 1: oddalony drugi przystanek | Test reguł Java oraz prawdziwy pulpit z realnym GTFS |
 | 2: dwa stanowiska, 60 m | Dokładny fixture Java; realny pulpit z dwoma stanowiskami |
 | 3: trzy stanowiska w 100 m | Fixture Java; realny pulpit z trzema tablicami |
