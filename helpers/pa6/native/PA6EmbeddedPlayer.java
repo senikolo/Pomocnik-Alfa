@@ -20,7 +20,7 @@ import java.util.ArrayList;
 /** Embedded LibVLC. Decoding and controls remain INSIDE Pomocnik Alfa. */
 public final class PA6EmbeddedPlayer extends LinearLayout {
  private final SurfaceView screen;
- private final TextView state;
+ private TextView state;
  private final TextView placeholder;
  private LibVLC vlc;
  private MediaPlayer engine;
