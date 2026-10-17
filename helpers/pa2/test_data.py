@@ -29,3 +29,11 @@ with tempfile.TemporaryDirectory() as folder:
  assert exported[0][0]=='mld:a' and exported[0][2]==''
  assert exported[1][2]=='2'
 print('PASS passenger platform labels do not use public stop numbers')
+
+from build_data import operator
+assert operator('polishrail',{'route_type':'2'},'Koleje Mazowieckie')=='KM'
+assert operator('polishrail',{'route_type':'2'},'Koleje Małopolskie')=='KMŁ'
+assert operator('mld',{'route_type':'3'},'Koleje Małopolskie')=='MLD'
+assert operator('warsaw',{'route_type':'2','route_short_name':'S40'},'WTP')=='SKM Warszawa'
+assert operator('other',{'route_type':'2','route_short_name':'S1'},'Inna kolej')=='Inna kolej'
+print('PASS rail type does not identify the operator; MLD remains bus')

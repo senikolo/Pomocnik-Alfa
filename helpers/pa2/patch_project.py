@@ -64,4 +64,8 @@ subprocess.run([sys.executable,str(here/"nearby_patch.py"),str(root)],check=True
 for folder in root.glob('smali*'):
  for path in folder.rglob('*.smali'):
   before=path.read_text();after=before.replace('Brak ETA','Nie mam teraz informacji na żywo').replace('brak ETA','brak informacji na żywo').replace('brak potwierdzonego ETA','odjazd według rozkładu')
+  if path.name.startswith(('GtfsNearby','NearbyDeparturesActivity','TransitWowUi')):
+   after=after.replace('"skm"','"rail"').replace('Pociągi SKM','Pociągi').replace('"SKM"','"Kolej"')
+   # Historical compact feed is now larger than 29 MiB; keep a bounded 80 MiB cap.
+   if path.name.startswith('GtfsNearby'):after=after.replace('0x1d00000','0x5000000')
   if after!=before:path.write_text(after)

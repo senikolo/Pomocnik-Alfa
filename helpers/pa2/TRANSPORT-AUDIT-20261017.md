@@ -20,7 +20,7 @@ WAŻNE: alpha.9 używa certyfikatu preview 2b8b84ea2f39891532f6a76b4ebe5bf847acc
 
 ## Źródła i rzeczywiste rozmiary
 
-Pobrano 17.10.2026: warsaw.zip 99 778 979 bajtów skompresowanych wpisów (587 288 477 po rozpakowaniu); polish_trains.zip 31 132 184 / 117 900 296; kmlrail 435 982 / 2 965 098; mld 826 801 / 5 846 895. Faktyczny ZIP ma dodatkowo nagłówki. Stary GtfsNearby.java ma limit 29 MiB i klasyfikuje kolej jako „skm”; nie jest silnikiem nowego pulpitu/planera PA2. Archiwalne helpery nie mogą być traktowane jako aktualne źródła tego APK. Teksty ze starych ekranów są czyszczone podczas rekonstrukcji, bez deklarowania nowej integracji w tych ekranach.
+Pobrano 17.10.2026: warsaw.zip 99 778 979 bajtów skompresowanych wpisów (587 288 477 po rozpakowaniu); polish_trains.zip 31 132 184 / 117 900 296; kmlrail 435 982 / 2 965 098; mld 826 801 / 5 846 895. Faktyczny ZIP ma dodatkowo nagłówki. Stary GtfsNearby.java ma limit 29 MiB i klasyfikuje kolej jako „skm”; nie jest silnikiem nowego pulpitu/planera PA2. Archiwalne helpery nie mogą być traktowane jako aktualne źródła tego APK. Podczas rekonstrukcji starego modułu zmieniono klucz kategorii skm na rail i ogólne etykiety SKM na Kolej oraz limit kompaktowego GTFS z 29 do 80 MiB. Teksty ze starych ekranów są czyszczone, bez deklarowania nowej integracji w tych ekranach.
 
 - https://mkuran.pl/gtfs/ — opis źródeł, licencji i ograniczeń, krajowy GTFS obejmuje KM, SKM Warszawa, KMŁ; krajowy LIVE bywa nieaktualny przez ponad godzinę.
 - https://kolejemalopolskie.com.pl/pl/rozklady-jazdy/gtfs — odrębne oficjalne pliki kolejowy i autobusowy.
@@ -34,3 +34,12 @@ LIVE zawsze wymaga zgodności źródła, trip_id, dnia i przystanku oraz wieku d
 ## Kontrola jakości
 
 Wyniki dopisywane po faktycznym uruchomieniu: testy generatora i kalendarzy, logika planera na pobranych danych, testy DOM, kompilacja Java/DEX i pełnego APK, instrumentacja Android API 30. Sam ten dokument nie potwierdza przejścia bramek ani gotowości APK. Pipeline publikuje logi osobno; podpis i test urządzenia muszą być zakończone sukcesem przed deklaracją instalowalnego wydania.
+
+
+## Wyniki i blokada wydania
+
+Lokalnie: PASS 20 scenariuszy planera, PASS 16 poprawek/regresji, PASS testy DOM bez błędów wykonania, PASS rzeczywiste trasy KMŁ Kraków–Wieliczka/Lotnisko/Tarnów i KM Warszawa Wschodnia–Legionowo, numery pociągów, przyjazdy, stacje pośrednie, rozróżnienie operatorów i zmiana czasu. Dane testów to pobrane GTFS, a scenariusze LIVE korzystają także z jawnych fixture; nie potwierdzają każdego rzeczywistego pojazdu.
+
+GitHub Actions run 39007700465 skompilował Javę, DEX, pełne APK i instrumentację. Podpisywanie zatrzymało się z komunikatem `Missing PA_STABLE_KEYSTORE_B64`. Test Androida został pominięty z powodu braku podpisanego APK. Nie ma potwierdzonego instalowalnego wydania ani wyników uruchomienia Androida z tego zadania. Pierwszy przebieg zawierał również niepoprawnie dobraną stację testu metra (przystanek autobusowy „Metro Młociny” zamiast stacji „Młociny”); poprawiono test i włączono obowiązkowy pipefail, aby żaden błąd testów nie był ukryty przez tee. Kolejne przebiegi weryfikują poprawione źródła.
+
+Nie wygenerowano nowego klucza i nie odczytywano wartości sekretów. Do dokończenia konieczne jest przywrócenie właściwego istniejącego podpisu. Samo przywrócenie produkcyjnego certyfikatu z SIGNING-STABLE.md nie zapewnia aktualizacji alpha.9, która używa podpisu preview. Nie należy odinstalowywać działającej alpha.9 w celu obejścia tej niezgodności.

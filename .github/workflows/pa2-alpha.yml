@@ -4,6 +4,9 @@ on:
   push:
     branches: ['work/pa2-ultrasmart-transport-20261017']
     paths: ['helpers/pa2/**', '.github/workflows/pa2-alpha.yml']
+defaults:
+  run:
+    shell: bash
 permissions:
   contents: write
   actions: read

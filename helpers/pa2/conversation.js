@@ -67,7 +67,7 @@ class Assistant{
   }
   if(!travel&&!follow&&!isAnswer&&!(model&&['route','departure','vehicle'].includes(model.intent)))return{type:'general',query:q};
   const t=parseTime(q,s.when);if(t.error)return{type:'answer',message:t.error};
-  const newTrip=!!(loc.from&&loc.to);if(newTrip){s.line=null;s.direction=null;s.intent='route';s.asked='';if(!t.explicit)s.when=wallNow()}
+  const newTrip=!!(loc.from&&loc.to);if(newTrip){s.operator=null;s.line=null;s.direction=null;s.intent='route';s.asked='';if(!t.explicit)s.when=wallNow()}
   if(t.explicit||!s.when)s.when=t.when;
   if(model&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(model.when)&&!t.explicit)s.when=model.when;
   const oldFrom=s.from;
@@ -83,7 +83,7 @@ class Assistant{
   // A route's old line and direction are not constraints on a newly selected destination.
   if(loc.to&&!vehicle&&!departure){if(s.intent!=='route'||(s.to&&canonical(s.to.name)!==canonical(loc.to))){if(!lm&&!model?.line)s.line=null;s.direction=null}s.intent='route'}
   for(const which of ['from','to'])if(loc[which]){const r=this.engine.resolve(loc[which]);if(['bochnia','warszawa','krakow'].includes(canonical(loc[which]))&&this.engine.match(loc[which],20).length>1){r.group=null;r.candidates=this.engine.match(loc[which],8)}s[which]=r.group;s[which+'Hint']=loc[which];s[which+'Candidates']=r.candidates;if(r.correction)s.correction='Sprawdź pisownię nazwy. Wybierz właściwy przystanek z podpowiedzi.'}
-  if(s.from&&oldFrom&&s.from.key!==oldFrom.key){if(!direction)s.direction=null;if(!lm&&s.line&&![...s.from.routes].some(id=>norm(this.engine.idx.routes[id][1])===norm(s.line)))s.line=null;}
+  if(s.from&&oldFrom&&s.from.key!==oldFrom.key){if(!direction)s.direction=null;if(!op&&s.operator&&![...s.from.routes].some(id=>(this.engine.idx.routes[id][6]||this.engine.idx.routes[id][4])===s.operator))s.operator=null;if(!lm&&s.line&&![...s.from.routes].some(id=>norm(this.engine.idx.routes[id][1])===norm(s.line)))s.line=null;}
   if(!loc.from&&!loc.to&&isAnswer){
    if(s.asked==='line'){const line=n.match(/\b(a\d{1,3}|n\d{1,3}|m[12]|s\d{1,2}|\d{1,3})\b/);if(line)s.line=line[1].toUpperCase()}
    else if(s.asked==='direction')s.direction=q;

@@ -12,6 +12,7 @@ const engine=new Engine(idx,async id=>JSON.parse(fs.readFileSync(path+'/route_al
   for(const day of idx.days.slice(1,4)){const trips=await engine.find(a,b,day+'T05:00',{maxTransfers:0});if(trips.some(t=>t.legs.some(l=>l.operator===operator))){found=true;break}}
   assert(found,'confirmed route '+from+' → '+to+' / '+operator);console.log('PASS real GTFS',from,'→',to,operator);
  }
+ for(const q of ['Warszawy Wschodniej','Krakowa Głównego','Tarnowa'])assert(engine.resolve(q).group,q);
  const station=engine.resolve('Warszawa Wschodnia').group;
  const ds=await engine.departures(station,idx.generated+'T08:00');assert(ds.length);assert(ds.some(d=>d.train));assert(ds.some(d=>d.intermediate.length));
  assert((await engine.arrivals(station,idx.generated+'T08:00')).length);
