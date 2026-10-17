@@ -26,7 +26,7 @@ public final class PA6DashboardActivity extends Activity {
  private LinearLayout row(){LinearLayout l=new LinearLayout(this);l.setGravity(Gravity.CENTER_VERTICAL);return l;}
  private void gap(LinearLayout x,int h){x.addView(new View(this),new LinearLayout.LayoutParams(1,dp(h)));}
  private View tile(String type,String label,String desc,String key,int tint){
-  LinearLayout card=col();card.setPadding(dp(14),dp(13),dp(12),dp(12));
+  LinearLayout card=col();card.setGravity(Gravity.CENTER);card.setPadding(dp(12),dp(8),dp(12),dp(8));
   card.setBackground(shape(WHITE,0xffdfe6ee,18));
   LinearLayout badge=row();badge.setGravity(Gravity.CENTER);
   badge.setBackground(shape(0xfff3f5fa,0xffe8edf3,12));
@@ -34,8 +34,8 @@ public final class PA6DashboardActivity extends Activity {
   badge.addView(glyph,new LinearLayout.LayoutParams(dp(40),dp(40)));
   card.addView(badge,new LinearLayout.LayoutParams(dp(58),dp(56)));
   gap(card,12);
-  TextView caption=text(label,15,true,INK);caption.setMaxLines(2);card.addView(caption);
-  TextView sub=text(desc,12,false,MUTED);sub.setMaxLines(2);card.addView(sub);
+  TextView caption=text(label,15,true,INK);caption.setGravity(Gravity.CENTER);caption.setMaxLines(2);card.addView(caption);
+  TextView sub=text(desc,12,false,MUTED);sub.setGravity(Gravity.CENTER);sub.setMaxLines(2);card.addView(sub);
   card.setContentDescription(label+". "+desc);
   card.setOnClickListener(v->open(key));
   return card;
