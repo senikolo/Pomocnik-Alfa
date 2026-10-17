@@ -57,7 +57,7 @@ public final class PA6TubeActivity extends Activity {
    +"<body style='margin:0;background:#111827;color:white'><iframe style='border:0;width:100%;height:95vh' "
    +"allow='autoplay; encrypted-media; picture-in-picture; fullscreen' allowfullscreen "
    +"src='https://www.youtube.com/embed/"+id+"?playsinline=1&rel=0'></iframe></body></html>";
-  browser.loadDataWithBaseURL("https://com.senikolo.pa6internal.example/",html,"text/html","UTF-8",null);
+  browser.loadDataWithBaseURL("https://com.senikolo.pa6internal/",html,"text/html","UTF-8",null);
  }
  private void browseSearch(String query){
   if(query.isEmpty()){status.setText("Wpisz tytuł lub wykonawcę.");return;}
@@ -111,6 +111,9 @@ public final class PA6TubeActivity extends Activity {
   settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
   browser.setWebViewClient(new WebViewClient(){
    @Override public boolean shouldOverrideUrlLoading(WebView view,String url){
+    // Allow YouTube iframe navigation and assets; intercept only user-facing film links.
+    if(url.startsWith("https://www.youtube.com/embed/")||
+       url.startsWith("https://m.youtube.com/embed/"))return false;
     String id=youtubeId(url);
     if(id!=null){youtubeEmbed(id);return true;}
     Uri u=Uri.parse(url);
@@ -135,7 +138,7 @@ public final class PA6TubeActivity extends Activity {
    }
    @Override public void onHideCustomView(){closeFullscreen();}
   });
-  browser.loadDataWithBaseURL("https://com.senikolo.pa6internal.example/",
+  browser.loadDataWithBaseURL("https://com.senikolo.pa6internal/",
    "<html><body style='background:#101b31;color:#eee;font-family:sans-serif'><h3>ALFA TUBE</h3>"
    +"<p>Wpisz tytuł filmu lub wklej link YouTube. Odtwarzacz pozostanie w PA.</p></body></html>","text/html","UTF-8",null);
   button(body,"🎞  Wybierz film z tabletu",()->{
