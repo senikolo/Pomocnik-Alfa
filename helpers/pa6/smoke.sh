@@ -45,6 +45,11 @@ sleep 3
 adb shell dumpsys activity activities > results/tube-activity.txt
 grep -q "PA6TubeActivity" results/tube-activity.txt
 adb exec-out screencap -p > results/tube.png
+# This is an external live API, not part of the boot check: record longer real loading.
+sleep 38
+adb exec-out screencap -p > results/tube-after-40s.png
+adb logcat -d -v time > results/tube-api-network-log.txt
+assert_no_app_crash
 assert_no_app_crash
 adb logcat -d -v time > results/internal-playback.txt
 test "$(grep -c 'PA6_LIBVLC.*NATIVE_ENGINE_READY' results/internal-playback.txt)" -ge 2
