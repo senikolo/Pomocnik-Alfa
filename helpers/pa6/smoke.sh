@@ -48,8 +48,9 @@ adb exec-out screencap -p > results/tube.png
 assert_no_app_crash
 adb logcat -d -v time > results/internal-playback.txt
 test "$(grep -c 'PA6_LIBVLC.*NATIVE_ENGINE_READY' results/internal-playback.txt)" -ge 2
-unzip -l pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk | grep -q 'lib/armeabi-v7a/libvlc.so'
-unzip -l pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk | grep -q 'lib/x86/libvlc.so'
+unzip -l pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk > results/apk-native-libs.txt
+grep -q 'lib/armeabi-v7a/libvlc.so' results/apk-native-libs.txt
+grep -q 'lib/x86/libvlc.so' results/apk-native-libs.txt
 # This proves startup only; physical-device video decoding and live streams need user testing.
 # Keep testing the original planner's actual Android 6 System WebView engine.
 adb shell am start -n com.senikolo.pa6showcase/com.ispina.lokalnie.PARegionsActivity --es pa_tab assistant
