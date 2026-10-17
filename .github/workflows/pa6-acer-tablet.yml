@@ -1,8 +1,8 @@
-name: PA Tablet Edition Acer B3-A32 Android 6
+name: PA UltraSmart Tablet Radio TV Android 6
 on:
   workflow_dispatch:
   push:
-    branches: ['work/pa6-acer-b3a32-tablet-20261017']
+    branches: ['work/pa6-full-media-20261017']
     paths: ['.github/workflows/pa6-acer-tablet.yml', 'helpers/pa6/**']
 defaults:
   run:
@@ -25,7 +25,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Build real PA regional planner for Android API23
+      - name: Build full PA dashboard transport radio and TV for Android API23
         run: bash helpers/pa6/build.sh
       - uses: actions/upload-artifact@v4
         if: always()
@@ -55,7 +55,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Verify installation and visual boot on Android 6 API23
+      - name: Verify full PA tablet modules and visual boot on Android 6 API23
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 23
@@ -79,13 +79,13 @@ jobs:
         with:
           name: PA6-Acer-B3A32-APK
           path: release
-      - name: Publish Acer Android 6 test prerelease
+      - name: Publish PA6 full multimedia prerelease
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="pa6-acer-b3a32-$(echo "$GITHUB_SHA" | cut -c1-8)"
+          tag="pa6-ultrasmart-media-$(echo "$GITHUB_SHA" | cut -c1-8)"
           gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
-            --title 'PA Tablet Edition – Acer B3-A32 Android 6 TEST' \
-            --notes 'TEST kompatybilności dla Acer Iconia One 10 B3-A32 z Androidem 6.0 (API23). Osobna instalacja: port oryginalnych silników transportu PA, Planera, Alfy offline, przystanków, OSM i Ulubionych. Radio, TV i natywne przypomnienia są jeszcze poza pierwszym portem. Rozkłady są planowe; LIVE tylko przy sprawdzonych źródłach. APK testowy ma jednorazowy podpis. Nie zastępuje PA alpha.9 na telefonie.' \
+            --title 'Pomocnik Alfa 2.0 UltraSmart Tablet – Radio i TV Android 6 TEST' \
+            --notes 'TEST Acer Iconia 10 / Android 6 API23: wspólny pulpit Pomocnik Alfa UltraSmart z Planerem, Alfą, przystankami, ulubionymi, OSM, radiem internetowym w tle, odtwarzaczem HLS/MP4 TV, odnośnikami do oficjalnej TVP, pogodą Open-Meteo, notatnikiem i lokalnymi przypomnieniami. Odtwarzanie poszczególnych strumieni zależy od kodeków, DRM, sieci i dostępności nadawcy; nie gwarantujemy TVP w natywnym playerze. Rozkłady planowe i tylko sprawdzone dane LIVE. Testowy jednorazowy podpis, osobna instalacja, nie zastępuje PA alpha.9 na telefonie.' \
             release/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk release/SHA256SUMS.txt release/signature.txt
