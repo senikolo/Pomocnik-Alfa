@@ -4,11 +4,20 @@ mkdir -p results
 trap 'adb logcat -d -v time > results/logcat.txt || true; adb exec-out screencap -p > results/tablet-final.png || true' EXIT
 adb install pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk
 adb logcat -c
+assert_no_app_crash(){
+ adb logcat -d -b crash > results/check-crashes.txt || true
+ if grep -q "Process: com.senikolo.pa6showcase" results/check-crashes.txt; then
+  echo "FAIL: Android6 app process crashed"
+  tail -100 results/check-crashes.txt
+  exit 1
+ fi
+}
 adb shell am start -n com.senikolo.pa6showcase/com.ispina.lokalnie.PA6DashboardActivity
 sleep 8
 adb shell dumpsys activity activities > results/dashboard-activities.txt
 grep -q 'PA6DashboardActivity' results/dashboard-activities.txt
 adb exec-out screencap -p > results/dashboard.png
+assert_no_app_crash
 # Exercise the new sounds UI and return to the original Planner.
 adb shell am start -n com.senikolo.pa6showcase/com.ispina.lokalnie.PA6SoundsActivity
 sleep 3
@@ -21,11 +30,13 @@ sleep 3
 adb shell dumpsys activity activities > results/radio-activity.txt
 grep -q "PA6RadioActivity" results/radio-activity.txt
 adb exec-out screencap -p > results/radio.png
+assert_no_app_crash
 adb shell am start -n com.senikolo.pa6showcase/com.ispina.lokalnie.PA6TvActivity --ez verify_libvlc true
 sleep 3
 adb shell dumpsys activity activities > results/tv-activity.txt
 grep -q "PA6TvActivity" results/tv-activity.txt
 adb exec-out screencap -p > results/tv.png
+assert_no_app_crash
 adb logcat -d -v time > results/native-libvlc.txt
 grep -q "PA6_LIBVLC.*NATIVE_ENGINE_READY" results/native-libvlc.txt
 # Verify that the redesigned Alfa Tube also opens on Android API23.
@@ -34,6 +45,7 @@ sleep 3
 adb shell dumpsys activity activities > results/tube-activity.txt
 grep -q "PA6TubeActivity" results/tube-activity.txt
 adb exec-out screencap -p > results/tube.png
+assert_no_app_crash
 adb logcat -d -v time > results/internal-playback.txt
 test "$(grep -c 'PA6_LIBVLC.*NATIVE_ENGINE_READY' results/internal-playback.txt)" -ge 2
 unzip -l pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk | grep -q 'lib/armeabi-v7a/libvlc.so'
