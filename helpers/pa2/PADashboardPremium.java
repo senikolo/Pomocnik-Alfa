@@ -135,7 +135,8 @@ public final class PADashboardPremium {
   if(k.contains("czytnik")||k.contains("ksiaz")||k.contains("lektur"))return "book_open";
   if(k.contains("przypomn")||k.contains("powiadom")||k.contains("alarm"))return "bell_ring";
   if(k.contains("subskrypcj")||k.contains("kalendarz")||k.contains("termin"))return "calendar_days";
-  if(k.contains("smart saver")||k.contains("oszczed")||k.contains("finans")||k.contains("wydatk"))return "wallet";
+  if(k.contains("smart saver"))return "calculator";
+  if(k.contains("oszczed")||k.contains("finans")||k.contains("wydatk"))return "piggy_bank";
   if(k.contains("promoc")||k.contains("zakup")||k.contains("gazetk")||k.contains("lowca"))return "shopping_bag";
   if(k.contains("notat")||k.contains("zapis"))return "notebook_pen";
   if(k.contains("ustawien")||k.contains("motyw")||k.contains("wyglad"))return "settings";
@@ -190,27 +191,38 @@ public final class PADashboardPremium {
   }
   View symbol=body.getChildAt(0);
   if(symbol instanceof TextView){
-   TextView t=(TextView)symbol;
-   t.setGravity(Gravity.CENTER);
+   // A TextView left compound drawable stays left-aligned even when the text
+   // gravity is CENTER. Replace the icon cell with a real centered ImageView.
+   // The old PA emoji is removed with the original TextView: no double icon.
+   TextView original=(TextView)symbol;
    String name=iconFor(label);
    int res=a.getResources().getIdentifier("pa_premium_"+name,"drawable",a.getPackageName());
    if(res!=0){
     Drawable icon=a.getResources().getDrawable(res,a.getTheme()).mutate();
     icon.setTint(iconColor(a,label));
-    icon.setBounds(0,0,dp(a,26),dp(a,26));
-    t.setText("");
-    t.setCompoundDrawables(icon,null,null,null);
+    ImageView centered=new ImageView(a);
+    centered.setTag("pa-lucide:"+name);
+    centered.setImageDrawable(icon);
+    centered.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+    centered.setPadding(dp(a,10),dp(a,10),dp(a,10),dp(a,10));
+    centered.setBackground(rounded(a,iconSoft(a,label),0,14));
+    centered.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+    centered.setFocusable(false);
+    centered.setClickable(false);
+    ViewGroup.LayoutParams oldParams=original.getLayoutParams();
+    LinearLayout.LayoutParams newParams=oldParams instanceof LinearLayout.LayoutParams?
+      new LinearLayout.LayoutParams((LinearLayout.LayoutParams)oldParams):
+      new LinearLayout.LayoutParams(dp(a,48),dp(a,48));
+    newParams.width=dp(a,48);newParams.height=dp(a,48);
+    body.removeViewAt(0);
+    body.addView(centered,0,newParams);
    }else{
-    // Keep recognizable original icons if any vector resource is missing.
-    Log.w(TAG,"Missing professional vector "+name+"; keeping original pictogram");
+    // Leave the original icon untouched when a vector is unavailable.
+    Log.w(TAG,"Vector not packaged: "+name+"; original glyph retained");
    }
-   t.setBackground(rounded(a,iconSoft(a,label),0,14));
-   t.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
-   ViewGroup.LayoutParams p=t.getLayoutParams();
-   p.width=dp(a,48);p.height=dp(a,48);t.setLayoutParams(p);
   }else if(symbol instanceof ImageView){
-   // Keep distinctive Alfa Tube artwork; only standardize its frame.
-   symbol.setBackground(rounded(a,soft,0,13));
+   // Alfa Tube and Alfa Tube Kids have their own branded artwork.
+   // Preserve that art and its original placement, without a second overlay.
   }
   if(body.getChildCount()>=3&&body.getChildAt(2) instanceof TextView){
    TextView arrow=(TextView)body.getChildAt(2);
