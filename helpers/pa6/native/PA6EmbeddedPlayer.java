@@ -65,7 +65,7 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   ready=true;
  }
  public void play(String name,String address){
-  if(address==null||address.length()>2000||!(address.startsWith("https://")||address.startsWith("http://"))
+  if(address==null||address.length()>8000||!(address.startsWith("https://")||address.startsWith("http://"))
       ||address.contains("\n")||address.contains(" ")){state.setText("Nieprawidłowy adres materiału.");return;}
   playUri(name,Uri.parse(address));
  }
