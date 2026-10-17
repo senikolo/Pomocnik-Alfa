@@ -12,7 +12,7 @@ function initialZoom(dist){return dist<350?16:dist<1000?15:dist<2500?14:dist<700
 function mount(node,stop,vehicle,options={}){
  if(!node||!stop||!Number.isFinite(stop.lat)||!Number.isFinite(stop.lon))return;
  if(node.__mapCleanup)node.__mapCleanup();
- const tram=Number(options.mode)===0||(Number(options.mode)>=900&&Number(options.mode)<=906),kind=tram?'Tramwaj':'Autobus',kindLower=tram?'tramwaju':'autobusu';
+ const type=Number(options.mode),tram=type===0||(type>=900&&type<=906),rail=type===2||(type>=100&&type<200),kind=rail?'Pociąg':tram?'Tramwaj':'Autobus',kindLower=rail?'pociągu':tram?'tramwaju':'autobusu';
  const dist=vehicle?deg(stop.lat,stop.lon,vehicle.lat,vehicle.lon):0;
  let z=initialZoom(dist),center={lat:vehicle?(stop.lat+vehicle.lat)/2:stop.lat,lon:vehicle?(stop.lon+vehicle.lon)/2:stop.lon};
  const panel=document.createElement('div');panel.className='osm-map';
@@ -28,7 +28,7 @@ function mount(node,stop,vehicle,options={}){
  const layer=document.createElement('div');layer.className='osm-layer';view.appendChild(layer);
  const markStop=document.createElement('div');markStop.className='osm-marker osm-stop';markStop.innerHTML='<svg class="vicon" viewBox="0 0 24 24" aria-hidden="true"><use href="#pa-pin"></use></svg>';markStop.title='Twój przystanek';view.appendChild(markStop);
  let markVehicle=null;
- if(vehicle){markVehicle=document.createElement('div');markVehicle.className='osm-marker osm-bus';markVehicle.innerHTML='<svg class="vicon" viewBox="0 0 24 24" aria-hidden="true"><use href="#pa-'+(tram?'tram':'bus')+'"></use></svg>';markVehicle.title='Potwierdzony GPS '+kindLower;view.appendChild(markVehicle)}
+ if(vehicle){markVehicle=document.createElement('div');markVehicle.className='osm-marker osm-bus';markVehicle.innerHTML='<svg class="vicon" viewBox="0 0 24 24" aria-hidden="true"><use href="#pa-'+(rail?'train':tram?'tram':'bus')+'"></use></svg>';markVehicle.title='Potwierdzony GPS '+kindLower;view.appendChild(markVehicle)}
  const attribution=document.createElement('div');attribution.className='osm-attribution';attribution.textContent='© OpenStreetMap contributors';view.appendChild(attribution);
  const hint=document.createElement('p');hint.className='osm-hint';hint.textContent='Przesuwaj mapę palcem, rozsuń dwa palce albo użyj + i −. Znaczniki pokazują położenie, nie trasę przejazdu.';
  panel.appendChild(header);panel.appendChild(view);panel.appendChild(hint);node.replaceChildren(panel);
