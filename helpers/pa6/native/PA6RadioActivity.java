@@ -140,7 +140,8 @@ public final class PA6RadioActivity extends Activity {
    for(String host:new String[]{"https://de1.api.radio-browser.info","https://all.api.radio-browser.info"}){
     HttpURLConnection c=null;
     try{
-     c=(HttpURLConnection)new URL(host+req).openConnection();
+     // Android 6 may lack current CA roots. Use the bundled verified trust store.
+     c=PA6ModernTls.open(host+req);
      c.setConnectTimeout(7500);c.setReadTimeout(12000);
      c.setRequestProperty("User-Agent","PomocnikAlfa/3.0 (Android 6 radio browser client)");
      c.setRequestProperty("Accept","application/json");
@@ -173,7 +174,8 @@ public final class PA6RadioActivity extends Activity {
   }).start();
  }
  @Override public void onCreate(Bundle b){
-  super.onCreate(b);getWindow().setStatusBarColor(WHITE);getWindow().setNavigationBarColor(INK);
+  super.onCreate(b);PA6ModernTls.install(this);
+  getWindow().setStatusBarColor(WHITE);getWindow().setNavigationBarColor(INK);
   getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
   ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setBackgroundColor(WHITE);
   LinearLayout page=col();page.setPadding(dp(13),dp(11),dp(13),dp(25));scroll.addView(page);setContentView(scroll);
