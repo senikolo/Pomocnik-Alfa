@@ -39,7 +39,7 @@ for name in ('PARegionsActivity.java','PALive.java','PADataStore.java','PAOSMTil
         # The source's literal string contains two slashes to survive Java/regex:
         needle='app\\\\.html|app\\\\.js'
         assert needle in code
-        code=code.replace(needle,'app\\\\.html|tablet-legacy\\\\.css|app\\\\.js')
+        code=code.replace(needle,'app\\\\.html|tablet-legacy\\\\.css|tablet-compat\\\\.js|app\\\\.js')
         old='String mime=name.endsWith(".html")?"text/html":name.endsWith(".js")?"application/javascript":"application/json";'
         assert old in code
         code=code.replace(old,'String mime=name.endsWith(".html")?"text/html":name.endsWith(".css")?"text/css":name.endsWith(".js")?"application/javascript":"application/json";')
