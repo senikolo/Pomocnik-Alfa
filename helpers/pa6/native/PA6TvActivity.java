@@ -19,6 +19,8 @@ public final class PA6TvActivity extends Activity {
  private TextView status;
  private EditText custom;
  private String activeUrl="";
+ private boolean useVlcWhenInstalled=true;
+ private boolean vlcPresent(){try{getPackageManager().getPackageInfo("org.videolan.vlc",0);return true;}catch(Exception e){return false;}}
  private int generation=0;
  private final int violet=0xff593d89;
  private final Handler handler=new Handler(Looper.getMainLooper());
@@ -44,7 +46,7 @@ public final class PA6TvActivity extends Activity {
   page.addView(video,new LinearLayout.LayoutParams(-1,dp(245)));
   MediaController controller=new MediaController(this);
   controller.setAnchorView(video);video.setMediaController(controller);
-  status=label("Wybierz kanał. Obraz: H.264, najlepiej SD / 480p.",14);
+  status=label("Wybierz kanał. Na starszym Acerze transmisje HLS najlepiej odtwarzać przez VLC.",14);
   page.addView(status);
   video.setOnPreparedListener(p->{
    p.setScreenOnWhilePlaying(true);
@@ -72,7 +74,28 @@ public final class PA6TvActivity extends Activity {
   stop.setOnClickListener(v->{++generation;video.stopPlayback();status.setText("Zatrzymano telewizję.");});
   Button external=action("▶  Otwórz w innym odtwarzaczu (np. VLC)");options.addView(external);
   external.setOnClickListener(v->external());
-  options.addView(label("Dostępne kanały — jakość SD jest wybierana automatycznie, jeżeli nadawca ją udostępnia.",13));
+  final CheckBox useVlc=new CheckBox(this);
+  useVlc.setText("Odtwarzaj przez VLC, jeżeli jest zainstalowany (zalecane)");
+  useVlc.setChecked(true);
+  useVlc.setOnCheckedChangeListener((view,checked)->useVlcWhenInstalled=checked);
+  options.addView(useVlc);
+  Button help=action(vlcPresent()?"✓ VLC wykryty na tablecie":"Pobierz zgodny odtwarzacz VLC");
+  options.addView(help);
+  help.setOnClickListener(v->{
+   if(vlcPresent())status.setText("VLC jest zainstalowany. Wybierz kanał, by uruchomić pełny obraz.");
+   else openOfficial("https://f-droid.org/packages/org.videolan.vlc/");
+  });
+  Button test=action("🎞 TEST obrazu — film kontrolny H.264 (to nie kanał TV)");
+  options.addView(test);
+  test.setOnClickListener(v->{
+   boolean before=useVlcWhenInstalled;
+   useVlcWhenInstalled=false;
+   play("Test obrazu H.264","https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8");
+   useVlcWhenInstalled=before;
+  });
+  options.addView(label("Jeżeli film kontrolny ma obraz, a kanały go nie mają, prawdopodobną przyczyną jest źródło lub kodek transmisji. Gdy test ma sam dźwięk, spróbuj VLC.",13));
+  options.addView(label("Transmisje kanałów mogą się zmieniać; dostępność internetowa nie jest gwarantowana. Nie obsługujemy kanałów z DRM ani płatnych usług.",13));
+  options.addView(label("Kanały internetowe:",16));
   Button tvp=action("TVP Info • oficjalna transmisja na stronie");options.addView(tvp);
   tvp.setOnClickListener(v->openOfficial("https://www.tvp.info/na-zywo"));
   Button world=action("▶  World Fashion Channel");options.addView(world);
@@ -94,6 +117,9 @@ public final class PA6TvActivity extends Activity {
   if(!valid(url)){status.setText("Podaj prawidłowy adres transmisji HTTPS.");return;}
   ++generation;final int seq=generation;activeUrl=url;
   video.stopPlayback();
+  if(useVlcWhenInstalled&&vlcPresent()){
+   if(openWithVlc(url,name))return;
+  }
   status.setText("Łączenie z kanałem "+name+"…");
   new Thread(()->{
    String lower=chooseLowHls(url);
@@ -158,8 +184,24 @@ public final class PA6TvActivity extends Activity {
   }catch(Exception ignored){return address;}
   finally{if(c!=null)c.disconnect();}
  }
+ private boolean openWithVlc(String url,String name){
+  if(!valid(url))return false;
+  try{
+   Intent i=new Intent(Intent.ACTION_VIEW);
+   i.setDataAndType(Uri.parse(url),"video/*");
+   i.setPackage("org.videolan.vlc");
+   i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+   startActivity(i);
+   status.setText("Kanał "+name+" przekazany do VLC. Odtwarzanie odbywa się w VLC.");
+   return true;
+  }catch(Exception e){
+   status.setText("Nie udało się uruchomić VLC, spróbuję odtwarzacza systemowego.");
+   return false;
+  }
+ }
  private void external(){
   if(!valid(activeUrl)){status.setText("Najpierw wybierz kanał.");return;}
+  if(vlcPresent()&&openWithVlc(activeUrl,"wybrany"))return;
   try{
    Intent i=new Intent(Intent.ACTION_VIEW);
    i.setDataAndType(Uri.parse(activeUrl),activeUrl.toLowerCase(Locale.ROOT).contains(".m3u8")?"application/vnd.apple.mpegurl":"video/*");
