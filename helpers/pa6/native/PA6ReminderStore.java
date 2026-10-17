@@ -16,7 +16,7 @@ public final class PA6ReminderStore {
  static boolean persist(Context ctx,JSONArray entries){
   return ctx.getSharedPreferences(PREF,0).edit().putString("items",entries.toString()).commit();
  }
- static boolean saveAndSchedule(Context ctx,String id,String title,String body,long at,String recurrence){
+ public static boolean saveAndSchedule(Context ctx,String id,String title,String body,long at,String recurrence){
   try{
    if(at<=System.currentTimeMillis())return false;
    JSONArray items=list(ctx);
