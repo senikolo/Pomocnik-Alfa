@@ -14,12 +14,24 @@ public class PAProbe extends Instrumentation {
  int countTag(View v,String wanted){int count=wanted.equals(v.getTag())?1:0;if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++)count+=countTag(((ViewGroup)v).getChildAt(i),wanted);return count;}
  int countLucideIcons(View v){
   int n=0;
-  if(v instanceof android.widget.TextView){
-   android.graphics.drawable.Drawable icon=((android.widget.TextView)v).getCompoundDrawables()[0];
-   if(icon instanceof android.graphics.drawable.VectorDrawable)n++;
+  if(v instanceof android.widget.ImageView && String.valueOf(v.getTag()).startsWith("pa-lucide:")){
+   android.widget.ImageView image=(android.widget.ImageView)v;
+   require(image.getDrawable() instanceof android.graphics.drawable.VectorDrawable,"Icon is not a real Android vector: "+v.getTag());
+   require(image.getScaleType()==android.widget.ImageView.ScaleType.CENTER_INSIDE,"Icon not centered: "+v.getTag());
+   require(image.getPaddingLeft()==image.getPaddingRight()&&image.getPaddingTop()==image.getPaddingBottom(),"Uneven icon padding: "+v.getTag());
+   require(!v.isClickable()&&!v.isFocusable(),"Decorative icon must not duplicate parent touch action");
+   n++;
   }
   if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++)n+=countLucideIcons(((ViewGroup)v).getChildAt(i));
   return n;
+ }
+ android.widget.ScrollView scroll(View v){
+  if(v instanceof android.widget.ScrollView)return(android.widget.ScrollView)v;
+  if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++){
+   android.widget.ScrollView s=scroll(((ViewGroup)v).getChildAt(i));
+   if(s!=null)return s;
+  }
+  return null;
  }
  View findTagged(View v,String wanted){if(wanted.equals(v.getTag()))return v;if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++){View found=findTagged(((ViewGroup)v).getChildAt(i),wanted);if(found!=null)return found;}return null;}
  WebView web(View v){if(v instanceof WebView)return(WebView)v;if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++){WebView w=web(((ViewGroup)v).getChildAt(i));if(w!=null)return w;}return null;}
@@ -43,6 +55,12 @@ public class PAProbe extends Instrumentation {
   for(String name:new String[]{"route","radio","tv","book_open","bell_ring","notebook_pen","settings","bus_front","shopping_bag"}){
    require(getTargetContext().getResources().getIdentifier("pa_premium_"+name,"drawable",getTargetContext().getPackageName())!=0,"Lucide asset missing: "+name);
   }
+  require(findTagged(a.getWindow().getDecorView(),"pa-lucide:calculator")!=null &&
+          findTagged(a.getWindow().getDecorView(),"pa-lucide:piggy_bank")!=null,
+          "Adjacent Smart Saver and Oszczędzacz must have different icons");
+  require(countTag(a.getWindow().getDecorView(),"pa-lucide:wallet")==0,
+          "Duplicate wallet icon was not replaced");
+  record("PASS centered icons, no duplicate wallet for adjacent savings cards, one interactive surface");
   record("PASS 10+ real Lucide vectors, semantic icon assets and original card functions");
   record("PASS Premium Android home uses consistent icon cards and retains Radio, Notes and Settings");
   View premiumHeader=findTagged(a.getWindow().getDecorView(),"pa-premium-header");
@@ -56,7 +74,16 @@ public class PAProbe extends Instrumentation {
   if(verifyGpsRestart){record(com.ispina.lokalnie.PABoardsProbe.verifyGpsRestart(this,a));record("TOTAL PASS GPS tab process restart");out.putString("stream",log.toString());finish(Activity.RESULT_OK,out);return;}
   record(com.ispina.lokalnie.PABoardsProbe.run(this,a));
   if(boardsOnly){com.ispina.lokalnie.PABoardsProbe.leaveGps(this,a);record("TOTAL PASS system large-font small-screen boards");out.putString("stream",log.toString());finish(Activity.RESULT_OK,out);return;}
-  screenshot("main");runOnMainSync(()->a.finish());
+  screenshot("main");
+  android.widget.ScrollView homeScroll=scroll(a.getWindow().getDecorView());
+  require(homeScroll!=null,"Home content ScrollView not found for visual icon audit");
+  runOnMainSync(()->homeScroll.scrollTo(0,homeScroll.getHeight()));
+  Thread.sleep(300);screenshot("main-icons-middle");
+  runOnMainSync(()->homeScroll.fullScroll(View.FOCUS_DOWN));
+  Thread.sleep(300);screenshot("main-icons-bottom");
+  runOnMainSync(()->homeScroll.fullScroll(View.FOCUS_UP));
+  record("PASS full-screen visual screenshots of middle and lower native modules");
+  runOnMainSync(()->a.finish());
   Activity reopened=launch("MainActivity");com.ispina.lokalnie.PABoardsProbe.verifySaved(this,reopened);require(countText(reopened.getWindow().getDecorView(),"Najbliższe odjazdy")==1,"Reopen premium home");screenshot("home-reopened");runOnMainSync(()->reopened.finish());record("PASS main close and reopen with all saved shortcuts and exact manual platform");
   Activity planner=launch("PARegionsActivity");waitJs(planner,"document.getElementById('coverage').innerText.includes('offline')",30000);record("PASS WebView, all GTFS indexes and ES2017 client load");
    require("true".equals(js(planner,"/\\d{2}\\.\\d{2}\\.\\d{4}/.test(document.getElementById('dateDisplay').textContent)")),"Polish date format not visible");
