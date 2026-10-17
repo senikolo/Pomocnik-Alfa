@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: ['work/pa2-ultrasmart-transport-20261017']
-    paths: ['.github/workflows/pa2-alpha10-preview.yml', 'helpers/pa2/PABoardsProbe.java.test']
+    paths: ['.github/workflows/pa2-alpha10-preview.yml', 'helpers/pa2/**']
 defaults:
   run:
     shell: bash
@@ -225,4 +225,4 @@ jobs:
         run: |
           set -euo pipefail
           tag="pa2-rail-alpha10-isolated-$(echo "$GITHUB_SHA" | cut -c1-8)"
-          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title 'Pomocnik Alfa alpha.10 – POLREGIO i PKP Intercity (osobna instalacja TEST)' --notes 'Instaluje się obok dotychczasowej alpha.9 pod identyfikatorem com.senikolo.pomocniknowy.pa2railtest. Podpisano tymczasowym kluczem tylko to wydanie: przyszłe aktualizacje testowe mogą wymagać osobnej instalacji. Nie usuwać istniejącej alpha.9. Rozkłady są planowe; LIVE tylko ze zgodnych źródeł. Testy Android API 30 przeprowadzone w CI.' release/Pomocnik-Alfa-alpha10-POLREGIO-Intercity-OSOBNY-TEST.apk release/SHA256SUMS.txt release/signature.txt
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title 'Pomocnik Alfa alpha.10 – naprawiony Planer, POLREGIO i PKP IC (osobna instalacja TEST)' --notes 'Instaluje się obok dotychczasowej alpha.9 pod identyfikatorem com.senikolo.pomocniknowy.pa2railtest. Podpisano tymczasowym kluczem tylko to wydanie: przyszłe aktualizacje testowe mogą wymagać osobnej instalacji. Nie usuwać istniejącej alpha.9. Rozkłady są planowe; LIVE tylko ze zgodnych źródeł. Testy Android API 30 przeprowadzone w CI.' release/Pomocnik-Alfa-alpha10-POLREGIO-Intercity-OSOBNY-TEST.apk release/SHA256SUMS.txt release/signature.txt
