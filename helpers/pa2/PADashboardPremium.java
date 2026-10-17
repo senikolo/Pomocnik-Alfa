@@ -174,6 +174,7 @@ public final class PADashboardPremium {
   // Controls and their handlers inside reminders, radio and shopping remain intact.
  }
  private static void styleHeader(Activity a){
+  a.getWindow().setStatusBarColor(0xff4a3377);
   TextView label=search(a.getWindow().getDecorView(),"POMOCNIK ALFA 2.0");
   if(label==null)return;
   int purple=0xff4a3377,lavender=0xff7854b1;
