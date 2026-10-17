@@ -183,6 +183,11 @@ public final class PA6TvActivity extends Activity {
    if(!url.startsWith("https://")||url.length()>2500||url.contains(" ")){status.setText("Wpisz prawidłowy adres HTTPS.");return;}
    play(new Channel("Własny kanał","Własne","Strumień dodany ręcznie",url));
   });
+  space(content,9);
+  Button demo=action("▶  Test wideo H.264 (materiał demonstracyjny)",false);
+  content.addView(demo,new LinearLayout.LayoutParams(-1,dp(53)));
+  demo.setOnClickListener(v->play(new Channel("Film kontrolny H.264","Test","Test odtwarzacza (nie kanał telewizji)",
+   "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8")));
   space(content,12);
   TextView disclaimer=text("Lista zawiera otwarte kanały internetowe i przekazy regionalne. Niektóre mogą być niedostępne poza regionem lub zmieniać adres. Nie oferujemy płatnych kanałów ani obchodzenia DRM.",12,MUTED,false);
   disclaimer.setPadding(0,dp(10),0,dp(20));content.addView(disclaimer);
