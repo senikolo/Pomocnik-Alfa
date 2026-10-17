@@ -168,7 +168,7 @@ jobs:
           cat > pa2-smoke.sh <<'BASH'
           set -euo pipefail
           mkdir -p results
-          trap 'adb logcat -d -b crash > results/final-crash-buffer.txt; adb pull /data/user/0/com.senikolo.pomocniknowy.pa2railtest/files/pa2-tests results/last-state || true' EXIT
+          trap 'adb logcat -d -b crash > results/final-crash-buffer.txt; adb logcat -d -v time -s PA2Premium:W > results/premium-icon-logcat.txt || true; adb pull /data/user/0/com.senikolo.pomocniknowy.pa2railtest/files/pa2-tests results/last-state || true' EXIT
           adb root
           adb wait-for-device
           adb install build/Pomocnik-Alfa-alpha10-POLREGIO-Intercity-OSOBNY-TEST.apk
