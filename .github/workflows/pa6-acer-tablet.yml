@@ -10,6 +10,9 @@ defaults:
 permissions:
   contents: write
   actions: read
+concurrency:
+  group: pa6-showcase-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
