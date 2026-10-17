@@ -45,6 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 28
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: PA6-Acer-B3A32-APK
