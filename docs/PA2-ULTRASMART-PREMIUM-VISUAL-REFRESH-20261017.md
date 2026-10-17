@@ -24,3 +24,18 @@ Paczka testowa ma odrębną nazwę pakietu `com.senikolo.pomocniknowy.pa2railtes
 - Nie zmieniano oryginalnego natywnego ekranu powitalnego w niezweryfikowanych fragmentach smali. Zmniejszono pionowe marginesy w kontrolowanej sekcji tablic.
 - Nie przepisano na nowo map OpenStreetMap ani algorytmu tras przy okazji samej poprawy wyglądu.
 - Rozległe zespoły przystankowe nadal potrzebują dalszej kontroli przejść pieszych (osobny audyt Planera).
+
+
+## Etap 2: pełny natywny pulpit Androida (17 października 2026)
+
+W przeciwieństwie do pierwszego etapu, który dotyczył głównie WebView Planera i tablic, ten etap modernizuje oryginalny ekran `MainActivity`.
+
+- Nowy `PADashboardPremium.java`: wspólna paleta i gradient nagłówka, kafelki o spójnych obramowaniach, typografia i subtelny efekt dotyku, zmniejszone odstępy.
+- Zastąpienie mieszanych emoji kafelków jednym zestawem wektorowych rysunków konturowych, tworzonych natywnie na Androidzie: Planer, transport, Radio, TV, dzieci, przypomnienia, subskrypcje, czytnik, zakupy, notatki, lotniska, ustawienia itd.
+- Oryginalne ikony Alfa Tube i Alfa Tube Kids oraz **kot w ikonie startowej aplikacji** zachowane. Wszystkie istniejące moduły i słuchacze kliknięć pozostały niezmienione.
+- `nearby_patch.py` dokłada wyłącznie bezpieczny hook po już istniejącej inicjalizacji tablic GPS / Moich przystanków.
+- Logika edycji i kolejności zapisanych przystanków działa nadal, bez zmian schematów i danych użytkownika.
+- Po inspekcji zrzutu ekranu naprawiono regresję kontrastu: natywny nagłówek jest identyfikowany własnym tagiem, nie może zostać nadpisany jako zwykła biała karta informacyjna. Również dynamiczne powitanie (tekst zmieniający się po uruchomieniu) ma biały kolor na ciemnym fiolecie.
+- Dodano testy instrumentowane sprawdzające co najmniej 10 kart Premium, zachowanie Radia, Notatek i Ustawień, **gradient nagłówka i kontrast powitania**.
+
+**Walidacja:** `PAProbe.java.test` w workflow Android API 30 kontroluje instalację, oryginalną ikonę kota, przejścia do modułów, start Planera, GPS i zapisane przystanki, Radio/Notatki/Ustawienia, tryb ciemny, powiększoną czcionkę i odtworzenie GPS po restarcie. Weryfikowane są też rzeczywiste zrzuty ekranu. Plik APK jest oddzielną aplikacją testową, podpisywaną na nowo; nie aktualizuje alpha.9 w miejscu.
