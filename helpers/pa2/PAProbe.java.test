@@ -12,6 +12,7 @@ public class PAProbe extends Instrumentation {
   return found;
  }
  int countTag(View v,String wanted){int count=wanted.equals(v.getTag())?1:0;if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++)count+=countTag(((ViewGroup)v).getChildAt(i),wanted);return count;}
+ View findTagged(View v,String wanted){if(wanted.equals(v.getTag()))return v;if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++){View found=findTagged(((ViewGroup)v).getChildAt(i),wanted);if(found!=null)return found;}return null;}
  WebView web(View v){if(v instanceof WebView)return(WebView)v;if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++){WebView w=web(((ViewGroup)v).getChildAt(i));if(w!=null)return w;}return null;}
  String js(Activity a,String source)throws Exception{CountDownLatch latch=new CountDownLatch(1);String[] result={""};runOnMainSync(()->{WebView w=web(a.getWindow().getDecorView());if(w==null){latch.countDown();return;}w.evaluateJavascript(source,v->{result[0]=v;latch.countDown();});});if(!latch.await(10,TimeUnit.SECONDS))throw new AssertionError("WebView callback timeout");return result[0];}
  void waitJs(Activity a,String expression,long max)throws Exception{long until=System.currentTimeMillis()+max;while(System.currentTimeMillis()<until){if("true".equals(js(a,expression)))return;Thread.sleep(300);}throw new AssertionError("UI timeout: "+expression+"; result="+js(a,"document.body.innerText.slice(-3000)"));}
@@ -30,6 +31,14 @@ public class PAProbe extends Instrumentation {
   Thread.sleep(700);require(countTag(a.getWindow().getDecorView(),"pa-premium-card")>=10,"Premium outline-card styling missing on native PA home");
   require(countText(a.getWindow().getDecorView(),"Radio")>=1 && countText(a.getWindow().getDecorView(),"Notatki")>=1 && countText(a.getWindow().getDecorView(),"Ustawienia")>=1,"Preserved dashboard modules missing");
   record("PASS Premium Android home uses consistent icon cards and retains Radio, Notes and Settings");
+  View premiumHeader=findTagged(a.getWindow().getDecorView(),"pa-premium-header");
+  require(premiumHeader!=null&&premiumHeader.getBackground() instanceof android.graphics.drawable.GradientDrawable,"Premium violet header must not be overwritten by white content card");
+  int[] headerColors=((android.graphics.drawable.GradientDrawable)premiumHeader.getBackground()).getColors();
+  require(headerColors!=null&&headerColors.length>=2&&headerColors[0]==0xff4a3377,"Native header gradient lost contrast");
+  java.lang.reflect.Field greeting=a.getClass().getDeclaredField("greeting");greeting.setAccessible(true);
+  android.widget.TextView greetingView=(android.widget.TextView)greeting.get(a);
+  require(greetingView.getCurrentTextColor()==0xffffffff,"Dynamic greeting unreadable on purple header");
+  record("PASS header gradient, greeting contrast and Premium action cards on Android 11");
   if(verifyGpsRestart){record(com.ispina.lokalnie.PABoardsProbe.verifyGpsRestart(this,a));record("TOTAL PASS GPS tab process restart");out.putString("stream",log.toString());finish(Activity.RESULT_OK,out);return;}
   record(com.ispina.lokalnie.PABoardsProbe.run(this,a));
   if(boardsOnly){com.ispina.lokalnie.PABoardsProbe.leaveGps(this,a);record("TOTAL PASS system large-font small-screen boards");out.putString("stream",log.toString());finish(Activity.RESULT_OK,out);return;}
