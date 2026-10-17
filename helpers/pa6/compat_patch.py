@@ -39,7 +39,7 @@ for name in ('PARegionsActivity.java','PALive.java','PADataStore.java','PAOSMTil
         # The source's literal string contains two slashes to survive Java/regex:
         needle='app\\\\.html|app\\\\.js'
         assert needle in code
-        code=code.replace(needle,'app\\\\.html|tablet-legacy\\\\.css|tablet-compat\\\\.js|app\\\\.js')
+        code=code.replace(needle,'app\\\\.html|tablet-legacy\\\\.css|tablet-compat\\\\.js|media-ui\\\\.js|app\\\\.js')
         old='String mime=name.endsWith(".html")?"text/html":name.endsWith(".js")?"application/javascript":"application/json";'
         assert old in code
         code=code.replace(old,'String mime=name.endsWith(".html")?"text/html":name.endsWith(".css")?"text/css":name.endsWith(".js")?"application/javascript":"application/json";')
@@ -77,4 +77,4 @@ final class PA6CompatEpoch {
  }
 }
 """,encoding='utf-8')
-print('PASS original PA regions, GTFS-RT, data store and OSM reader API23 compatibility edits')
+for source in (repo/'helpers'/'pa6'/'native').glob('*.java'):\n shutil.copyfile(source,dest/source.name)\nprint('PASS original PA regions, GTFS-RT, data store and OSM reader API23 compatibility edits')
