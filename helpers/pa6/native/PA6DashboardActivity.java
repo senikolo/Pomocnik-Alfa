@@ -103,7 +103,7 @@ public final class PA6DashboardActivity extends Activity {
    LinearLayout r=row();r.setGravity(Gravity.TOP);root.addView(r,new LinearLayout.LayoutParams(-1,-2));
    for(int j=0;j<cols;j++){
     if(i+j>=entries.length){r.addView(new View(this),new LinearLayout.LayoutParams(0,dp(2),1));continue;}
-    String[] e=entries[i+j];View item=tile(e[0],e[1],e[2],e[3],Integer.parseInt(e[4]));
+    String[] e=entries[i+j];View item=tile(e[0],e[1],e[2],e[3],(Integer.parseInt(e[4]) | 0xff000000));
     LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(senior?164:148),1);
     p.setMargins(dp(4),dp(4),dp(4),dp(4));r.addView(item,p);
    }
