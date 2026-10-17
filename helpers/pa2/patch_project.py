@@ -58,6 +58,7 @@ p=root/'apktool.yml';s=p.read_text();s=re.sub(r'versionCode:.*',"versionCode: '2
 # No network is required at build time; sources are vendored with ISC attribution.
 import subprocess
 subprocess.run([sys.executable,str(here/"prepare_premium_icons.py"),str(root),str(here/"premium-lucide-icons.json")],check=True)
+shutil.copyfile(here/"THIRD-PARTY-LUCIDE-LICENSE.txt",assets/"THIRD-PARTY-LUCIDE-LICENSE.txt")
 print('PASS: isolated module replaced; all other activities/services/receivers/assets preserved; minSdk 29 unchanged')
 
 # Integrate actual boards in the existing dashboard card.
