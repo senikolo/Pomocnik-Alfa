@@ -26,8 +26,10 @@ public final class PA6TvActivity extends Activity {
  private Button favoriteButton,historyButton,cinemaButton;
  private boolean cinema=false;
  private final int NIGHT=0xff0b1326, PANEL=0xff182742, TEXT=0xfff0f4ff, MUTED=0xffb3c2de, TEAL=0xff63ead7;
- private boolean useVlcWhenInstalled=true;
- private boolean vlcPresent(){try{getPackageManager().getPackageInfo("org.videolan.vlc",0);return true;}catch(Exception e){return false;}}
+ private final ArrayList<String[]> channelData=new ArrayList<>();
+ private LinearLayout catalog;
+ private EditText channelFilter;
+ private int catalogLoad=0;
  private int generation=0;
  private final int violet=0xff593d89;
  private final Handler handler=new Handler(Looper.getMainLooper());
@@ -95,14 +97,13 @@ public final class PA6TvActivity extends Activity {
  }
  private void cinemaMode(){
   cinema=!cinema;
-  if(cinemaButton!=null)cinemaButton.setText(cinema?"▣  Wróć do listy kanałów":"⛶  Tryb kinowy (odtwarzacz systemowy)");
+  if(cinemaButton!=null)cinemaButton.setText(cinema?"▣  Wróć do listy kanałów":"⛶  Powiększ odtwarzacz");
   if(channelList!=null)channelList.setVisibility(cinema?View.GONE:View.VISIBLE);
   if(video!=null){
    android.util.DisplayMetrics metrics=getResources().getDisplayMetrics();
    int height=Math.max(230,(int)(metrics.heightPixels/metrics.density)-150);
    video.setLayoutParams(new LinearLayout.LayoutParams(-1,dp(cinema?height:245)));
-   if(cinema)video.setVisibility(View.VISIBLE);
-   else if(useVlcWhenInstalled&&vlcPresent())video.setVisibility(View.GONE);
+   video.setVisibility(View.VISIBLE);
   }
  }
  @Override public void onCreate(Bundle saved){
@@ -124,9 +125,9 @@ public final class PA6TvActivity extends Activity {
   video=new VideoView(this);
   video.setBackgroundColor(Color.BLACK);
   page.addView(video,new LinearLayout.LayoutParams(-1,dp(245)));
-  video.setVisibility(vlcPresent()?View.GONE:View.VISIBLE);
+  video.setVisibility(View.VISIBLE);
   MediaController controller=new MediaController(this);controller.setAnchorView(video);video.setMediaController(controller);
-  status=txt("Wybierz stację. VLC pozwala oglądać więcej formatów wideo.",14,false,0xffc9d6f2);
+  status=txt("Wybierz kanał. Obraz i dźwięk odtwarzane są w oknie PA.",14,false,0xffc9d6f2);
   status.setPadding(dp(13),dp(10),dp(13),dp(10));
   status.setBackground(shape(0xff1c304a,0xff304964,13));
   page.addView(status,new LinearLayout.LayoutParams(-1,-2));
@@ -140,30 +141,41 @@ public final class PA6TvActivity extends Activity {
    handler.postDelayed(()->{
     if(seq!=generation||video==null||isFinishing())return;
     if(p.getVideoWidth()==0||p.getVideoHeight()==0){
-     status.setText("Słychać dźwięk bez obrazu. Spróbuj otworzyć kanał w VLC.");
+     status.setText("Słychać dźwięk bez obrazu. Ten kodek nie działa na Androidzie 6; wybierz inny kanał.");
     }
    },12000);
   });
   video.setOnErrorListener((p,what,extra)->{
-   status.setText("Nie można odtworzyć obrazu (błąd "+what+"/"+extra+"). Otwórz w VLC lub sprawdź inny kanał.");
+   status.setText("Ten kanał nie odtwarza się na Androidzie 6 (błąd "+what+"/"+extra+"). Wybierz inny.");
    return true;
   });
-  cinemaButton=control("⛶  Tryb kinowy (odtwarzacz systemowy)",0xff213252,TEXT);
+  cinemaButton=control("⛶  Powiększ odtwarzacz",0xff213252,TEXT);
   LinearLayout.LayoutParams cine=new LinearLayout.LayoutParams(-1,dp(47));cine.setMargins(0,dp(7),0,dp(7));
   page.addView(cinemaButton,cine);cinemaButton.setOnClickListener(v->cinemaMode());
   channelList=new ScrollView(this);channelList.setFillViewport(false);
   page.addView(channelList,new LinearLayout.LayoutParams(-1,0,1));
   LinearLayout options=column();options.setPadding(0,dp(7),0,dp(24));
   channelList.addView(options);
-  section(options,"Wybierz kanał","Szybki dostęp — dotknij, by uruchomić odtwarzanie");
-  channel(options,"W","World Fashion","Moda, pokazy i styl",0xfffda5ce,
+  section(options,"Kanały na żywo","Lista polskich stacji pobierana ze społecznościowego katalogu IPTV-org");
+  channelFilter=new EditText(this);channelFilter.setTextColor(TEXT);channelFilter.setHintTextColor(MUTED);
+  channelFilter.setSingleLine(true);channelFilter.setHint("Znajdź kanał, np. TV, muzyka, info");
+  channelFilter.setBackground(shape(PANEL,0xff354962,13));
+  channelFilter.setPadding(dp(12),0,dp(12),0);
+  options.addView(channelFilter,new LinearLayout.LayoutParams(-1,dp(54)));
+  space(options,8);
+  Button refresh=control("↻  Odśwież kanały",0xff193d47,TEAL);
+  options.addView(refresh,new LinearLayout.LayoutParams(-1,dp(48)));
+  refresh.setOnClickListener(v->loadCatalog());
+  catalog=column();options.addView(catalog);
+  channelFilter.addTextChangedListener(new android.text.TextWatcher(){
+   @Override public void beforeTextChanged(CharSequence s,int start,int count,int after){}
+   @Override public void onTextChanged(CharSequence s,int start,int before,int count){renderCatalog();}
+   @Override public void afterTextChanged(android.text.Editable e){}
+  });
+  section(options,"Kanał demonstracyjny","Wybierz, aby sprawdzić odbiór transmisji HLS");
+  channel(options,"WF","World Fashion","Ogólnodostępny strumień; dostępność zależy od nadawcy",0xfffda5ce,
    ()->play("World Fashion","https://cdn.wfc.tv/cdn/stream-rus.m3u8"));
-  channel(options,"N","NTV","Kanał internetowy",0xffa5cbff,
-   ()->play("NTV","https://cdn.ntv.ru/vitrina/index.m3u8"));
-  channel(options,"24","Rossija 24","Serwis informacyjny",0xffffca81,
-   ()->play("Rossija 24","https://live.smotrim.ru/vgtrk/0/russia24-hd/index.m3u8"));
-  channel(options,"TVP","TVP Info","Oficjalna strona nadawcy",TEAL,
-   ()->openOfficial("https://www.tvp.info/na-zywo"));
+  loadCatalog();
   space(options,8);
   section(options,"Twoja telewizja","Wróć do ostatniego kanału lub zapisz ulubiony");
   historyButton=control("↻  Ostatnio oglądane",0xff1e344c,TEXT);
@@ -183,27 +195,9 @@ public final class PA6TvActivity extends Activity {
    }else status.setText("Najpierw uruchom kanał.");
   });
   space(options,14);
-  section(options,"Odtwarzacz","Dopasuj sposób oglądania do możliwości Acera");
-  CheckBox useVlc=new CheckBox(this);
-  useVlc.setText("Używaj VLC, gdy jest zainstalowany");
-  useVlc.setTextColor(TEXT);useVlc.setTextSize(15);
-  useVlc.setChecked(prefs().getBoolean("prefer_vlc",true));
-  useVlcWhenInstalled=useVlc.isChecked();
-  useVlc.setOnCheckedChangeListener((button,checked)->{
-   useVlcWhenInstalled=checked;prefs().edit().putBoolean("prefer_vlc",checked).apply();
-   if(!cinema)video.setVisibility(checked&&vlcPresent()?View.GONE:View.VISIBLE);
-  });
-  options.addView(useVlc);
-  Button external=control("▶  Otwórz bieżący kanał w VLC",0xff244b52,TEAL);
-  options.addView(external,new LinearLayout.LayoutParams(-1,dp(55)));
-  external.setOnClickListener(v->external());
-  space(options,8);
-  Button help=control(vlcPresent()?"✓ VLC jest dostępny":"Pobierz VLC dla Androida 6",0xff182943,TEXT);
-  options.addView(help,new LinearLayout.LayoutParams(-1,dp(50)));
-  help.setOnClickListener(v->{
-   if(vlcPresent())status.setText("VLC jest zainstalowany. Wybierz kanał.");
-   else openOfficial("https://f-droid.org/packages/org.videolan.vlc/");
-  });
+  section(options,"Odtwarzacz wewnętrzny","Obraz zawsze pozostaje w Pomocniku Alfa");
+  TextView internal=txt("Wbudowany odtwarzacz wideo • brak uruchamiania VLC, przeglądarki i innych aplikacji",13,false,MINT);
+  options.addView(internal);
   space(options,14);
   section(options,"Własny kanał","Wklej adres strumienia HLS / MP4 (https://)");
   custom=new EditText(this);custom.setTextColor(TEXT);custom.setHintTextColor(MUTED);
@@ -219,28 +213,23 @@ public final class PA6TvActivity extends Activity {
   Button test=control("▶  Test obrazu H.264",0xff182943,MUTED);
   options.addView(test,new LinearLayout.LayoutParams(-1,dp(53)));
   test.setOnClickListener(v->{
-   boolean prev=useVlcWhenInstalled;useVlcWhenInstalled=false;
    video.setVisibility(View.VISIBLE);
    play("Test obrazu H.264","https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8");
-   useVlcWhenInstalled=prev;
   });
   space(options,10);
   TextView caveat=txt("Dostępność i format transmisji zależą od nadawców. Kanały z DRM lub ograniczeniami regionalnymi mogą się nie uruchomić.",12,false,MUTED);
   options.addView(caveat);
   recentButtons();
  }
- private boolean valid(String u){return u!=null&&u.length()<2000&&u.startsWith("https://")&&!u.contains(" ")&&!u.contains("\n")&&!u.contains("\r");}
+ private boolean valid(String u){return u!=null&&u.length()<2000&&(u.startsWith("https://")||u.startsWith("http://"))&&!u.contains(" ")&&!u.contains("\n")&&!u.contains("\r");}
  private void play(String name,String url){
-  if(!valid(url)){status.setText("Podaj prawidłowy adres transmisji HTTPS.");return;}
+  if(!valid(url)){status.setText("Podaj prawidłowy adres transmisji HTTP lub HTTPS.");return;}
   ++generation;final int seq=generation;activeUrl=url;activeName=name;
   if(!"Test obrazu H.264".equals(name)){
    prefs().edit().putString("recent_name",name).putString("recent_url",url).apply();
    recentButtons();
   }
   video.stopPlayback();
-  if(useVlcWhenInstalled&&vlcPresent()){
-   if(openWithVlc(url,name))return;
-  }
   video.setVisibility(View.VISIBLE);
   status.setText("Łączenie z kanałem "+name+"…");
   new Thread(()->{
@@ -252,7 +241,7 @@ public final class PA6TvActivity extends Activity {
      video.setVideoURI(Uri.parse(lower));
      video.requestFocus();video.start();
      status.setText(lower.equals(url)?"Buforuję transmisję…":"Wybrano lżejszy wariant transmisji. Buforuję obraz…");
-    }catch(Exception e){status.setText("Nie mogę otworzyć tego kanału. Wypróbuj inny odtwarzacz.");}
+    }catch(Exception e){status.setText("Nie mogę otworzyć tego kanału. Spróbuj inny z listy.");}
    });
   }).start();
  }
@@ -306,34 +295,57 @@ public final class PA6TvActivity extends Activity {
   }catch(Exception ignored){return address;}
   finally{if(c!=null)c.disconnect();}
  }
- private boolean openWithVlc(String url,String name){
-  if(!valid(url))return false;
-  try{
-   Intent i=new Intent(Intent.ACTION_VIEW);
-   i.setDataAndType(Uri.parse(url),"video/*");
-   i.setPackage("org.videolan.vlc");
-   i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-   startActivity(i);
-   status.setText("▶  "+name+" • otwarto w VLC. Miłego oglądania!");
-   return true;
-  }catch(Exception e){
-   status.setText("Nie udało się uruchomić VLC, spróbuję odtwarzacza systemowego.");
-   return false;
+ /** Load free-to-air playlist. No hardcoded promises about working channels. */
+ private void loadCatalog(){
+  final int token=++catalogLoad;
+  catalog.removeAllViews();
+  catalog.addView(txt("Ładuję polskie kanały internetowe…",14,false,MUTED));
+  new Thread(()->{
+   ArrayList<String[]> fresh=new ArrayList<>();String error="";
+   HttpURLConnection c=null;
+   try{
+    c=(HttpURLConnection)new URL("https://iptv-org.github.io/iptv/countries/pl.m3u").openConnection();
+    c.setConnectTimeout(9000);c.setReadTimeout(12000);
+    c.setRequestProperty("User-Agent","PomocnikAlfaAndroid6/2.3");
+    if(c.getResponseCode()!=200)throw new IOException("HTTP "+c.getResponseCode());
+    BufferedReader rd=new BufferedReader(new InputStreamReader(c.getInputStream(),"UTF-8"));
+    String line,name="";int bytes=0;HashSet<String> seen=new HashSet<>();
+    while((line=rd.readLine())!=null&&fresh.size()<90){
+     bytes+=line.length();if(bytes>400000)throw new IOException("Lista kanałów jest za duża");
+     line=line.trim();
+     if(line.startsWith("#EXTINF:")){
+      int comma=line.lastIndexOf(',');name=comma>=0?line.substring(comma+1).trim():"";
+      if(name.length()>75)name=name.substring(0,75);
+     }else if(!line.startsWith("#")&&!line.isEmpty()&&!name.isEmpty()){
+      if(valid(line)&&!seen.contains(name+"|"+line)&&!line.toLowerCase(Locale.ROOT).contains(".mpd")){
+       seen.add(name+"|"+line);fresh.add(new String[]{name,line});
+      }
+      name="";
+     }
+    }
+   }catch(Exception e){error=e.getMessage();}
+   finally{if(c!=null)c.disconnect();}
+   final String failure=error;
+   runOnUiThread(()->{
+    if(isFinishing()||token!=catalogLoad)return;
+    channelData.clear();channelData.addAll(fresh);
+    renderCatalog();
+    if(fresh.isEmpty())status.setText("Katalog stacji chwilowo niedostępny: "+failure+". Nadal możesz podać własny adres HLS.");
+   });
+  }).start();
+ }
+ private void renderCatalog(){
+  if(catalog==null)return;
+  catalog.removeAllViews();String filter=channelFilter==null?"":channelFilter.getText().toString().toLowerCase(Locale.ROOT).trim();
+  int shown=0;
+  for(String[] channel:channelData){
+   if(!channel[0].toLowerCase(Locale.ROOT).contains(filter))continue;
+   final String name=channel[0],url=channel[1];
+   channel(catalog,"TV",name,"Oglądaj w okienku • transmisja internetowa",TEAL,()->play(name,url));
+   if(++shown>=48)break;
   }
- }
- private void external(){
-  if(!valid(activeUrl)){status.setText("Najpierw wybierz kanał.");return;}
-  if(vlcPresent()&&openWithVlc(activeUrl,"wybrany"))return;
-  try{
-   Intent i=new Intent(Intent.ACTION_VIEW);
-   i.setDataAndType(Uri.parse(activeUrl),activeUrl.toLowerCase(Locale.ROOT).contains(".m3u8")?"application/vnd.apple.mpegurl":"video/*");
-   i.addCategory(Intent.CATEGORY_DEFAULT);
-   startActivity(Intent.createChooser(i,"Wybierz odtwarzacz wideo"));
-  }catch(Exception e){status.setText("Brak odtwarzacza strumieni. Zainstaluj wersję VLC zgodną z Androidem 6.");}
- }
- private void openOfficial(String address){
-  try{startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(address)));}
-  catch(Exception e){status.setText("Nie znaleziono przeglądarki do otwarcia strony telewizji.");}
+  if(shown==0)catalog.addView(txt(channelData.isEmpty()?"Ładuję kanały lub serwis jest niedostępny.":"Brak kanałów dla wpisanej nazwy.",14,false,MUTED));
+  else catalog.addView(txt("Pokazuję "+shown+" z "+channelData.size()+" stacji. Niektóre mogą wymagać kodeków lub uprawnień nadawcy.",12,false,MUTED));
  }
  @Override protected void onPause(){if(video!=null)video.pause();super.onPause();}
  @Override protected void onDestroy(){++generation;if(video!=null)video.stopPlayback();super.onDestroy();}
