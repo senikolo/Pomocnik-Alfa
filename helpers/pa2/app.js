@@ -65,7 +65,7 @@ async function routeAction(a){setPoints(a.from,a.to,a.when);$('typing').textCont
  'Z '+a.from.name+' do '+a.to.name+' · '+a.when.slice(0,10)+'.\nWybierz konkretny kurs poniżej. Godziny według rozkładu.';
  say(note,results.slice(0,3).map(r=>{const rides=r.legs.filter(l=>!l.walk);
   const label='Wybieram · '+clock(r.dep)+' → '+clock(r.arr)+' · '+rides.map(l=>l.train||l.line).join(' + ');
-  const detail=duration(r.duration)+' · '+(r.transfers?r.transfers+' przesiadka'+(r.transfers>1?'i':''):'bez przesiadek');
+  const detail=duration(r.duration)+' · '+(r.transfers?(r.transfers===1?'1 przesiadka':r.transfers+' przesiadki'):'bez przesiadek');
   return{label,detail,action:()=>selectTrip(r)}}))
  }else{
  let alternatives=[];const sourceName=canonical(a.from.name).split(' ')[0],endRoutes=new Set(a.to.routes);
