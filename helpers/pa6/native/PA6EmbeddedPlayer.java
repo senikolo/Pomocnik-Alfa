@@ -21,6 +21,7 @@ import java.util.ArrayList;
 public final class PA6EmbeddedPlayer extends LinearLayout {
  private final SurfaceView screen;
  private final TextView state;
+ private final TextView placeholder;
  private LibVLC vlc;
  private MediaPlayer engine;
  private final Handler ui=new Handler(Looper.getMainLooper());
@@ -36,7 +37,11 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   frame.setBackgroundColor(Color.BLACK);
   screen=new SurfaceView(context);screen.setKeepScreenOn(true);
   frame.addView(screen,new FrameLayout.LayoutParams(-1,-1));
-  addView(frame,new LinearLayout.LayoutParams(-1,dp(250)));
+  placeholder=new TextView(context);placeholder.setText("▶  ALFA • wybierz materiał");
+  placeholder.setGravity(Gravity.CENTER);placeholder.setTextSize(18);placeholder.setTextColor(0xffc6d2e7);
+  placeholder.setBackgroundColor(0xff111827);
+  frame.addView(placeholder,new FrameLayout.LayoutParams(-1,-1));
+  addView(frame,new LinearLayout.LayoutParams(-1,dp(218)));
   LinearLayout controls=new LinearLayout(context);
   controls.setGravity(Gravity.CENTER_VERTICAL);
   state=new TextView(context);state.setTextColor(0xfff4f6fc);state.setTextSize(13);
@@ -74,6 +79,7 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
  }
  public void playUri(String name,Uri address){
   active=name;state.setText("Łączenie • "+name);
+  placeholder.setVisibility(GONE);
   try{
    init();
    if(audio==null)audio=(AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
@@ -98,6 +104,7 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
  public void stop(){
   try{if(engine!=null)engine.stop();}catch(Throwable ignored){}
   state.setText("Zatrzymano.");
+  placeholder.setVisibility(VISIBLE);
  }
  public void release(){
   stop();
