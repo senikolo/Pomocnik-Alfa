@@ -33,7 +33,7 @@ public final class PA6PipedClient {
   Response(T data,String server){this.data=data;this.server=server;}
  }
  private static String https(String url){
-  if(url==null||url.length()>3500||!url.startsWith("https://")||url.contains(" ")||url.contains("\n"))return "";
+  if(url==null||url.length()>8000||!url.startsWith("https://")||url.contains(" ")||url.contains("\n"))return "";
   return url;
  }
  public static String validServer(String input){
