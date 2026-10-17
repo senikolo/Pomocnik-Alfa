@@ -90,8 +90,10 @@ public final class PABoardsProbe {
   ui(t,()->tagged(home.getWindow().getDecorView(),"pa-saved-stop:"+first.id).performLongClick());
   ui(t,()->{AlertDialog dialog=(AlertDialog)get(c,"savedDialog");ListView list=dialog.getListView();list.performItemClick(list.getChildAt(0),0,list.getAdapter().getItemId(0));});
   ui(t,()->{AlertDialog dialog=(AlertDialog)get(c,"savedDialog");EditText alias=(EditText)tagged(dialog.getWindow().getDecorView(),"pa-stop-alias");alias.setText("Mój dom");dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();});
-  need(((JSONObject)saved(c).get(first.id)).optString("alias").equals("Mój dom"),"Custom name saved");
-  need(((TextView)tagged(home.getWindow().getDecorView(),"pa-saved-stop:"+first.id)).getText().toString().contains("Mój dom"),"Custom name visible");
+  // AlertDialog button callbacks are posted to the main looper; allow the
+  // user-initiated save to complete before inspecting persisted UI state.
+  waitFor(()->"Mój dom".equals(((JSONObject)saved(c).get(first.id)).optString("alias")),"Custom name saved");
+  waitFor(()->{View v=tagged(home.getWindow().getDecorView(),"pa-saved-stop:"+first.id);return v instanceof TextView&&((TextView)v).getText().toString().contains("Mój dom");},"Custom name visible");
   for(int choice:new int[]{2,1}){ui(t,()->tagged(home.getWindow().getDecorView(),"pa-saved-stop:"+first.id).performLongClick());ui(t,()->{AlertDialog dialog=(AlertDialog)get(c,"savedDialog");ListView list=dialog.getListView();list.performItemClick(list.getChildAt(choice),choice,list.getAdapter().getItemId(choice));});need(new java.util.ArrayList<>(saved(c).keySet()).get(choice==2?1:0).equals(first.id),"Reorder preserves stable ID");}
   log.append("PASS actual custom name and move earlier/later dialogs preserve platform IDs\n");
   // Add from the actual My Stops tab, preserving exact ID without duplicates.
