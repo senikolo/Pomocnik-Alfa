@@ -47,3 +47,7 @@ nav button.active{color:#553583;background:#efe8fa;border-radius:13px}
  #assistant .chat-shell{height:510px}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.pa6-media{max-width:960px;margin:8px auto;display:-webkit-box;display:flex;padding:2px 14px;gap:10px;box-sizing:border-box}
+.pa6-tile{-webkit-box-flex:1;flex:1;border:1px solid #d8c6ec;border-radius:14px;background:#fff;color:#50327e;font-size:19px;font-weight:700;min-height:64px;box-shadow:0 3px 12px rgba(57,35,90,.09)}
+.pa6-tile:active{background:#e8dff4}
