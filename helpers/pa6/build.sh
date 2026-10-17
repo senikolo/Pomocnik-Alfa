@@ -20,7 +20,7 @@ curl -fL --retry 4 --connect-timeout 20 --max-time 180 \
  -o build/pa6-libvlc/libvlc.aar
 unzip -oq build/pa6-libvlc/libvlc.aar classes.jar 'jni/*' -d build/pa6-libvlc
 test -s build/pa6-libvlc/classes.jar
-for abi in armeabi-v7a arm64-v8a x86; do
+for abi in armeabi-v7a x86; do
  if [ -d "build/pa6-libvlc/jni/$abi" ]; then
   mkdir -p "build/pa6-package/lib/$abi"
   cp "build/pa6-libvlc/jni/$abi/"*.so "build/pa6-package/lib/$abi/"
@@ -42,7 +42,7 @@ javac -source 8 -target 8 -encoding UTF-8 -cp "$SDK/platforms/android-35/android
 find build/pa6-classes -name '*.class' -print0 | xargs -0 "$BT/d8" --min-api 23 --lib "$SDK/platforms/android-35/android.jar" --output build/pa6-dex build/pa6-libvlc/classes.jar
 "$BT/aapt" package -f -M helpers/pa6/AndroidManifest.xml -S build/pa6-res -A build/pa6-assets -I "$SDK/platforms/android-35/android.jar" -F output/raw.apk
 (cd build/pa6-dex && zip -q -0 ../../output/raw.apk classes*.dex)
-(cd build/pa6-package && zip -q -r -0 ../../output/raw.apk lib)
+(cd build/pa6-package && zip -q -r -9 ../../output/raw.apk lib)
 "$BT/zipalign" -p -f 4 output/raw.apk output/aligned.apk
 "$BT/aapt" dump badging output/aligned.apk | tee output/badging.txt
 grep -q "sdkVersion:'23'" output/badging.txt
