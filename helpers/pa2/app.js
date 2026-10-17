@@ -165,7 +165,29 @@ async function busChangeLine(){
    $('busProvider').textContent=trainMode?'Pociągi: godziny planowe. Pozycja na mapie tylko przy dostępnym i aktualnym GPS; nie każdy przewoźnik go udostępnia.':['warsaw','krakow_bus','krakow_mobilis','krakow_tram'].includes(selected[5])?'Dane rozkładowe; GPS i przyjazdy LIVE tylko po potwierdzeniu kursu.':'Dla tej linii może być dostępny wyłącznie rozkład planowy.';
  }catch(e){if(seq!==busState.seq)return;$('busDirection').replaceChildren(busOpt('','Nie udało się wczytać kierunków'));$('busLoading').textContent=e.message||'Nie mogę odczytać kierunków.'}
 }
-function busChangeDirection(){busResetResults();$('checkBus').disabled=!(busState.stop&&busSelectedIds().length&&$('busDirection').value);if(!$('checkBus').disabled)$('busLoading').textContent='Gotowe. Sprawdź najbliższy autobus lub tramwaj.'}
+async function busChangeDirection(){
+ busResetResults();resetTrainPicker();
+ const ids=busSelectedIds(),group=busState.stop,direction=$('busDirection').value,seq=busState.seq;
+ $('checkBus').disabled=!(group&&ids.length&&direction);if($('checkBus').disabled)return;
+ const selected=engine.idx.routes[ids[0]];
+ if(!busRail(selected[3])){$('busLoading').textContent='Gotowe. Sprawdź najbliższy kurs.';return}
+ $('busTrainField').hidden=false;
+ $('busTrain').replaceChildren(busOpt('','Wczytuję pociągi…'));$('busTrain').disabled=true;
+ $('busLoading').textContent='Wyszukuję konkretne pociągi na tym przystanku…';
+ try{
+  const now=wallNow(),all=await engine.departures(group,now,String(selected[1]),direction,72,ids,1800);
+  if(seq!==busState.seq)return;
+  const seconds=Number(now.slice(11,13))*3600+Number(now.slice(14,16))*60;
+  const trains=all.filter(d=>d.headsign===direction&&d.dep>=seconds-1800&&!d.headway).slice(0,48);
+  busState.trainChoices.clear();
+  const choices=trains.map((d,i)=>{const id='t'+i;busState.trainChoices.set(id,d);
+   const h=Math.floor(((d.dep%86400)+86400)%86400/3600).toString().padStart(2,'0'),m=Math.floor(((d.dep%3600)+3600)%3600/60).toString().padStart(2,'0');
+   return busOpt(id,h+':'+m+' · '+(d.train?'pociąg '+d.train+' · ':'')+d.operator+' → '+d.headsign)});
+  $('busTrain').replaceChildren(busOpt('','Wszystkie najbliższe pociągi'),...choices);
+  $('busTrain').disabled=!choices.length;
+  $('busLoading').textContent=choices.length?'Możesz wybrać konkretny pociąg albo sprawdzić wszystkie najbliższe.':'Brak kursów w kolejnych 24 godzinach dla tego kierunku. Sprawdź datę rozkładu.';
+ }catch(e){if(seq!==busState.seq)return;$('busTrain').replaceChildren(busOpt('','Nie mogę odczytać pociągów'));$('busLoading').textContent=e.message||'Nie udało się odczytać pociągów.'}
+}
 function busDistanceMetres(lat1,lon1,lat2,lon2){const rad=Math.PI/180,phi=(lat2-lat1)*rad,dl=(lon2-lon1)*rad,a=Math.sin(phi/2)**2+Math.cos(lat1*rad)*Math.cos(lat2*rad)*Math.sin(dl/2)**2;return Math.round(12742000*Math.asin(Math.min(1,Math.sqrt(a))))}
 function busArrivalView(actual,d,checkedAt){
  const status=PALiveState.assess(d,actual,checkedAt);
