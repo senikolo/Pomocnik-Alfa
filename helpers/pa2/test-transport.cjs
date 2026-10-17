@@ -4,7 +4,19 @@ const path=process.argv[2],idx=JSON.parse(fs.readFileSync(path+'/index_all.json'
 const engine=new Engine(idx,async id=>JSON.parse(fs.readFileSync(path+'/route_all_'+id+'.json')));
 (async()=>{
  for(const [mode,expected] of [[2,'rail'],[106,'rail'],[403,'metro'],[901,'tram'],[704,'bus']])assert.equal(category(mode),expected);
- const op=new Set(idx.routes.map(r=>r[6]));for(const name of ['KM','KMŁ','SKM Warszawa','MLD'])assert(op.has(name),name);
+ const op=new Set(idx.routes.map(r=>r[6]));for(const name of ['KM','KMŁ','SKM Warszawa','MLD','POLREGIO','PKP Intercity'])assert(op.has(name),name);
+ // Validate real GTFS services, not just operator names in unused route metadata.
+ for(const operator of ['POLREGIO','PKP Intercity']){
+  const candidates=idx.routes.flatMap((r,i)=>r[6]===operator?[i]:[]);
+  let confirmed=null;
+  for(const rid of candidates){
+   const timetable=JSON.parse(fs.readFileSync(path+'/route_all_'+rid+'.json'));
+   const active=timetable.runs.find(r=>r[0]!==0&&timetable.patterns[r[2]]?.length>1);
+   if(active){confirmed={line:idx.routes[rid][1],number:active[5],trip:active[4]};break}
+  }
+  assert(confirmed,'No scheduled train in real feed for '+operator);
+  console.log('PASS real GTFS operator',operator,confirmed);
+ }
  for(const line of ['S1','S2','S3','S4','S40'])assert(idx.routes.some(r=>r[1]===line&&r[6]==='SKM Warszawa'));
  for(const [from,to,operator] of [['Kraków Główny','Wieliczka Rynek-Kopalnia','KMŁ'],['Kraków Główny','Kraków Lotnisko','KMŁ'],['Kraków Główny','Tarnów','KMŁ'],['Warszawa Wschodnia','Legionowo','KM']]){
   const a=engine.resolve(from).group,b=engine.resolve(to).group;assert(a&&b,from+' / '+to);
