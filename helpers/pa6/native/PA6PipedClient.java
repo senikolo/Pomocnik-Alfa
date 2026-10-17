@@ -96,7 +96,7 @@ public final class PA6PipedClient {
       humanDuration(item.optLong("duration",0)),item.optString("uploadedDate","")));
     }
     return new Response<List<Result>>(list,server);
-   }catch(Exception e){last=e;}
+   }catch(Exception e){android.util.Log.w("PA6_PIPED","Host "+server+" nieudany: "+e.getClass().getSimpleName()+" "+e.getMessage());last=e;}
   }
   throw new IOException("Nie udało się pobrać wyników z dostępnych serwerów Piped."+(last==null?"":" "+last.getMessage()));
  }
