@@ -12,6 +12,8 @@ npm install --no-audit --no-fund --prefix build/pa6-node @babel/core@7 @babel/pr
 NODE_PATH="$PWD/build/pa6-node/node_modules" node helpers/pa6/transpile.cjs helpers/pa2 build/pa6-assets/pa_regions
 python3 helpers/pa6/prepare_tablet.py build/pa6-data build/pa6-assets/pa_regions
 python3 helpers/pa6/compat_patch.py build/pa6-java
+cp helpers/pa6/assets/pa6-ca-bundle.pem build/pa6-assets/pa6-ca-bundle.pem
+cp helpers/pa6/assets/pa6-ca-license.txt build/pa6-assets/pa6-ca-license.txt
 # Bundle a real embedded VLC decoder into the APK. No external VLC application needed.
 # LibVLC 3.5.1 is LGPL-2.1. Native libraries are shipped unchanged.
 mkdir -p build/pa6-libvlc build/pa6-package
@@ -46,7 +48,7 @@ find build/pa6-classes -name '*.class' -print0 | xargs -0 "$BT/d8" --min-api 23 
 "$BT/zipalign" -p -f 4 output/raw.apk output/aligned.apk
 "$BT/aapt" dump badging output/aligned.apk | tee output/badging.txt
 grep -q "sdkVersion:'23'" output/badging.txt
-grep -q "package: name='com.senikolo.pa6internal'" output/badging.txt
+grep -q "package: name='com.senikolo.pa6showcase'" output/badging.txt
 umask 077
 export PA6_TEST_PASS="$(openssl rand -hex 24)"
 keytool -genkeypair -noprompt -keyalg RSA -keysize 3072 -sigalg SHA256withRSA -validity 3650 -alias pa6-tablet-test -dname 'CN=PA6 Acer test only, O=PA development' -storetype PKCS12 -keystore "$RUNNER_TEMP/pa6-test.p12" -storepass:env PA6_TEST_PASS -keypass:env PA6_TEST_PASS >/dev/null 2>&1

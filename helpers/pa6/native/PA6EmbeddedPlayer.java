@@ -3,6 +3,7 @@ package com.ispina.lokalnie;
 import android.content.Context;
 import android.graphics.Color;
 import android.net.Uri;
+import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
@@ -20,11 +21,14 @@ import java.util.ArrayList;
 public final class PA6EmbeddedPlayer extends LinearLayout {
  private final SurfaceView screen;
  private final TextView state;
+ private final TextView placeholder;
  private LibVLC vlc;
  private MediaPlayer engine;
  private final Handler ui=new Handler(Looper.getMainLooper());
  private String active="";
  private boolean ready=false;
+ private AudioManager audio;
+ private boolean hasFocus=false;
  private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+0.5f);}
  public PA6EmbeddedPlayer(Context context){
   super(context);setOrientation(VERTICAL);
@@ -33,7 +37,11 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   frame.setBackgroundColor(Color.BLACK);
   screen=new SurfaceView(context);screen.setKeepScreenOn(true);
   frame.addView(screen,new FrameLayout.LayoutParams(-1,-1));
-  addView(frame,new LinearLayout.LayoutParams(-1,dp(250)));
+  placeholder=new TextView(context);placeholder.setText("▶  ALFA • wybierz materiał");
+  placeholder.setGravity(Gravity.CENTER);placeholder.setTextSize(18);placeholder.setTextColor(0xffc6d2e7);
+  placeholder.setBackgroundColor(0xff111827);
+  frame.addView(placeholder,new FrameLayout.LayoutParams(-1,-1));
+  addView(frame,new LinearLayout.LayoutParams(-1,dp(218)));
   LinearLayout controls=new LinearLayout(context);
   controls.setGravity(Gravity.CENTER_VERTICAL);
   state=new TextView(context);state.setTextColor(0xfff4f6fc);state.setTextSize(13);
@@ -65,14 +73,21 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   ready=true;
  }
  public void play(String name,String address){
-  if(address==null||address.length()>2000||!(address.startsWith("https://")||address.startsWith("http://"))
+  if(address==null||address.length()>8000||!(address.startsWith("https://")||address.startsWith("http://"))
       ||address.contains("\n")||address.contains(" ")){state.setText("Nieprawidłowy adres materiału.");return;}
   playUri(name,Uri.parse(address));
  }
  public void playUri(String name,Uri address){
   active=name;state.setText("Łączenie • "+name);
+  placeholder.setVisibility(GONE);
   try{
    init();
+   if(audio==null)audio=(AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
+   if(audio!=null&&!hasFocus){
+    int gain=audio.requestAudioFocus(null,AudioManager.STREAM_MUSIC,AudioManager.AUDIOFOCUS_GAIN);
+    hasFocus=(gain==AudioManager.AUDIOFOCUS_REQUEST_GRANTED);
+    if(!hasFocus){state.setText("Inne audio zajmuje dźwięk. Zatrzymaj radio.");return;}
+   }
    engine.stop();
    Media media=new Media(vlc,address);
    media.addOption(":network-caching=1500");
@@ -89,11 +104,13 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
  public void stop(){
   try{if(engine!=null)engine.stop();}catch(Throwable ignored){}
   state.setText("Zatrzymano.");
+  placeholder.setVisibility(VISIBLE);
  }
  public void release(){
   stop();
+  if(audio!=null&&hasFocus){try{audio.abandonAudioFocus(null);}catch(Exception ignored){}hasFocus=false;}
   try{if(engine!=null){engine.getVLCVout().detachViews();engine.release();}}catch(Throwable ignored){}
   try{if(vlc!=null)vlc.release();}catch(Throwable ignored){}
-  engine=null;vlc=null;ready=false;
+  engine=null;vlc=null;ready=false;audio=null;
  }
 }
