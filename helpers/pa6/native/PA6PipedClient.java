@@ -41,11 +41,11 @@ public final class PA6PipedClient {
   String t=input.trim();if(!t.matches("https://[A-Za-z0-9.-]+(?::[0-9]{2,5})?/?"))return "";
   return t.endsWith("/")?t.substring(0,t.length()-1):t;
  }
- private static JSONObject fetch(String address)throws Exception{
+ private static String fetchRaw(String address)throws Exception{
   HttpURLConnection c=null;
   try{
    c=PA6ModernTls.open(address);
-   c.setConnectTimeout(6000);c.setReadTimeout(8500);c.setInstanceFollowRedirects(true);
+   c.setConnectTimeout(4000);c.setReadTimeout(6000);c.setInstanceFollowRedirects(true);
    c.setRequestProperty("User-Agent","PomocnikAlfa/6.0 (Android 6 native multimedia client)");
    c.setRequestProperty("Accept","application/json");
    int code=c.getResponseCode();
@@ -58,9 +58,11 @@ public final class PA6PipedClient {
      out.write(buf,0,read);
     }
    }
-   return new JSONObject(out.toString("UTF-8"));
+   return out.toString("UTF-8");
   }finally{if(c!=null)c.disconnect();}
  }
+ private static JSONObject fetch(String address)throws Exception{return new JSONObject(fetchRaw(address));}
+ private static JSONArray fetchArray(String address)throws Exception{return new JSONArray(fetchRaw(address));}
  private static String enc(String input)throws Exception{return URLEncoder.encode(input,"UTF-8");}
  private static ArrayList<String> servers(String user){
   ArrayList<String> hosts=new ArrayList<>();
@@ -74,6 +76,9 @@ public final class PA6PipedClient {
   int q=i.indexOf("v=");if(q>=0)i=i.substring(q+2);
   else {int slash=i.lastIndexOf('/');if(slash>=0)i=i.substring(slash+1);}
   int end=i.indexOf('&');if(end>=0)i=i.substring(0,end);
+  // YouTube Shorts, live and youtu.be share links commonly append ?si= or ?t=.
+  end=i.indexOf('?');if(end>=0)i=i.substring(0,end);
+  end=i.indexOf('#');if(end>=0)i=i.substring(0,end);
   return i.matches("[A-Za-z0-9_-]{11}")?i:"";
  }
  public static String extractId(String address){return videoId(address);}
@@ -98,7 +103,10 @@ public final class PA6PipedClient {
     return new Response<List<Result>>(list,server);
    }catch(Exception e){android.util.Log.w("PA6_PIPED","Host "+server+" nieudany: "+e.getClass().getSimpleName()+" "+e.getMessage());last=e;}
   }
-  throw new IOException("Nie udało się pobrać wyników z dostępnych serwerów Piped."+(last==null?"":" "+last.getMessage()));
+  // Independent public fallback when the Piped API is down.
+  try{return invidiousSearch(query);}catch(Exception fallback){
+   throw new IOException("Serwery katalogu filmów są obecnie niedostępne (Piped i Invidious). Spróbuj później lub wybierz plik z tabletu.",fallback);
+  }
  }
  public static Response<List<Result>> trending(String custom)throws Exception{
   Exception last=null;
@@ -136,7 +144,10 @@ public final class PA6PipedClient {
      String codec=v.optString("codec","").toLowerCase(Locale.ROOT);
      String format=v.optString("mimeType","").toLowerCase(Locale.ROOT);
      int height=v.optInt("height",0);
-     if(stream.isEmpty()||height<=0||height>720||(!codec.contains("avc1")&&!format.contains("video/mp4")))continue;
+     // The Acer API23 decoder needs H.264/AVC video with muxed audio.
+     // MP4 alone is not sufficient: a few feeds report other video codecs in MP4.
+     boolean avc=codec.contains("avc1")||codec.contains("h264")||codec.contains("avc");
+     if(stream.isEmpty()||height<=0||height>720||!format.contains("video/mp4")||!avc)continue;
      int score=Math.abs(height-480);
      if(score<bestScore){bestScore=score;url=stream;quality=v.optString("quality",height+"p");}
     }
@@ -149,7 +160,74 @@ public final class PA6PipedClient {
     throw new IOException("Serwer nie udostępnia filmu z obrazem i dźwiękiem w jednym strumieniu.");
    }catch(Exception e){last=e;}
   }
-  throw new IOException("Nie udało się uzyskać zgodnego strumienia. Film może być niedostępny lub serwery przeciążone. "+(last==null?"":last.getMessage()));
+  try{return invidiousResolve(id);}catch(Exception fallback){
+   throw new IOException("Nie można uzyskać zgodnego filmu z obrazem i dźwiękiem. Serwery Piped/Invidious mogą być niedostępne.",fallback);
+  }
+ }
+
+ // Only official-listed Invidious hosts. They can become unavailable, so never promise every video.
+ private static final String[] INVIDIOUS={
+  "https://invidious.tiekoetter.com",
+  "https://inv.nadeko.net"
+ };
+ private static String thumbnail(JSONArray thumbs){
+  if(thumbs==null)return "";
+  for(int i=0;i<thumbs.length();i++){
+   JSONObject t=thumbs.optJSONObject(i);if(t==null)continue;
+   String u=t.optString("url","");
+   if(u.startsWith("https://"))return https(u);
+  }
+  return "";
+ }
+ private static Response<List<Result>> invidiousSearch(String query)throws Exception{
+  Exception last=null;
+  for(String server:INVIDIOUS){
+   try{
+    JSONArray data=fetchArray(server+"/api/v1/search?q="+enc(query.trim())+"&type=video");
+    ArrayList<Result> found=new ArrayList<>();
+    for(int i=0;i<data.length()&&found.size()<35;i++){
+     JSONObject item=data.optJSONObject(i);if(item==null||!"video".equals(item.optString("type","video")))continue;
+     String id=item.optString("videoId","");
+     if(!id.matches("[A-Za-z0-9_-]{11}"))continue;
+     found.add(new Result(item.optString("title","Film"),item.optString("author","Kanał"),
+       thumbnail(item.optJSONArray("videoThumbnails")),id,
+       humanDuration(item.optLong("lengthSeconds",0)),item.optString("publishedText","")));
+    }
+    return new Response<List<Result>>(found,server);
+   }catch(Exception e){last=e;}
+  }
+  throw new IOException("Publiczne Invidious nie odpowiada.",last);
+ }
+ private static Response<Video> invidiousResolve(String id)throws Exception{
+  Exception last=null;
+  for(String server:INVIDIOUS){
+   try{
+    JSONObject data=fetch(server+"/api/v1/videos/"+id);
+    JSONArray formats=data.optJSONArray("formatStreams");
+    int best=Integer.MAX_VALUE;String stream="",label="";
+    if(formats!=null)for(int i=0;i<formats.length();i++){
+     JSONObject format=formats.optJSONObject(i);if(format==null)continue;
+     String url=format.optString("url","");
+     if(url.startsWith("/"))url=server+url;
+     String type=format.optString("type","").toLowerCase(Locale.ROOT);
+     String container=format.optString("container","").toLowerCase(Locale.ROOT);
+     if(!type.contains("video/mp4")&&!container.equals("mp4"))continue;
+     String codec=format.optString("encoding","").toLowerCase(Locale.ROOT);
+     if(codec.contains("vp9")||codec.contains("av1"))continue;
+     String resolution=format.optString("qualityLabel",format.optString("quality","360p"));
+     int height=0;
+     try{height=Integer.parseInt(resolution.replaceAll("[^0-9]",""));}catch(Exception ignored){}
+     if(height>720)continue;
+     int score=Math.abs((height<=0?360:height)-480);
+     if(!https(url).isEmpty()&&score<best){stream=url;label=resolution;best=score;}
+    }
+    if(!stream.isEmpty())return new Response<>(new Video(data.optString("title","Film"),data.optString("author","YouTube"),stream,label),server);
+    String hls=https(data.optString("hlsUrl",""));
+    if(!hls.isEmpty())return new Response<>(new Video(data.optString("title","Film"),data.optString("author","YouTube"),hls,"HLS"),server);
+    throw new IOException("Brak zgodnego wideo na serwerze.");
+   }catch(Exception e){last=e;}
+  }
+  throw new IOException("Publiczne Invidious nie udostępnia strumienia.",last);
  }
  private PA6PipedClient(){}
 }

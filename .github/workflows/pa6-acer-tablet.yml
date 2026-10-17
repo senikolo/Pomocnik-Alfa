@@ -1,8 +1,8 @@
-name: PA6 UltraSmart Studio • Android 6
+name: PA6 Legacy Plus • Android 6
 on:
   workflow_dispatch:
   push:
-    branches: ['work/pa6-showcase-media-20261017']
+    branches: ['work/pa6-legacy-completion-20261017']
     paths: ['.github/workflows/pa6-acer-tablet.yml', 'helpers/pa6/**']
 defaults:
   run:
@@ -11,7 +11,7 @@ permissions:
   contents: write
   actions: read
 concurrency:
-  group: pa6-showcase-${{ github.ref }}
+  group: pa6-legacyplus-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build:
@@ -87,8 +87,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="pa6-showcase-media-$(echo "$GITHUB_SHA" | cut -c1-8)"
+          tag="pa6-legacyplus-media-$(echo "$GITHUB_SHA" | cut -c1-8)"
           gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
-            --title 'Pomocnik Alfa UltraSmart Studio • Android 6 TEST' \
-            --notes 'Showcase TEST dla Acer Android 6 API23 2GB RAM. Ujednolicony pulpit i ikony wektorowe, Alfa Tube natywne wyszukiwanie oraz miniatury poprzez publiczne API Piped/NewPipeExtractor i wbudowany LibVLC, historia filmów, Alfa TV 25 otwartych kanałów w okienku, kategorie i ulubione, radio z katalogiem do 95 stacji, ulubionymi i odtwarzaniem w tle. Reszta PA6: transport Warszawa i Malopolska, offline audio, pogoda, notatnik, przypomnienia. Nie obiecuje wszystkich transmisji; zalezy od publicznych serwerow, drm i zgodnosci Acer. Samo uruchamianie na emulatorze nie dowodzi realnych odtworzen. Oddzielna wersja testowa.' \
+            --title 'Pomocnik Alfa Legacy Plus • Android 6 TEST' \
+            --notes 'Legacy Plus TEST dla Acer Android 6 API23 2GB RAM. Wbudowany LibVLC dla TV i Alfa Tube, poprawa kompatybilnosci linkow YouTube Shorts i wyboru H264. Katalog radia korzysta z zaufanych CA, a modul wideo bezpiecznie obsluguje audio focus i przejscie w tlo. Osobny pakiet testowy. Streamy publicznych serwerow Piped i TV wymagaja sprawdzenia na fizycznym Acerze. Nie jest to jeszcze pelny port wszystkich funkcji PA11.' \
             release/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk release/SHA256SUMS.txt release/signature.txt
