@@ -52,7 +52,7 @@ public final class PA6DashboardActivity extends Activity {
    for(int j=0;j<cols;j++){
     if(pos+j>=options.length){line.addView(new View(this),new LinearLayout.LayoutParams(0,dp(3),1));continue;}
     String[] entry=options[pos+j];
-    View card=tile(entry[0],entry[1],entry[2],entry[3],Integer.parseInt(entry[4],16));
+    View card=tile(entry[0],entry[1],entry[2],entry[3],(int)Long.parseLong(entry[4],16));
     LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(senior?155:140),1);
     p.setMargins(dp(4),dp(4),dp(4),dp(4));line.addView(card,p);
    }
