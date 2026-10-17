@@ -30,7 +30,7 @@ public class PAProbe extends Instrumentation {
   record(com.ispina.lokalnie.PABoardsProbe.run(this,a));
   if(boardsOnly){com.ispina.lokalnie.PABoardsProbe.leaveGps(this,a);record("TOTAL PASS system large-font small-screen boards");out.putString("stream",log.toString());finish(Activity.RESULT_OK,out);return;}
   screenshot("main");runOnMainSync(()->a.finish());
-  Activity reopened=launch("MainActivity");com.ispina.lokalnie.PABoardsProbe.verifySaved(this,reopened);require(countText(reopened.getWindow().getDecorView(),"Tablice odjazdów")==1,"Reopen home");screenshot("home-reopened");runOnMainSync(()->reopened.finish());record("PASS main close and reopen with all saved shortcuts and exact manual platform");
+  Activity reopened=launch("MainActivity");com.ispina.lokalnie.PABoardsProbe.verifySaved(this,reopened);require(countText(reopened.getWindow().getDecorView(),"Najbliższe odjazdy")==1,"Reopen premium home");screenshot("home-reopened");runOnMainSync(()->reopened.finish());record("PASS main close and reopen with all saved shortcuts and exact manual platform");
   Activity planner=launch("PARegionsActivity");waitJs(planner,"document.getElementById('coverage').innerText.includes('offline')",30000);record("PASS WebView, all GTFS indexes and ES2017 client load");
    require("true".equals(js(planner,"/\\d{2}\\.\\d{2}\\.\\d{4}/.test(document.getElementById('dateDisplay').textContent)")),"Polish date format not visible");
    require("true".equals(js(planner,"document.getElementById('from').getAttribute('role')==='combobox' && document.getElementById('suggestFrom').getAttribute('role')==='listbox'")),"Stop search ARIA missing");
@@ -62,7 +62,7 @@ public class PAProbe extends Instrumentation {
   js(planner,"document.getElementById('tabAssistant').click();document.getElementById('chatInput').value='Chcę jutro po 9 jechać z Ispiny do Bochni';document.getElementById('ask').click();true");
   waitJs(planner,"document.getElementById('messages').innerText.includes('09:00')",20000);record("PASS chat retains requested date/time while clarifying Bochnia stop");
   js(planner,"document.getElementById('chatInput').value='Bochnia Dworzec PKP';document.getElementById('ask').click();true");
-  waitJs(planner,"document.getElementById('messages').innerText.includes('Godziny planowe. Wybierz')",60000);record("PASS chat completes MLD journey from clarification");
+  waitJs(planner,"document.getElementById('messages').innerText.includes('Wybierz konkretny kurs')",60000);record("PASS chat completes MLD journey from clarification");
   js(planner,"document.getElementById('chatInput').value='A godzinę później?';document.getElementById('ask').click();true");
   waitJs(planner,"!document.getElementById('ask').disabled",60000);require(!js(planner,"document.getElementById('messages').lastElementChild.innerText").contains("Z którego przystanku"),"Lost origin on follow-up");record("PASS contextual one-hour-later follow-up");
   waitJs(planner,"document.querySelector('.composer').getBoundingClientRect().bottom <= document.querySelector('nav').getBoundingClientRect().top && document.getElementById('messages').clientHeight > 60 && document.getElementById('messages').scrollHeight-document.getElementById('messages').scrollTop-document.getElementById('messages').clientHeight < 5",10000);record("PASS composer stays above navigation and latest chat reply is visible on older WebView");screenshot("assistant");
