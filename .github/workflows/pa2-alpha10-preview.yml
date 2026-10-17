@@ -1,0 +1,228 @@
+name: PA 2.0 alpha.10 – osobna instalacja testowa z nowym podpisem
+on:
+  workflow_dispatch:
+  push:
+    branches: ['work/pa2-ultrasmart-transport-20261017']
+    paths: ['.github/workflows/pa2-alpha10-preview.yml', 'helpers/pa2/**']
+defaults:
+  run:
+    shell: bash
+permissions:
+  contents: write
+  actions: read
+jobs:
+  build:
+    if: "!contains(github.event.head_commit.message, '[signed-proof]')"
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore existing full PA base without dropping modules
+        run: |
+          mkdir -p baseline tools output
+          if gh release download pa2-source-base -p pa-base.zip -D baseline; then
+            unzip -q baseline/pa-base.zip -d baseline
+          else
+            gh run download 37921731880 -n Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-UNSIGNED -D baseline
+          fi
+          find baseline -name '*.apk' -print -quit | xargs -I{} cp '{}' baseline.apk
+          test -s baseline.apk
+          sha256sum baseline.apk > output/base-sha256.txt
+          gh release download v2.12.1 -R iBotPeaches/Apktool -p apktool_2.12.1.jar -D tools
+      - name: Reuse valid shared GTFS generation, probe LIVE and validate calendars
+        run: |
+          python3 helpers/pa2/probe_sources.py | tee output/live-source-access.json
+          python3 helpers/pa2/fetch_data.py feeds
+          python3 helpers/pa2/build_data.py feeds build/data | tee output/data-build.txt
+          TZ=Europe/Warsaw node helpers/pa2/test.cjs build/data | tee output/logic-tests.txt
+          TZ=Europe/Warsaw node helpers/pa2/test-fixes.cjs build/data | tee output/audit-fixes-tests.txt
+          npm install --prefix build/test-runtime jsdom@26.1.0
+          PA_JSDOM_PATH="$PWD/build/test-runtime/node_modules/jsdom" TZ=Europe/Warsaw node helpers/pa2/test-ui.cjs build/data | tee output/dom-tests.txt
+          python3 -m py_compile helpers/pa2/*.py
+          python3 helpers/pa2/test_data.py
+          TZ=Europe/Warsaw node helpers/pa2/test-transport.cjs build/data | tee output/transport-tests.txt
+          node --check helpers/pa2/backend/worker.mjs
+          node --check helpers/pa2/app.js
+          node --check helpers/pa2/osm-map.js
+          node --check helpers/pa2/conversation.js
+      - name: Rebuild existing project and new native module
+        run: |
+          java -Xmx4g -jar tools/apktool_2.12.1.jar d -f -o decoded baseline.apk
+          python3 helpers/pa2/patch_project.py decoded build/data
+          # Install beside alpha.9: a different signer MUST also use a different app ID.
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('decoded/AndroidManifest.xml')
+          text=p.read_text()
+          original='com.senikolo.pomocniknowy.pa2preview'
+          trial='com.senikolo.pomocniknowy.pa2railtest'
+          assert f'package="{original}"' in text, 'Unexpected base app identity'
+          text=text.replace(original,trial).replace('Pomocnik Alfa ULTRASMART 10','Alfa Kolej TEST 10')
+          assert f'package="{trial}"' in text and original not in text
+          p.write_text(text)
+          PY
+          node helpers/pa2/prepare_js.cjs decoded/assets/pa_regions
+          SDK="$ANDROID_HOME"
+          mkdir -p classes native
+          javac -source 8 -target 8 -encoding UTF-8 -cp "$SDK/platforms/android-35/android.jar" -d classes helpers/pa2/*.java
+          mkdir -p live-test-src live-test-classes
+          cp helpers/pa2/PALiveTest.java.test live-test-src/PALiveTest.java
+          javac -cp "classes:$SDK/platforms/android-35/android.jar" -d live-test-classes live-test-src/PALiveTest.java
+          java -cp "classes:live-test-classes:$SDK/platforms/android-35/android.jar" com.ispina.lokalnie.PALiveTest | tee output/live-tests.txt
+          cp helpers/pa2/PANearbyRulesTest.java.test live-test-src/PANearbyRulesTest.java
+          javac -encoding UTF-8 -cp classes -d live-test-classes live-test-src/PANearbyRulesTest.java
+          java -cp classes:live-test-classes com.ispina.lokalnie.PANearbyRulesTest | tee output/nearby-rules-tests.txt
+          cp helpers/pa2/PAIconsTest.java.test live-test-src/PAIconsTest.java
+          javac -encoding UTF-8 -cp "classes:$SDK/platforms/android-35/android.jar" -d live-test-classes live-test-src/PAIconsTest.java
+          java -cp "classes:live-test-classes:$SDK/platforms/android-35/android.jar" PAIconsTest | tee output/dashboard-icon-tests.txt
+          find classes -name '*.class' -print0 | xargs -0 "$SDK/build-tools/35.0.0/d8" --min-api 29 --lib "$SDK/platforms/android-35/android.jar" --output native
+          java -Xmx4g -jar tools/apktool_2.12.1.jar b decoded -o output/rebuilt.apk
+          cp native/classes.dex output/classes5.dex
+          (cd output && zip -q -0 rebuilt.apk classes5.dex)
+          "$SDK/build-tools/35.0.0/zipalign" -p -f 4 output/rebuilt.apk output/aligned.apk
+      - name: Export aligned APK for one-time external preview signing
+        run: |
+          cp output/aligned.apk output/PA2-aligned-unsigned.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging output/PA2-aligned-unsigned.apk > output/badging.txt
+          sha256sum output/PA2-aligned-unsigned.apk > output/SHA256-unsigned.txt
+      - name: Compile instrumentation for the same preview target
+        run: |
+          mkdir -p testsrc testclasses testdex
+          cp helpers/pa2/PAProbe.java.test testsrc/PAProbe.java
+          cp helpers/pa2/PABoardsProbe.java.test testsrc/PABoardsProbe.java
+          cp helpers/pa2/test-manifest.xml testsrc/AndroidManifest.xml
+          sed -i 's/com\.senikolo\.pomocniknowy\.pa2preview/com.senikolo.pomocniknowy.pa2railtest/g' testsrc/AndroidManifest.xml
+          grep -q 'android:targetPackage="com.senikolo.pomocniknowy.pa2railtest"' testsrc/AndroidManifest.xml
+          javac -source 8 -target 8 -cp "classes:$ANDROID_HOME/platforms/android-35/android.jar" -d testclasses testsrc/*.java
+          find testclasses -name '*.class' -print0 | xargs -0 "$ANDROID_HOME/build-tools/35.0.0/d8" --min-api 29 --lib "$ANDROID_HOME/platforms/android-35/android.jar" --output testdex
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" package -f -M testsrc/AndroidManifest.xml -I "$ANDROID_HOME/platforms/android-35/android.jar" -F output/test-raw.apk
+          (cd testdex && zip -q -0 ../output/test-raw.apk classes.dex)
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -p -f 4 output/test-raw.apk output/test-aligned.apk
+          cp output/test-aligned.apk output/PA2-instrumentation-unsigned.apk
+      - name: Export public signing tool for local stable-key signing
+        run: |
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" output/apksigner.jar
+      - name: Preserve complete reconstructed project and updateable data
+        run: |
+          cp -r helpers/pa2 decoded/pa2-build-sources
+          cp -r native decoded/pa2-native-dex
+          (cd decoded && zip -q -r ../output/PA2-Reconstructed-Project.zip . -x 'build/*' 'dist/*')
+          (cd build/data && zip -q -r ../../output/pa2-data.zip .)
+      - name: Sign one-off rail test APK with an isolated temporary key
+        run: |
+          set -euo pipefail
+          umask 077
+          export TRIAL_PASS="$(openssl rand -hex 24)"
+          keytool -genkeypair -noprompt -keyalg RSA -keysize 3072 -sigalg SHA256withRSA -validity 3650 -alias pa2-rail-trial -dname 'CN=PA2 isolated rail trial, O=PA testing' -storetype PKCS12 -keystore "$RUNNER_TEMP/pa2railtest.p12" -storepass:env TRIAL_PASS -keypass:env TRIAL_PASS >/dev/null 2>&1
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          APK=output/Pomocnik-Alfa-alpha10-POLREGIO-Intercity-OSOBNY-TEST.apk
+          "$BT/apksigner" sign --ks "$RUNNER_TEMP/pa2railtest.p12" --ks-type PKCS12 --ks-key-alias pa2-rail-trial --ks-pass env:TRIAL_PASS --key-pass env:TRIAL_PASS --out "$APK" output/PA2-aligned-unsigned.apk
+          "$BT/apksigner" verify --verbose --print-certs "$APK" > output/signature.txt
+          "$BT/aapt" dump badging "$APK" > output/badging.txt
+          grep -q "package: name='com.senikolo.pomocniknowy.pa2railtest'" output/badging.txt
+          ! grep -q "package: name='com.senikolo.pomocniknowy.pa2preview'" output/badging.txt
+          "$BT/apksigner" sign --ks "$RUNNER_TEMP/pa2railtest.p12" --ks-type PKCS12 --ks-key-alias pa2-rail-trial --ks-pass env:TRIAL_PASS --key-pass env:TRIAL_PASS --out output/PA2-instrumentation.apk output/PA2-instrumentation-unsigned.apk
+          "$BT/apksigner" verify output/PA2-instrumentation.apk
+          sha256sum "$APK" > output/SHA256SUMS.txt
+          rm -f "$RUNNER_TEMP/pa2railtest.p12"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PA2-alpha10-isolated-signed-apk
+          path: |
+            output/Pomocnik-Alfa-alpha10-POLREGIO-Intercity-OSOBNY-TEST.apk
+            output/PA2-instrumentation.apk
+            output/SHA256SUMS.txt
+            output/signature.txt
+            output/badging.txt
+            output/*.json
+            output/*tests.txt
+          retention-days: 60
+  android:
+    needs: build
+    env:
+      GH_TOKEN: ${{ github.token }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: PA2-alpha10-isolated-signed-apk
+          path: build
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Prepare bounded tests with failure screenshots
+        run: |
+          cat > pa2-smoke.sh <<'BASH'
+          set -euo pipefail
+          mkdir -p results
+          trap 'adb logcat -d -b crash > results/final-crash-buffer.txt; adb logcat -d -v time -s PA2Premium:W > results/premium-icon-logcat.txt || true; adb pull /data/user/0/com.senikolo.pomocniknowy.pa2railtest/files/pa2-tests results/last-state || true' EXIT
+          adb root
+          adb wait-for-device
+          adb install build/Pomocnik-Alfa-alpha10-POLREGIO-Intercity-OSOBNY-TEST.apk
+          adb install -r build/PA2-instrumentation.apk
+          adb logcat -c
+          timeout 300s adb shell am instrument -w com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/instrumentation.txt
+          grep -q 'TOTAL PASS system installation' results/instrumentation.txt
+          adb logcat -d -b crash > results/crash-buffer.txt
+          ! grep -q 'FATAL EXCEPTION' results/crash-buffer.txt
+          adb pull /data/user/0/com.senikolo.pomocniknowy.pa2railtest/files/pa2-tests results/screenshots
+          adb shell am force-stop com.senikolo.pomocniknowy.pa2railtest
+          adb shell pm revoke com.senikolo.pomocniknowy.pa2railtest android.permission.ACCESS_FINE_LOCATION
+          adb shell pm revoke com.senikolo.pomocniknowy.pa2railtest android.permission.ACCESS_COARSE_LOCATION
+          adb shell settings put system font_scale 1.3
+          adb shell wm size 720x1280
+          adb shell wm density 320
+          timeout 300s adb shell am instrument -w -e boardsOnly true com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/large-font.txt
+          grep -q 'TOTAL PASS system large-font' results/large-font.txt
+          adb pull /data/user/0/com.senikolo.pomocniknowy.pa2railtest/files/pa2-tests results/large-font-screenshots
+          adb shell am force-stop com.senikolo.pomocniknowy.pa2railtest
+          adb shell pm revoke com.senikolo.pomocniknowy.pa2railtest android.permission.ACCESS_FINE_LOCATION
+          adb shell pm revoke com.senikolo.pomocniknowy.pa2railtest android.permission.ACCESS_COARSE_LOCATION
+          timeout 120s adb shell am instrument -w -e verifyGpsRestart true com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/gps-restart.txt
+          grep -q 'TOTAL PASS GPS tab process restart' results/gps-restart.txt
+          adb shell settings put system font_scale 1.0
+          BASH
+      - name: Verify isolated Android 11 installation, stop boards and preserved modules
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          target: google_apis
+          profile: pixel_2
+          disable-animations: true
+          emulator-boot-timeout: 700
+          script: bash pa2-smoke.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PA2-Android-30-test-results
+          path: results
+          retention-days: 60
+  release:
+    needs: [build, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: PA2-alpha10-isolated-signed-apk
+          path: release
+      - name: Publish tested APK as a separate prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="pa2-rail-alpha10-isolated-$(echo "$GITHUB_SHA" | cut -c1-8)"
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title 'Pomocnik Alfa alpha.10 – naprawiony Planer, POLREGIO i PKP IC (osobna instalacja TEST)' --notes 'Instaluje się obok dotychczasowej alpha.9 pod identyfikatorem com.senikolo.pomocniknowy.pa2railtest. Podpisano tymczasowym kluczem tylko to wydanie: przyszłe aktualizacje testowe mogą wymagać osobnej instalacji. Nie usuwać istniejącej alpha.9. Rozkłady są planowe; LIVE tylko ze zgodnych źródeł. Testy Android API 30 przeprowadzone w CI.' release/Pomocnik-Alfa-alpha10-POLREGIO-Intercity-OSOBNY-TEST.apk release/SHA256SUMS.txt release/signature.txt

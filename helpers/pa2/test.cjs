@@ -8,7 +8,7 @@ const date=idx.generated,when=date+'T09:00';
  await test('pełny zakres: autobus, tramwaj, metro, SKM, WKD i kolej krajowa',()=>{for(const type of [0,1,2,3,900])assert(idx.routes.some(r=>r[3]===type));assert(idx.routes.some(r=>r[5]==='wkd'));assert(idx.routes.some(r=>r[5]==='polishrail'));assert(idx.routes.some(r=>r[4].includes('Mazowieckie')))});
  await test('jednakowe nazwy: Szwedzka w Warszawie i Krakowie oraz dwa Stanisławowy wymagają wyboru',()=>{const x=e.resolve('Szwedzka');assert.equal(x.group,null);assert(x.candidates.length>=2);const waw=x.candidates.find(g=>g.name.includes('Warszawa')),krk=x.candidates.find(g=>g.name.includes('Kraków'));assert(waw&&krk);assert(waw.stops.every(i=>idx.stops[i][6]==='warsaw'));assert(krk.stops.every(i=>idx.stops[i][6].startsWith('krakow')));assert.equal(e.resolve(waw.name).group,waw);assert.equal(e.resolve(krk.name).group,krk);const y=e.resolve('Stanisławów');assert.equal(y.group,null);assert(y.candidates.length>=2);assert.notEqual(y.candidates[0].name,y.candidates[1].name);for(const c of [waw,krk,...y.candidates])for(const i of c.stops)assert(PATransit.distance(idx.stops[c.stops[0]],idx.stops[i])<=800)});
  await test('Białołęka–centrum: wyłącznie rzeczywiste kursy i chronologia przesiadek',async()=>{const rows=await e.find(g('Białołęka-Ratusz'),g('Dw. Centralny'),when);assert(rows.length);for(const r of rows){assert(r.arr>=r.dep);for(let i=1;i<r.legs.length;i++)assert(r.legs[i].dep>=r.legs[i-1].arr);for(const l of r.legs.filter(l=>!l.walk))assert(l.trip&&l.serviceDay)}});
- await test('metro Młociny–Centrum: filtr metra i dokładna stacja Centrum',async()=>{assert.equal(g('Metro Centrum').key,'centrum');const rows=await e.find(g('Metro Młociny'),g('Metro Centrum'),when,{modes:[1],maxTransfers:0});assert(rows.length);assert(rows.every(r=>r.legs.filter(l=>!l.walk).every(l=>l.mode===1)))});
+ await test('metro: częstotliwość zamiast fikcyjnych godzin',async()=>{assert.equal(g('Metro Centrum').key,'centrum');const rows=await e.departures(g('Młociny'),when,'M1');assert(rows.some(d=>d.headway>0&&d.frequencyEnd>d.dep));const routes=await e.find(g('Metro Młociny'),g('Metro Centrum'),when,{modes:[1],maxTransfers:0});for(const r of routes)assert(r.legs.every(l=>l.walk||!l.trip.includes('NdM')))});
  await test('tramwaj Tarchomin–Nowodwory',async()=>{const rows=await e.find(g('Tarchomin'),g('Nowodwory'),when,{modes:[0,900],maxTransfers:0});assert(rows.length)});
  await test('autobusy nocne występują w bazie i mają aktywne odjazdy',async()=>{const origin=g('Dw. Centralny');let found=[];for(const n of origin.routes){if(!/^N\d/.test(idx.routes[n][1]))continue;found=await e.departures(origin,date+'T23:00',idx.routes[n][1]);if(found.length)break}assert(found.length);assert(found.every(x=>x.dep>=23*3600&&/^N/.test(x.line)))});
  await test('Warszawa Centralna–Kraków Główny z krajowego GTFS',async()=>{const rows=await e.find(g('Warszawa Centralna'),g('Kraków Główny'),when,{maxTransfers:0});assert(rows.length);assert(rows.some(r=>r.legs.some(l=>l.source==='polishrail')))});
@@ -23,6 +23,34 @@ const date=idx.generated,when=date+'T09:00';
  await test('błędne daty i godziny odrzucane; zmiana czasu przechodzi przez północ',()=>{assert(parseTime('31.02.2026 o 10',when).error);assert(parseTime('jutro o 25',when).error);assert.equal(parseTime('godzinę później','2026-10-15T23:30').when,'2026-10-16T00:30')});
  await test('nieaktualny rozkład: odmowa zamiast powielania kursów',async()=>{await assert.rejects(()=>e.find(g('Ispina'),g('Bochnia Dworzec PKP'),'2035-01-01T09:00'),/Brak potwierdzonego/)});
  await test('offline: zapisane pliki działają bez połączenia; brak pliku nie jest pustą listą',async()=>{const offline=new Engine(idx,async id=>JSON.parse(fs.readFileSync(dir+'/route_all_'+id+'.json')));assert((await offline.find(g('Ispina'),g('Bochnia Dworzec PKP'),when,{maxTransfers:0})).length);const missing=new Engine(idx,async()=>{throw Error('offline missing')});await assert.rejects(()=>missing.find(g('Ispina'),g('Bochnia Dworzec PKP'),when,{maxTransfers:0}),/offline missing/)});
+ await test('Planer usuwa kopie tego samego pociągu i niekorzystne przesiadki',async()=>{
+  const monday=idx.days.find(d=>new Date(d+'T12:00:00Z').getUTCDay()===1);
+  assert(monday,'No Monday in the rolling GTFS window');
+  const routes=await e.find(g('Warszawa Centralna'),g('Kraków Główny'),monday+'T09:00',{maxTransfers:2});
+  assert(routes.length,'No Warsaw–Kraków service');
+  const fingerprints=routes.map(r=>r.legs.filter(l=>!l.walk).map(l=>[l.source,l.trip,l.serviceDay,l.dep,l.fromId,l.toId].join(':')).join('|'));
+  assert.equal(new Set(fingerprints).size,fingerprints.length,'Different terminal footpaths duplicate the same train');
+  for(let i=0;i<routes.length;i++)for(let j=0;j<routes.length;j++){
+   if(i===j)continue;const a=routes[i],b=routes[j];
+   assert(!(b.arr<=a.arr&&b.dep>=a.dep&&b.transfers<=a.transfers&&b.walkMetres<=a.walkMetres&&
+    (b.arr<a.arr||b.dep>a.dep||b.transfers<a.transfers||b.walkMetres<a.walkMetres)),
+    'A dominated itinerary was displayed: '+i+' vs '+j);
+  }
+ });
+ await test('Ispina–Bochnia: bezpośredni autobus nie zostaje zastąpiony bezsensownym objazdem',async()=>{
+  const monday=idx.days.find(d=>new Date(d+'T12:00:00Z').getUTCDay()===1);
+  const routes=await e.find(g('Ispina Most'),g('Bochnia Dworzec PKP'),monday+'T09:00',{maxTransfers:2});
+  assert(routes.some(r=>r.transfers===0&&r.legs.some(l=>l.line==='A65')));
+  const direct=routes.find(r=>r.transfers===0&&r.legs.some(l=>l.line==='A65'));
+  assert(routes.every(r=>!(r.transfers>0&&r.arr>=direct.arr&&r.dep<=direct.dep&&r.walkMetres>=direct.walkMetres)),
+   'Nonsensical detour survives even though a direct bus is better');
+ });
+ await test('Tarchomin–Nowodwory: szybkie bezpośrednie tramwaje zamiast całonocnej wycieczki',async()=>{
+  const monday=idx.days.find(d=>new Date(d+'T12:00:00Z').getUTCDay()===1);
+  const rows=await e.find(g('Tarchomin'),g('Nowodwory'),monday+'T09:00',{maxTransfers:2});
+  assert(rows.length>=3&&rows.slice(0,3).every(r=>r.transfers===0));
+  assert(rows.every(r=>r.duration<45*60),'Overnight detour returned for a four-minute journey');
+ });
  await test('sortowanie według przyjazdu, czasu i przesiadek',()=>{const rows=[{arr:500,duration:200,transfers:1},{arr:600,duration:100,transfers:0}];assert.equal(e.sort([...rows],'arrival')[0].arr,500);assert.equal(e.sort([...rows],'duration')[0].duration,100);assert.equal(e.sort([...rows],'transfers')[0].transfers,0)});
  console.log('TOTAL PASS',count);
 })().catch(e=>{console.error('FAIL',e);process.exitCode=1});

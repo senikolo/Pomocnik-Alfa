@@ -3,7 +3,8 @@
 const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ł/g,'l').replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
 const dayOf=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 function distance(a,b){if(!a[3]||!b[3])return Infinity;const rad=Math.PI/180,x=(a[4]-b[4])*rad*Math.cos((a[3]+b[3])*rad/2),y=(a[3]-b[3])*rad;return 6371000*Math.hypot(x,y)}
-const canonical=s=>norm(s).replace(/^ispin[yi]\b/,'ispina').replace(/^bochni\b/,'bochnia').replace(/^warszaw(?:y|ie)\b/,'warszawa').replace(/^krakow(?:a|ie)\b/,'krakow').replace(/^tarchomin(?:a|ie)\b/,'tarchomin').replace(/^nowodwor(?:ow|ach)\b/,'nowodwory').replace(/^winnic(?:y|e)\b/,'winnica').replace(/^szczesliwic(?:ach|e)?\b/,'szczesliwice').replace(/^grobli\b/,'grobla').replace(/^proszowic\b/,'proszowice').replace(/^niepolomic\b/,'niepolomice').replace(/^podleza\b/,'podleze').replace(/^nowego brzeska\b/,'nowe brzesko').replace(/lesniczowki\b/,'lesniczowka').replace(/dworzec centralny|dworca centralnego|dworzec centralnego/g,'dw centralny').replace(/dworzec pkp bochnia/,'bochnia dworzec pkp');
+const category=t=>t===1||t>=400&&t<500?'metro':t===0||t>=900&&t<1000?'tram':t===2||t>=100&&t<200?'rail':'bus';
+const canonical=s=>norm(s).replace(/^ispin[yi]\b/,'ispina').replace(/^bochni\b/,'bochnia').replace(/^warszaw(?:y|ie)\b/,'warszawa').replace(/^krakow(?:a|ie)\b/,'krakow').replace(/^tarchomin(?:a|ie)\b/,'tarchomin').replace(/^nowodwor(?:ow|ach)\b/,'nowodwory').replace(/^winnic(?:y|e)\b/,'winnica').replace(/^szczesliwic(?:ach|e)?\b/,'szczesliwice').replace(/^grobli\b/,'grobla').replace(/^proszowic\b/,'proszowice').replace(/^niepolomic\b/,'niepolomice').replace(/^podleza\b/,'podleze').replace(/^nowego brzeska\b/,'nowe brzesko').replace(/^wieliczki\b/,'wieliczka').replace(/^legionowa\b/,'legionowo').replace(/^tarnowa\b/,'tarnow').replace(/\bglownego\b/,'glowny').replace(/\bwschodniej\b/,'wschodnia').replace(/\bzachodniej\b/,'zachodnia').replace(/\blotniska\b/,'lotnisko').replace(/lesniczowki\b/,'lesniczowka').replace(/dworzec centralny|dworca centralnego|dworzec centralnego/g,'dw centralny').replace(/dworzec pkp bochnia/,'bochnia dworzec pkp');
 class Engine{
  constructor(idx,loader){this.idx=idx;this.loader=loader;this.cache=new Map();this.groups=new Map();this.grid=new Map();this.walkCache=new Map();this.explicit=new Map();
   const buckets=new Map(),network=s=>s==='warsaw'?'Warszawa':s.startsWith('krakow')?'Kraków':s==='mld'?'MLD':s==='kmlrail'?'Koleje Małopolskie':s==='wkd'?'WKD':'kolej';
@@ -37,8 +38,8 @@ class Engine{
  }
  async route(id){if(this.cache.has(id))return this.cache.get(id);const p=this.loader(id).catch(e=>{this.cache.delete(id);throw e});this.cache.set(id,p);if(this.cache.size>70)this.cache.delete(this.cache.keys().next().value);return p}
  valid(when){const date=when.slice(0,10),day=this.idx.days.indexOf(date);if(day<0||!this.idx.covered[day])throw Error('Brak potwierdzonego rozkładu na '+date+'. Odśwież dane lub wybierz dzień objęty bazą.');const [h,m]=when.slice(11).split(':').map(Number);if(!(h>=0&&h<=23&&m>=0&&m<=59))throw Error('Wybierz poprawną godzinę.');return{day,time:h*3600+m*60}}
- runs(data,day,min,max){const out=[];for(const r of data.runs||[]){for(const shift of [-1,0,1]){const d=day+shift;if(d<0||d>=this.idx.days.length||!(r[0]&(1<<d)))continue;const pattern=data.patterns[r[2]],base=r[3]+shift*86400;if(!pattern.length||base+pattern.at(-1)[2]<min||base>max)continue;out.push({id:r[4],headsign:r[1],short:r[5],base,pattern,day:this.idx.days[d]})}}return out.sort((a,b)=>a.base-b.base)}
- add(map,sid,label){let list=map.get(sid)||[];if(list.some(x=>x.arr<=label.arr&&x.dep>=label.dep))return false;list=list.filter(x=>!(label.arr<=x.arr&&label.dep>=x.dep));list.push(label);list.sort((a,b)=>a.arr-b.arr);if(list.length>5)list.length=5;map.set(sid,list);return list.includes(label)}
+ runs(data,day,min,max){const out=[];for(const r of data.runs||[]){for(const shift of [-1,0,1]){const d=day+shift;if(d<0||d>=this.idx.days.length||!(r[0]&(1<<d)))continue;const pattern=data.patterns[r[2]],base=r[3]+shift*86400;if(!pattern.length||(r[6]?r[7]+shift*86400:base)+pattern.at(-1)[2]<min||base>max)continue;out.push({id:r[4],headsign:r[1],short:r[5],headway:r[6]||0,frequencyEnd:r[7]?r[7]+shift*86400:0,base,pattern,day:this.idx.days[d]})}}return out.sort((a,b)=>a.base-b.base)}
+ add(map,sid,label){let list=map.get(sid)||[];if(list.some(x=>x.arr<=label.arr&&x.dep>=label.dep))return false;list=list.filter(x=>!(label.arr<=x.arr&&label.dep>=x.dep));list.push(label);list.sort((a,b)=>a.arr-b.arr);if(list.length>12)list.length=12;map.set(sid,list);return list.includes(label)}
  walk(map,max){const result=new Map([...map].map(([k,v])=>[k,[...v]]));for(const [sid,labels] of map)for(const [to,sec,metres] of this.nearby(sid,max))for(const l of labels){if(l.walked+metres>max*1.5)continue;this.add(result,to,{...l,arr:l.arr+sec,walked:l.walked+metres,path:l.path.concat({walk:true,fromId:sid,toId:to,dep:l.arr,arr:l.arr+sec,metres,estimated:true})})}return result}
  async find(from,to,when,opts={}){
   const {day,time}=this.valid(when);if(from.key===to.key)throw Error('Początek i cel są takie same.');const minWait=Math.max(60,Math.min(3600,(opts.minTransfer||5)*60)),maxWalk=opts.walk===false?0:400,maxRounds=Math.min(4,(opts.maxTransfers??2)+1),horizon=time+24*3600;
@@ -52,12 +53,13 @@ class Engine{
    const next=new Map(),ids=[...routes];let at=0;
    while(at<ids.length){const batch=ids.slice(at,at+5);at+=5;const loaded=await Promise.all(batch.map(async id=>[id,await this.route(id)]));if(cancelled())return[];
     for(const [rid,data]of loaded)for(const run of this.runs(data,day,time,horizon)){
+     if(run.headway)continue; // Frequency-only service cannot promise a particular connection.
      let boarded=[];
      for(let pi=0;pi<run.pattern.length;pi++){
       const p=run.pattern[pi],sid=p[0],arr=run.base+p[2],dep=run.base+p[1];
-      if(p[4]!==1&&p[4]!==2&&p[4]!==3)for(const b of boarded){if(pi<=b.pi||arr<b.departure)continue;const leg={line:this.idx.routes[rid][1],mode:this.idx.routes[rid][3],agency:this.idx.routes[rid][4],source:this.idx.routes[rid][5],trip:run.id,serviceDay:run.day,headsign:run.headsign,train:run.short,fromId:b.sid,toId:sid,dep:b.departure,arr,from:this.idx.stops[b.sid][1],to:this.idx.stops[sid][1],platformFrom:this.idx.stops[b.sid][2],platformTo:this.idx.stops[sid][2]};this.add(next,sid,{arr,dep:b.previous.path.some(x=>!x.walk)?b.previous.dep:b.departure-b.previous.path.reduce((sum,x)=>sum+x.arr-x.dep,0),walked:b.previous.walked,path:b.previous.path.concat(leg)})}
-      if(p[3]===1||p[3]===2||p[3]===3)continue;
-      for(const l of prev.get(sid)||[]){const rides=l.path.filter(x=>!x.walk),last=rides.at(-1);if(last&&last.trip===run.id&&last.source===this.idx.routes[rid][5])continue;let wait=rides.length?minWait:0;const lastStep=l.path.at(-1);if(lastStep&&lastStep.walk&&rides.length)wait=Math.max(0,minWait-(lastStep.arr-lastStep.dep));if(dep>=l.arr+wait&&dep<=horizon){const b={pi,sid,departure:dep,previous:l};if(!boarded.some(x=>x.previous.dep>=l.dep&&x.departure>=dep))boarded.push(b);if(boarded.length>5)boarded.shift()}}
+      if(p[4]!==1)for(const b of boarded){if(pi<=b.pi||arr<b.departure)continue;const leg={line:this.idx.routes[rid][1],mode:this.idx.routes[rid][3],agency:this.idx.routes[rid][4],source:this.idx.routes[rid][5],operator:this.idx.routes[rid][6]||this.idx.routes[rid][4],trip:run.id,serviceDay:run.day,headsign:run.headsign,train:run.short,fromId:b.sid,toId:sid,dep:b.departure,arr,from:this.idx.stops[b.sid][1],to:this.idx.stops[sid][1],platformFrom:this.idx.stops[b.sid][2],platformTo:this.idx.stops[sid][2],pickupType:b.pickupType,dropOffType:p[4]};this.add(next,sid,{arr,dep:b.previous.path.some(x=>!x.walk)?b.previous.dep:b.departure-b.previous.path.reduce((sum,x)=>sum+x.arr-x.dep,0),walked:b.previous.walked,path:b.previous.path.concat(leg)})}
+      if(p[3]===1)continue;
+      for(const l of prev.get(sid)||[]){const rides=l.path.filter(x=>!x.walk),last=rides.at(-1);if(last&&last.trip===run.id&&last.source===this.idx.routes[rid][5])continue;let wait=rides.length?minWait:0;const lastStep=l.path.at(-1);if(lastStep&&lastStep.walk&&rides.length)wait=Math.max(0,minWait-(lastStep.arr-lastStep.dep));if((!rides.length||dep-last.arr<=7200)&&dep>=l.arr+wait&&dep<=horizon){const b={pi,sid,departure:dep,previous:l,pickupType:p[3]};if(!boarded.some(x=>x.previous.dep>=l.dep&&x.departure>=dep))boarded.push(b);if(boarded.length>5)boarded.shift()}}
      }
     }
     if(opts.progress)opts.progress(round+1,Math.min(100,Math.round(at/Math.max(ids.length,1)*100)));
@@ -67,10 +69,39 @@ class Engine{
    for(const sid of targets)for(const l of reached.get(sid)||[]){const legs=l.path.filter(x=>!x.walk);if(!legs.length)continue;const path=l.path.map(x=>({...x})),firstRide=path.findIndex(x=>!x.walk),access=path.slice(0,firstRide).reduce((sum,x)=>sum+x.arr-x.dep,0),dep=legs[0].dep-access;let cursor=dep;for(let i=0;i<firstRide;i++){const span=path[i].arr-path[i].dep;path[i].dep=cursor;path[i].arr=cursor+span;cursor+=span}found.push({legs:path,dep,arr:l.arr,transfers:legs.length-1,duration:l.arr-dep,wait:path.reduce((a,x,i,p)=>a+(i?Math.max(0,x.dep-p[i-1].arr):0),0),date:when.slice(0,10)})}
    prev=reached;if(!prev.size)break;
   }
-  const unique=new Map();for(const r of found){const key=r.legs.map(l=>l.walk?'w'+l.fromId+':'+l.toId:l.source+':'+l.trip+':'+l.dep+':'+l.fromId+':'+l.toId).join('|');if(!unique.has(key))unique.set(key,r)}return this.sort([...unique.values()].filter(r=>!opts.mustLine||r.legs.some(l=>!l.walk&&norm(l.line)===norm(opts.mustLine))),opts.sort).slice(0,24)
+
+  // A different footpath between platforms must not create another copy of the same train.
+  // Keep real alternatives (different vehicles/departure times), not inflated walk variants.
+  const unique=new Map();
+  for(const r of found){
+   const rides=r.legs.filter(l=>!l.walk);
+   if(!rides.length||r.arr<r.dep||r.dep<time||r.legs.some((l,i)=>l.arr<l.dep||(i&&l.dep<r.legs[i-1].arr)))continue;
+   if(opts.mustLine&&!rides.some(l=>norm(l.line)===norm(opts.mustLine)))continue;
+   const key=rides.map(l=>l.source+':'+l.trip+':'+l.serviceDay+':'+l.dep+':'+l.fromId+':'+l.toId).join('|');
+   r.walkMetres=r.legs.filter(l=>l.walk).reduce((n,l)=>n+l.metres,0);
+   const previous=unique.get(key);
+   if(!previous||r.arr<previous.arr||(r.arr===previous.arr&&r.walkMetres<previous.walkMetres))unique.set(key,r);
+  }
+  const choices=[...unique.values()];
+  // Pareto: never offer an earlier start, later arrival, more changes and more walking
+  // when a strictly better actual itinerary exists.
+  const relevant=choices.filter((r,i)=>!choices.some((other,j)=>i!==j&&other.arr<=r.arr&&other.dep>=r.dep&&other.transfers<=r.transfers&&other.walkMetres<=r.walkMetres&&(other.arr<r.arr||other.dep>r.dep||other.transfers<r.transfers||other.walkMetres<r.walkMetres)));
+  const fastest=Math.min(...relevant.map(r=>r.duration));
+  // A connection taking many times longer than a valid nearby alternative is not useful;
+  // retain legitimate longer direct railway services with a relative + absolute allowance.
+  const maxUseful=fastest===Infinity?Infinity:Math.max(fastest*3,fastest+45*60);
+  const useful=relevant.filter(r=>r.duration<=maxUseful);
+  const direct=useful.filter(r=>r.transfers===0).sort((a,b)=>a.dep-b.dep);
+  const frequentDirect=direct.length>=3&&direct[2].dep-direct[0].dep<=45*60;
+  const shortestDirect=direct.length?Math.min(...direct.map(r=>r.duration)):Infinity;
+  return this.sort(useful.filter(r=>!frequentDirect||r.transfers===0||r.duration<=shortestDirect+10*60),opts.sort).slice(0,24)
  }
  sort(rows,sort='arrival'){return rows.sort((a,b)=>sort==='duration'?a.duration-b.duration||a.arr-b.arr:sort==='transfers'?a.transfers-b.transfers||a.arr-b.arr:a.arr-b.arr||a.transfers-b.transfers||b.dep-a.dep)}
- async departures(origin,when,line,direction,limit=12,routeIds=null,lookback=0){const {day,time}=this.valid(when),out=[],earliest=time-Math.max(0,Math.min(3600,Number(lookback)||0));const selected=new Set(origin.stops),allowed=routeIds?new Set(routeIds):null,rids=[...origin.routes].filter(id=>(!allowed||allowed.has(id))&&(!line||norm(this.idx.routes[id][1])===norm(line)));for(const id of rids){const data=await this.route(id);for(const r of this.runs(data,day,earliest,time+86400)){if(direction&&!norm(r.headsign).includes(canonical(direction)))continue;for(const p of r.pattern){const dep=r.base+p[1];if(selected.has(p[0])&&p[3]!==1&&dep>=earliest&&dep<=time+86400){out.push({line:this.idx.routes[id][1],headsign:r.headsign,dep,trip:r.id,source:this.idx.routes[id][5],serviceDay:r.day,stopId:this.idx.stops[p[0]][0],stop:this.idx.stops[p[0]][1],platform:this.idx.stops[p[0]][2],mode:this.idx.routes[id][3],queryDay:when.slice(0,10)});break}}}}return out.sort((a,b)=>a.dep-b.dep).slice(0,Math.max(1,Math.min(72,limit)))}
+ async arrivals(origin,when,limit=36){const {day,time}=this.valid(when),out=[],selected=new Set(origin.stops);
+  for(const id of origin.routes){const data=await this.route(id),meta=this.idx.routes[id];for(const r of this.runs(data,day,time,time+86400)){if(r.headway)continue;for(let i=1;i<r.pattern.length;i++){const p=r.pattern[i],arr=r.base+p[2];if(!selected.has(p[0])||p[4]===1||arr<time||arr>time+86400)continue;out.push({line:meta[1],headsign:this.idx.stops[r.pattern[0][0]][1],dep:arr,trip:r.id,source:meta[5],serviceDay:r.day,stopId:this.idx.stops[p[0]][0],mode:meta[3],operator:meta[6]||meta[4],train:r.short,queryDay:when.slice(0,10),arrival:true});}}}
+  return out.sort((a,b)=>a.dep-b.dep).slice(0,limit);
+ }
+ async departures(origin,when,line,direction,limit=12,routeIds=null,lookback=0){const {day,time}=this.valid(when),out=[],earliest=time-Math.max(0,Math.min(3600,Number(lookback)||0));const selected=new Set(origin.stops),allowed=routeIds?new Set(routeIds):null,rids=[...origin.routes].filter(id=>(!allowed||allowed.has(id))&&(!line||norm(this.idx.routes[id][1])===norm(line)));for(const id of rids){const data=await this.route(id);for(const r of this.runs(data,day,earliest,time+86400)){if(direction&&!norm(r.headsign).includes(canonical(direction)))continue;for(const p of r.pattern){const dep=r.base+p[1];if(selected.has(p[0])&&p[3]!==1&&(dep>=earliest||r.headway&&r.frequencyEnd+p[1]>=earliest)&&dep<=time+86400){out.push({line:this.idx.routes[id][1],headsign:r.headsign,dep,trip:r.id,source:this.idx.routes[id][5],serviceDay:r.day,stopId:this.idx.stops[p[0]][0],stop:this.idx.stops[p[0]][1],platform:this.idx.stops[p[0]][2],pickupType:p[3],mode:this.idx.routes[id][3],operator:this.idx.routes[id][6]||this.idx.routes[id][4],train:r.short,headway:r.headway,frequencyEnd:r.frequencyEnd+p[1],intermediate:r.pattern.slice(r.pattern.indexOf(p)+1).map(x=>({name:this.idx.stops[x[0]][1],arrival:r.base+x[2]})),queryDay:when.slice(0,10)});break}}}}return out.sort((a,b)=>a.dep-b.dep).slice(0,Math.max(1,Math.min(72,limit)))}
 }
-root.PATransit={Engine,norm,canonical,distance,dayOf};if(typeof module!=='undefined')module.exports=root.PATransit;
+root.PATransit={Engine,norm,canonical,distance,dayOf,category};if(typeof module!=='undefined')module.exports=root.PATransit;
 })(typeof globalThis!=='undefined'?globalThis:this);

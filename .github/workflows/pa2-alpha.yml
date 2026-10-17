@@ -1,9 +1,12 @@
-name: PA 2.0 SMART alpha.9 GPS and My Stops tabs build
+name: PA 2.0 SMART UltraSmart transport alpha.10 build
 on:
   workflow_dispatch:
   push:
-    branches: ['work/pa2-stops-tabs-20261016']
+    branches: ['work/pa2-ultrasmart-transport-20261017']
     paths: ['helpers/pa2/**', '.github/workflows/pa2-alpha.yml']
+defaults:
+  run:
+    shell: bash
 permissions:
   contents: write
   actions: read
@@ -38,19 +41,15 @@ jobs:
       - name: Reuse valid shared GTFS generation, probe LIVE and validate calendars
         run: |
           python3 helpers/pa2/probe_sources.py | tee output/live-source-access.json
-          mkdir -p coverage
-          if gh release download pa2-smart-alpha7-20261015-51 -p Pomocnik-Alfa-2.0.0-alpha.7-SMART-TEST.apk -D coverage && python3 helpers/pa2/reuse_validated_data.py coverage/*.apk build/data > output/data-build.txt; then
-            cat output/data-build.txt
-          else
-            python3 helpers/pa2/fetch_data.py feeds
-            python3 helpers/pa2/build_data.py feeds build/data | tee output/data-build.txt
-          fi
+          python3 helpers/pa2/fetch_data.py feeds
+          python3 helpers/pa2/build_data.py feeds build/data | tee output/data-build.txt
           TZ=Europe/Warsaw node helpers/pa2/test.cjs build/data | tee output/logic-tests.txt
           TZ=Europe/Warsaw node helpers/pa2/test-fixes.cjs build/data | tee output/audit-fixes-tests.txt
           npm install --prefix build/test-runtime jsdom@26.1.0
           PA_JSDOM_PATH="$PWD/build/test-runtime/node_modules/jsdom" TZ=Europe/Warsaw node helpers/pa2/test-ui.cjs build/data | tee output/dom-tests.txt
           python3 -m py_compile helpers/pa2/*.py
           python3 helpers/pa2/test_data.py
+          TZ=Europe/Warsaw node helpers/pa2/test-transport.cjs build/data | tee output/transport-tests.txt
           node --check helpers/pa2/backend/worker.mjs
           node --check helpers/pa2/app.js
           node --check helpers/pa2/osm-map.js
@@ -104,15 +103,100 @@ jobs:
           cp -r native decoded/pa2-native-dex
           (cd decoded && zip -q -r ../output/PA2-Reconstructed-Project.zip . -x 'build/*' 'dist/*')
           (cd build/data && zip -q -r ../../output/pa2-data.zip .)
+      - name: Sign with existing stable certificate only
+        env:
+          KEYSTORE_B64: ${{ secrets.PA_STABLE_KEYSTORE_B64 }}
+          KEYSTORE_PASS: ${{ secrets.PA_STABLE_KEYSTORE_PASS }}
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_B64" || { echo 'Missing PA_STABLE_KEYSTORE_B64'; exit 1; }
+          test -n "$KEYSTORE_PASS" || { echo 'Missing PA_STABLE_KEYSTORE_PASS'; exit 1; }
+          trap 'rm -f "$RUNNER_TEMP/pa-stable.p12"' EXIT
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/pa-stable.p12"
+          keytool -list -v -storetype PKCS12 -keystore "$RUNNER_TEMP/pa-stable.p12" -storepass:env KEYSTORE_PASS -alias pomocnik-alfa-stable > "$RUNNER_TEMP/pa-cert.txt"
+          grep -qi '36:14:42:C8:98:55:22:36:A7:D4:29:9E:ED:A5:C3:DC:27:5B:A1:F3:68:C0:11:29:2D:C0:7D:44:B2:E8:AC:E1' "$RUNNER_TEMP/pa-cert.txt"
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          "$BT/apksigner" sign --ks "$RUNNER_TEMP/pa-stable.p12" --ks-type PKCS12 --ks-key-alias pomocnik-alfa-stable --ks-pass env:KEYSTORE_PASS --key-pass env:KEYSTORE_PASS --out output/Pomocnik-Alfa-UltraSmart-20010.apk output/PA2-aligned-unsigned.apk
+          "$BT/apksigner" verify --verbose --print-certs output/Pomocnik-Alfa-UltraSmart-20010.apk > output/signature.txt
+          grep -qi '361442c898552236a7d4299eedA5c3dc275ba1f368c011292dc07d44b2e8ace1' output/signature.txt
+          "$BT/apksigner" sign --ks "$RUNNER_TEMP/pa-stable.p12" --ks-type PKCS12 --ks-key-alias pomocnik-alfa-stable --ks-pass env:KEYSTORE_PASS --key-pass env:KEYSTORE_PASS --out output/PA2-instrumentation.apk output/PA2-instrumentation-unsigned.apk
+          "$BT/apksigner" verify output/PA2-instrumentation.apk
+          sha256sum output/Pomocnik-Alfa-UltraSmart-20010.apk > output/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: PA2-unsigned-build
           path: |
             output/PA2-aligned-unsigned.apk
+            output/Pomocnik-Alfa-UltraSmart-20010.apk
+            output/PA2-instrumentation.apk
             output/apksigner.jar
             output/PA2-instrumentation-unsigned.apk
             output/PA2-Reconstructed-Project.zip
             output/*.txt
             output/*.json
+          retention-days: 60
+  android:
+    needs: build
+    env:
+      GH_TOKEN: ${{ github.token }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: PA2-unsigned-build
+          path: build
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Prepare bounded tests with failure screenshots
+        run: |
+          cat > pa2-smoke.sh <<'BASH'
+          set -euo pipefail
+          mkdir -p results
+          trap 'adb logcat -d -b crash > results/final-crash-buffer.txt; adb pull /data/user/0/com.senikolo.pomocniknowy.pa2preview/files/pa2-tests results/last-state || true' EXIT
+          adb root
+          adb wait-for-device
+          adb install build/Pomocnik-Alfa-UltraSmart-20010.apk
+          adb install -r build/PA2-instrumentation.apk
+          adb logcat -c
+          timeout 300s adb shell am instrument -w com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/instrumentation.txt
+          grep -q 'TOTAL PASS system installation' results/instrumentation.txt
+          adb logcat -d -b crash > results/crash-buffer.txt
+          ! grep -q 'FATAL EXCEPTION' results/crash-buffer.txt
+          adb pull /data/user/0/com.senikolo.pomocniknowy.pa2preview/files/pa2-tests results/screenshots
+          adb shell am force-stop com.senikolo.pomocniknowy.pa2preview
+          adb shell pm revoke com.senikolo.pomocniknowy.pa2preview android.permission.ACCESS_FINE_LOCATION
+          adb shell pm revoke com.senikolo.pomocniknowy.pa2preview android.permission.ACCESS_COARSE_LOCATION
+          adb shell settings put system font_scale 1.3
+          adb shell wm size 720x1280
+          adb shell wm density 320
+          timeout 300s adb shell am instrument -w -e boardsOnly true com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/large-font.txt
+          grep -q 'TOTAL PASS system large-font' results/large-font.txt
+          adb pull /data/user/0/com.senikolo.pomocniknowy.pa2preview/files/pa2-tests results/large-font-screenshots
+          adb shell am force-stop com.senikolo.pomocniknowy.pa2preview
+          adb shell pm revoke com.senikolo.pomocniknowy.pa2preview android.permission.ACCESS_FINE_LOCATION
+          adb shell pm revoke com.senikolo.pomocniknowy.pa2preview android.permission.ACCESS_COARSE_LOCATION
+          timeout 120s adb shell am instrument -w -e verifyGpsRestart true com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/gps-restart.txt
+          grep -q 'TOTAL PASS GPS tab process restart' results/gps-restart.txt
+          adb shell settings put system font_scale 1.0
+          BASH
+      - name: Install exact stable-signed APK and exercise saved stops and preserved modules
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          target: google_apis
+          profile: pixel_2
+          disable-animations: true
+          emulator-boot-timeout: 700
+          script: bash pa2-smoke.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PA2-Android-30-test-results
+          path: results
           retention-days: 60
