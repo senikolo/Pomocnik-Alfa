@@ -5,165 +5,169 @@ import android.content.*;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
-import android.text.InputType;
 import android.view.*;
+import android.webkit.*;
 import android.widget.*;
 import java.net.URLEncoder;
+import java.util.HashMap;
 import java.util.Locale;
 
-/**
- * Android 6 Alfa Tube: honest handoff to a compatible YouTube client,
- * direct video link routing, and local-video preview.
- * The old system WebView is NOT a modern YouTube playback engine.
- */
+/** Alfa Tube stays inside PA: YouTube official embedded player and native stream player. */
 public final class PA6TubeActivity extends Activity {
- private static final int OPEN_VIDEO=772;
- private static final String NEWPIPE="org.schabi.newpipe";
- private VideoView video;
+ private static final int PICK_FILE=791;
+ private FrameLayout outer,fullscreen;
+ private View fullscreenChild;
+ private WebChromeClient.CustomViewCallback fullscreenCallback;
+ private WebView browser;
+ private PA6EmbeddedPlayer media;
  private TextView status;
- private EditText search,videoLink;
+ private EditText search,link;
  private boolean kids;
- private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+0.5f);}
- private Button button(String label){
-  Button b=new Button(this);b.setAllCaps(false);b.setText(label);
-  b.setTextSize(16);b.setTextColor(0xff624397);b.setMinHeight(dp(56));return b;
+ private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+.5f);}
+ private TextView text(String value,int sp){
+  TextView v=new TextView(this);v.setText(value);v.setTextColor(0xffedf2ff);v.setTextSize(sp);
+  v.setPadding(dp(8),dp(7),dp(8),dp(7));return v;
  }
- private TextView description(LinearLayout root,String value,int size){
-  TextView t=new TextView(this);t.setText(value);t.setTextSize(size);
-  t.setTextColor(0xff534669);t.setPadding(dp(5),dp(8),dp(5),dp(8));root.addView(t);return t;
+ private Button button(LinearLayout root,String title,Runnable a){
+  Button b=new Button(this);b.setText(title);b.setAllCaps(false);b.setTextSize(15);
+  root.addView(b,new LinearLayout.LayoutParams(-1,dp(52)));b.setOnClickListener(v->a.run());return b;
  }
- private boolean hasNewPipe(){
-  try{getPackageManager().getPackageInfo(NEWPIPE,0);return true;}
-  catch(Exception e){return false;}
+ private boolean youtube(Uri uri){
+  if(uri==null||uri.getHost()==null||uri.getScheme()==null)return false;
+  String host=uri.getHost().toLowerCase(Locale.ROOT);
+  return "https".equals(uri.getScheme())&&(host.equals("youtube.com")||host.endsWith(".youtube.com")||host.equals("youtu.be"));
  }
- private void openBrowser(String url){
+ private String youtubeId(String address){
   try{
-   startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE));
-  }catch(Exception e){
-   status.setText("Nie znalazłem przeglądarki obsługującej ten adres. Możesz skorzystać z NewPipe dla Androida 6.");
-  }
+   Uri u=Uri.parse(address.trim());
+   if(!youtube(u))return null;
+   String host=u.getHost().toLowerCase(Locale.ROOT),id;
+   if(host.equals("youtu.be"))id=u.getLastPathSegment();
+   else if(u.getPath()!=null&&u.getPath().startsWith("/shorts/"))id=u.getPathSegments().size()>1?u.getPathSegments().get(1):null;
+   else if(u.getPath()!=null&&u.getPath().startsWith("/embed/"))id=u.getPathSegments().size()>1?u.getPathSegments().get(1):null;
+   else id=u.getQueryParameter("v");
+   return id!=null&&id.matches("[A-Za-z0-9_-]{11}")?id:null;
+  }catch(Exception e){return null;}
  }
- private void openNewPipe(String query){
-  Intent launch=getPackageManager().getLaunchIntentForPackage(NEWPIPE);
-  if(launch==null){
-   status.setText("Nie ma NewPipe. Zainstaluj wydanie dla Androida 6 z oficjalnego F-Droid lub otwórz wideo w obsługiwanej przeglądarce.");
-   return;
-  }
-  if(!query.isEmpty()){
-   try{
-    ((android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE))
-     .setPrimaryClip(ClipData.newPlainText("Alfa Tube — wyszukiwanie",query));
-   }catch(Exception ignored){}
-  }
+ private void youtubeEmbed(String id){
+  media.stop();media.setVisibility(View.GONE);browser.setVisibility(View.VISIBLE);
+  status.setText("Ładuję odtwarzacz YouTube wewnątrz Alfa Tube…");
+  // Official embed: app referrer is required by YouTube for Android WebView players.
+  String html="<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1.0'></head>"
+   +"<body style='margin:0;background:#111827;color:white'><iframe style='border:0;width:100%;height:95vh' "
+   +"allow='autoplay; encrypted-media; picture-in-picture; fullscreen' allowfullscreen "
+   +"src='https://www.youtube.com/embed/"+id+"?playsinline=1&rel=0'></iframe></body></html>";
+  browser.loadDataWithBaseURL("https://com.senikolo.pa6internal/",html,"text/html","UTF-8",null);
+ }
+ private void browseSearch(String query){
+  if(query.isEmpty()){status.setText("Wpisz tytuł lub wykonawcę.");return;}
+  media.stop();media.setVisibility(View.GONE);browser.setVisibility(View.VISIBLE);
   try{
-   startActivity(launch);
-   if(!query.isEmpty())Toast.makeText(this,"Hasło skopiowane. Otwórz wyszukiwanie NewPipe i wybierz Wklej.",Toast.LENGTH_LONG).show();
-   status.setText("NewPipe uruchomiony."+(!query.isEmpty()?" Hasło wyszukiwania skopiowano do schowka.":""));
-  }catch(Exception e){status.setText("Nie udało się otworzyć NewPipe. Spróbuj uruchomić aplikację ręcznie.");}
+   status.setText("Wyszukiwanie wewnątrz PA. Wybierz film z listy YouTube.");
+   browser.loadUrl("https://m.youtube.com/results?search_query="+URLEncoder.encode(query,"UTF-8"));
+  }catch(Exception e){status.setText("Nie udało się otworzyć wyników YouTube.");}
  }
- private boolean validYouTube(Uri uri){
-  if(uri==null||uri.getScheme()==null||uri.getHost()==null)return false;
-  String scheme=uri.getScheme().toLowerCase(Locale.ROOT),host=uri.getHost().toLowerCase(Locale.ROOT);
-  if(!(scheme.equals("https")||scheme.equals("http")))return false;
-  return host.equals("youtu.be")||host.equals("youtube.com")||
-   host.equals("m.youtube.com")||host.equals("www.youtube.com")||host.equals("music.youtube.com");
- }
- private void openVideoLink(String url){
-  Uri uri;
-  try{uri=Uri.parse(url);}catch(Exception e){status.setText("Nieprawidłowy adres filmu.");return;}
-  if(url.length()>2000||!validYouTube(uri)){
-   status.setText("Wklej prawidłowy link YouTube (youtube.com/watch albo youtu.be/…).");
-   return;
+ private void openLink(String input){
+  String url=input.trim();
+  String id=youtubeId(url);
+  if(id!=null){youtubeEmbed(id);return;}
+  if(url.startsWith("https://")&&(url.toLowerCase(Locale.ROOT).contains(".m3u8")
+     ||url.toLowerCase(Locale.ROOT).contains(".mp4"))){
+   browser.setVisibility(View.GONE);media.setVisibility(View.VISIBLE);
+   media.play("Wideo internetowe",url);status.setText("Film odtwarzany wewnątrz Pomocnika Alfa.");return;
   }
-  if(hasNewPipe()){
-   try{
-    Intent i=new Intent(Intent.ACTION_VIEW,uri);
-    i.setPackage(NEWPIPE);
-    i.addCategory(Intent.CATEGORY_DEFAULT);
-    startActivity(i);status.setText("Przekazano film do NewPipe.");return;
-   }catch(Exception ignored){}
-  }
-  openBrowser(url);
+  status.setText("Podaj link YouTube lub bezpośredni adres MP4/HLS. Materiały nie opuszczają PA.");
  }
  @Override public void onCreate(Bundle b){
   super.onCreate(b);kids=getIntent().getBooleanExtra("kids",false);
-  ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.setBackgroundColor(0xfff6f3fa);
-  LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(14),dp(10),dp(14),dp(26));
-  sc.addView(root);setContentView(sc);
-  TextView head=description(root,kids?"🧸  Alfa Kids":"▶  Alfa Tube",25);
-  head.setTextColor(0xff543684);head.setTypeface(null,1);
-  status=description(root,kids?"Treści dla dzieci otwierają się w zewnętrznej aplikacji lub przeglądarce.":
-   "Na Androidzie 6 YouTube może nie działać w starej przeglądarce. Użyj zgodnej aplikacji NewPipe (Android 6+).",15);
-  if(kids){
-   description(root,"YouTube Kids wymaga obsługiwanej przeglądarki. Nie zastępuje to kontroli rodzicielskiej.",15);
-   Button kidsBrowser=button("▶ Otwórz oficjalne YouTube Kids");root.addView(kidsBrowser);
-   kidsBrowser.setOnClickListener(v->openBrowser("https://www.youtubekids.com/"));
-   Button parent=button("▶ Przeglądaj filmy w NewPipe (bez filtrów Kids)");root.addView(parent);
-   parent.setOnClickListener(v->openNewPipe(""));
-   description(root,"Uwaga: NewPipe nie ma filtrów YouTube Kids. Z tego powodu nie jest równoważną aplikacją dziecięcą.",13);
-   return;
-  }
-  description(root,hasNewPipe()?"✓ Zgodny odtwarzacz NewPipe jest zainstalowany.":
-   "NewPipe nie jest zainstalowany. To bezpłatny odtwarzacz filmów z YouTube obsługujący Androida 6.",16);
-  Button start=button("▶ Otwórz filmy w NewPipe");root.addView(start);
-  start.setOnClickListener(v->openNewPipe(""));
-  Button install=button("Pobierz NewPipe — oficjalna strona F-Droid");root.addView(install);
-  install.setOnClickListener(v->openBrowser("https://f-droid.org/packages/org.schabi.newpipe/"));
-  description(root,"Wyszukaj film lub teledysk:",16);
-  search=new EditText(this);search.setSingleLine(true);
-  search.setText(getPreferences(0).getString("last_query",""));
-  search.setHint("Wykonawca, piosenka, nazwa kanału");
-  root.addView(search,new LinearLayout.LayoutParams(-1,dp(57)));
-  Button find=button("🔎 Szukaj w NewPipe");root.addView(find);
-  find.setOnClickListener(v->{
-   String q=search.getText().toString().trim();
-   if(q.isEmpty()){status.setText("Wpisz tytuł filmu lub wykonawcę.");return;}
-   getPreferences(0).edit().putString("last_query",q).apply();
-   openNewPipe(q);
+  getWindow().setStatusBarColor(0xff101b31);
+  outer=new FrameLayout(this);
+  LinearLayout body=new LinearLayout(this);body.setOrientation(1);
+  body.setBackgroundColor(0xff101b31);body.setPadding(dp(11),dp(10),dp(11),dp(6));
+  outer.addView(body);setContentView(outer);
+  body.addView(text(kids?"🧸  Alfa Kids":"▶  Alfa Tube",24));
+  status=text("Filmy oglądasz tutaj — bez przeskakiwania do innej aplikacji.",14);
+  body.addView(status);
+  if(kids)body.addView(text("Uwaga: YouTube wbudowany nie zapewnia kontroli rodzicielskiej YouTube Kids.",13));
+  LinearLayout actions=new LinearLayout(this);actions.setOrientation(1);
+  search=new EditText(this);search.setSingleLine(true);search.setTextColor(Color.WHITE);
+  search.setHintTextColor(0xff9ba9c7);search.setHint("Tytuł, wykonawca lub kanał");
+  actions.addView(search,new LinearLayout.LayoutParams(-1,dp(50)));
+  button(actions,"🔎  Szukaj w Alfa Tube",()->browseSearch(search.getText().toString().trim()));
+  link=new EditText(this);link.setSingleLine(true);link.setTextColor(Color.WHITE);
+  link.setHintTextColor(0xff9ba9c7);link.setHint("Link YouTube, MP4 lub HLS");
+  actions.addView(link,new LinearLayout.LayoutParams(-1,dp(50)));
+  button(actions,"▶  Odtwórz link w Alfa Tube",()->openLink(link.getText().toString()));
+  ScrollView controls=new ScrollView(this);controls.addView(actions);
+  body.addView(controls,new LinearLayout.LayoutParams(-1,dp(215)));
+  FrameLayout stage=new FrameLayout(this);
+  body.addView(stage,new LinearLayout.LayoutParams(-1,0,1));
+  media=new PA6EmbeddedPlayer(this);stage.addView(media,new FrameLayout.LayoutParams(-1,-2));media.setVisibility(View.GONE);
+  browser=new WebView(this);stage.addView(browser,new FrameLayout.LayoutParams(-1,-1));
+  WebSettings settings=browser.getSettings();
+  settings.setJavaScriptEnabled(true);settings.setDomStorageEnabled(true);
+  settings.setMediaPlaybackRequiresUserGesture(true);
+  settings.setAllowFileAccess(false);settings.setAllowContentAccess(false);
+  settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+  browser.setWebViewClient(new WebViewClient(){
+   @Override public boolean shouldOverrideUrlLoading(WebView view,String url){
+    // Allow YouTube iframe navigation and assets; intercept only user-facing film links.
+    if(url.startsWith("https://www.youtube.com/embed/")||
+       url.startsWith("https://m.youtube.com/embed/"))return false;
+    String id=youtubeId(url);
+    if(id!=null){youtubeEmbed(id);return true;}
+    Uri u=Uri.parse(url);
+    if(youtube(u)){return false;}
+    // External host links from search may only be opened by explicit user action,
+    // but remain blocked inside our embedded Youtube browser.
+    status.setText("To odnośnik poza YouTube — zostajemy w Alfa Tube.");
+    return true;
+   }
+   @Override public void onReceivedError(WebView view,int code,String message,String failingUrl){
+    status.setText("Nie udało się wczytać YouTube w starym WebView. Sprawdź jego aktualizację w systemie.");
+   }
   });
-  description(root,"Wyszukiwanie: Alfa przekazuje hasło do schowka i otwiera NewPipe. W NewPipe użyj lupy i Wklej.",13);
-  Button browser=button("🌐 Szukaj na oficjalnej stronie YouTube");root.addView(browser);
-  browser.setOnClickListener(v->{
-   String q=search.getText().toString().trim();
-   if(q.isEmpty()){status.setText("Wpisz tytuł filmu.");return;}
-   try{openBrowser("https://m.youtube.com/results?search_query="+URLEncoder.encode(q,"UTF-8"));}
-   catch(Exception e){status.setText("Nie mogę przygotować zapytania.");}
+  browser.setWebChromeClient(new WebChromeClient(){
+   @Override public void onShowCustomView(View view,CustomViewCallback callback){
+    if(fullscreenChild!=null){callback.onCustomViewHidden();return;}
+    fullscreenChild=view;fullscreenCallback=callback;
+    fullscreen=new FrameLayout(PA6TubeActivity.this);
+    fullscreen.setBackgroundColor(Color.BLACK);
+    fullscreen.addView(view,new FrameLayout.LayoutParams(-1,-1));
+    outer.addView(fullscreen,new FrameLayout.LayoutParams(-1,-1));
+   }
+   @Override public void onHideCustomView(){closeFullscreen();}
   });
-  description(root,"Otwórz konkretny film z linku YouTube:",16);
-  videoLink=new EditText(this);videoLink.setSingleLine(true);
-  videoLink.setHint("https://www.youtube.com/watch?v=…");
-  videoLink.setInputType(InputType.TYPE_TEXT_VARIATION_URI);
-  root.addView(videoLink,new LinearLayout.LayoutParams(-1,dp(58)));
-  Button link=button("▶ Otwórz film");root.addView(link);
-  link.setOnClickListener(v->openVideoLink(videoLink.getText().toString().trim()));
-  description(root,"Film zapisany na tablecie:",16);
-  video=new VideoView(this);video.setBackgroundColor(Color.BLACK);
-  root.addView(video,new LinearLayout.LayoutParams(-1,dp(232)));
-  MediaController controls=new MediaController(this);controls.setAnchorView(video);video.setMediaController(controls);
-  video.setOnErrorListener((mp,what,extra)->{
-   status.setText("Ten plik nie jest obsługiwany przez systemowy odtwarzacz Android 6. Wypróbuj format MP4 / H.264.");
-   return true;
+  browser.loadDataWithBaseURL("https://com.senikolo.pa6internal/",
+   "<html><body style='background:#101b31;color:#eee;font-family:sans-serif'><h3>ALFA TUBE</h3>"
+   +"<p>Wpisz tytuł filmu lub wklej link YouTube. Odtwarzacz pozostanie w PA.</p></body></html>","text/html","UTF-8",null);
+  button(body,"🎞  Wybierz film z tabletu",()->{
+   try{Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("video/*").addCategory(Intent.CATEGORY_OPENABLE);
+    startActivityForResult(intent,PICK_FILE);
+   }catch(Exception e){status.setText("Nie udało się otworzyć plików.");}
   });
-  Button file=button("▶ Otwórz lokalne MP4");root.addView(file);
-  file.setOnClickListener(v->{
-   try{
-    Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);
-    i.setType("video/*");i.addCategory(Intent.CATEGORY_OPENABLE);
-    startActivityForResult(i,OPEN_VIDEO);
-   }catch(Exception e){status.setText("Nie znaleziono aplikacji do wyboru plików.");}
-  });
-  Button stop=button("■ Zatrzymaj film");root.addView(stop);
-  stop.setOnClickListener(v->{video.stopPlayback();status.setText("Zatrzymano odtwarzanie filmu.");});
-  description(root,"Alfa Tube korzysta z NewPipe lub przeglądarki przy filmach online, a z systemowego odtwarzacza przy własnych plikach. Filmy online nie są odtwarzane wewnątrz ekranu PA.",13);
+ }
+ private void closeFullscreen(){
+  if(fullscreen!=null){outer.removeView(fullscreen);fullscreen.removeAllViews();fullscreen=null;}
+  if(fullscreenCallback!=null){fullscreenCallback.onCustomViewHidden();fullscreenCallback=null;}
+  fullscreenChild=null;
+ }
+ @Override public void onBackPressed(){
+  if(fullscreen!=null){closeFullscreen();return;}
+  if(browser!=null&&browser.canGoBack()){browser.goBack();return;}
+  super.onBackPressed();
  }
  @Override protected void onActivityResult(int request,int result,Intent data){
   super.onActivityResult(request,result,data);
-  if(request!=OPEN_VIDEO||result!=RESULT_OK||data==null||video==null||data.getData()==null)return;
-  try{
-   video.stopPlayback();video.setVideoURI(data.getData());
-   video.setOnPreparedListener(p->{video.start();status.setText("Odtwarzam film z tabletu.");});
-   video.start();status.setText("Otwieram film z tabletu…");
-  }catch(Exception e){status.setText("Nie można otworzyć pliku.");}
+  if(request!=PICK_FILE||result!=RESULT_OK||data==null||data.getData()==null)return;
+  browser.setVisibility(View.GONE);media.setVisibility(View.VISIBLE);
+  media.playUri("Film z tabletu",data.getData());
+  status.setText("Odtwarzanie lokalnego filmu w Alfa Tube.");
  }
- @Override protected void onStop(){if(video!=null){try{video.stopPlayback();}catch(Exception ignored){}}super.onStop();}
+ @Override protected void onDestroy(){
+  closeFullscreen();
+  if(browser!=null){browser.stopLoading();browser.destroy();}
+  if(media!=null)media.release();
+  super.onDestroy();
+ }
 }
