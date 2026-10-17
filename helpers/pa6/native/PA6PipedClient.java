@@ -74,6 +74,9 @@ public final class PA6PipedClient {
   int q=i.indexOf("v=");if(q>=0)i=i.substring(q+2);
   else {int slash=i.lastIndexOf('/');if(slash>=0)i=i.substring(slash+1);}
   int end=i.indexOf('&');if(end>=0)i=i.substring(0,end);
+  // YouTube Shorts, live and youtu.be share links commonly append ?si= or ?t=.
+  end=i.indexOf('?');if(end>=0)i=i.substring(0,end);
+  end=i.indexOf('#');if(end>=0)i=i.substring(0,end);
   return i.matches("[A-Za-z0-9_-]{11}")?i:"";
  }
  public static String extractId(String address){return videoId(address);}
@@ -136,7 +139,10 @@ public final class PA6PipedClient {
      String codec=v.optString("codec","").toLowerCase(Locale.ROOT);
      String format=v.optString("mimeType","").toLowerCase(Locale.ROOT);
      int height=v.optInt("height",0);
-     if(stream.isEmpty()||height<=0||height>720||(!codec.contains("avc1")&&!format.contains("video/mp4")))continue;
+     // The Acer API23 decoder needs H.264/AVC video with muxed audio.
+     // MP4 alone is not sufficient: a few feeds report other video codecs in MP4.
+     boolean avc=codec.contains("avc1")||codec.contains("h264")||codec.contains("avc");
+     if(stream.isEmpty()||height<=0||height>720||!format.contains("video/mp4")||!avc)continue;
      int score=Math.abs(height-480);
      if(score<bestScore){bestScore=score;url=stream;quality=v.optString("quality",height+"p");}
     }
