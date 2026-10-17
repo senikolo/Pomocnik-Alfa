@@ -24,7 +24,7 @@ public class PAProbe extends Instrumentation {
   record("PASS original adaptive cat launcher restored");
   Activity a=launch("MainActivity");record("PASS main launches");
   require(countText(a.getWindow().getDecorView(),"Planer i Alfa")==1,"Regional planner tile missing or duplicated");
-  require(countText(a.getWindow().getDecorView(),"Tablice odjazdów")==1,"Nearby-stop tile missing or duplicated");
+  require(countText(a.getWindow().getDecorView(),"Najbliższe odjazdy")==1,"Premium nearby-stop dashboard missing or duplicated");
   record("PASS distinct regional planner and nearby-stop dashboard cards");
   if(verifyGpsRestart){record(com.ispina.lokalnie.PABoardsProbe.verifyGpsRestart(this,a));record("TOTAL PASS GPS tab process restart");out.putString("stream",log.toString());finish(Activity.RESULT_OK,out);return;}
   record(com.ispina.lokalnie.PABoardsProbe.run(this,a));
