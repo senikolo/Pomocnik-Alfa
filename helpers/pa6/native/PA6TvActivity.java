@@ -136,20 +136,35 @@ public final class PA6TvActivity extends Activity {
   TextView head=text("  ALFA TV",23,INK,true);header.addView(head,new LinearLayout.LayoutParams(0,-2,1));
   TextView live=text("NA ŻYWO",12,RED,true);header.addView(live);
   page.addView(header);space(page,6);
+  // Tablet landscape: fixed 16:9-ish player on the left and scrollable channel library on the right.
+  // Portrait: the same screens stack, and the player is NEVER inside a ScrollView.
+  float widthDp=getResources().getDisplayMetrics().widthPixels/getResources().getDisplayMetrics().density;
+  boolean wide=widthDp>=660f;
+  LinearLayout panes=col();panes.setOrientation(wide?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL);
+  page.addView(panes,new LinearLayout.LayoutParams(-1,0,1));
+  LinearLayout playerPane=col(),catalogPane=col();
+  if(wide){
+   LinearLayout.LayoutParams left=new LinearLayout.LayoutParams(0,-1,5);
+   left.setMargins(0,0,dp(12),0);panes.addView(playerPane,left);
+   panes.addView(catalogPane,new LinearLayout.LayoutParams(0,-1,4));
+  }else{
+   panes.addView(playerPane,new LinearLayout.LayoutParams(-1,-2));
+   panes.addView(catalogPane,new LinearLayout.LayoutParams(-1,0,1));
+  }
   player=new PA6EmbeddedPlayer(this);
-  page.addView(player,new LinearLayout.LayoutParams(-1,-2));
+  playerPane.addView(player,new LinearLayout.LayoutParams(-1,-2));
   if(getIntent().getBooleanExtra("verify_libvlc",false)&&!player.verifyNative())
    throw new IllegalStateException("PA6 native player unavailable");
   active=text("Wybierz kanał z listy",17,INK,true);
-  active.setPadding(dp(6),dp(6),dp(6),dp(4));page.addView(active);
+  active.setPadding(dp(6),dp(6),dp(6),dp(4));playerPane.addView(active);
   status=text("Odtwarzacz w okienku • obraz i dźwięk wewnątrz Pomocnika Alfa.",13,MUTED,false);
-  status.setPadding(dp(6),dp(2),dp(6),dp(8));page.addView(status);
+  status.setPadding(dp(6),dp(2),dp(6),dp(8));playerPane.addView(status);
   LinearLayout tools=row();
   Button last=action("↻  Ostatnio",false);tools.addView(last,new LinearLayout.LayoutParams(0,dp(46),1));last.setOnClickListener(v->replay());
   Button stop=action("■  Stop",false);LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(0,dp(46),1);
   sp.setMargins(dp(7),0,0,0);tools.addView(stop,sp);stop.setOnClickListener(v->player.stop());
-  page.addView(tools);space(page,10);
-  ScrollView scroll=new ScrollView(this);page.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+  playerPane.addView(tools);space(playerPane,10);
+  ScrollView scroll=new ScrollView(this);catalogPane.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
   LinearLayout content=col();scroll.addView(content);
   TextView sect=text("Kanały telewizyjne",20,INK,true);
   sect.setPadding(0,dp(11),0,dp(7));content.addView(sect);
