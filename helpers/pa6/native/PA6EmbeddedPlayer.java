@@ -3,6 +3,7 @@ package com.ispina.lokalnie;
 import android.content.Context;
 import android.graphics.Color;
 import android.net.Uri;
+import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
@@ -25,6 +26,8 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
  private final Handler ui=new Handler(Looper.getMainLooper());
  private String active="";
  private boolean ready=false;
+ private AudioManager audio;
+ private boolean hasFocus=false;
  private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+0.5f);}
  public PA6EmbeddedPlayer(Context context){
   super(context);setOrientation(VERTICAL);
@@ -73,6 +76,12 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   active=name;state.setText("Łączenie • "+name);
   try{
    init();
+   if(audio==null)audio=(AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
+   if(audio!=null&&!hasFocus){
+    int gain=audio.requestAudioFocus(null,AudioManager.STREAM_MUSIC,AudioManager.AUDIOFOCUS_GAIN);
+    hasFocus=(gain==AudioManager.AUDIOFOCUS_REQUEST_GRANTED);
+    if(!hasFocus){state.setText("Inne audio zajmuje dźwięk. Zatrzymaj radio.");return;}
+   }
    engine.stop();
    Media media=new Media(vlc,address);
    media.addOption(":network-caching=1500");
@@ -92,8 +101,9 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
  }
  public void release(){
   stop();
+  if(audio!=null&&hasFocus){try{audio.abandonAudioFocus(null);}catch(Exception ignored){}hasFocus=false;}
   try{if(engine!=null){engine.getVLCVout().detachViews();engine.release();}}catch(Throwable ignored){}
   try{if(vlc!=null)vlc.release();}catch(Throwable ignored){}
-  engine=null;vlc=null;ready=false;
+  engine=null;vlc=null;ready=false;audio=null;
  }
 }
