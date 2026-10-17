@@ -11,6 +11,7 @@ public class PAProbe extends Instrumentation {
   if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++)found+=countText(((ViewGroup)v).getChildAt(i),wanted);
   return found;
  }
+ int countTag(View v,String wanted){int count=wanted.equals(v.getTag())?1:0;if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++)count+=countTag(((ViewGroup)v).getChildAt(i),wanted);return count;}
  WebView web(View v){if(v instanceof WebView)return(WebView)v;if(v instanceof ViewGroup)for(int i=0;i<((ViewGroup)v).getChildCount();i++){WebView w=web(((ViewGroup)v).getChildAt(i));if(w!=null)return w;}return null;}
  String js(Activity a,String source)throws Exception{CountDownLatch latch=new CountDownLatch(1);String[] result={""};runOnMainSync(()->{WebView w=web(a.getWindow().getDecorView());if(w==null){latch.countDown();return;}w.evaluateJavascript(source,v->{result[0]=v;latch.countDown();});});if(!latch.await(10,TimeUnit.SECONDS))throw new AssertionError("WebView callback timeout");return result[0];}
  void waitJs(Activity a,String expression,long max)throws Exception{long until=System.currentTimeMillis()+max;while(System.currentTimeMillis()<until){if("true".equals(js(a,expression)))return;Thread.sleep(300);}throw new AssertionError("UI timeout: "+expression+"; result="+js(a,"document.body.innerText.slice(-3000)"));}
@@ -26,6 +27,9 @@ public class PAProbe extends Instrumentation {
   require(countText(a.getWindow().getDecorView(),"Planer i Alfa")==1,"Regional planner tile missing or duplicated");
   require(countText(a.getWindow().getDecorView(),"Najbliższe odjazdy")==1,"Premium nearby-stop dashboard missing or duplicated");
   record("PASS distinct regional planner and nearby-stop dashboard cards");
+  Thread.sleep(700);require(countTag(a.getWindow().getDecorView(),"pa-premium-card")>=10,"Premium outline-card styling missing on native PA home");
+  require(countText(a.getWindow().getDecorView(),"Radio")>=1 && countText(a.getWindow().getDecorView(),"Notatki")>=1 && countText(a.getWindow().getDecorView(),"Ustawienia")>=1,"Preserved dashboard modules missing");
+  record("PASS Premium Android home uses consistent icon cards and retains Radio, Notes and Settings");
   if(verifyGpsRestart){record(com.ispina.lokalnie.PABoardsProbe.verifyGpsRestart(this,a));record("TOTAL PASS GPS tab process restart");out.putString("stream",log.toString());finish(Activity.RESULT_OK,out);return;}
   record(com.ispina.lokalnie.PABoardsProbe.run(this,a));
   if(boardsOnly){com.ispina.lokalnie.PABoardsProbe.leaveGps(this,a);record("TOTAL PASS system large-font small-screen boards");out.putString("stream",log.toString());finish(Activity.RESULT_OK,out);return;}
