@@ -159,10 +159,10 @@ public final class PA6TubeActivity extends Activity {
   if(kids)search("bajki dla dzieci");
   else search("");
  }
- private static String read(String address,int max)throws Exception{
+ private String read(String address,int max)throws Exception{
   URL u=new URL(address);
   if(!"https".equalsIgnoreCase(u.getProtocol()))throw new Exception("Serwer wymaga HTTPS");
-  HttpURLConnection c=(HttpURLConnection)u.openConnection();
+  HttpURLConnection c=PA6Https.open(this,address);
   try{
    c.setConnectTimeout(5500);c.setReadTimeout(6500);
    c.setRequestProperty("Accept","application/json");
@@ -269,7 +269,7 @@ public final class PA6TubeActivity extends Activity {
   new Thread(()->{
    HttpURLConnection c=null;
    try{
-    c=(HttpURLConnection)new URL(address).openConnection();
+    c=PA6Https.open(this,address);
     c.setConnectTimeout(4000);c.setReadTimeout(4500);
     if(c.getResponseCode()!=200||c.getContentLength()>260000) return;
     ByteArrayOutputStream data=new ByteArrayOutputStream();

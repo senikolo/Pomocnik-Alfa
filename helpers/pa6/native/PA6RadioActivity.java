@@ -128,7 +128,7 @@ public final class PA6RadioActivity extends Activity {
    for(String host:new String[]{"https://de1.api.radio-browser.info","https://all.api.radio-browser.info"}){
     HttpURLConnection c=null;
     try{
-     c=(HttpURLConnection)new URL(host+request).openConnection();
+     c=PA6Https.open(this,host+request);
      c.setConnectTimeout(9000);c.setReadTimeout(12000);
      c.setRequestProperty("User-Agent","PomocnikAlfaTablet/2.2 (Android 6; radio search)");
      c.setRequestProperty("Accept","application/json");

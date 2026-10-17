@@ -175,6 +175,7 @@ public final class PA6TvActivity extends Activity {
   section(options,"Kanał demonstracyjny","Wybierz, aby sprawdzić odbiór transmisji HLS");
   channel(options,"WF","World Fashion","Ogólnodostępny strumień; dostępność zależy od nadawcy",0xfffda5ce,
    ()->play("World Fashion","https://cdn.wfc.tv/cdn/stream-rus.m3u8"));
+  loadBundledCatalog();
   loadCatalog();
   space(options,8);
   section(options,"Twoja telewizja","Wróć do ostatniego kanału lub zapisz ulubiony");
@@ -255,7 +256,7 @@ public final class PA6TvActivity extends Activity {
   HttpURLConnection c=null;
   try{
    URL base=new URL(address);
-   c=(HttpURLConnection)base.openConnection();
+   c=PA6Https.open(this,address);
    c.setConnectTimeout(6000);c.setReadTimeout(6000);
    c.setRequestProperty("User-Agent","PomocnikAlfa/6.0");
    c.setRequestProperty("Accept","application/vnd.apple.mpegurl, application/x-mpegURL, */*");
@@ -295,16 +296,36 @@ public final class PA6TvActivity extends Activity {
   }catch(Exception ignored){return address;}
   finally{if(c!=null)c.disconnect();}
  }
+ /** Built-in snapshot: shows the actual public channels without waiting on TLS. */
+ private void loadBundledCatalog(){
+  HashSet<String> used=new HashSet<>();
+  try(InputStream input=getAssets().open("tv-poland.m3u");
+      BufferedReader reader=new BufferedReader(new InputStreamReader(input,"UTF-8"))){
+   String name="",line;
+   while((line=reader.readLine())!=null&&channelData.size()<90){
+    line=line.trim();
+    if(line.startsWith("#EXTINF:")){
+     int pos=line.lastIndexOf(',');
+     name=pos>=0?line.substring(pos+1).trim():"";
+     if(name.length()>75)name=name.substring(0,75);
+    }else if(!line.isEmpty()&&!line.startsWith("#")&&!name.isEmpty()){
+     if(valid(line)&&!line.toLowerCase(Locale.ROOT).contains(".mpd")&&used.add(name+"|"+line))
+      channelData.add(new String[]{name,line});
+     name="";
+    }
+   }
+  }catch(Exception ignored){}
+  if(!channelData.isEmpty())renderCatalog();
+ }
  /** Load free-to-air playlist. No hardcoded promises about working channels. */
  private void loadCatalog(){
   final int token=++catalogLoad;
-  catalog.removeAllViews();
-  catalog.addView(txt("Ładuję polskie kanały internetowe…",14,false,MUTED));
+  if(channelData.isEmpty()){catalog.removeAllViews();catalog.addView(txt("Ładuję polskie kanały internetowe…",14,false,MUTED));}
   new Thread(()->{
    ArrayList<String[]> fresh=new ArrayList<>();String error="";
    HttpURLConnection c=null;
    try{
-    c=(HttpURLConnection)new URL("https://iptv-org.github.io/iptv/countries/pl.m3u").openConnection();
+    c=PA6Https.open(this,"https://iptv-org.github.io/iptv/countries/pl.m3u");
     c.setConnectTimeout(9000);c.setReadTimeout(12000);
     c.setRequestProperty("User-Agent","PomocnikAlfaAndroid6/2.3");
     if(c.getResponseCode()!=200)throw new IOException("HTTP "+c.getResponseCode());
@@ -328,9 +349,11 @@ public final class PA6TvActivity extends Activity {
    final String failure=error;
    runOnUiThread(()->{
     if(isFinishing()||token!=catalogLoad)return;
-    channelData.clear();channelData.addAll(fresh);
+    if(!fresh.isEmpty()){channelData.clear();channelData.addAll(fresh);}
     renderCatalog();
-    if(fresh.isEmpty())status.setText("Katalog stacji chwilowo niedostępny: "+failure+". Nadal możesz podać własny adres HLS.");
+    if(fresh.isEmpty())status.setText(channelData.isEmpty()?
+      "Nie mogę teraz pobrać kanałów. Spróbuj ponownie później.":
+      "Korzystam z zapisanej listy kanałów. Aktualizacja jest chwilowo niedostępna.");
    });
   }).start();
  }

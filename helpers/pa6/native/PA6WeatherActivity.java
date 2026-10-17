@@ -36,10 +36,10 @@ public final class PA6WeatherActivity extends Activity {
   details=new LinearLayout(this);details.setOrientation(1);root.addView(details);
   String previous=city.getText().toString().trim();if(!previous.isEmpty())lookup(previous);
  }
- private static String load(String address)throws Exception{
+ private String load(String address)throws Exception{
   HttpURLConnection c=null;
   try{
-   c=(HttpURLConnection)new URL(address).openConnection();c.setConnectTimeout(12000);c.setReadTimeout(16000);
+   c=PA6Https.open(this,address);c.setConnectTimeout(12000);c.setReadTimeout(16000);
    c.setRequestProperty("User-Agent","PA6Tablet/1.0");
    if(c.getResponseCode()!=200)throw new IOException("Serwis pogody nie odpowiedział ("+c.getResponseCode()+")");
    ByteArrayOutputStream out=new ByteArrayOutputStream();try(InputStream in=c.getInputStream()){
