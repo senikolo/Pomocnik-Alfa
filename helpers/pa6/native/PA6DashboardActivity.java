@@ -77,6 +77,7 @@ public final class PA6DashboardActivity extends Activity {
     case "notes":cl=PA6NotesActivity.class;i=new Intent(this,cl);break;
     case "reminders":cl=PA6RemindersActivity.class;i=new Intent(this,cl);break;
     case "reader":cl=PA6ReaderActivity.class;i=new Intent(this,cl);break;
+    case "sounds":cl=PA6SoundsActivity.class;i=new Intent(this,cl);break;
     default:Toast.makeText(this,"Moduł jeszcze niedostępny",Toast.LENGTH_SHORT).show();return;
    }
    startActivity(i);
@@ -92,7 +93,7 @@ public final class PA6DashboardActivity extends Activity {
    {"🧭","Planer podróży","planner"},{"🚌","Gdzie mój autobus?","bus"},
    {"💬","Porozmawiaj z Alfą","assistant"},{"⭐","Ulubione przystanki","favorites"}});
   section("▶ Multimedia",new String[][]{
-   {"▶","Alfa Tube","tube"},{"📻","Radio","radio"},{"📺","Telewizja","tv"},{"🧸","Alfa Kids","kids"}});
+   {"▶","Alfa Tube","tube"},{"📻","Radio","radio"},{"📺","Telewizja","tv"},{"🧸","Alfa Kids","kids"},{"🎵","Dźwięki spokoju","sounds"}});
   section("☀ Na co dzień",new String[][]{
    {"🌤","Pogoda","weather"},{"📝","Notatnik","notes"},{"🔔","Przypomnienia","reminders"},{"📖","Czytnik Alfa","reader"}});
   Button mode=new Button(this);mode.setAllCaps(false);mode.setText(senior?"Wyłącz duże elementy":"Włącz większe elementy");
