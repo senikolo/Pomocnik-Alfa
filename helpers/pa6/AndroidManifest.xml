@@ -4,15 +4,19 @@
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
   <application android:label="Pomocnik Alfa Tablet TEST" android:icon="@drawable/ic_cat" android:allowBackup="false" android:usesCleartextTraffic="false" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:hardwareAccelerated="true" android:supportsRtl="true">
+    <activity android:name="com.ispina.lokalnie.PA6DashboardActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
+    <activity android:name="com.ispina.lokalnie.PA6TubeActivity" android:exported="false"/>
+    <activity android:name="com.ispina.lokalnie.PA6ReaderActivity" android:exported="false"/>
+    <activity android:name="com.ispina.lokalnie.PA6NotesActivity" android:exported="false"/>
+    <activity android:name="com.ispina.lokalnie.PA6RemindersActivity" android:exported="false"/>
+    <activity android:name="com.ispina.lokalnie.PA6WeatherActivity" android:exported="false"/>
+    <receiver android:name="com.ispina.lokalnie.PA6ReminderReceiver" android:exported="false"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/></intent-filter></receiver>
     <activity android:name="com.ispina.lokalnie.PA6RadioActivity" android:exported="false"/>
     <activity android:name="com.ispina.lokalnie.PA6TvActivity" android:exported="false" android:configChanges="orientation|screenSize"/>
     <service android:name="com.ispina.lokalnie.PA6RadioService" android:exported="false"/>
-    <activity android:name="com.ispina.lokalnie.PARegionsActivity" android:exported="true" android:windowSoftInputMode="adjustResize" android:screenOrientation="unspecified">
-      <intent-filter>
-        <action android:name="android.intent.action.MAIN"/>
-        <category android:name="android.intent.category.LAUNCHER"/>
-      </intent-filter>
+    <activity android:name="com.ispina.lokalnie.PARegionsActivity" android:exported="false" android:windowSoftInputMode="adjustResize" android:screenOrientation="unspecified">
     </activity>
   </application>
 </manifest>
