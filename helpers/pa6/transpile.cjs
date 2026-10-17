@@ -8,7 +8,16 @@ if(!src||!dest)throw Error('Usage: transpile.cjs <pa2-sources> <assets-dir>');
 fs.mkdirSync(dest,{recursive:true});
 const names=['transit-core.js','conversation.js','osm-map.js','live-state.js','app.js'];
 for(const name of names){
- const source=fs.readFileSync(path.join(src,name),'utf8');
+ let source=fs.readFileSync(path.join(src,name),'utf8');
+ if(name==='conversation.js'){
+  // Chromium 44 lacks Intl.DateTimeFormat.formatToParts (added much later).
+  // sv-SE format returns yyyy-MM-dd HH:mm for Europe/Warsaw, without
+  // throwing, and uses local-clock fallback if this locale is unavailable.
+  const from="function wallNow(){const p=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Warsaw',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date()),v={};p.forEach(x=>v[x.type]=x.value);return v.year+'-'+v.month+'-'+v.day+'T'+v.hour+':'+v.minute}";
+  const to="function wallNow(){try{var v=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Warsaw',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date());var x=v.match(/(\\d{4})-(\\d{2})-(\\d{2})\\s+(\\d{2}):(\\d{2})/);if(x)return x[1]+'-'+x[2]+'-'+x[3]+'T'+x[4]+':'+x[5]}catch(e){}return format(new Date())}";
+  if(!source.includes(from))throw Error('Original PA Warsaw clock changed; inspect legacy fallback');
+  source=source.replace(from,to);
+ }
  const compiled=babel.transformSync(source,{
   filename:name,sourceType:'script',comments:false,compact:false,
   presets:[['@babel/preset-env',{targets:{chrome:'44'},useBuiltIns:'usage',corejs:'3.47',modules:'commonjs'}]]
