@@ -3,6 +3,8 @@ package com.ispina.lokalnie;
 import android.app.*;
 import android.content.*;
 import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.InputType;
@@ -23,14 +25,20 @@ public final class PA6TubeActivity extends Activity {
  private TextView status;
  private EditText search,videoLink;
  private boolean kids;
+ private final int NIGHT=0xff0c1429, PANEL=0xff172640, INK=0xfff0f4ff, MUTED=0xffb0c1de, CORAL=0xffffb39e;
+ private GradientDrawable bg(int fill,int stroke,int radius){GradientDrawable d=new GradientDrawable();d.setColor(fill);d.setStroke(dp(1),stroke);d.setCornerRadius(dp(radius));return d;}
  private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+0.5f);}
  private Button button(String label){
   Button b=new Button(this);b.setAllCaps(false);b.setText(label);
-  b.setTextSize(16);b.setTextColor(0xff624397);b.setMinHeight(dp(56));return b;
+  b.setTextSize(16);b.setTextColor(INK);b.setMinHeight(dp(56));
+  b.setBackground(bg(0xff24385a,0xff466382,14));
+  LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(56));
+  lp.setMargins(0,dp(4),0,dp(5));b.setLayoutParams(lp);
+  return b;
  }
  private TextView description(LinearLayout root,String value,int size){
   TextView t=new TextView(this);t.setText(value);t.setTextSize(size);
-  t.setTextColor(0xff534669);t.setPadding(dp(5),dp(8),dp(5),dp(8));root.addView(t);return t;
+  t.setTextColor(MUTED);t.setPadding(dp(4),dp(8),dp(4),dp(8));root.addView(t);return t;
  }
  private boolean hasNewPipe(){
   try{getPackageManager().getPackageInfo(NEWPIPE,0);return true;}
@@ -87,13 +95,26 @@ public final class PA6TubeActivity extends Activity {
  }
  @Override public void onCreate(Bundle b){
   super.onCreate(b);kids=getIntent().getBooleanExtra("kids",false);
-  ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.setBackgroundColor(0xfff6f3fa);
-  LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(14),dp(10),dp(14),dp(26));
+  getWindow().setStatusBarColor(NIGHT);getWindow().setNavigationBarColor(NIGHT);
+  ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.setBackgroundColor(NIGHT);
+  LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(17),dp(15),dp(17),dp(27));
   sc.addView(root);setContentView(sc);
-  TextView head=description(root,kids?"🧸  Alfa Kids":"▶  Alfa Tube",25);
-  head.setTextColor(0xff543684);head.setTypeface(null,1);
-  status=description(root,kids?"Treści dla dzieci otwierają się w zewnętrznej aplikacji lub przeglądarce.":
-   "Na Androidzie 6 YouTube może nie działać w starej przeglądarce. Użyj zgodnej aplikacji NewPipe (Android 6+).",15);
+  LinearLayout masthead=new LinearLayout(this);masthead.setGravity(Gravity.CENTER_VERTICAL);
+  PA6GlyphView mark=new PA6GlyphView(this,kids?"kids":"tube",CORAL);
+  masthead.addView(mark,new LinearLayout.LayoutParams(dp(51),dp(51)));
+  LinearLayout titlebox=new LinearLayout(this);titlebox.setOrientation(1);titlebox.setPadding(dp(13),0,0,0);
+  TextView head=new TextView(this);head.setText(kids?"ALFA KIDS":"ALFA TUBE");
+  head.setTextColor(INK);head.setTextSize(25);head.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+  titlebox.addView(head);
+  TextView subhead=new TextView(this);subhead.setText("Filmy • muzyka • lekko dla Androida 6");
+  subhead.setTextSize(13);subhead.setTextColor(MUTED);titlebox.addView(subhead);
+  masthead.addView(titlebox);root.addView(masthead);
+  View separator=new View(this);separator.setBackgroundColor(0xff28415f);
+  LinearLayout.LayoutParams sep=new LinearLayout.LayoutParams(-1,dp(1));sep.setMargins(0,dp(14),0,dp(9));root.addView(separator,sep);
+  status=description(root,kids?"Kącik dziecięcy korzysta z zewnętrznej przeglądarki.": 
+   "Odtwarzaj filmy przez NewPipe. Nie przeciążamy starej przeglądarki systemowej.",15);
+  status.setTextColor(INK);status.setBackground(bg(PANEL,0xff324562,14));
+  status.setPadding(dp(15),dp(12),dp(15),dp(12));
   if(kids){
    description(root,"YouTube Kids wymaga obsługiwanej przeglądarki. Nie zastępuje to kontroli rodzicielskiej.",15);
    Button kidsBrowser=button("▶ Otwórz oficjalne YouTube Kids");root.addView(kidsBrowser);
@@ -103,8 +124,9 @@ public final class PA6TubeActivity extends Activity {
    description(root,"Uwaga: NewPipe nie ma filtrów YouTube Kids. Z tego powodu nie jest równoważną aplikacją dziecięcą.",13);
    return;
   }
-  description(root,hasNewPipe()?"✓ Zgodny odtwarzacz NewPipe jest zainstalowany.":
-   "NewPipe nie jest zainstalowany. To bezpłatny odtwarzacz filmów z YouTube obsługujący Androida 6.",16);
+  TextView compatible=description(root,hasNewPipe()?"✓  NewPipe wykryty — możesz oglądać filmy.": 
+   "✦  Zainstaluj NewPipe, aby odtwarzać filmy na Androidzie 6.",16);
+  compatible.setTextColor(0xff81e3c3);compatible.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
   Button start=button("▶ Otwórz filmy w NewPipe");root.addView(start);
   start.setOnClickListener(v->openNewPipe(""));
   Button install=button("Pobierz NewPipe — oficjalna strona F-Droid");root.addView(install);
@@ -113,7 +135,10 @@ public final class PA6TubeActivity extends Activity {
   search=new EditText(this);search.setSingleLine(true);
   search.setText(getPreferences(0).getString("last_query",""));
   search.setHint("Wykonawca, piosenka, nazwa kanału");
-  root.addView(search,new LinearLayout.LayoutParams(-1,dp(57)));
+  search.setTextColor(INK);search.setHintTextColor(MUTED);
+  search.setSingleLine(true);search.setPadding(dp(14),dp(10),dp(14),dp(10));
+  search.setBackground(bg(PANEL,0xff426384,14));
+  root.addView(search,new LinearLayout.LayoutParams(-1,dp(60)));
   Button find=button("🔎 Szukaj w NewPipe");root.addView(find);
   find.setOnClickListener(v->{
    String q=search.getText().toString().trim();
@@ -133,6 +158,8 @@ public final class PA6TubeActivity extends Activity {
   videoLink=new EditText(this);videoLink.setSingleLine(true);
   videoLink.setHint("https://www.youtube.com/watch?v=…");
   videoLink.setInputType(InputType.TYPE_TEXT_VARIATION_URI);
+  videoLink.setTextColor(INK);videoLink.setHintTextColor(MUTED);
+  videoLink.setPadding(dp(14),dp(10),dp(14),dp(10));videoLink.setBackground(bg(PANEL,0xff426384,14));
   root.addView(videoLink,new LinearLayout.LayoutParams(-1,dp(58)));
   Button link=button("▶ Otwórz film");root.addView(link);
   link.setOnClickListener(v->openVideoLink(videoLink.getText().toString().trim()));
@@ -154,7 +181,8 @@ public final class PA6TubeActivity extends Activity {
   });
   Button stop=button("■ Zatrzymaj film");root.addView(stop);
   stop.setOnClickListener(v->{video.stopPlayback();status.setText("Zatrzymano odtwarzanie filmu.");});
-  description(root,"Alfa Tube korzysta z NewPipe lub przeglądarki przy filmach online, a z systemowego odtwarzacza przy własnych plikach. Filmy online nie są odtwarzane wewnątrz ekranu PA.",13);
+  TextView footer=description(root,"Filmy online uruchamiają się w NewPipe albo przeglądarce; własne pliki MP4 w lekkim odtwarzaczu PA. To najlepszy kompromis dla 2 GB RAM.",13);
+  footer.setTextColor(MUTED);
  }
  @Override protected void onActivityResult(int request,int result,Intent data){
   super.onActivityResult(request,result,data);
