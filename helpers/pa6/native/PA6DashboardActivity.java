@@ -27,7 +27,7 @@ public final class PA6DashboardActivity extends Activity {
  private void addHeader(){
   LinearLayout bar=new LinearLayout(this);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(dp(16),dp(12),dp(16),dp(12));
   bar.setBackground(bg(accent,accent,17));
-  ImageView cat=new ImageView(this);cat.setImageResource(com.senikolo.pa6tablet.R.drawable.ic_cat);
+  ImageView cat=new ImageView(this);cat.setImageResource(getResources().getIdentifier("ic_cat","drawable",getPackageName()));
   cat.setScaleType(ImageView.ScaleType.FIT_CENTER);bar.addView(cat,new LinearLayout.LayoutParams(dp(62),dp(62)));
   LinearLayout copy=new LinearLayout(this);copy.setOrientation(1);copy.setPadding(dp(12),0,0,0);
   copy.addView(text("POMOCNIK ALFA",23,true,Color.WHITE));
