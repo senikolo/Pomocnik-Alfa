@@ -38,6 +38,33 @@ async function ask(q){$('chatInput').value=q;$('ask').click();await until(()=>!$
  await chooseStop('Rondo ONZ');await chooseLine('17').catch(async()=>{let o=[...$('busLine').options].find(x=>x.textContent.includes('Tramwaj'));$('busLine').value=o.value;$('busLine').dispatchEvent(new w.Event('change'));await until(()=>$('busDirection').options.length>1)});
  $('busDirection').selectedIndex=1;$('busDirection').dispatchEvent(new w.Event('change'));await check();record('tram map language',{selected:$('busLine').selectedOptions[0].textContent,mapTitle:doc.querySelector('.osm-toolbar strong')?.textContent,marker:doc.querySelector('.osm-bus')?.textContent});
  assert(doc.querySelector('.osm-toolbar strong').textContent.startsWith('Tramwaj'));assert(doc.querySelector('.osm-bus use').getAttribute('href')==='#pa-tram');
+
+ // Warsaw 134 at Ostródzka uses GTFS pickup_type=3 (on request).
+ // Valid conditional boarding must never erase both valid directions.
+ await chooseStop('Ostródzka');
+ await chooseLine('134');
+ const dirs134=[...$('busDirection').options].map(o=>o.textContent);
+ assert(dirs134.includes('Metro Marymont')&&dirs134.includes('Olesin'),'134 on-request stop has both directions: '+dirs134.join(', '));
+ $('busDirection').value='Metro Marymont';$('busDirection').dispatchEvent(new w.Event('change'));
+ await check();
+ assert($('busResult').textContent.includes('na żądanie'),'Conditional boarding note missing at Ostródzka');
+ record('Ostródzka line 134 on-request directions',{pass:true,directions:dirs134});
+
+ // Select a real long-distance railway service by operator, destination and train.
+ await chooseStop('Warszawa Centralna');
+ const railChoice=[...$('busLine').options].find(o=>o.textContent.includes('Pociąg IC · PKP Intercity'));
+ assert(railChoice,'PKP Intercity IC should be selectable at Warszawa Centralna');
+ $('busLine').value=railChoice.value;$('busLine').dispatchEvent(new w.Event('change'));
+ await until(()=>$('busDirection').options.length>1&&!$('busDirection').disabled);
+ $('busDirection').selectedIndex=1;$('busDirection').dispatchEvent(new w.Event('change'));
+ await until(()=>$('busTrainField').hidden===false&&$('busTrain').options.length>1&&!$('busTrain').disabled);
+ const trainName=$('busTrain').options[1].textContent,trainId=$('busTrain').options[1].value;
+ $('busTrain').value=trainId;$('busTrain').dispatchEvent(new w.Event('change'));await check();
+ const railRequest=requests.filter(x=>x.type==='live').at(-1);
+ assert.equal(railRequest.payload.departures.length,1,'Selected train must produce one exact trip');
+ assert($('busResult').textContent.includes('Pociąg'),'Rail vehicle must never be labelled a bus');
+ assert($('osmLiveMap .osm-bus use').getAttribute('href')==='#pa-train','Rail GPS marker must not show a bus icon');
+ record('PKP Intercity train picker',{pass:true,selectedTrain:trainName,trip:railRequest.payload.departures[0].trip});
  $('tabFavorites').click();assert.equal(doc.querySelectorAll('#favorites [data-module]').length,0,'Native modules must not be repeated in favorites');assert($('goDashboard'),'There must be a way back to the full PA dashboard');$('goDashboard').click();await until(()=>requests.some(x=>x.type==='back'));record('favorites has no duplicate module shortcuts',{pass:true,backToDashboard:true});
  $('tabAssistant').click();await ask('Z Ispiny do Bochni Dworzec PKP jutro o 9');
  const firstMessage=$('messages').lastElementChild,oldButton=[...firstMessage.querySelectorAll('button')].find(b=>b.textContent.includes('Wybieram'));
