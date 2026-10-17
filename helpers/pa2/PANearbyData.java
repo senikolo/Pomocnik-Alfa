@@ -4,7 +4,7 @@ import org.json.*;import java.util.*;
 final class PANearbyData {
  interface Reader {JSONObject route(int id)throws Exception;}
  static final class Departure {
-  String line,headsign,source,trip,day,stopId;int mode,pickup,seconds;long planned;JSONObject live;
+  String line,headsign,source,trip,day,stopId,operator,train;int mode,pickup,seconds,headway;long planned,frequencyEnd;JSONObject live;
   JSONObject query()throws Exception{return new JSONObject().put("source",source).put("trip",trip).put("serviceDay",day).put("stopId",stopId).put("plannedEpoch",planned).put("dep",seconds).put("line",line).put("headsign",headsign);}
   String key(){return source+"|"+trip+"|"+day+"|"+stopId;}
  }
@@ -30,8 +30,8 @@ final class PANearbyData {
     for(int ri=0;ri<runs.length();ri++){JSONArray run=runs.getJSONArray(ri),pattern=patterns.getJSONArray(run.getInt(2));
      for(int di=0;di<days.length();di++){if((run.getInt(0)&(1<<di))==0)continue;String day=days.getString(di);long base=PANearbyRules.epoch(day,run.getInt(3));
       if(base>now+86400||base+172800<now-1800)continue;
-      for(int pi=0;pi<pattern.length();pi++){JSONArray point=pattern.getJSONArray(pi);int sid=point.getInt(0),pickup=point.getInt(3);if(!members.contains(sid)||pickup==1)continue;long planned=base+point.getInt(1);if(planned<now-1800||planned>now+86400)continue;
-       Departure d=new Departure();d.line=meta.optString(1);d.mode=meta.optInt(3);d.source=meta.optString(5);d.headsign=run.optString(1);d.trip=run.optString(4);d.day=day;d.stopId=rows.getJSONArray(sid).getString(0);d.seconds=run.getInt(3)+point.getInt(1);d.planned=planned;d.pickup=pickup;
+      for(int pi=0;pi<pattern.length();pi++){JSONArray point=pattern.getJSONArray(pi);int sid=point.getInt(0),pickup=point.getInt(3);if(!members.contains(sid)||pickup==1)continue;long planned=base+point.getInt(1);int headway=run.optInt(6);long frequencyEnd=headway>0?PANearbyRules.epoch(day,run.optInt(7)+point.getInt(1)):0;if(headway>0&&frequencyEnd<now)continue;if(headway==0&&planned<now-1800||planned>now+86400)continue;
+       Departure d=new Departure();d.line=meta.optString(1);d.operator=meta.optString(6,meta.optString(4));d.train=run.optString(5);d.mode=meta.optInt(3);d.source=meta.optString(5);d.headsign=run.optString(1);d.trip=run.optString(4);d.day=day;d.stopId=rows.getJSONArray(sid).getString(0);d.seconds=run.getInt(3)+point.getInt(1);d.planned=planned;d.headway=headway;d.frequencyEnd=frequencyEnd;d.pickup=pickup;
        if(seen.add(d.key()))b.departures.add(d);
       }
      }
@@ -39,16 +39,16 @@ final class PANearbyData {
    }
    b.departures.sort(Comparator.comparingLong(d->d.planned));
    // Six future rows plus recent courses that may still be delayed. Bounded LIVE request below.
-   ArrayList<Departure> keep=new ArrayList<>();int past=0,future=0;for(int i=b.departures.size()-1;i>=0;i--){Departure d=b.departures.get(i);if(d.planned<now&&past++<3)keep.add(d);}
-   for(Departure d:b.departures)if(d.planned>=now&&future++<8)keep.add(d);keep.sort(Comparator.comparingLong(d->d.planned));b.departures.clear();b.departures.addAll(keep);
+   ArrayList<Departure> keep=new ArrayList<>();int past=0,future=0;for(int i=b.departures.size()-1;i>=0;i--){Departure d=b.departures.get(i);if(d.headway==0&&d.planned<now&&past++<3)keep.add(d);}
+   for(Departure d:b.departures)if((d.planned>=now||d.headway>0)&&future++<8)keep.add(d);keep.sort(Comparator.comparingLong(d->d.planned));b.departures.clear();b.departures.addAll(keep);
   }return out;
  }
- static void enrich(Snapshot s,PALive.Reader reader)throws Exception{JSONArray query=new JSONArray();ArrayList<Departure> list=new ArrayList<>();for(Board b:s.boards)for(Departure d:b.departures){list.add(d);query.put(d.query());}if(query.length()==0)return;
+ static void enrich(Snapshot s,PALive.Reader reader)throws Exception{JSONArray query=new JSONArray();ArrayList<Departure> list=new ArrayList<>();for(Board b:s.boards)for(Departure d:b.departures){if(d.headway==0){list.add(d);query.put(d.query());}}if(query.length()==0)return;
   JSONObject response=PALive.lookup(new JSONObject().put("departures",query),reader);JSONArray answers=response.getJSONArray("results");Map<String,JSONObject> matched=new HashMap<>();for(int i=0;i<answers.length();i++){JSONObject a=answers.getJSONObject(i);matched.put(a.optString("source")+"|"+a.optString("trip")+"|"+a.optString("serviceDay")+"|"+a.optString("stopId"),a);}for(Departure d:list)d.live=matched.get(d.key());s.checked=response.optLong("checkedAt",s.checked);
  }
  static boolean confirmed(Departure d,long now){return d.live!=null&&PANearbyRules.fresh(d.live.optLong("liveTimestamp"),now);}
  static boolean cancelled(Departure d,long now){return confirmed(d,now)&&(d.live.optBoolean("cancelled")||d.live.optBoolean("skipped"));}
  static boolean eta(Departure d,long now){return confirmed(d,now)&&!cancelled(d,now)&&d.live.has("eta")&&d.live.optLong("eta")>=now-30&&d.live.optLong("eta")<now+86400;}
  static long time(Departure d,long now){return eta(d,now)?d.live.optLong("eta"):d.planned;}
- static List<Departure> visible(Board b,long now){ArrayList<Departure> out=new ArrayList<>();for(Departure d:b.departures)if(time(d,now)>=now-30||cancelled(d,now)&&d.planned>=now-300)out.add(d);out.sort(Comparator.comparingLong(d->time(d,now)));return out;}
+ static List<Departure> visible(Board b,long now){ArrayList<Departure> out=new ArrayList<>();for(Departure d:b.departures)if(d.headway>0&&d.frequencyEnd>=now||time(d,now)>=now-30||cancelled(d,now)&&d.planned>=now-300)out.add(d);out.sort(Comparator.comparingLong(d->time(d,now)));return out;}
 }

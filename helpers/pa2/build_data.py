@@ -2,7 +2,7 @@
 """Versioned, lossless GTFS passenger times. Never extrapolate service calendars.
 Patterns share only identical stop/time/boarding arrays; run IDs remain original.
 """
-import csv, io, json, zipfile, datetime as dt, hashlib, sys, os
+import csv, io, json, zipfile, datetime as dt, hashlib, sys, os, re, unicodedata
 from pathlib import Path
 from collections import defaultdict
 from zoneinfo import ZoneInfo
@@ -31,17 +31,34 @@ def mask_for(service,cal,exc,days):
   if yes:mask|=1<<i
  return mask
 
+def operator(provider,route,agency):
+ name=unicodedata.normalize('NFD',agency.lower()).encode('ascii','ignore').decode()
+ if provider=='mld':return 'MLD'
+ if provider=='kmlrail' or 'koleje maopolskie' in name:return 'KMŁ'
+ if 'koleje mazowieckie' in name:return 'KM'
+ if provider=='wkd':return 'WKD'
+ if 'skm warszawa' in name or (provider=='warsaw' and route.get('route_type')=='2' and re.fullmatch(r'S(?:1|2|3|4|40)',route.get('route_short_name',''))):return 'SKM Warszawa'
+ return agency
+
 def build(source,out,today):
  out.mkdir(parents=True,exist_ok=True);days=[today+dt.timedelta(days=i) for i in range(-1,14)]
- stops=[];routes=[];sources=[];stop_routes=[];covered=[False]*len(days);transfers=[];summary={}
+ stops=[];routes=[];sources=[];stop_routes=[];covered=[False]*len(days);transfers=[];summary={};preferred={}
  for provider,(url,credit,license_url) in SOURCES.items():
   path=source/(provider+'.zip')
   if not path.exists():print('MISSING',provider,flush=True);continue
   with zipfile.ZipFile(path) as z:
    cal={r['service_id']:r for r in rows(z,'calendar.txt')};exc={(r['service_id'],r['date']):r['exception_type'] for r in rows(z,'calendar_dates.txt')}
    masks={};tripmeta={};rr=list(rows(z,'routes.txt'));ri={r['route_id']:len(routes)+i for i,r in enumerate(rr)}
-   agency={r['agency_id']:r['agency_name'] for r in rows(z,'agency.txt')}
-   for r in rr:routes.append([provider+':'+r['route_id'],r.get('route_short_name') or r.get('route_long_name') or r['route_id'],r.get('route_long_name',''),int(r['route_type']),agency.get(r.get('agency_id'),credit),provider])
+   agency={r.get('agency_id',''):r['agency_name'] for r in rows(z,'agency.txt')}
+   for r in rr:
+    an=agency.get(r.get('agency_id',''),next(iter(agency.values())) if len(agency)==1 else credit)
+    routes.append([provider+':'+r['route_id'],r.get('route_short_name') or r.get('route_long_name') or r['route_id'],r.get('route_long_name',''),int(r['route_type']),an,provider,operator(provider,r,an)])
+   frequency=defaultdict(list)
+   for f in rows(z,'frequencies.txt'):
+    try:
+     start,end,headway=seconds(f['start_time']),seconds(f['end_time']),int(f['headway_secs'])
+     if 0<=start<end<=172800 and headway>0:frequency[f['trip_id']].append((start,end,headway,f.get('exact_times','0')=='1'))
+    except (ValueError,KeyError):continue
    si={}
    for s in rows(z,'stops.txt'):
     if s.get('location_type','0') not in ('','0'):continue
@@ -52,7 +69,9 @@ def build(source,out,today):
     if not platform and provider=='warsaw' and len(s['stop_id'])==6 and s['stop_id'].isdigit():platform=s['stop_id'][-2:]
     stops.append([provider+':'+s['stop_id'],s.get('stop_name',''),platform,round(lat,6),round(lon,6),[],provider,s.get('parent_station','')]);stop_routes.append(set())
    for t in rows(z,'trips.txt'):
-    service=t['service_id'];mask=masks.setdefault(service,mask_for(service,cal,exc,days))
+    service=t['service_id']
+    if service not in masks:masks[service]=mask_for(service,cal,exc,days)
+    mask=masks[service]
     if mask and t['route_id'] in ri:tripmeta[t['trip_id']]=(ri[t['route_id']],mask,t.get('trip_headsign',''),t.get('trip_short_name',''))
    routepoints=defaultdict(dict);n=0
    for p in rows(z,'stop_times.txt'):
@@ -71,7 +90,20 @@ def build(source,out,today):
      if len(points)<2 or any(points[j][3]<points[j-1][2] for j in range(1,len(points))):continue
      key=tuple((p[1],p[2]-base,p[3]-base,p[4],p[5]) for p in points)
      if key not in lookup:lookup[key]=len(patterns);patterns.append(key)
-     _,mask,head,short=tripmeta[tid];entries.append([mask,head or stops[points[-1][1]][1],lookup[key],base,tid,short])
+     _,mask,head,short=tripmeta[tid]
+     # Prefer dedicated WTP/SKA data only on service days they cover. No train-number fuzzy RT joins.
+     op=routes[rid][6]
+     if provider=='polishrail' and op in ('KMŁ','SKM Warszawa'):mask &= ~preferred.get(op,0)
+     if not mask:continue
+     for j in range(len(days)):
+      if mask&(1<<j) and provider in ('warsaw','kmlrail') and op in ('KMŁ','SKM Warszawa'):preferred[op]=preferred.get(op,0)|(1<<j)
+     entry=[mask,head or stops[points[-1][1]][1],lookup[key],base,tid,short]
+     if tid in frequency:
+      for start,end,headway,exact in frequency[tid]:
+       if exact:
+        for departure in range(start,end,headway):entries.append(entry[:3]+[departure,tid+'@'+str(departure),short])
+       else:entries.append(entry[:3]+[start,tid,short,headway,end])
+     else:entries.append(entry)
      for p in points:stop_routes[p[1]].add(rid)
      for j in range(len(days)):
       if mask&(1<<j):valid[j]=covered[j]=True
@@ -84,7 +116,7 @@ def build(source,out,today):
    attrs=list(rows(z,'attributions.txt'));sources.append({'id':provider,'url':url,'credit':credit,'license':license_url,'attributions':attrs,'downloaded':dt.datetime.fromtimestamp(path.stat().st_mtime,ZoneInfo('Europe/Warsaw')).isoformat(),'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'covered':valid})
    summary[provider]={'routes':len(rr),'stops':len(si),'trips':runs,'stop_times':n,'covered':valid};print(provider,summary[provider],flush=True)
  for i,s in enumerate(stops):s[5]=sorted(stop_routes[i])
- index={'schema':2,'source':'all','generated':today.isoformat(),'days':[d.isoformat() for d in days],'covered':covered,'stops':stops,'routes':routes,'sources':sources,'transfers':transfers,'notice':'Rozkład planowy GTFS. Dane rzeczywiste wymagają zgodnego kursu i świeżego pomiaru.'}
+ index={'schema':2,'transportRevision':10,'source':'all','generated':today.isoformat(),'days':[d.isoformat() for d in days],'covered':covered,'stops':stops,'routes':routes,'sources':sources,'transfers':transfers,'notice':'Rozkład planowy GTFS. Dane rzeczywiste wymagają zgodnego kursu i świeżego pomiaru.'}
  dump(out/'index_all.json',index);dump(out/'summary.json',summary)
  files=[]
  for p in sorted(out.glob('*.json')):

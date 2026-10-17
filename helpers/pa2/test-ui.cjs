@@ -1,7 +1,7 @@
 const fs=require('fs'),path=require('path');
 const {JSDOM,VirtualConsole}=require(process.env.PA_JSDOM_PATH||'jsdom');
 const root=__dirname,data=path.resolve(process.argv[2]);const assert=require('node:assert/strict');
-let clock=Date.parse('2026-10-15T13:00:00Z');
+let clock=Date.parse(JSON.parse(fs.readFileSync(data+'/index_all.json')).generated+'T13:00:00Z');
 const vc=new VirtualConsole(),errors=[];vc.on('jsdomError',e=>errors.push(e.message));
 const d=new JSDOM(fs.readFileSync(root+'/app.html','utf8'),{url:'https://pa-bus.invalid/app.html',runScripts:'outside-only',pretendToBeVisual:true,virtualConsole:vc});
 const w=d.window,doc=w.document,OriginalDate=w.Date;w.Date=class extends OriginalDate{constructor(...args){super(...(args.length?args:[clock]))}static now(){return clock}};

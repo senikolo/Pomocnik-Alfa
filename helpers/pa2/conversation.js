@@ -74,6 +74,7 @@ class Assistant{
   const lm=n.match(/\b(?:linia|linie|linii|autobus|autobusu|tramwaj|tramwaju|numer|nr)\s*(a\d{1,3}|n\d{1,3}|m[12]|s\d{1,2}|\d{1,3})\b/)||n.match(/\b(a\d{1,3}|n\d{1,3}|m[12]|s\d{1,2})\b/);
   if(lm){const line=lm[1].toUpperCase();if(s.line&&s.line!==line)s.direction=null;s.line=line}
   else if(model&&model.line){const line=String(model.line).slice(0,16);if(s.line&&s.line!==line)s.direction=null;s.line=line}
+  const op=/\bkm[lł]\b|kolej\w* malopolsk/.test(n)?'KMŁ':/\bkm\b|kolej\w* mazowieck/.test(n)?'KM':/\bskm\b/.test(n)?'SKM Warszawa':/\bmld\b/.test(n)?'MLD':null;if(op)s.operator=op;
   const vehicle=/\bgdzie\b.*\b(autobus|bus|tramwaj|pociag)\b|\bgps\b/.test(n)||model?.intent==='vehicle';
   const departure=/\b(kiedy|nastepn\w*|odjazd\w*|najblizsz\w*)\b/.test(n)&&!loc.to||model?.intent==='departure';
   if(vehicle||departure){const previous=s.to;s.intent=vehicle?'vehicle':'departure';s.to=null;if(!s.direction&&previous)s.direction=previous.name.split(' ')[0];}
@@ -92,7 +93,7 @@ class Assistant{
   if(!s.from)return this.pending('from',s.fromCandidates||[]);
   if(s.intent==='vehicle'&&!s.line)return this.pending('line');
   if(s.intent==='route'&&!s.to)return this.pending('to',s.toCandidates||[]);
-  s.asked='';return{type:s.intent,from:s.from,to:s.to,when:s.when,line:s.line,direction:s.direction,correction:/\bz ispin(i)\b/.test(n)?'Drobna poprawka: „z Ispiny”.':s.correction||''}
+  s.asked='';return{type:s.intent,from:s.from,to:s.to,when:s.when,line:s.line,direction:s.direction,operator:s.operator,correction:/\bz ispin(i)\b/.test(n)?'Drobna poprawka: „z Ispiny”.':s.correction||''}
  }
 }
 root.PAConversation={Assistant,parseTime,locations,wallNow,format,localDate};if(typeof module!=='undefined')module.exports=root.PAConversation;
