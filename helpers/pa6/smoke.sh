@@ -15,6 +15,18 @@ sleep 3
 adb shell dumpsys activity activities > results/sounds-activity.txt
 grep -q "PA6SoundsActivity" results/sounds-activity.txt
 adb exec-out screencap -p > results/sounds.png
+# Exercise the repaired native multimedia screens, not just their manifest names.
+adb shell am start -n com.senikolo.pa6tablet/com.ispina.lokalnie.PA6RadioActivity
+sleep 3
+adb shell dumpsys activity activities > results/radio-activity.txt
+grep -q "PA6RadioActivity" results/radio-activity.txt
+adb exec-out screencap -p > results/radio.png
+adb shell am start -n com.senikolo.pa6tablet/com.ispina.lokalnie.PA6TvActivity
+sleep 3
+adb shell dumpsys activity activities > results/tv-activity.txt
+grep -q "PA6TvActivity" results/tv-activity.txt
+adb exec-out screencap -p > results/tv.png
+# This proves startup only; physical-device video decoding and live streams need user testing.
 # Keep testing the original planner's actual Android 6 System WebView engine.
 adb shell am start -n com.senikolo.pa6tablet/com.ispina.lokalnie.PARegionsActivity --es pa_tab assistant
 sleep 20
@@ -37,4 +49,4 @@ grep -q 'PARegionsActivity' results/activities.txt
 for module in PA6DashboardActivity PA6RadioActivity PA6RadioService PA6TvActivity PA6TubeActivity PA6NotesActivity PA6WeatherActivity PA6ReaderActivity PA6RemindersActivity PA6ReminderReceiver PA6SoundsActivity PA6SoundsService; do
   grep -q "$module" results/apk-manifest.txt || { echo "Missing Android6 module $module"; exit 1; }
 done
-echo 'PASS Android 6.0 API23: Alfa dashboard, sounds screen, all declared modules and planner WebView booted'
+echo 'PASS Android 6.0 API23: dashboard, sounds, radio and TV screens, manifest and planner WebView booted (live-stream playback NOT yet validated)'
