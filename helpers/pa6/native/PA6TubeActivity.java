@@ -96,8 +96,10 @@ public final class PA6TubeActivity extends Activity {
  @Override public void onCreate(Bundle b){
   super.onCreate(b);kids=getIntent().getBooleanExtra("kids",false);
   getWindow().setStatusBarColor(NIGHT);getWindow().setNavigationBarColor(NIGHT);
+  getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
   ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.setBackgroundColor(NIGHT);
   LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(17),dp(15),dp(17),dp(27));
+  root.setFocusableInTouchMode(true);root.requestFocus();
   sc.addView(root);setContentView(sc);
   LinearLayout masthead=new LinearLayout(this);masthead.setGravity(Gravity.CENTER_VERTICAL);
   PA6GlyphView mark=new PA6GlyphView(this,kids?"kids":"tube",CORAL);
@@ -183,6 +185,7 @@ public final class PA6TubeActivity extends Activity {
   stop.setOnClickListener(v->{video.stopPlayback();status.setText("Zatrzymano odtwarzanie filmu.");});
   TextView footer=description(root,"Filmy online uruchamiają się w NewPipe albo przeglądarce; własne pliki MP4 w lekkim odtwarzaczu PA. To najlepszy kompromis dla 2 GB RAM.",13);
   footer.setTextColor(MUTED);
+  sc.post(()->sc.scrollTo(0,0));
  }
  @Override protected void onActivityResult(int request,int result,Intent data){
   super.onActivityResult(request,result,data);
