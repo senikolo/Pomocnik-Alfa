@@ -5,6 +5,9 @@
   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
   <application android:label="Pomocnik Alfa Tablet TEST" android:icon="@drawable/ic_cat" android:allowBackup="false" android:usesCleartextTraffic="false" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:hardwareAccelerated="true" android:supportsRtl="true">
+    <activity android:name="com.ispina.lokalnie.PA6RadioActivity" android:exported="false"/>
+    <activity android:name="com.ispina.lokalnie.PA6TvActivity" android:exported="false" android:configChanges="orientation|screenSize"/>
+    <service android:name="com.ispina.lokalnie.PA6RadioService" android:exported="false"/>
     <activity android:name="com.ispina.lokalnie.PARegionsActivity" android:exported="true" android:windowSoftInputMode="adjustResize" android:screenOrientation="unspecified">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
