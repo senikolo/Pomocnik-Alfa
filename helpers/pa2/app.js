@@ -211,23 +211,23 @@ function renderBusSnapshot(){
  const mapKey=[first.d.trip,position?.timestamp||'stop'].join('|'),old=$('osmLiveMap'),keep=old&&old.dataset.mapKey===mapKey;
  if(keep)old.remove();else clearBusMap();
  $('busResult').innerHTML=rows.slice(0,6).map(({d,actual,status},i)=>{
-  const type=busTram(Number(d.mode))?'tram':'bus',label=type==='tram'?'Tramwaj':'Autobus';
+  const type=busRail(d.mode)?'train':busTram(Number(d.mode))?'tram':'bus',label=type==='train'?'Pociąg':type==='tram'?'Tramwaj':'Autobus';
   const state=status.cancelled?'Odwołany kurs':status.skipped?'Przystanek pominięty':status.gpsFresh?'Świeża pozycja GPS':status.etaFresh?'Prognoza przyjazdu LIVE':status.hadPosition?'Pozycja GPS jest nieaktualna':'Rozkład planowy';
-  return '<article class="card trip"><div class="bus-card-header"><span class="bus-vehicle-line">'+icon(type)+esc(label+' '+d.line)+'</span><span class="pill">'+clock(d.dep)+'</span></div><p class="bus-destination">'+icon('arrow-right')+esc(d.headsign)+'</p><div class="bus-status '+(status.gpsFresh||status.etaFresh?'ok':'warn')+'">'+icon(status.gpsFresh?'pin':'clock')+esc(state)+'</div>'+busArrivalView(actual,d,snap.checked)+'<p class="small">Przystanek: <strong>'+esc(busState.stop.name)+'</strong>'+(d.platform?' · stanowisko '+esc(d.platform):'')+'</p>'+(status.gpsFresh?'<p class="small">Pomiar GPS sprzed '+status.positionAge+' s. Położenie nie jest prognozą przyjazdu.</p>':status.hadPosition?'<p class="small">Ostatni pomiar jest starszy niż 2 minuty. Znacznik pojazdu został ukryty.</p>':'')+(i===0?'<div id="osmLiveMap" role="region" aria-label="Mapa pojazdu i przystanku"></div>':'')+'<details class="bus-source"><summary>Źródło i status</summary>'+esc(actual.provenance||'Dane rozkładowe: '+d.source)+'</details></article>';
+  return '<article class="card trip"><div class="bus-card-header"><span class="bus-vehicle-line">'+icon(type)+esc(label+' '+(d.train||d.line)+(type==='train'?' · '+(d.operator||'Kolej'):''))+'</span><span class="pill">'+clock(d.dep)+'</span></div><p class="bus-destination">'+icon('arrow-right')+esc(d.headsign)+'</p><div class="bus-status '+(status.gpsFresh||status.etaFresh?'ok':'warn')+'">'+icon(status.gpsFresh?'pin':'clock')+esc(state)+'</div>'+busArrivalView(actual,d,snap.checked)+'<p class="small">Przystanek: <strong>'+esc(busState.stop.name)+'</strong>'+(d.platform?' · stanowisko '+esc(d.platform):'')+'</p>'+(d.pickupType===3?'<p class="small">Przystanek na żądanie: zasygnalizuj zamiar wejścia.</p>':d.pickupType===2?'<p class="small">Wsiadanie wymaga uzgodnienia z przewoźnikiem.</p>':'')+(status.gpsFresh?'<p class="small">Pomiar GPS sprzed '+status.positionAge+' s. Położenie nie jest prognozą przyjazdu.</p>':status.hadPosition?'<p class="small">Ostatni pomiar jest starszy niż 2 minuty. Znacznik pojazdu został ukryty.</p>':'')+(i===0?'<div id="osmLiveMap" role="region" aria-label="Mapa pojazdu i przystanku"></div>':'')+'<details class="bus-source"><summary>Źródło i status</summary>'+esc(actual.provenance||'Dane rozkładowe: '+d.source)+'</details></article>';
  }).join('');
  const node=$('osmLiveMap');if(keep)node.replaceWith(old);else if(point&&window.PAMap){node.dataset.mapKey=mapKey;PAMap.mount(node,{lat:point[3],lon:point[4]},position?{lat:position.latitude,lon:position.longitude}:null,{mode:first.d.mode,line:first.d.line})}
  $('busProvider').textContent='Sprawdzono '+new Intl.DateTimeFormat('pl-PL',{timeZone:'Europe/Warsaw',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(snap.checked*1000))+' · odświeżanie co 30 s';
 }
 async function checkLiveBus(){
  if(updating||busState.inFlight||!engine||!busState.stop||!busSelectedIds().length||!$('busDirection').value)return;
- const seq=++busState.seq,now=wallNow(),routeIds=busSelectedIds(),line=String(engine.idx.routes[routeIds[0]][1]),direction=$('busDirection').value;
+ const seq=++busState.seq,now=wallNow(),routeIds=busSelectedIds(),line=String(engine.idx.routes[routeIds[0]][1]),direction=$('busDirection').value,rail=busRail(engine.idx.routes[routeIds[0]][3]),specific=busState.trainChoices.get($('busTrain').value);
  busState.inFlight=true;$('checkBus').disabled=true;$('busRefresh').disabled=true;$('busLoading').textContent='Sprawdzam rozkład i dostępne dane pojazdu…';
  try{
   const all=await engine.departures(busState.stop,now,line,direction,72,routeIds,1800);if(seq!==busState.seq)return;
   const seconds=Number(now.slice(11,13))*3600+Number(now.slice(14,16))*60;
-  const matching=all.filter(d=>d.headsign===direction&&d.dep>=seconds-1800&&d.dep<=seconds+7200);
-  const relevant=[...matching.filter(d=>d.dep<seconds).slice(-4),...matching.filter(d=>d.dep>=seconds).slice(0,8)];
-  if(!relevant.length){busResetResults('Brak kursów w najbliższych 2 godzinach. Spróbuj innego kierunku.');return}
+  const matching=all.filter(d=>d.headsign===direction&&d.dep>=seconds-1800&&(specific?d.trip===specific.trip&&d.serviceDay===specific.serviceDay&&d.stopId===specific.stopId&&d.dep===specific.dep:d.dep<=seconds+(rail?21600:7200)));
+  const relevant=specific?matching.slice(0,1):[...matching.filter(d=>d.dep<seconds).slice(-4),...matching.filter(d=>d.dep>=seconds).slice(0,8)];
+  if(!relevant.length){busResetResults(specific?'Wybrany pociąg nie jest już dostępny. Wybierz inny kurs.':rail?'Brak pociągów w kolejnych 6 godzinach. Spróbuj innego kierunku.':'Brak kursów w najbliższych 2 godzinach. Spróbuj innego kierunku.');return}
   let live=null,message='';try{live=await native('live',{departures:relevant})}catch(e){message='Nie mogę pobrać LIVE. Pokazuję rozkład planowy.'}
   if(seq!==busState.seq)return;
   const checked=Number(live?.checkedAt||Date.now()/1000);busState.snapshot={departures:relevant,live,checked};busState.refreshed=Date.now();
@@ -241,7 +241,7 @@ window.PAVisibility=visible=>{appVisible=!!visible;if(appVisible){tickBus();if(c
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)tickBus()});
 window.addEventListener('pagehide',()=>{clearInterval(liveTimer);clearBusMap()});
 $('busStop').oninput=busStopList;$('busStop').onfocus=()=>{if(!busState.stop)busStopList()};
-$('busLine').onchange=busChangeLine;$('busDirection').onchange=busChangeDirection;
+$('busLine').onchange=busChangeLine;$('busDirection').onchange=busChangeDirection;$('busTrain').onchange=()=>busResetResults();
 $('checkBus').onclick=checkLiveBus;$('busRefresh').onclick=checkLiveBus;$('busQuick').onclick=()=>tab('liveBus');
 
 /* Full stop view opened from the native home board, within the existing regional module. */
