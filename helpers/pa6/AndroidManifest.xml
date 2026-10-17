@@ -8,6 +8,8 @@
   <application android:label="Pomocnik Alfa Tablet TEST" android:icon="@drawable/ic_cat" android:allowBackup="false" android:usesCleartextTraffic="false" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:hardwareAccelerated="true" android:supportsRtl="true">
     <activity android:name="com.ispina.lokalnie.PA6DashboardActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
     <activity android:name="com.ispina.lokalnie.PA6TubeActivity" android:exported="false"/>
+    <activity android:name="com.ispina.lokalnie.PA6SoundsActivity" android:exported="false"/>
+    <service android:name="com.ispina.lokalnie.PA6SoundsService" android:exported="false"/>
     <activity android:name="com.ispina.lokalnie.PA6ReaderActivity" android:exported="false"/>
     <activity android:name="com.ispina.lokalnie.PA6NotesActivity" android:exported="false"/>
     <activity android:name="com.ispina.lokalnie.PA6RemindersActivity" android:exported="false"/>
