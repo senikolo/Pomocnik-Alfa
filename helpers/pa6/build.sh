@@ -16,9 +16,10 @@ for f in transit-core conversation osm-map live-state app; do
  node --check "build/pa6-assets/pa_regions/$f.js"
 done
 test -s build/pa6-assets/pa_regions/route_all_0.json
-gh release download pa2-source-base -p pa-base.zip -D baseline
-unzip -q baseline/pa-base.zip -d baseline
-find baseline -name '*.apk' -print -quit | xargs -I{} cp '{}' baseline.apk
+# Use the already verified original PA launcher cat from the last tested
+# alpha10 APK. Android 10 binary code is NOT reused in this Android 6 build.
+gh release download pa2-rail-alpha10-isolated-e44250d0 -p Pomocnik-Alfa-alpha10-POLREGIO-Intercity-OSOBNY-TEST.apk -D baseline
+cp baseline/Pomocnik-Alfa-alpha10-POLREGIO-Intercity-OSOBNY-TEST.apk baseline.apk
 test -s baseline.apk
 python3 helpers/pa6/extract_icon.py baseline.apk build/pa6-res/drawable-nodpi/ic_cat.png
 javac -source 8 -target 8 -encoding UTF-8 -cp "$SDK/platforms/android-35/android.jar" -d build/pa6-classes build/pa6-java/*.java
