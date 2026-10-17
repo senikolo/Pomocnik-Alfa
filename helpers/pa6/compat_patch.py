@@ -43,8 +43,11 @@ for name in ('PARegionsActivity.java','PALive.java','PADataStore.java','PAOSMTil
         old='String mime=name.endsWith(".html")?"text/html":name.endsWith(".js")?"application/javascript":"application/json";'
         assert old in code
         code=code.replace(old,'String mime=name.endsWith(".html")?"text/html":name.endsWith(".css")?"text/css":name.endsWith(".js")?"application/javascript":"application/json";')
-        # In this initial port the other *native* PA modules are not shipped.
-        # Keep their honest error response instead of crashing.
+        # Reuse original dispatch module API and launch API23 native players.
+        assert 'names.put("radio","RadioActivity")' in code
+        assert 'names.put("tv","TvActivity")' in code
+        code=code.replace('names.put("radio","RadioActivity")','names.put("radio","PA6RadioActivity")')
+        code=code.replace('names.put("tv","TvActivity")','names.put("tv","PA6TvActivity")')
     elif name=='PALive.java':
         a='fields.computeIfAbsent(key,k->new ArrayList<>()).add(f);'
         assert a in code
@@ -77,4 +80,6 @@ final class PA6CompatEpoch {
  }
 }
 """,encoding='utf-8')
-for source in (repo/'helpers'/'pa6'/'native').glob('*.java'):\n shutil.copyfile(source,dest/source.name)\nprint('PASS original PA regions, GTFS-RT, data store and OSM reader API23 compatibility edits')
+for source in (repo/'helpers'/'pa6'/'native').glob('*.java'):
+ shutil.copyfile(source,dest/source.name)
+print('PASS original PA regions, GTFS-RT, data store and OSM reader API23 compatibility edits')
