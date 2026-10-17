@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: ['work/pa2-ultrasmart-transport-20261017']
-    paths: ['.github/workflows/pa2-alpha10-preview.yml']
+    paths: ['.github/workflows/pa2-alpha10-preview.yml', 'helpers/pa2/PABoardsProbe.java.test']
 defaults:
   run:
     shell: bash
