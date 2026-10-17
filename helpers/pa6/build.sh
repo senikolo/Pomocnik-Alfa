@@ -12,6 +12,8 @@ npm install --no-audit --no-fund --prefix build/pa6-node @babel/core@7 @babel/pr
 NODE_PATH="$PWD/build/pa6-node/node_modules" node helpers/pa6/transpile.cjs helpers/pa2 build/pa6-assets/pa_regions
 python3 helpers/pa6/prepare_tablet.py build/pa6-data build/pa6-assets/pa_regions
 python3 helpers/pa6/compat_patch.py build/pa6-java
+cp helpers/pa6/assets/pa6-ca-bundle.pem build/pa6-assets/pa6-ca-bundle.pem
+cp helpers/pa6/assets/pa6-ca-license.txt build/pa6-assets/pa6-ca-license.txt
 # Bundle a real embedded VLC decoder into the APK. No external VLC application needed.
 # LibVLC 3.5.1 is LGPL-2.1. Native libraries are shipped unchanged.
 mkdir -p build/pa6-libvlc build/pa6-package
