@@ -27,7 +27,8 @@ adb logcat -d -b crash > results/crashes.txt
 ! grep -q 'FATAL EXCEPTION' results/crashes.txt
 grep -q 'com.senikolo.pa6tablet' results/package.txt
 grep -q 'PARegionsActivity' results/activities.txt
+"$ANDROID_HOME/build-tools/35.0.0/aapt" dump xmltree pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk AndroidManifest.xml > results/apk-manifest.txt
 for module in PA6DashboardActivity PA6RadioActivity PA6RadioService PA6TvActivity PA6TubeActivity PA6NotesActivity PA6WeatherActivity PA6ReaderActivity PA6RemindersActivity PA6ReminderReceiver; do
-  grep -q "$module" results/package.txt || { echo "Missing Android6 module $module"; exit 1; }
+  grep -q "$module" results/apk-manifest.txt || { echo "Missing Android6 module $module"; exit 1; }
 done
 echo 'PASS Android 6.0 API23: Alfa dashboard, all declared modules and planner WebView booted'
