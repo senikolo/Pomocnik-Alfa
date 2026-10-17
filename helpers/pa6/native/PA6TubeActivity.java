@@ -23,7 +23,8 @@ public final class PA6TubeActivity extends Activity {
  private static final int PICK_FILE=791;
  private static final int WHITE=0xfff8fafc,INK=0xff172036,MUTED=0xff596574,RED=0xffed263b,PALE=0xffedf0f5;
  private final Handler main=new Handler(Looper.getMainLooper());
- private final ExecutorService io=Executors.newFixedThreadPool(3);
+ private final ExecutorService io=Executors.newFixedThreadPool(2);
+ private final ExecutorService thumbnailIo=Executors.newFixedThreadPool(2);
  private LinearLayout results,stageWrap;
  private PA6EmbeddedPlayer player;
  private TextView status,title,subtitle,provider;
@@ -106,7 +107,7 @@ public final class PA6TubeActivity extends Activity {
  }
  private void thumb(ImageView image,String url){
   if(url==null||!url.startsWith("https://")||url.length()>2400)return;
-  io.execute(()->{
+  thumbnailIo.execute(()->{
    HttpURLConnection c=null;
    try{
     c=(HttpURLConnection)new URL(url).openConnection();c.setConnectTimeout(5000);c.setReadTimeout(7000);
@@ -239,6 +240,8 @@ public final class PA6TubeActivity extends Activity {
   gap(below,18);
   TextView foot=text("Alfa Tube nie wymaga instalowania NewPipe. Działa wewnątrz PA, ale publiczne serwery Piped i dostępność filmów mogą się zmieniać. Nie obsługuje DRM.",12,MUTED,false);pad(foot,9,12);below.addView(foot);
   page.setFocusableInTouchMode(true);page.requestFocus();
+  if(getIntent().getBooleanExtra("verify_libvlc",false)&&!player.verifyNative())
+   throw new IllegalStateException("PA6 Alfa Tube native player unavailable");
   // First screen shows meaningful content without pretending to have a working feed.
   search.setText("muzyka");searchVideos("muzyka");
  }
@@ -250,7 +253,7 @@ public final class PA6TubeActivity extends Activity {
   player.playUri(activeTitle,data.getData());feedback("Odtwarzanie pliku z pamięci urządzenia.");
  }
  @Override protected void onDestroy(){
-  closed=true;request++;io.shutdownNow();if(player!=null)player.release();
+  closed=true;request++;io.shutdownNow();thumbnailIo.shutdownNow();if(player!=null)player.release();
   super.onDestroy();
  }
 }
