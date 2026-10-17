@@ -1,6 +1,6 @@
 /* Downlevel the EXISTING PA planner and Alfa scripts for Android 6 System WebView.
    Babel handles async/await, optional chaining and core-js usage. Esbuild bundles
-   polyfills into browser IIFEs with no runtime require/import on the device. */
+   polyfills into ES5 browser IIFEs with no runtime require/import on the device.\n   ES5 is deliberate: Android 6 bundled WebView rejects shorthand object keys\n   even when older Chrome compatibility targets accept them. */
 const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process');
 const babel=require('@babel/core');
 const src=path.resolve(process.argv[2]),dest=path.resolve(process.argv[3]);
@@ -17,7 +17,7 @@ for(const name of names){
  const entry=path.join(dest,name+'.legacy-entry.cjs');
  fs.writeFileSync(entry,compiled.code);
  cp.execFileSync(path.join(__dirname,'../../build/pa6-node/node_modules/.bin/esbuild'),
-  [entry,'--bundle','--platform=browser','--format=iife','--target=chrome44','--outfile='+path.join(dest,name)],
+  [entry,'--bundle','--platform=browser','--format=iife','--target=es5','--outfile='+path.join(dest,name)],
   {stdio:'inherit'});
  fs.unlinkSync(entry);
  const built=fs.readFileSync(path.join(dest,name),'utf8');
