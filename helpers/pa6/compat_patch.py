@@ -34,6 +34,18 @@ for name in ('PARegionsActivity.java','PALive.java','PADataStore.java','PAOSMTil
     callback.invoke(origin,true,false);
    }
   });''')
+        old='web.setWebViewClient(new WebViewClient(){'
+        assert old in code
+        code=code.replace(old,'''web.setWebViewClient(new WebViewClient(){
+   @Override public void onPageFinished(WebView view,String url){
+    String tab=getIntent().getStringExtra("pa_tab");
+    if(tab==null)return;
+    String id=tab.equals("liveBus")?"tabBus":tab.equals("assistant")?"tabAssistant":tab.equals("favorites")?"tabFavorites":"tabPlanner";
+    view.evaluateJavascript("var t=document.getElementById('"+id+"');if(t)t.click();",null);
+   }
+''',1)
+        for oldname,newname in [('NotesActivity','HomeActivity$Notes'),('RemindersActivity','HomeActivity$Reminders'),('WeatherActivity','HomeActivity$Weather'),('RadioActivity','HomeActivity$Radio'),('TvActivity','HomeActivity$Tv')]:
+            code=code.replace('"'+oldname+'"','"'+newname+'"')
         # The same bridge and per-request allowlist as in the new PA.
         anchor='app\\\\.html|app\\\\.js'
         # The source's literal string contains two slashes to survive Java/regex:
@@ -77,4 +89,5 @@ final class PA6CompatEpoch {
  }
 }
 """,encoding='utf-8')
-print('PASS original PA regions, GTFS-RT, data store and OSM reader API23 compatibility edits')
+shutil.copyfile(repo/'helpers'/'pa6'/'HomeActivity.java',dest/'HomeActivity.java')
+print('PASS original PA regions, GTFS-RT, data store, OSM and tablet-native multimedia modules API23 compatibility edits')
