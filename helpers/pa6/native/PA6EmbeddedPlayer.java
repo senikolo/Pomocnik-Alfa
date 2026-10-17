@@ -67,13 +67,16 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
  public void play(String name,String address){
   if(address==null||address.length()>2000||!(address.startsWith("https://")||address.startsWith("http://"))
       ||address.contains("\n")||address.contains(" ")){state.setText("Nieprawidłowy adres materiału.");return;}
+  playUri(name,Uri.parse(address));
+ }
+ public void playUri(String name,Uri address){
   active=name;state.setText("Łączenie • "+name);
   try{
    init();
    engine.stop();
-   Media media=new Media(vlc,Uri.parse(address));
+   Media media=new Media(vlc,address);
    media.addOption(":network-caching=1500");
-   media.addOption(":avcodec-hw=none"); // Older Acer decoders can output audio without video.
+   media.addOption(":avcodec-hw=none"); // Acer Android 6: avoid audio-only hardware decoding failures.
    engine.setMedia(media);
    media.release();
    engine.play();
