@@ -190,25 +190,39 @@ public final class PA6TubeActivity extends Activity {
    tab.setOnClickListener(v->{search.setText(q);searchVideos(q);});
   }
   page.addView(quick);gap(page,9);
+  float widthDp=getResources().getDisplayMetrics().widthPixels/getResources().getDisplayMetrics().density;
+  boolean wide=widthDp>=660;
+  LinearLayout mediaArea=column();
+  mediaArea.setOrientation(wide?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL);
+  page.addView(mediaArea,new LinearLayout.LayoutParams(-1,0,1));
+  LinearLayout playerPane=column(),feedPane=column();
+  if(wide){
+   LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(0,-1,4);pp.setMargins(0,0,dp(13),0);
+   mediaArea.addView(playerPane,pp);
+   mediaArea.addView(feedPane,new LinearLayout.LayoutParams(0,-1,5));
+  }else{
+   mediaArea.addView(playerPane,new LinearLayout.LayoutParams(-1,-2));
+   mediaArea.addView(feedPane,new LinearLayout.LayoutParams(-1,0,1));
+  }
   stageWrap=column();stageWrap.setBackground(panel(0xff101827,0xff101827,14));
   player=new PA6EmbeddedPlayer(this);stageWrap.addView(player,new LinearLayout.LayoutParams(-1,-2));
   title=text("Wybierz film z listy",16,WHITE,true);pad(title,12,4);stageWrap.addView(title);
   subtitle=text("Film pojawi się tutaj, bez opuszczania Pomocnika Alfa",12,0xffc6cbd7,false);pad(subtitle,12,5);stageWrap.addView(subtitle);
   gap(stageWrap,7);
-  page.addView(stageWrap,new LinearLayout.LayoutParams(-1,-2));
+  playerPane.addView(stageWrap,new LinearLayout.LayoutParams(-1,-2));
   status=text("Alfa Tube korzysta z publicznych serwerów Piped i własnego odtwarzacza wideo.",13,MUTED,false);
-  pad(status,5,8);page.addView(status);
+  pad(status,5,8);playerPane.addView(status);
   provider=text("Bez WebView • bez zewnętrznych programów",11,MUTED,false);
-  page.addView(provider);gap(page,6);
+  playerPane.addView(provider);gap(playerPane,6);
   LinearLayout links=line();
   Button recent=button("◷ Historia",RED,false);links.addView(recent,new LinearLayout.LayoutParams(0,dp(46),1));
   recent.setOnClickListener(v->history());
   Button favorites=button("★ Obejrzyj ponownie",RED,false);
   LinearLayout.LayoutParams fp=new LinearLayout.LayoutParams(0,dp(46),1);fp.setMargins(dp(7),0,0,0);links.addView(favorites,fp);
   favorites.setOnClickListener(v->{if(activeId.isEmpty())feedback("Najpierw wybierz film.");else playVideo(activeId);});
-  page.addView(links);
+  playerPane.addView(links);
   ScrollView sc=new ScrollView(this);sc.setFillViewport(false);
-  page.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
+  feedPane.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
   LinearLayout below=column();sc.addView(below);
   TextView section=text("Propozycje filmów",19,INK,true);pad(section,7,15);below.addView(section);
   results=column();below.addView(results);
