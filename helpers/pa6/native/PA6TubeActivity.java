@@ -66,7 +66,7 @@ public final class PA6TubeActivity extends Activity {
      PA6PipedClient.Video v=response.data;
      activeTitle=v.title;title.setText(v.title);
      subtitle.setText(v.channel+" • "+v.quality);
-     provider.setText("Odtwarzacz PA • źródło danych: Piped");
+     provider.setText("Odtwarzacz PA • katalog: "+response.server.replace("https://",""));
      player.play(v.title,v.stream);
      feedback("Łączenie z materiałem • "+v.quality+". Oglądasz w Alfa Tube.");
      String old=getPreferences(0).getString("recent_ids","");
@@ -76,7 +76,7 @@ public final class PA6TubeActivity extends Activity {
     });
    }catch(Exception e){
     final String reason=e.getMessage();
-    main.post(()->{if(!closed&&seq==request)feedback("Nie udało się uruchomić filmu. "+reason+" Zmień serwer Piped w ustawieniach poniżej.");});
+    main.post(()->{if(!closed&&seq==request)feedback("Nie udało się uruchomić filmu. "+reason+" Spróbuj innego filmu, łącza albo serwera poniżej.");});
    }
   });
  }
@@ -91,14 +91,14 @@ public final class PA6TubeActivity extends Activity {
     main.post(()->{
      if(closed||seq!=request)return;
      java.util.List<PA6PipedClient.Result> list=response.data;
-     provider.setText("Wyniki z Piped • "+response.server.replace("https://",""));
+     provider.setText("Wyniki filmów • "+response.server.replace("https://",""));
      feedback(list.isEmpty()?"Brak wyników. Spróbuj innego hasła.":"Znaleziono filmów: "+list.size()+" • dotknij miniatury, aby oglądać tutaj.");
      for(PA6PipedClient.Result v:list)movieCard(v);
     });
    }catch(Exception e){
     final String reason=e.getMessage();
     main.post(()->{if(closed||seq!=request)return;
-     feedback(reason+" W ustawieniach Alfa Tube możesz zmienić serwer.");
+     feedback(reason+" Możesz spróbować ponownie lub zmienić serwer.");
      TextView empty=text("Brak połączenia z katalogiem filmów. Możesz spróbować innego serwera Piped lub odtworzyć lokalny plik.",15,MUTED,false);
      pad(empty,14,17);results.addView(empty);
     });
@@ -210,7 +210,7 @@ public final class PA6TubeActivity extends Activity {
   subtitle=text("Film pojawi się tutaj, bez opuszczania Pomocnika Alfa",12,0xffc6cbd7,false);pad(subtitle,12,5);stageWrap.addView(subtitle);
   gap(stageWrap,7);
   playerPane.addView(stageWrap,new LinearLayout.LayoutParams(-1,-2));
-  status=text("Alfa Tube korzysta z publicznych serwerów Piped i własnego odtwarzacza wideo.",13,MUTED,false);
+  status=text("Alfa Tube korzysta z publicznych katalogów Piped lub Invidious i odtwarzacza w PA.",13,MUTED,false);
   pad(status,5,8);playerPane.addView(status);
   provider=text("Bez WebView • bez zewnętrznych programów",11,MUTED,false);
   playerPane.addView(provider);gap(playerPane,6);
@@ -260,7 +260,7 @@ public final class PA6TubeActivity extends Activity {
    }else feedback("Wpisz poprawny adres serwera HTTPS.");
   });
   gap(below,18);
-  TextView foot=text("Alfa Tube nie wymaga instalowania NewPipe. Działa wewnątrz PA, ale publiczne serwery Piped i dostępność filmów mogą się zmieniać. Nie obsługuje DRM.",12,MUTED,false);pad(foot,9,12);below.addView(foot);
+  TextView foot=text("Alfa Tube działa wewnątrz PA bez instalowania NewPipe. Publiczne serwery Piped i Invidious oraz dostępność filmów mogą się zmieniać. Nie obsługuje DRM.",12,MUTED,false);pad(foot,9,12);below.addView(foot);
   page.setFocusableInTouchMode(true);page.requestFocus();
   if(getIntent().getBooleanExtra("verify_libvlc",false)&&!player.verifyNative())
    throw new IllegalStateException("PA6 Alfa Tube native player unavailable");
