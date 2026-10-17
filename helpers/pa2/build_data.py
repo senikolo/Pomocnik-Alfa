@@ -37,8 +37,8 @@ def operator(provider,route,agency):
  # (PR and IC) rather than guessing from train type, number or destination.
  if provider=='polishrail':
   agency_id=str(route.get('agency_id','')).strip().upper()
-  if agency_id=='PR' or re.search(r'\\bpol\\s*regio\\b',name):return 'POLREGIO'
-  if agency_id=='IC' or re.search(r'\\b(?:pkp\\s+)?intercity\\b',name):return 'PKP Intercity'
+  if agency_id=='PR' or re.search(r'\bpol\s*regio\b',name):return 'POLREGIO'
+  if agency_id=='IC' or re.search(r'\b(?:pkp\s+)?intercity\b',name):return 'PKP Intercity'
  if provider=='mld':return 'MLD'
  if provider=='kmlrail' or 'koleje maopolskie' in name:return 'KMŁ'
  if 'koleje mazowieckie' in name:return 'KM'
