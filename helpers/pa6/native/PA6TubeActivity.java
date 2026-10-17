@@ -218,6 +218,14 @@ public final class PA6TubeActivity extends Activity {
   below.addView(link,new LinearLayout.LayoutParams(-1,dp(53)));
   Button open=button("▶ Odtwórz link wewnątrz PA",RED,true);below.addView(open,new LinearLayout.LayoutParams(-1,dp(51)));
   open.setOnClickListener(v->openLink());gap(below,8);
+  Button demo=button("▶ Uruchom film kontrolny w Alfa Tube",RED,false);
+  below.addView(demo,new LinearLayout.LayoutParams(-1,dp(50)));
+  demo.setOnClickListener(v->{
+   ++request;activeId="";title.setText("Film kontrolny H.264");
+   subtitle.setText("Test zgodności tabletu • obraz + dźwięk");
+   player.play("Film kontrolny","https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8");
+   feedback("Materiał testowy, nie YouTube. Odtwarzanie odbywa się wewnątrz PA.");
+  });
   Button file=button("Wybierz film zapisany na tablecie",RED,false);below.addView(file,new LinearLayout.LayoutParams(-1,dp(51)));
   file.setOnClickListener(v->{
    try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("video/*").addCategory(Intent.CATEGORY_OPENABLE),PICK_FILE);}
