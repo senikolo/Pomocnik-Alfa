@@ -16,11 +16,13 @@ assert 'id="pa6radio"' in html and 'id="pa6tv"' in html
 html=html.replace('Radio, telewizja, pogoda, notatnik i przypomnienia są już na głównym pulpicie. Tutaj zostają tylko zapisane trasy i przystanki.',
                   'W wersji tabletowej dostępne są Planer, Pojazdy, Alfa i Ulubione. Radio i telewizja dostępne są z górnych przycisków. Pozostałe moduły PA wymagają oddzielnego dostosowania do Androida 6.')
 html=html.replace('Wróć do pulpitu PA','Wróć do Planera')
-html=html.replace('</body>','<script src="/media-ui.js"></script></body>',1)\nhtml=html.replace('<script src="/transit-core.js"></script>',
+html=html.replace('</body>','<script src="/media-ui.js"></script></body>',1)
+html=html.replace('<script src="/transit-core.js"></script>',
                   '<script src="/tablet-compat.js"></script><script src="/transit-core.js"></script>')
 (assets/'app.html').write_text(html,encoding='utf-8')
 shutil.copyfile(repo/'helpers'/'pa6'/'tablet-legacy.css',assets/'tablet-legacy.css')
-shutil.copyfile(repo/'helpers'/'pa6'/'tablet-compat.js',assets/'tablet-compat.js')\nshutil.copyfile(repo/'helpers'/'pa6'/'media-ui.js',assets/'media-ui.js')
+shutil.copyfile(repo/'helpers'/'pa6'/'tablet-compat.js',assets/'tablet-compat.js')
+shutil.copyfile(repo/'helpers'/'pa6'/'media-ui.js',assets/'media-ui.js')
 for p in data.glob('*.json'):
  shutil.copyfile(p,assets/p.name)
 for required in ['index_all.json','manifest.json','summary.json']:
