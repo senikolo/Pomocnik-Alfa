@@ -29,6 +29,16 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
  private boolean ready=false;
  private AudioManager audio;
  private boolean hasFocus=false;
+ private final AudioManager.OnAudioFocusChangeListener focusListener=change->{
+  ui.post(()->{
+   if(engine==null)return;
+   if(change==AudioManager.AUDIOFOCUS_LOSS || change==AudioManager.AUDIOFOCUS_LOSS_TRANSIENT || change==AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK){
+    try{engine.pause();}catch(Exception ignored){}
+    state.setText("Odtwarzanie wstrzymane — dźwięk przejęła inna funkcja.");
+    if(change==AudioManager.AUDIOFOCUS_LOSS)hasFocus=false;
+   }
+  });
+ };
  private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+0.5f);}
  public PA6EmbeddedPlayer(Context context){
   super(context);setOrientation(VERTICAL);
@@ -79,19 +89,20 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
  }
  public void playUri(String name,Uri address){
   active=name;state.setText("Łączenie • "+name);
-  placeholder.setVisibility(GONE);
   try{
    init();
    if(audio==null)audio=(AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
    if(audio!=null&&!hasFocus){
-    int gain=audio.requestAudioFocus(null,AudioManager.STREAM_MUSIC,AudioManager.AUDIOFOCUS_GAIN);
+    int gain=audio.requestAudioFocus(focusListener,AudioManager.STREAM_MUSIC,AudioManager.AUDIOFOCUS_GAIN);
     hasFocus=(gain==AudioManager.AUDIOFOCUS_REQUEST_GRANTED);
     if(!hasFocus){state.setText("Inne audio zajmuje dźwięk. Zatrzymaj radio.");return;}
    }
    engine.stop();
+   placeholder.setVisibility(GONE);
    Media media=new Media(vlc,address);
    media.addOption(":network-caching=1500");
    media.addOption(":avcodec-hw=none"); // Acer Android 6: avoid audio-only hardware decoding failures.
+   media.addOption(":http-reconnect=true");
    engine.setMedia(media);
    media.release();
    engine.play();
@@ -105,10 +116,11 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   try{if(engine!=null)engine.stop();}catch(Throwable ignored){}
   state.setText("Zatrzymano.");
   placeholder.setVisibility(VISIBLE);
+  if(audio!=null&&hasFocus){try{audio.abandonAudioFocus(focusListener);}catch(Exception ignored){}hasFocus=false;}
  }
  public void release(){
   stop();
-  if(audio!=null&&hasFocus){try{audio.abandonAudioFocus(null);}catch(Exception ignored){}hasFocus=false;}
+  if(audio!=null&&hasFocus){try{audio.abandonAudioFocus(focusListener);}catch(Exception ignored){}hasFocus=false;}
   try{if(engine!=null){engine.getVLCVout().detachViews();engine.release();}}catch(Throwable ignored){}
   try{if(vlc!=null)vlc.release();}catch(Throwable ignored){}
   engine=null;vlc=null;ready=false;audio=null;
