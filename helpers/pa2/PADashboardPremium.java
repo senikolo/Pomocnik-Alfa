@@ -117,6 +117,43 @@ public final class PADashboardPremium {
   }
   return null;
  }
+
+ /** Professional Lucide vectors, not improvised Canvas sketches or font emoji. */
+ private static String iconFor(String title){
+  String k=key(title);
+  if(k.contains("planer")||k.contains("trasa")||k.contains("podroz"))return "route";
+  if(k.contains("przystank")||k.contains("odjazd")||k.contains("autobus")||k.contains("pojazd")||k.contains("transport"))return "bus_front";
+  if(k.contains("lotnisk")||k.contains("samolot")||k.contains("loty"))return "plane";
+  if(k.contains("telewiz")||k.equals("tv"))return "tv";
+  if(k.contains("radio"))return "radio";
+  if(k.contains("spokoj")||k.contains("relaks")||k.contains("medytacj"))return "leaf";
+  if(k.contains("czytnik")||k.contains("ksiaz")||k.contains("lektur"))return "book_open";
+  if(k.contains("przypomn")||k.contains("powiadom")||k.contains("alarm"))return "bell_ring";
+  if(k.contains("subskrypcj")||k.contains("kalendarz")||k.contains("termin"))return "calendar_days";
+  if(k.contains("smart saver")||k.contains("oszczed")||k.contains("finans")||k.contains("wydatk"))return "wallet";
+  if(k.contains("promoc")||k.contains("zakup")||k.contains("gazetk")||k.contains("lowca"))return "shopping_bag";
+  if(k.contains("notat")||k.contains("zapis"))return "notebook_pen";
+  if(k.contains("ustawien")||k.contains("motyw")||k.contains("wyglad"))return "settings";
+  if(k.contains("ispina")||k.contains("lokalnie")||k.contains("map"))return "map_pin";
+  if(k.contains("film")||k.contains("tube")||k.contains("wideo"))return "clapperboard";
+  return "grid_2x2";
+ }
+ private static int iconColor(Context a,String title){
+  String k=key(title);
+  if(dark(surface(a)))return 0xffd4bffc;
+  if(k.contains("radio")||k.contains("telewiz")||k.contains("tube")||k.contains("film"))return 0xffa14d83;
+  if(k.contains("notat")||k.contains("czytnik")||k.contains("ksiaz")||k.contains("przypomn")||k.contains("termin"))return 0xff4869a6;
+  if(k.contains("relaks")||k.contains("spokoj")||k.contains("oszczed")||k.contains("smart saver"))return 0xff24836d;
+  return 0xff6846a4;
+ }
+ private static int iconSoft(Context a,String title){
+  if(dark(surface(a)))return 0xff3b3150;
+  String k=key(title);
+  if(k.contains("radio")||k.contains("telewiz")||k.contains("tube")||k.contains("film"))return 0xffffeff6;
+  if(k.contains("notat")||k.contains("czytnik")||k.contains("ksiaz")||k.contains("przypomn")||k.contains("termin"))return 0xffedf3ff;
+  if(k.contains("relaks")||k.contains("spokoj")||k.contains("oszczed")||k.contains("smart saver"))return 0xffe8f7f2;
+  return 0xfff1eafa;
+ }
  private static void styleAction(Activity a,LinearLayout card){
   if("pa-premium-card".equals(card.getTag()))return;
   if(card.getChildCount()<1||!(card.getChildAt(0) instanceof LinearLayout))return;
@@ -149,13 +186,23 @@ public final class PADashboardPremium {
   View symbol=body.getChildAt(0);
   if(symbol instanceof TextView){
    TextView t=(TextView)symbol;
-   t.setText("");
    t.setGravity(Gravity.CENTER);
-   t.setCompoundDrawablesWithIntrinsicBounds(new OutlineGlyph(label,purple,a),null,null,null);
-   t.setBackground(rounded(a,soft,0,13));
+   String name=iconFor(label);
+   int res=a.getResources().getIdentifier("pa_premium_"+name,"drawable",a.getPackageName());
+   if(res!=0){
+    Drawable icon=a.getResources().getDrawable(res,a.getTheme()).mutate();
+    icon.setTint(iconColor(a,label));
+    icon.setBounds(0,0,dp(a,26),dp(a,26));
+    t.setText("");
+    t.setCompoundDrawables(icon,null,null,null);
+   }else{
+    // Keep recognizable original icons if any vector resource is missing.
+    Log.w(TAG,"Missing professional vector "+name+"; keeping original pictogram");
+   }
+   t.setBackground(rounded(a,iconSoft(a,label),0,14));
    t.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
    ViewGroup.LayoutParams p=t.getLayoutParams();
-   p.width=dp(a,46);p.height=dp(a,46);t.setLayoutParams(p);
+   p.width=dp(a,48);p.height=dp(a,48);t.setLayoutParams(p);
   }else if(symbol instanceof ImageView){
    // Keep distinctive Alfa Tube artwork; only standardize its frame.
    symbol.setBackground(rounded(a,soft,0,13));
