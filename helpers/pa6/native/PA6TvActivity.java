@@ -33,6 +33,8 @@ public final class PA6TvActivity extends Activity {
   page.addView(text("Transmisje odtwarzane w aplikacji • bez VLC i bez przeglądarki",13));
   player=new PA6EmbeddedPlayer(this);
   page.addView(player,new LinearLayout.LayoutParams(-1,-2));
+  if(getIntent().getBooleanExtra("verify_libvlc",false)&&!player.verifyNative())
+   throw new IllegalStateException("PA6 LibVLC native engine test failed");
   info=text("Wybierz kanał. Obraz może ładować się kilka sekund.",14);page.addView(info);
   ScrollView list=new ScrollView(this);page.addView(list,new LinearLayout.LayoutParams(-1,0,1));
   root=new LinearLayout(this);root.setOrientation(1);list.addView(root);
