@@ -2,7 +2,7 @@ name: PA Tablet Edition Acer B3-A32 Android 6
 on:
   workflow_dispatch:
   push:
-    branches: ['work/pa6-media-repair-20261017']
+    branches: ['work/pa6-tv-tube-recovery-20261017']
     paths: ['.github/workflows/pa6-acer-tablet.yml', 'helpers/pa6/**']
 defaults:
   run:
@@ -84,8 +84,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="pa6-acer-media-repair-$(echo "$GITHUB_SHA" | cut -c1-8)"
+          tag="pa6-acer-tv-tube-$(echo "$GITHUB_SHA" | cut -c1-8)"
           gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
-            --title 'Pomocnik Alfa UltraSmart Tablet Android 6 + Naprawa radia i TV TEST' \
-            --notes 'TEST kompatybilności dla Acer Iconia One 10 B3-A32 z Androidem 6.0 (API23). Osobna instalacja: pulpit tabletowy, Planer, Alfa offline, przystanki, OSM, Ulubione, radio w tle (stacje szybkie, katalog, diagnostyka), TV (wariant SD, zewnętrzny odtwarzacz dla niezgodnych kodeków), Alfa Tube, Alfa Kids, Dźwięki spokoju (biały, różowy i brązowy szum, syntetyczny deszcz, wentylator, morze), pogoda, notatnik, czytnik PDF/TXT i przypomnienia. Radio wymaga połączenia sieciowego; TV zależy od DRM, kodeków i dostępności strumieni. Moduły mogą mieć mniejsze możliwości niż w oryginalnym PA na Androidzie 11; Alfa Tube otwiera YouTube w przeglądarce, a radio i TV zależą od źródeł. Rozkłady są planowe; LIVE tylko przy sprawdzonych źródłach. APK testowy ma jednorazowy podpis. Nie zastępuje PA alpha.9 na telefonie.' \
+            --title 'Pomocnik Alfa UltraSmart Tablet Android 6 + TV i Alfa Tube TEST' \
+            --notes 'TEST kompatybilności dla Acer Iconia One 10 B3-A32 z Androidem 6.0 (API23). Osobna instalacja: pulpit tabletowy, Planer, Alfa offline, przystanki, OSM, Ulubione, radio w tle (stacje szybkie, katalog, diagnostyka), TV (preferuje VLC, diagnostyka H264), Alfa Tube (obsługa NewPipe dla Androida 6 i linków YouTube), Alfa Kids, Dźwięki spokoju (biały, różowy i brązowy szum, syntetyczny deszcz, wentylator, morze), pogoda, notatnik, czytnik PDF/TXT i przypomnienia. Radio wymaga połączenia sieciowego; TV zależy od DRM, kodeków i dostępności strumieni. Moduły mogą mieć mniejsze możliwości niż w oryginalnym PA na Androidzie 11; Alfa Tube otwiera YouTube w przeglądarce, a radio i TV zależą od źródeł. Rozkłady są planowe; LIVE tylko przy sprawdzonych źródłach. APK testowy ma jednorazowy podpis. Nie zastępuje PA alpha.9 na telefonie.' \
             release/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk release/SHA256SUMS.txt release/signature.txt
