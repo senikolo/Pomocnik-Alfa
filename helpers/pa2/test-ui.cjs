@@ -27,6 +27,15 @@ async function check(){const old=requests.length;$('checkBus').click();await unt
 async function ask(q){$('chatInput').value=q;$('ask').click();await until(()=>!$('ask').disabled);}
 (async()=>{
  await until(()=>$('coverage').textContent.includes('offline'));
+ // Premium UX: departure rows are the primary content and advanced controls remain accessible.
+ assert(doc.querySelector('#planner details.trip-settings #sort'),'Sort option must remain present under advanced settings');
+ assert(doc.getElementById('search').textContent.includes('Znajdź połączenia'));
+ const board=doc.querySelector('#stopBoard');
+ assert(board.querySelector('#homeStopRows')&&board.querySelector('#homeStopMap'));
+ assert(Boolean(board.querySelector('#homeStopRows').compareDocumentPosition(board.querySelector('#homeStopMap'))&w.Node.DOCUMENT_POSITION_FOLLOWING),'Departures must be above map');
+ assert(board.querySelector('details.board-extra #boardOperator'),'Operator filtering must remain usable');
+ record('premium mobile hierarchy',{pass:true,first:'departures',extra:'advanced filters and map'});
+
  await until(()=>$('stopBoard').classList.contains('active')&&doc.querySelectorAll('#homeStopRows .card').length>0);assert($('homeStopTitle').textContent.startsWith('Tarchomin'));record('dashboard exact-stop full board',{pass:true,stopId:homeId,rows:doc.querySelectorAll('#homeStopRows .card').length});
  $('busQuick').click();await chooseStop('Tarchomin');
  record('Tarchomin bus/tram picker',{lines:[...$('busLine').options].map(x=>x.textContent)});
