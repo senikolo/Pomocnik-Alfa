@@ -63,7 +63,7 @@ async function ask(q){$('chatInput').value=q;$('ask').click();await until(()=>!$
  const railRequest=requests.filter(x=>x.type==='live').at(-1);
  assert.equal(railRequest.payload.departures.length,1,'Selected train must produce one exact trip');
  assert($('busResult').textContent.includes('Pociąg'),'Rail vehicle must never be labelled a bus');
- assert($('osmLiveMap .osm-bus use').getAttribute('href')==='#pa-train','Rail GPS marker must not show a bus icon');
+ assert(doc.querySelector('#osmLiveMap .osm-bus use')?.getAttribute('href')==='#pa-train','Rail GPS marker must not show a bus icon');
  record('PKP Intercity train picker',{pass:true,selectedTrain:trainName,trip:railRequest.payload.departures[0].trip});
  $('tabFavorites').click();assert.equal(doc.querySelectorAll('#favorites [data-module]').length,0,'Native modules must not be repeated in favorites');assert($('goDashboard'),'There must be a way back to the full PA dashboard');$('goDashboard').click();await until(()=>requests.some(x=>x.type==='back'));record('favorites has no duplicate module shortcuts',{pass:true,backToDashboard:true});
  $('tabAssistant').click();await ask('Z Ispiny do Bochni Dworzec PKP jutro o 9');
