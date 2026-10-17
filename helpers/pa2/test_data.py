@@ -51,12 +51,12 @@ print('PASS POLREGIO and PKP Intercity agency IDs, names and no route-type false
 with tempfile.TemporaryDirectory() as folder:
  root=Path(folder);feeds=root/'feeds';feeds.mkdir();out=root/'out'
  files={
-  'agency.txt':'agency_id,agency_name\\nPR,POLREGIO\\nIC,PKP Intercity\\n',
-  'routes.txt':'route_id,route_short_name,route_type,agency_id\\np,REG,2,PR\\ni,IC,2,IC\\n',
-  'stops.txt':'stop_id,stop_name,stop_lat,stop_lon\\na,Start,50.1,20.3\\nb,Przesiadka,50.2,20.4\\nc,Cel,50.3,20.5\\n',
-  'trips.txt':'route_id,service_id,trip_id,trip_headsign,trip_short_name\\np,s,pr-trip,Przesiadka,30301\\ni,s,ic-trip,Cel,5310\\n',
-  'stop_times.txt':'trip_id,arrival_time,departure_time,stop_id,stop_sequence\\npr-trip,09:00:00,09:00:00,a,1\\npr-trip,09:20:00,09:20:00,b,2\\nic-trip,10:00:00,10:00:00,b,1\\nic-trip,10:40:00,10:40:00,c,2\\n',
-  'calendar_dates.txt':'service_id,date,exception_type\\ns,20261017,1\\n'
+  'agency.txt':'agency_id,agency_name\nPR,POLREGIO\nIC,PKP Intercity\n',
+  'routes.txt':'route_id,route_short_name,route_type,agency_id\np,REG,2,PR\ni,IC,2,IC\n',
+  'stops.txt':'stop_id,stop_name,stop_lat,stop_lon\na,Start,50.1,20.3\nb,Przesiadka,50.2,20.4\nc,Cel,50.3,20.5\n',
+  'trips.txt':'route_id,service_id,trip_id,trip_headsign,trip_short_name\np,s,pr-trip,Przesiadka,30301\ni,s,ic-trip,Cel,5310\n',
+  'stop_times.txt':'trip_id,arrival_time,departure_time,stop_id,stop_sequence\npr-trip,09:00:00,09:00:00,a,1\npr-trip,09:20:00,09:20:00,b,2\nic-trip,10:00:00,10:00:00,b,1\nic-trip,10:40:00,10:40:00,c,2\n',
+  'calendar_dates.txt':'service_id,date,exception_type\ns,20261017,1\n'
  }
  with zipfile.ZipFile(feeds/'polishrail.zip','w') as z:
   for name,contents in files.items():z.writestr(name,contents)
