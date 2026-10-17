@@ -55,5 +55,26 @@ for name in ('PARegionsActivity.java','PALive.java','PADataStore.java','PAOSMTil
         a='fetched.getOrDefault(url,0L)'
         assert a in code
         code=code.replace(a,'(fetched.containsKey(url)?fetched.get(url):0L)')
+        # Do not pull PANearbyRules.java from Android 11: it uses java.time
+        # unavailable on Android 6. Keep the exact noon-anchored Warsaw
+        # service-day epoch semantics of the original GTFS calculations.
+        assert 'PANearbyRules.epoch(' in code
+        code=code.replace('PANearbyRules.epoch(', 'PA6CompatEpoch.epoch(')
     (dest/name).write_text(code,encoding='utf-8')
+(dest/'PA6CompatEpoch.java').write_text("""
+package com.ispina.lokalnie;
+final class PA6CompatEpoch {
+ static long epoch(String date,int seconds)throws Exception{
+  if(date==null||!date.matches("[0-9]{4}-[0-9]{2}-[0-9]{2}"))throw new IllegalArgumentException("GTFS day");
+  java.text.SimpleDateFormat fmt=new java.text.SimpleDateFormat("yyyy-MM-dd",java.util.Locale.ROOT);
+  fmt.setLenient(false);
+  fmt.setTimeZone(java.util.TimeZone.getTimeZone("Europe/Warsaw"));
+  java.util.Date day=fmt.parse(date);
+  java.util.Calendar c=java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("Europe/Warsaw"),java.util.Locale.ROOT);
+  c.setTime(day);c.set(java.util.Calendar.HOUR_OF_DAY,12);
+  long noon=c.getTimeInMillis()/1000L;
+  return noon-43200L+seconds;
+ }
+}
+""",encoding='utf-8')
 print('PASS original PA regions, GTFS-RT, data store and OSM reader API23 compatibility edits')
