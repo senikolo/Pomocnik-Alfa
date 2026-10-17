@@ -82,6 +82,10 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
    engine.play();
   }catch(Throwable e){state.setText("Nie można uruchomić odtwarzacza: "+e.getClass().getSimpleName());}
  }
+ public boolean verifyNative(){
+  try{init();android.util.Log.i("PA6_LIBVLC","NATIVE_ENGINE_READY");state.setText("Silnik wideo jest gotowy.");return true;}
+  catch(Throwable e){android.util.Log.e("PA6_LIBVLC","INIT_FAILED",e);state.setText("Błąd inicjalizacji silnika wideo: "+e.getClass().getSimpleName());return false;}
+ }
  public void stop(){
   try{if(engine!=null)engine.stop();}catch(Throwable ignored){}
   state.setText("Zatrzymano.");
