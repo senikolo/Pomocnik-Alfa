@@ -69,6 +69,7 @@ public final class PA6RadioActivity extends Activity {
   // Public direct broadcast streams; individual providers may update their URLs.
   station(root,"Radio ZET 2000","https://zt03.cdn.eurozet.pl/ZET200.mp3");
   station(root,"Radio ZET Love","https://zt03.cdn.eurozet.pl/ZETLOV.mp3");
+  station(root,"Radio ZET 2000 • zgodność HTTP","http://zet.cdn.eurozet.pl/ZET200.mp3");
   station(root,"RMF FM (wersja 48 kb/s)","https://rs103-krk.rmfstream.pl/RMFFM48");
   root.addView(title("Wyszukaj inne stacje:",17));
   search=new EditText(this);search.setSingleLine(true);
