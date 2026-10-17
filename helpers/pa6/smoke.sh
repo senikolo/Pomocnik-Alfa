@@ -9,6 +9,12 @@ sleep 8
 adb shell dumpsys activity activities > results/dashboard-activities.txt
 grep -q 'PA6DashboardActivity' results/dashboard-activities.txt
 adb exec-out screencap -p > results/dashboard.png
+# Exercise the new sounds UI and return to the original Planner.
+adb shell am start -n com.senikolo.pa6tablet/com.ispina.lokalnie.PA6SoundsActivity
+sleep 3
+adb shell dumpsys activity activities > results/sounds-activity.txt
+grep -q "PA6SoundsActivity" results/sounds-activity.txt
+adb exec-out screencap -p > results/sounds.png
 # Keep testing the original planner's actual Android 6 System WebView engine.
 adb shell am start -n com.senikolo.pa6tablet/com.ispina.lokalnie.PARegionsActivity --es pa_tab assistant
 sleep 20
@@ -28,7 +34,7 @@ adb logcat -d -b crash > results/crashes.txt
 grep -q 'com.senikolo.pa6tablet' results/package.txt
 grep -q 'PARegionsActivity' results/activities.txt
 "$ANDROID_HOME/build-tools/35.0.0/aapt" dump xmltree pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk AndroidManifest.xml > results/apk-manifest.txt
-for module in PA6DashboardActivity PA6RadioActivity PA6RadioService PA6TvActivity PA6TubeActivity PA6NotesActivity PA6WeatherActivity PA6ReaderActivity PA6RemindersActivity PA6ReminderReceiver; do
+for module in PA6DashboardActivity PA6RadioActivity PA6RadioService PA6TvActivity PA6TubeActivity PA6NotesActivity PA6WeatherActivity PA6ReaderActivity PA6RemindersActivity PA6ReminderReceiver PA6SoundsActivity PA6SoundsService; do
   grep -q "$module" results/apk-manifest.txt || { echo "Missing Android6 module $module"; exit 1; }
 done
-echo 'PASS Android 6.0 API23: Alfa dashboard, all declared modules and planner WebView booted'
+echo 'PASS Android 6.0 API23: Alfa dashboard, sounds screen, all declared modules and planner WebView booted'
