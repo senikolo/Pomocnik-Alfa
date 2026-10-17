@@ -110,7 +110,7 @@ public final class PA6TubeActivity extends Activity {
   thumbnailIo.execute(()->{
    HttpURLConnection c=null;
    try{
-    c=(HttpURLConnection)new URL(url).openConnection();c.setConnectTimeout(5000);c.setReadTimeout(7000);
+    c=PA6ModernTls.open(url);c.setConnectTimeout(5000);c.setReadTimeout(7000);
     if(c.getResponseCode()!=200||c.getContentLength()>450000) return;
     byte[] data;
     try(InputStream in=c.getInputStream();ByteArrayOutputStream out=new ByteArrayOutputStream()){
@@ -165,7 +165,7 @@ public final class PA6TubeActivity extends Activity {
   feedback("Wklej link do YouTube albo bezpośredniego filmu MP4/HLS.");
  }
  @Override public void onCreate(Bundle b){
-  super.onCreate(b);kids=getIntent().getBooleanExtra("kids",false);
+  super.onCreate(b);kids=getIntent().getBooleanExtra("kids",false);PA6ModernTls.install(this);
   getWindow().setStatusBarColor(0xfff8fafc);getWindow().setNavigationBarColor(0xff151d30);
   getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
   LinearLayout page=column();page.setBackgroundColor(WHITE);pad(page,12,8);setContentView(page);
