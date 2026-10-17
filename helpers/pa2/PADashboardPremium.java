@@ -68,7 +68,7 @@ public final class PADashboardPremium {
  public static void install(Activity a){
   if(a==null)return;
   new Handler(Looper.getMainLooper()).postDelayed(()->{
-   if(!a.isFinishing()&&!a.isDestroyed())try{apply(a);}catch(Throwable t){Log.w(TAG,"Original dashboard retained: "+t.getMessage());}
+   if(!a.isFinishing()&&!a.isDestroyed())try{apply(a);}catch(Throwable t){Log.w(TAG,"Original dashboard retained",t);}
   },450);
  }
  static void apply(Activity a)throws Exception {
@@ -84,8 +84,13 @@ public final class PADashboardPremium {
    if(child instanceof TextView){styleSection(a,(TextView)child);continue;}
    if(!(child instanceof LinearLayout))continue;
    LinearLayout card=(LinearLayout)child;
-   if(card.isClickable())styleAction(a,card);
-   else if(hasPanelContent(card))styleInformation(a,card);
+   try{
+    if(card.isClickable())styleAction(a,card);
+    else if(hasPanelContent(card))styleInformation(a,card);
+   }catch(Throwable t){
+    // A bad resource must never prevent styling and navigation for later modules.
+    Log.w(TAG,"Card "+i+" icon error",t);
+   }
   }
  }
  private static boolean hasPanelContent(ViewGroup v){
