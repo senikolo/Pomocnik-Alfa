@@ -110,7 +110,7 @@ public final class PA6TvActivity extends Activity {
   super.onCreate(saved);
   getWindow().setStatusBarColor(NIGHT);getWindow().setNavigationBarColor(NIGHT);
   LinearLayout page=column();page.setPadding(dp(14),dp(12),dp(14),dp(8));
-  page.setBackgroundColor(NIGHT);setContentView(page);
+  page.setBackgroundColor(NIGHT);page.setFocusableInTouchMode(true);page.requestFocus();setContentView(page);
   LinearLayout heading=new LinearLayout(this);heading.setGravity(Gravity.CENTER_VERTICAL);
   PA6GlyphView glyph=new PA6GlyphView(this,"tv",TEAL);
   heading.addView(glyph,new LinearLayout.LayoutParams(dp(48),dp(48)));
@@ -196,7 +196,7 @@ public final class PA6TvActivity extends Activity {
   });
   space(options,14);
   section(options,"Odtwarzacz wewnętrzny","Obraz zawsze pozostaje w Pomocniku Alfa");
-  TextView internal=txt("Wbudowany odtwarzacz wideo • brak uruchamiania VLC, przeglądarki i innych aplikacji",13,false,MINT);
+  TextView internal=txt("Wbudowany odtwarzacz wideo • brak uruchamiania VLC, przeglądarki i innych aplikacji",13,false,TEAL);
   options.addView(internal);
   space(options,14);
   section(options,"Własny kanał","Wklej adres strumienia HLS / MP4 (https://)");

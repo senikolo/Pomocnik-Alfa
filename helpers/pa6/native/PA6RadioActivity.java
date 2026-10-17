@@ -72,7 +72,7 @@ public final class PA6RadioActivity extends Activity {
   super.onCreate(b);
   ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(0xff0b1425);
   LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(16),dp(12),dp(16),dp(20));
-  scroll.addView(root);setContentView(scroll);
+  root.setFocusableInTouchMode(true);root.requestFocus();scroll.addView(root);setContentView(scroll);
   TextView head=title("ALFA RADIO  •  NA ŻYWO",25);head.setTypeface(null,1);root.addView(head);
   playback=title("Wybierz stację. Muzyka gra także po wyjściu z ekranu.",16);
   playback.setTextColor(0xff8de0ce);playback.setBackground(surface(0xff1c3047));root.addView(playback);

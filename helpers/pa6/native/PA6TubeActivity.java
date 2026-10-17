@@ -83,9 +83,9 @@ public final class PA6TubeActivity extends Activity {
  @Override public void onCreate(Bundle saved){
   super.onCreate(saved);kids=getIntent().getBooleanExtra("kids",false);
   getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(BG);
-  getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+  getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN | WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
   LinearLayout page=vertical();page.setPadding(dp(14),dp(10),dp(14),dp(10));
-  page.setBackgroundColor(BG);setContentView(page);
+  page.setBackgroundColor(BG);page.setFocusableInTouchMode(true);page.requestFocus();setContentView(page);
   LinearLayout header=new LinearLayout(this);header.setGravity(Gravity.CENTER_VERTICAL);
   PA6GlyphView icon=new PA6GlyphView(this,"tube",RED);
   header.addView(icon,new LinearLayout.LayoutParams(dp(42),dp(42)));
