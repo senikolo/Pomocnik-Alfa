@@ -10,7 +10,15 @@
    this.appendChild(typeof arguments[i]==="string"?document.createTextNode(arguments[i]):arguments[i]);
  };
  if(!Element.prototype.scrollTo)Element.prototype.scrollTo=function(x,y){
+  if(x&&typeof x==="object"){y=x.top;x=x.left;}
   this.scrollLeft=Number(x)||0;this.scrollTop=Number(y)||0;
+ };
+ // Android 6 Chromium implements the numeric signature, but throws
+ // TypeError on modern window.scrollTo({top:0, behavior:"smooth"}).
+ var oldWindowScroll=window.scrollTo;
+ window.scrollTo=function(left,top){
+  if(left&&typeof left==="object")return oldWindowScroll.call(window,Number(left.left)||0,Number(left.top)||0);
+  return oldWindowScroll.call(window,Number(left)||0,Number(top)||0);
  };
  window.addEventListener("load",function(){
   var b=document.getElementById("goDashboard");
