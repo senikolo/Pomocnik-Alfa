@@ -224,10 +224,10 @@ async function openHomeStop(id){
  PAMap.mount($('homeStopMap'),{lat:s[3],lon:s[4]},null);await refreshHomeStop();
 }
 async function refreshHomeStop(){
- if(!homeBoard.stop||homeBoard.inFlight||!appVisible||currentTab!=='stopBoard')return;homeBoard.inFlight=true;
- try{const departures=$('boardKind').value==='arrivals'?await engine.arrivals(homeBoard.stop,wallNow(),72):await engine.departures(homeBoard.stop,wallNow(),null,null,72,null,1800);homeBoard.snapshot={departures,live:null,checked:Date.now()/1000};renderHomeStop();
-  let live=null;try{if($('boardKind').value!=='arrivals')live=await native('live',{departures:departures.filter(d=>!d.headway).slice(0,36)})}catch{}homeBoard.snapshot={departures,live,checked:live?.checkedAt||Date.now()/1000};homeBoard.refreshed=Date.now();renderHomeStop();
- }catch(e){$('homeStopStatus').textContent=e.message}finally{homeBoard.inFlight=false}
+ if(!homeBoard.stop||homeBoard.inFlight||!appVisible||currentTab!=='stopBoard')return;homeBoard.inFlight=true;const requestedStop=homeBoard.stop,requestedKind=$('boardKind').value;
+ try{const departures=$('boardKind').value==='arrivals'?await engine.arrivals(homeBoard.stop,wallNow(),72):await engine.departures(homeBoard.stop,wallNow(),null,null,72,null,1800);if(homeBoard.stop!==requestedStop||$('boardKind').value!==requestedKind)return;homeBoard.snapshot={departures,live:null,checked:Date.now()/1000};renderHomeStop();
+  let live=null;try{if($('boardKind').value!=='arrivals')live=await native('live',{departures:departures.filter(d=>!d.headway).slice(0,36)})}catch{}if(homeBoard.stop!==requestedStop||$('boardKind').value!==requestedKind)return;homeBoard.snapshot={departures,live,checked:live?.checkedAt||Date.now()/1000};homeBoard.refreshed=Date.now();renderHomeStop();
+ }catch(e){$('homeStopStatus').textContent=e.message}finally{homeBoard.inFlight=false;if(homeBoard.stop!==requestedStop||$('boardKind').value!==requestedKind)refreshHomeStop()}
 }
 function renderHomeStop(){
  const snap=homeBoard.snapshot;if(!snap)return;
