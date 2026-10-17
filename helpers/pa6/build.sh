@@ -3,6 +3,19 @@ set -euo pipefail
 mkdir -p feeds build/pa6-data build/pa6-node build/pa6-assets/pa_regions build/pa6-java build/pa6-res/drawable-nodpi build/pa6-classes build/pa6-dex output baseline
 SDK="$ANDROID_HOME"
 BT="$SDK/build-tools/35.0.0"
+# Ship current public CA certificates for Android 6 metadata APIs. Hostname
+# verification remains enabled; never trust every certificate.
+test -s /etc/ssl/certs/ca-certificates.crt
+cp /etc/ssl/certs/ca-certificates.crt build/pa6-assets/pa6-ca-bundle.pem
+# Bundle a free-to-air TV channel snapshot so Android 6 shows a useful list
+# even when an old system trust store cannot reach the live catalog.
+if curl -fL --retry 2 --connect-timeout 7 --max-time 32 \
+  https://iptv-org.github.io/iptv/countries/pl.m3u -o build/pa6-assets/tv-poland.m3u; then
+ echo "Bundled TV channels: $(grep -c '^#EXTINF:' build/pa6-assets/tv-poland.m3u || true)"
+else
+ echo "#EXTM3U" > build/pa6-assets/tv-poland.m3u
+ echo "WARN TV snapshot unavailable; dynamic and sample channels remain"
+fi
 python3 -m py_compile helpers/pa6/*.py
 python3 helpers/pa2/fetch_data.py feeds
 TZ=Europe/Warsaw python3 helpers/pa2/build_data.py feeds build/pa6-data | tee output/data-build.txt
@@ -29,7 +42,7 @@ find build/pa6-classes -name '*.class' -print0 | xargs -0 "$BT/d8" --min-api 23 
 "$BT/zipalign" -p -f 4 output/raw.apk output/aligned.apk
 "$BT/aapt" dump badging output/aligned.apk | tee output/badging.txt
 grep -q "sdkVersion:'23'" output/badging.txt
-grep -q "package: name='com.senikolo.pa6tvrecovery'" output/badging.txt
+grep -q "package: name='com.senikolo.pa6wow'" output/badging.txt
 umask 077
 export PA6_TEST_PASS="$(openssl rand -hex 24)"
 keytool -genkeypair -noprompt -keyalg RSA -keysize 3072 -sigalg SHA256withRSA -validity 3650 -alias pa6-tablet-test -dname 'CN=PA6 Acer test only, O=PA development' -storetype PKCS12 -keystore "$RUNNER_TEMP/pa6-test.p12" -storepass:env PA6_TEST_PASS -keypass:env PA6_TEST_PASS >/dev/null 2>&1
