@@ -2,14 +2,23 @@
   <uses-sdk android:minSdkVersion="23" android:targetSdkVersion="23"/>
   <uses-permission android:name="android.permission.INTERNET"/>
   <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+  <uses-permission android:name="android.permission.WAKE_LOCK"/>
   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
   <application android:label="Pomocnik Alfa Tablet TEST" android:icon="@drawable/ic_cat" android:allowBackup="false" android:usesCleartextTraffic="false" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:hardwareAccelerated="true" android:supportsRtl="true">
-    <activity android:name="com.ispina.lokalnie.PARegionsActivity" android:exported="true" android:windowSoftInputMode="adjustResize" android:screenOrientation="unspecified">
+    <activity android:name="com.ispina.lokalnie.HomeActivity" android:exported="true">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
     </activity>
+    <activity android:name="com.ispina.lokalnie.PARegionsActivity" android:exported="false" android:windowSoftInputMode="adjustResize"/>
+    <activity android:name="com.ispina.lokalnie.HomeActivity$Radio" android:exported="false"/>
+    <activity android:name="com.ispina.lokalnie.HomeActivity$Tv" android:exported="false"/>
+    <activity android:name="com.ispina.lokalnie.HomeActivity$Notes" android:exported="false"/>
+    <activity android:name="com.ispina.lokalnie.HomeActivity$Reminders" android:exported="false"/>
+    <activity android:name="com.ispina.lokalnie.HomeActivity$Weather" android:exported="false"/>
+    <service android:name="com.ispina.lokalnie.HomeActivity$RadioService" android:exported="false"/>
+    <receiver android:name="com.ispina.lokalnie.HomeActivity$ReminderReceiver" android:exported="false"/>
   </application>
 </manifest>
