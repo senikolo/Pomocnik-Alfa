@@ -274,6 +274,11 @@ public final class PA6TubeActivity extends Activity {
   title.setText(activeTitle);subtitle.setText("Lokalny plik • offline");
   player.playUri(activeTitle,data.getData());feedback("Odtwarzanie pliku z pamięci urządzenia.");
  }
+ @Override protected void onStop(){
+  // Never leave hidden video decoding when the user switches to other PA modules.
+  if(player!=null)player.stop();
+  super.onStop();
+ }
  @Override protected void onDestroy(){
   closed=true;request++;io.shutdownNow();thumbnailIo.shutdownNow();if(player!=null)player.release();
   super.onDestroy();
