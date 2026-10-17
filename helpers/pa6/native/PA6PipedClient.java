@@ -44,7 +44,7 @@ public final class PA6PipedClient {
  private static JSONObject fetch(String address)throws Exception{
   HttpURLConnection c=null;
   try{
-   c=(HttpURLConnection)new URL(address).openConnection();
+   c=PA6ModernTls.open(address);
    c.setConnectTimeout(6000);c.setReadTimeout(8500);c.setInstanceFollowRedirects(true);
    c.setRequestProperty("User-Agent","PomocnikAlfa/6.0 (Android 6 native multimedia client)");
    c.setRequestProperty("Accept","application/json");
