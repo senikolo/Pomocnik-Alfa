@@ -1,0 +1,90 @@
+name: PA Tablet Edition Acer B3-A32 Android 6
+on:
+  workflow_dispatch:
+  push:
+    branches: ['work/pa6-acer-b3a32-tablet-20261017']
+    paths: ['.github/workflows/pa6-acer-tablet.yml', 'helpers/pa6/**']
+defaults:
+  run:
+    shell: bash
+permissions:
+  contents: write
+  actions: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build real PA regional planner for Android API23
+        run: bash helpers/pa6/build.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PA6-Acer-B3A32-APK
+          path: |
+            output/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk
+            output/badging.txt
+            output/signature.txt
+            output/SHA256SUMS.txt
+            output/data-build.txt
+            output/route-tests.txt
+            output/transport-tests.txt
+          retention-days: 45
+  android6:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: PA6-Acer-B3A32-APK
+          path: pa6
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Verify installation and visual boot on Android 6 API23
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 23
+          arch: x86
+          target: default
+          profile: Nexus 10
+          disable-animations: true
+          emulator-boot-timeout: 700
+          script: bash helpers/pa6/smoke.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PA6-Acer-Android23-Test-Screenshots
+          path: results
+          retention-days: 45
+  release:
+    needs: [build, android6]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: PA6-Acer-B3A32-APK
+          path: release
+      - name: Publish Acer Android 6 test prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="pa6-acer-b3a32-$(echo "$GITHUB_SHA" | cut -c1-8)"
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
+            --title 'PA Tablet Edition – Acer B3-A32 Android 6 TEST' \
+            --notes 'TEST kompatybilności dla Acer Iconia One 10 B3-A32 z Androidem 6.0 (API23). Osobna instalacja: port oryginalnych silników transportu PA, Planera, Alfy offline, przystanków, OSM i Ulubionych. Radio, TV i natywne przypomnienia są jeszcze poza pierwszym portem. Rozkłady są planowe; LIVE tylko przy sprawdzonych źródłach. APK testowy ma jednorazowy podpis. Nie zastępuje PA alpha.9 na telefonie.' \
+            release/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk release/SHA256SUMS.txt release/signature.txt
