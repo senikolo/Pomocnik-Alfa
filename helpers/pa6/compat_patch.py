@@ -48,6 +48,15 @@ for name in ('PARegionsActivity.java','PALive.java','PADataStore.java','PAOSMTil
         assert 'names.put("tv","TvActivity")' in code
         code=code.replace('names.put("radio","RadioActivity")','names.put("radio","PA6RadioActivity")')
         code=code.replace('names.put("tv","TvActivity")','names.put("tv","PA6TvActivity")')
+        code=code.replace('names.put("notes","NotesActivity")','names.put("notes","PA6NotesActivity")')
+        code=code.replace('names.put("reminders","RemindersActivity")','names.put("reminders","PA6RemindersActivity")')
+        code=code.replace('names.put("weather","WeatherActivity")','names.put("weather","PA6WeatherActivity")')
+        code=code.replace('Class.forName("com.ispina.lokalnie.reminders.ReminderScheduler")','Class.forName("com.ispina.lokalnie.PA6ReminderStore")')
+        old_load='web.loadUrl("https://"+HOST+"/app.html");'
+        assert old_load in code
+        code=code.replace(old_load,'''String tab=getIntent().getStringExtra("pa_tab");
+  if(!Arrays.asList("planner","bus","assistant","favorites").contains(tab))tab="planner";
+  web.loadUrl("https://"+HOST+"/app.html?tab="+tab);''')
     elif name=='PALive.java':
         a='fields.computeIfAbsent(key,k->new ArrayList<>()).add(f);'
         assert a in code
