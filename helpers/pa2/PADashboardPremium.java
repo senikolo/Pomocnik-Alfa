@@ -80,7 +80,7 @@ public final class PADashboardPremium {
   styleHeader(a);
   for(int i=0;i<home.getChildCount();i++){
    View child=home.getChildAt(i);
-   if(child==null||"pa-smart-boards".equals(child.getTag()))continue;
+   if(child==null||"pa-smart-boards".equals(child.getTag())||"pa-premium-header".equals(child.getTag()))continue;
    if(child instanceof TextView){styleSection(a,(TextView)child);continue;}
    if(!(child instanceof LinearLayout))continue;
    LinearLayout card=(LinearLayout)child;
@@ -183,6 +183,7 @@ public final class PADashboardPremium {
   View shell=(View)p.getParent().getParent();
   if(!(shell instanceof LinearLayout))return;
   LinearLayout header=(LinearLayout)shell;
+  header.setTag("pa-premium-header"); // Native home header is not an ordinary content card.
   GradientDrawable gd=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{purple,0xff624494,lavender});
   gd.setCornerRadius(dp(a,19));
   header.setBackground(gd);
@@ -190,17 +191,16 @@ public final class PADashboardPremium {
   label.setTextSize(10.5f);
   label.setTextColor(0xffeee6ff);
   label.setLetterSpacing(.09f);
-  TextView greeting=search(a.getWindow().getDecorView(),"Dzień dobry");
-  if(greeting!=null){greeting.setTextSize(21);greeting.setTextColor(Color.WHITE);}
-  // The date is dynamic; locate it next to the greeting through the original header structure.
-  ViewGroup line=label.getParent() instanceof ViewGroup?(ViewGroup)label.getParent():null;
-  if(line!=null)for(int i=0;i<line.getChildCount();i++){
-   View v=line.getChildAt(i);
-   if(v instanceof TextView&&v!=label){
-    TextView text=(TextView)v;
-    if(text!=greeting){text.setTextSize(12);text.setTextColor(0xffebe4f7);}
-   }
-  }
+  // The greeting is rewritten by MainActivity ("Dzień dobry" / "Pomocnik Alfa").
+  // Access the existing View by its field, not by its temporary text.
+  try{
+   Field greet=a.getClass().getDeclaredField("greeting");greet.setAccessible(true);
+   Object gv=greet.get(a);
+   if(gv instanceof TextView){TextView g=(TextView)gv;g.setTextSize(21);g.setTextColor(Color.WHITE);}
+   Field df=a.getClass().getDeclaredField("headerDate");df.setAccessible(true);
+   Object dv=df.get(a);
+   if(dv instanceof TextView){TextView d=(TextView)dv;d.setTextSize(12);d.setTextColor(0xffebe4f7);}
+  }catch(Exception e){Log.w(TAG,"Original header fields: "+e.getMessage());}
  }
  private static TextView search(View v,String txt){
   if(v instanceof TextView&&txt.equals(((TextView)v).getText().toString()))return(TextView)v;
