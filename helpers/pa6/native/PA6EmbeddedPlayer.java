@@ -55,6 +55,12 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   frame.setBackgroundColor(Color.BLACK);
   screen=new SurfaceView(context);screen.setKeepScreenOn(true);
   frame.addView(screen,new FrameLayout.LayoutParams(-1,-1));
+  screen.addOnLayoutChangeListener((v,l,t,r,b,oldL,oldT,oldR,oldB)->applyVideoGeometry());
+  screen.getHolder().addCallback(new android.view.SurfaceHolder.Callback(){
+   @Override public void surfaceCreated(android.view.SurfaceHolder holder){}
+   @Override public void surfaceChanged(android.view.SurfaceHolder holder,int format,int w,int h){applyVideoGeometry();}
+   @Override public void surfaceDestroyed(android.view.SurfaceHolder holder){}
+  });
   placeholder=new TextView(context);placeholder.setText("▶  ALFA • wybierz materiał");
   placeholder.setGravity(Gravity.CENTER);placeholder.setTextSize(18);placeholder.setTextColor(0xffc6d2e7);
   placeholder.setBackgroundColor(0xff111827);
@@ -75,6 +81,16 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   controls.addView(stop,new LinearLayout.LayoutParams(dp(56),dp(50)));
   addView(controls,new LinearLayout.LayoutParams(-1,dp(60)));
  }
+ private void applyVideoGeometry(){
+  if(engine==null)return;
+  int width=screen.getWidth(),height=screen.getHeight();
+  if(width<=0||height<=0)return;
+  try{
+   engine.getVLCVout().setWindowSize(width,height);
+   engine.setAspectRatio(null);
+   engine.setScale(0f);
+  }catch(Throwable e){android.util.Log.w("PA6_PLAYER","Video geometry pending",e);}
+ }
  private void init(){
   if(ready)return;
   ArrayList<String> options=new ArrayList<>();
@@ -84,8 +100,10 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   engine=new MediaPlayer(vlc);
   engine.getVLCVout().setVideoView(screen);
   engine.getVLCVout().attachViews();
+  applyVideoGeometry();
   engine.setEventListener(event->ui.post(()->{
    if(event.type==MediaPlayer.Event.Playing){
+    applyVideoGeometry();
     android.util.Log.i("PA6_PLAYER","PLAYING "+active);
     state.setText("▶ Odtwarzanie: "+active);
    }
