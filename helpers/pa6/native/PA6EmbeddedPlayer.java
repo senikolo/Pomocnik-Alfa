@@ -26,8 +26,9 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
  private MediaPlayer engine;
  private final Handler ui=new Handler(Looper.getMainLooper());
  private String active="";
- private Runnable playbackErrorListener;
+ private Runnable playbackErrorListener,playbackStartListener;
  public void setPlaybackErrorListener(Runnable listener){playbackErrorListener=listener;}
+ public void setPlaybackStartListener(Runnable listener){playbackStartListener=listener;}
  private boolean ready=false;
  private AudioManager audio;
  private boolean hasFocus=false;
@@ -108,6 +109,7 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
     applyVideoGeometry();
     android.util.Log.i("PA6_PLAYER","PLAYING "+active);
     state.setText("▶ Odtwarzanie: "+active);
+    if(playbackStartListener!=null)playbackStartListener.run();
    }
    else if(event.type==MediaPlayer.Event.Buffering)state.setText("Buforowanie • "+active);
    else if(event.type==MediaPlayer.Event.EncounteredError){
@@ -157,6 +159,7 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
    media.addOption(":network-caching=1500");
    media.addOption(":avcodec-hw=none"); // Acer Android 6: avoid audio-only hardware decoding failures.
    media.addOption(":http-reconnect=true");
+   media.addOption(":http-user-agent=Mozilla/5.0 (Android 6; Pomocnik Alfa)");
    // Attach the separate AAC/M4A track before playback. This is still in-app.
    if(audioAddress!=null&&!audioAddress.isEmpty()){
     media.addOption(":input-slave="+audioAddress);
@@ -169,6 +172,8 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
    android.util.Log.e("PA6_PLAYER","PLAYBACK_START_ERROR",e);
    placeholder.setVisibility(VISIBLE);
    state.setText("Nie udało się uruchomić odtwarzacza: "+e.getClass().getSimpleName());
+   // A synchronous LibVLC failure must also activate the next-source fallback.
+   if(playbackErrorListener!=null)playbackErrorListener.run();
   }
  }
  public boolean verifyNative(){
@@ -182,7 +187,7 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   if(audio!=null&&hasFocus){try{audio.abandonAudioFocus(focusListener);}catch(Exception ignored){}hasFocus=false;}
  }
  public void release(){
-  playbackErrorListener=null;
+  playbackErrorListener=null;playbackStartListener=null;
   stop();
   if(audio!=null&&hasFocus){try{audio.abandonAudioFocus(focusListener);}catch(Exception ignored){}hasFocus=false;}
   try{if(engine!=null){engine.getVLCVout().detachViews();engine.release();}}catch(Throwable ignored){}
