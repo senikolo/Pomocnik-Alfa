@@ -43,7 +43,15 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
  public PA6EmbeddedPlayer(Context context){
   super(context);setOrientation(VERTICAL);
   setBackgroundColor(0xff101b31);
-  FrameLayout frame=new FrameLayout(context);
+  // Keep the video genuinely 16:9 on 10-inch landscape tablets.
+  // A fixed 218dp frame looked panoramic and wasted decoder output on Acer.
+  FrameLayout frame=new FrameLayout(context){
+   @Override protected void onMeasure(int widthMeasureSpec,int heightMeasureSpec){
+    int width=MeasureSpec.getSize(widthMeasureSpec);
+    int videoHeight=Math.max(dp(130),Math.round(width*9f/16f));
+    super.onMeasure(widthMeasureSpec,MeasureSpec.makeMeasureSpec(videoHeight,MeasureSpec.EXACTLY));
+   }
+  };
   frame.setBackgroundColor(Color.BLACK);
   screen=new SurfaceView(context);screen.setKeepScreenOn(true);
   frame.addView(screen,new FrameLayout.LayoutParams(-1,-1));
@@ -51,16 +59,18 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   placeholder.setGravity(Gravity.CENTER);placeholder.setTextSize(18);placeholder.setTextColor(0xffc6d2e7);
   placeholder.setBackgroundColor(0xff111827);
   frame.addView(placeholder,new FrameLayout.LayoutParams(-1,-1));
-  addView(frame,new LinearLayout.LayoutParams(-1,dp(218)));
+  addView(frame,new LinearLayout.LayoutParams(-1,-2));
   LinearLayout controls=new LinearLayout(context);
   controls.setGravity(Gravity.CENTER_VERTICAL);
   state=new TextView(context);state.setTextColor(0xfff4f6fc);state.setTextSize(13);
   state.setText("Odtwarzacz wbudowany. Wybierz materiał.");
   controls.addView(state,new LinearLayout.LayoutParams(0,-2,1));
   Button pause=new Button(context);pause.setText("⏯");pause.setTextColor(0xfff4f6fc);
+  pause.setBackgroundColor(0xff31476a);
   pause.setOnClickListener(v->{if(engine!=null){try{engine.pause();}catch(Exception ignored){}}});
   controls.addView(pause,new LinearLayout.LayoutParams(dp(60),dp(50)));
   Button stop=new Button(context);stop.setText("■");stop.setTextColor(0xfff4f6fc);
+  stop.setBackgroundColor(0xff31476a);
   stop.setOnClickListener(v->stop());
   controls.addView(stop,new LinearLayout.LayoutParams(dp(56),dp(50)));
   addView(controls,new LinearLayout.LayoutParams(-1,dp(60)));
@@ -75,10 +85,17 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   engine.getVLCVout().setVideoView(screen);
   engine.getVLCVout().attachViews();
   engine.setEventListener(event->ui.post(()->{
-   if(event.type==MediaPlayer.Event.Playing)state.setText("▶ "+active);
+   if(event.type==MediaPlayer.Event.Playing){
+    android.util.Log.i("PA6_PLAYER","PLAYING "+active);
+    state.setText("▶ Odtwarzanie: "+active);
+   }
    else if(event.type==MediaPlayer.Event.Buffering)state.setText("Buforowanie • "+active);
-   else if(event.type==MediaPlayer.Event.EncounteredError)state.setText("Nie udało się odtworzyć. Sprawdź źródło, łącze lub kodek.");
-   else if(event.type==MediaPlayer.Event.EndReached)state.setText("Zakończono odtwarzanie.");
+   else if(event.type==MediaPlayer.Event.EncounteredError){
+    android.util.Log.w("PA6_PLAYER","PLAYBACK_ERROR "+active);
+    state.setText("Nie działa ten strumień. Sprawdź inne źródło albo film testowy.");
+    placeholder.setVisibility(VISIBLE);
+   }
+   else if(event.type==MediaPlayer.Event.EndReached){state.setText("Zakończono odtwarzanie.");placeholder.setVisibility(VISIBLE);}
   }));
   ready=true;
  }
@@ -106,7 +123,11 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
    engine.setMedia(media);
    media.release();
    engine.play();
-  }catch(Throwable e){state.setText("Nie można uruchomić odtwarzacza: "+e.getClass().getSimpleName());}
+  }catch(Throwable e){
+   android.util.Log.e("PA6_PLAYER","PLAYBACK_START_ERROR",e);
+   placeholder.setVisibility(VISIBLE);
+   state.setText("Nie udało się uruchomić odtwarzacza: "+e.getClass().getSimpleName());
+  }
  }
  public boolean verifyNative(){
   try{init();android.util.Log.i("PA6_LIBVLC","NATIVE_ENGINE_READY");state.setText("Silnik wideo jest gotowy.");return true;}
