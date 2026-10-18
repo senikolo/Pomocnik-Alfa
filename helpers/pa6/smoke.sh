@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 mkdir -p results
-pkg=com.senikolo.pa6tubeplus.test221
+pkg=com.senikolo.pa6tubeplus.test222
 activity=$pkg/com.ispina.lokalnie.PA6TubeActivity
 trap 'adb logcat -d -v time > results/logcat.txt || true' EXIT
 adb install pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk
@@ -10,6 +10,13 @@ adb install -r pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk
 adb shell pm grant "$pkg" android.permission.WRITE_EXTERNAL_STORAGE
 adb shell pm grant "$pkg" android.permission.READ_EXTERNAL_STORAGE
 adb logcat -c
+adb shell am start -W -n "$pkg/com.ispina.lokalnie.PA6DashboardActivity" > results/cold-start.txt
+adb shell am start -W -n "$activity" --ez verify_performance true > results/tube-start.txt
+sleep 3
+adb logcat -d > results/performance.txt
+grep -q 'PA6_PERF.*PASS cached search, 12-item page, stale-result rejection, isolated HTTP cancellation' results/performance.txt
+adb shell am force-stop "$pkg"
+
 adb shell am start -n "$pkg/com.ispina.lokalnie.PA6DashboardActivity"
 sleep 3
 adb exec-out screencap -p > results/dashboard.png
@@ -33,14 +40,15 @@ grep -q 'Nie można pobrać filmu' results/download-error-window.xml
 # Explicit phone/tablet modes: no app-data wipe, no second APK build.
 for mode in Smartfon Tablet; do
  adb shell am force-stop "$pkg"
- adb shell "mkdir -p /data/data/$pkg/shared_prefs; printf '%s' '<?xml version=\"1.0\" encoding=\"utf-8\"?><map><string name=\"ui_mode\">$mode</string></map>' > /data/data/$pkg/shared_prefs/pa6_display.xml"
- adb shell am start -n "$activity" --ez verify_video_stream true --ez verify_libvlc true
+ adb shell am start -n "$activity" --ez verify_video_stream true --ez verify_libvlc true --es verify_layout "$mode"
  sleep 8
  adb exec-out screencap -p > "results/tube-$mode.png"
  adb shell input swipe 480 700 480 240 400
  adb exec-out screencap -p > "results/tube-$mode-scroll.png"
 done
 adb logcat -d > results/playback.txt
+grep -q 'LAYOUT_MODE=Smartfon WIDE=false' results/playback.txt
+grep -q 'LAYOUT_MODE=Tablet WIDE=true' results/playback.txt
 grep -q 'PA6_LIBVLC.*NATIVE_ENGINE_READY' results/playback.txt
 if grep -q 'PA6_PLAYER.*PLAYING' results/playback.txt; then
  echo 'CONFIRMED sample LibVLC playback' > results/sample-status.txt

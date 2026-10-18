@@ -23,6 +23,20 @@ import java.util.*;
  * This is not guaranteed to work for videos requiring sign-in, DRM or YouTube PoToken.
  */
 public final class PA6NewPipeClient {
+ /** Request-scoped cancellation never aborts a separate download or player task. */
+ public static final class Work {
+  public volatile boolean cancelled;
+  private final Set<okhttp3.Call> calls=new HashSet<>();
+  public synchronized void cancel(){cancelled=true;for(okhttp3.Call call:calls)call.cancel();calls.clear();}
+  synchronized void add(okhttp3.Call call)throws IOException{if(cancelled){call.cancel();throw new InterruptedIOException("Cancelled");}calls.add(call);}
+  synchronized void remove(okhttp3.Call call){calls.remove(call);}
+ }
+ private static final ThreadLocal<Work> currentWork=new ThreadLocal<>();
+ public static void enterWork(Work work){currentWork.set(work);}
+ public static void leaveWork(){currentWork.remove();}
+ public static void checkWork()throws InterruptedIOException{
+  Work w=currentWork.get();if(Thread.currentThread().isInterrupted()||(w!=null&&w.cancelled))throw new InterruptedIOException("Cancelled");
+ }
  private static boolean initialized;
  private static okhttp3.OkHttpClient httpClient;
  private static synchronized void init(){
@@ -42,6 +56,7 @@ public final class PA6NewPipeClient {
   }
   NewPipe.init(new Downloader(){
    @Override public Response execute(Request request)throws IOException{
+    checkWork();
     String address=request.url();
     if(address==null||!address.startsWith("https://"))
      throw new IOException("Only HTTPS sources are accepted.");
@@ -61,7 +76,9 @@ public final class PA6NewPipeClient {
     else if("POST".equalsIgnoreCase(request.httpMethod())||"PUT".equalsIgnoreCase(request.httpMethod()))
      body=okhttp3.RequestBody.create(new byte[0]);
     req.method(request.httpMethod(),body);
-    try(okhttp3.Response http=httpClient.newCall(req.build()).execute()){
+    okhttp3.Call call=httpClient.newCall(req.build());
+    Work work=currentWork.get();if(work!=null)work.add(call);
+    try(okhttp3.Response http=call.execute()){
      okhttp3.ResponseBody payload=http.body();
      String content=payload==null?"":payload.string();
      if(content.length()>8000000)throw new IOException("YouTube response too large.");
@@ -69,7 +86,7 @@ public final class PA6NewPipeClient {
      if(code>=400)Log.w("PA6_NEWPIPE","Extractor HTTP "+code+" from "+http.request().url().host());
      return new Response(code,http.message(),http.headers().toMultimap(),
       content,http.request().url().toString());
-    }
+    }finally{if(work!=null)work.remove(call);}
    }
   });
   initialized=true;
@@ -81,7 +98,7 @@ public final class PA6NewPipeClient {
   */
  public static PA6PipedClient.Response<List<PA6PipedClient.Result>> search(String query)throws Exception{
   if(query==null||query.trim().isEmpty())throw new IOException("Wpisz nazwę filmu.");
-  init();
+  checkWork();init();
   SearchInfo info=SearchInfo.getInfo(ServiceList.YouTube,
       ServiceList.YouTube.getSearchQHFactory().fromQuery(query.trim()));
   ArrayList<PA6PipedClient.Result> found=new ArrayList<>();
@@ -128,7 +145,7 @@ public final class PA6NewPipeClient {
   if(height<=0||height>720)return Integer.MAX_VALUE;
   // Do not silently request a resolution above the user's quality limit
   // unless there is no lower-quality playable stream at all.
-  int preferred=target<=0?480:Math.min(720,Math.max(144,target));
+  int preferred=target<=0?360:Math.min(720,Math.max(144,target));
   return height<=preferred?preferred-height:1000+height-preferred;
  }
  private static String cachedId="";
@@ -137,7 +154,7 @@ public final class PA6NewPipeClient {
  static okhttp3.OkHttpClient downloadClient(){init();return httpClient;}
  private static synchronized StreamInfo load(String id)throws Exception{
   if(id==null||!id.matches("[A-Za-z0-9_-]{11}"))throw new IOException("Nieprawidłowy identyfikator filmu");
-  init();
+  checkWork();init();
   long now=android.os.SystemClock.elapsedRealtime();
   if(id.equals(cachedId)&&cachedInfo!=null&&now-cachedAt<120000)return cachedInfo;
   StreamInfo info=StreamInfo.getInfo("https://www.youtube.com/watch?v="+id);
@@ -195,7 +212,7 @@ public final class PA6NewPipeClient {
   PA6PipedClient.Video single=progressive(info,preferredHeight);
   PA6PipedClient.Video split=adaptive(info,preferredHeight);
   PA6PipedClient.Video chosen=single!=null?single:split;
-  if(preferredHeight>0&&split!=null&&
+  if(split!=null&&
     (single==null||score(height(split.quality),preferredHeight)<score(height(single.quality),preferredHeight)))
    chosen=split;
   if(chosen!=null){

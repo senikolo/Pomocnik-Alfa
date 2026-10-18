@@ -28,7 +28,25 @@ public final class PA6TubeActivity extends Activity {
  private static final int WHITE=0xfff8fafc,INK=0xff172036,MUTED=0xff596574,RED=0xffed263b,PALE=0xffedf0f5;
  private final Handler main=new Handler(Looper.getMainLooper());
  private final ExecutorService io=Executors.newFixedThreadPool(2);
- private final ExecutorService thumbnailIo=Executors.newFixedThreadPool(2);
+ private final ThreadPoolExecutor thumbnailIo=(ThreadPoolExecutor)Executors.newFixedThreadPool(2);
+ private final ExecutorService searchIo=Executors.newSingleThreadExecutor();
+ private Future<?> searchTask,playTask;
+ private PA6NewPipeClient.Work searchWork,playWork;
+ private int searchGeneration=0;
+ private volatile int thumbnailGeneration=0;
+ private static final android.util.LruCache<String,Bitmap> THUMBS=new android.util.LruCache<String,Bitmap>(2*1024*1024){
+  @Override protected int sizeOf(String key,Bitmap bitmap){return bitmap.getByteCount();}
+ };
+ private static final class CachedSearch {
+  final PA6PipedClient.Response<List<PA6PipedClient.Result>> response;
+  final long at=SystemClock.elapsedRealtime();
+  CachedSearch(PA6PipedClient.Response<List<PA6PipedClient.Result>> value){response=value;}
+ }
+ private static final android.util.LruCache<String,CachedSearch> SEARCHES=new android.util.LruCache<>(6);
+ private void cancelSearch(){if(searchWork!=null)searchWork.cancel();if(searchTask!=null)searchTask.cancel(true);}
+ private void cancelPlay(){if(playWork!=null)playWork.cancel();if(playTask!=null)playTask.cancel(true);}
+ private void clearThumbnails(){thumbnailGeneration++;thumbnailIo.getQueue().clear();}
+
  private LinearLayout results,stageWrap,mediaArea,playerPane,feedPane;
  private PA6EmbeddedPlayer player;
  private WebView officialWeb;
@@ -108,6 +126,7 @@ public final class PA6TubeActivity extends Activity {
   mediaArea.removeAllViews();
   float widthDp=getResources().getDisplayMetrics().widthPixels/getResources().getDisplayMetrics().density;
   boolean wide=widthDp>=("Tablet".equals(layoutMode())?600:660) && !"Smartfon".equals(layoutMode());
+  android.util.Log.i("PA6_PERF","LAYOUT_MODE="+layoutMode()+" WIDE="+wide);
   mediaArea.setOrientation(wide?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL);
   mediaArea.setGravity(Gravity.TOP|Gravity.CENTER_HORIZONTAL);
   if(wide){
@@ -194,7 +213,9 @@ public final class PA6TubeActivity extends Activity {
  private TextView downloadStatus;
  private final Runnable downloadMonitor=new Runnable(){public void run(){
   if(closed)return;
-  if(downloadStatus!=null)downloadStatus.setText(getSharedPreferences("pa6_download",0).getString("status",""));
+  if(downloadStatus!=null){String value=getSharedPreferences("pa6_download",0).getString("status","");
+   if(!value.contentEquals(downloadStatus.getText()))downloadStatus.setText(value);
+  }
   main.postDelayed(this,1000);
  }};
  @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] granted){
@@ -211,7 +232,7 @@ public final class PA6TubeActivity extends Activity {
  }
  private void playVideo(final String id){
   if(id==null||!id.matches("[A-Za-z0-9_-]{11}")){feedback("Nieprawidłowy adres filmu.");return;}
-  cancelWatchdog();switchBackToNative();
+  cancelSearch();cancelPlay();cancelWatchdog();switchBackToNative();
   if(officialButton!=null)officialButton.setVisibility(View.GONE);
   ++request;activeId=id;availableQualities=new int[]{0};playbackAttempts=0;failedProviders.clear();currentProvider="";
   if(compatiblePlayerButton!=null)compatiblePlayerButton.setVisibility(View.VISIBLE);
@@ -223,13 +244,17 @@ public final class PA6TubeActivity extends Activity {
   feedback(playbackAttempts==0?"Sprawdzam film bezpośrednio przez NewPipe Extractor…":
     "Pierwsze źródło nie odtworzyło filmu. Sprawdzam serwer zapasowy ("+playbackAttempts+"/6)…");
   final HashSet<String> ignored=new HashSet<>(failedProviders);
-  io.execute(()->{
+  cancelPlay();final PA6NewPipeClient.Work work=new PA6NewPipeClient.Work();playWork=work;
+  final int preferredQuality=selectedQuality();final String preferredServer=server();
+  playTask=io.submit(()->{
+   PA6NewPipeClient.enterWork(work);
    try{
     PA6PipedClient.Response<PA6PipedClient.Video> response=null;
     if(!ignored.contains("NewPipe Extractor")){
      try{
-      response=PA6NewPipeClient.resolve(id,selectedQuality());
+      response=PA6NewPipeClient.resolve(id,preferredQuality);
      }catch(Throwable npe){
+      if(work.cancelled||Thread.currentThread().isInterrupted())return;
       android.util.Log.w("PA6_NEWPIPE","Native extractor not available: "+npe.getClass().getSimpleName()+" "+npe.getMessage());
       final String type=npe.getClass().getSimpleName();
       final String reason=type.contains("SignInConfirmNotBot")
@@ -243,7 +268,8 @@ public final class PA6TubeActivity extends Activity {
       });
      }
     }
-    if(response==null)response=PA6PipedClient.resolve(id,server(),ignored,selectedQuality());
+    if(work.cancelled)return;
+    if(response==null)response=PA6PipedClient.resolve(id,preferredServer,ignored,preferredQuality);
     final PA6PipedClient.Response<PA6PipedClient.Video> selected=response;
     int[] heights=new int[]{0};
     if("NewPipe Extractor".equals(selected.server))try{heights=PA6NewPipeClient.availableQualities(id);}catch(Exception ignoredQuality){}
@@ -268,6 +294,7 @@ public final class PA6TubeActivity extends Activity {
      getPreferences(0).edit().putString("recent_ids",next).putString("recent_title_"+id,v.title).apply();
     });
    }catch(Exception e){
+    if(work.cancelled||Thread.currentThread().isInterrupted())return;
     final String why=e.getMessage();
     main.post(()->{
      if(closed||seq!=request)return;
@@ -276,7 +303,7 @@ public final class PA6TubeActivity extends Activity {
       " Możesz otworzyć go w NewPipe lub SkyTube.");
      if(officialButton!=null)officialButton.setVisibility(View.VISIBLE);
     });
-   }
+   }finally{PA6NewPipeClient.leaveWork();}
   });
  }
  /**
@@ -371,46 +398,72 @@ public final class PA6TubeActivity extends Activity {
   }
   resolveAndPlay(activeId,request);
  }
+ private void showSearchResults(final PA6PipedClient.Response<List<PA6PipedClient.Result>> response,final int seq){
+  if(closed||seq!=searchGeneration)return;
+  results.removeAllViews();clearThumbnails();
+  provider.setText("Wyniki filmów • "+response.server.replace("https://",""));
+  feedback(response.data.isEmpty()?"Brak wyników. Spróbuj innego hasła.":"Znaleziono filmów: "+response.data.size()+" • dotknij filmu, aby oglądać.");
+  appendResults(response.data,0,seq);
+ }
+ private void appendResults(final List<PA6PipedClient.Result> list,final int start,final int seq){
+  if(closed||seq!=searchGeneration)return;
+  int end=Math.min(list.size(),start+4);
+  for(int i=start;i<end;i++)movieCard(list.get(i));
+  if(end<list.size()&&end%12!=0){final int next=end;main.postDelayed(()->appendResults(list,next,seq),16);}
+  else if(end<list.size()){
+   final int next=end;Button more=button("Pokaż kolejne filmy",RED,false);
+   results.addView(more,new LinearLayout.LayoutParams(-1,-2));
+   more.setOnClickListener(v->{results.removeView(more);appendResults(list,next,seq);});
+  }
+ }
  private void searchVideos(final String query){
-  if(query.isEmpty()){feedback("Wpisz nazwę filmu, kanału lub wykonawcy.");return;}
-  disableKeyboard();int seq=++request;
+  if(query.trim().isEmpty()){feedback("Wpisz nazwę filmu, kanału lub wykonawcy.");return;}
+  disableKeyboard();cancelSearch();final int seq=++searchGeneration;
+  clearThumbnails();results.removeAllViews();
+  final String terms=kids?(query.trim()+" bajki dla dzieci"):query.trim();
+  final String preferredServer=server(),cacheKey=preferredServer+"|"+terms.toLowerCase(Locale.ROOT);
+  CachedSearch cached=SEARCHES.get(cacheKey);
+  if(cached!=null&&SystemClock.elapsedRealtime()-cached.at<300000){
+   android.util.Log.i("PA6_PERF","SEARCH_CACHE_HIT");showSearchResults(cached.response,seq);return;
+  }
   feedback("Wyszukiwanie: "+query+"…");
-  results.removeAllViews();
-  io.execute(()->{
+  final long started=SystemClock.elapsedRealtime();
+  final PA6NewPipeClient.Work work=new PA6NewPipeClient.Work();searchWork=work;
+  searchTask=searchIo.submit(()->{
+   PA6NewPipeClient.enterWork(work);
    try{
-    String terms=kids?(query+" bajki dla dzieci"):query;
-    PA6PipedClient.Response<java.util.List<PA6PipedClient.Result>> selected;
-    try{
-     selected=PA6NewPipeClient.search(terms);
-    }catch(Exception | LinkageError nativeFailure){
-     android.util.Log.w("PA6_NEWPIPE","Direct search unavailable; trying backup catalogs",nativeFailure);
-     selected=PA6PipedClient.search(terms,server());
+    PA6PipedClient.Response<List<PA6PipedClient.Result>> selected;
+    try{selected=PA6NewPipeClient.search(terms);}
+    catch(Exception | LinkageError nativeFailure){
+     if(work.cancelled||Thread.currentThread().isInterrupted())return;
+     selected=PA6PipedClient.search(terms,preferredServer);
     }
-    final PA6PipedClient.Response<java.util.List<PA6PipedClient.Result>> response=selected;
+    if(work.cancelled)return;
+    final PA6PipedClient.Response<List<PA6PipedClient.Result>> response=selected;
     main.post(()->{
-     if(closed||seq!=request)return;
-     java.util.List<PA6PipedClient.Result> list=response.data;
-     provider.setText("Wyniki filmów • "+response.server.replace("https://",""));
-     feedback(list.isEmpty()?"Brak wyników. Spróbuj innego hasła.":"Znaleziono filmów: "+list.size()+" • dotknij miniatury, aby oglądać tutaj.");
-     for(PA6PipedClient.Result v:list)movieCard(v);
+     if(closed||work.cancelled||seq!=searchGeneration)return;
+     SEARCHES.put(cacheKey,new CachedSearch(response));showSearchResults(response,seq);
+     android.util.Log.i("PA6_PERF","SEARCH_READY_MS="+(SystemClock.elapsedRealtime()-started));
     });
-   }catch(Exception e){
-    final String reason=e.getMessage();
-    main.post(()->{if(closed||seq!=request)return;
-     feedback(reason+" Możesz spróbować ponownie lub zmienić serwer.");
-     TextView empty=text("Nie udało się wyszukać filmów przez NewPipe ani serwery zapasowe. Sprawdź internet lub odtwórz plik z tabletu.",15,MUTED,false);
-     pad(empty,14,17);results.addView(empty);
+   }catch(Exception error){
+    if(work.cancelled||Thread.currentThread().isInterrupted())return;
+    main.post(()->{if(closed||seq!=searchGeneration)return;
+     feedback("Nie udało się wyszukać filmów. Sprawdź połączenie i spróbuj ponownie.");
     });
-   }
+   }finally{PA6NewPipeClient.leaveWork();}
   });
  }
  private void thumb(ImageView image,String suggested,String videoId){
   if(videoId==null||!videoId.matches("[A-Za-z0-9_-]{11}"))return;
   // Prefer Google's compact 320px thumbnail; old tablet has only 2 GB RAM.
   final String direct="https://i.ytimg.com/vi/"+videoId+"/mqdefault.jpg";
+  Bitmap cached=THUMBS.get(videoId);if(cached!=null){image.setImageBitmap(cached);return;}
+  final int generation=thumbnailGeneration;
   thumbnailIo.execute(()->{
+   if(closed||generation!=thumbnailGeneration)return;
    String[] urls={direct,suggested};
    for(String url:urls){
+    if(closed||generation!=thumbnailGeneration)return;
     if(url==null||!url.startsWith("https://")||url.length()>2400)continue;
     HttpURLConnection c=null;
     try{
@@ -420,7 +473,7 @@ public final class PA6TubeActivity extends Activity {
      ByteArrayOutputStream out=new ByteArrayOutputStream(26000);
      try(InputStream in=c.getInputStream()){
       byte[] buf=new byte[4096];int n;
-      while((n=in.read(buf))>0){if(out.size()+n>300000)break;out.write(buf,0,n);}
+      while((n=in.read(buf))>0){if(closed||generation!=thumbnailGeneration)return;if(out.size()+n>300000)break;out.write(buf,0,n);}
      }
      byte[] data=out.toByteArray();
      if(data.length==0||data.length>300000)continue;
@@ -428,7 +481,8 @@ public final class PA6TubeActivity extends Activity {
      o.inPreferredConfig=Bitmap.Config.RGB_565;
      Bitmap result=BitmapFactory.decodeByteArray(data,0,data.length,o);
      if(result!=null){
-      main.post(()->{if(!closed&&!isFinishing())image.setImageBitmap(result);});
+      THUMBS.put(videoId,result);
+      main.post(()->{if(!closed&&!isFinishing()&&generation==thumbnailGeneration)image.setImageBitmap(result);});
       return;
      }
     }catch(Exception e){
@@ -463,7 +517,7 @@ public final class PA6TubeActivity extends Activity {
   card.setOnClickListener(v->playVideo(video.id));
  }
  private void history(){
-  results.removeAllViews();String raw=getPreferences(0).getString("recent_ids","");
+  cancelSearch();++searchGeneration;clearThumbnails();results.removeAllViews();String raw=getPreferences(0).getString("recent_ids","");
   int shown=0;
   for(String id:raw.split(",")){
    if(!id.matches("[A-Za-z0-9_-]{11}")||shown++>=12)continue;
@@ -483,7 +537,10 @@ public final class PA6TubeActivity extends Activity {
   feedback("Wklej link do YouTube albo bezpośredniego filmu MP4/HLS.");
  }
  @Override public void onCreate(Bundle b){
-  super.onCreate(b);kids=getIntent().getBooleanExtra("kids",false);PA6ModernTls.install(this);
+  super.onCreate(b);
+  String verifyLayout=getIntent().getStringExtra("verify_layout");
+  if("Smartfon".equals(verifyLayout)||"Tablet".equals(verifyLayout))getSharedPreferences("pa6_display",0).edit().putString("ui_mode",verifyLayout).apply();
+  kids=getIntent().getBooleanExtra("kids",false);PA6ModernTls.install(this);
   getWindow().setStatusBarColor(0xfff8fafc);getWindow().setNavigationBarColor(0xff151d30);
   getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
   LinearLayout page=column();page.setBackgroundColor(WHITE);pad(page,12,8);setContentView(page);
@@ -541,7 +598,7 @@ public final class PA6TubeActivity extends Activity {
   downloadButton.setOnClickListener(v->downloadCurrent());
   playerPane.addView(actions,new LinearLayout.LayoutParams(-1,-2));
   downloadStatus=text("",13,MUTED,false);pad(downloadStatus,5,6);playerPane.addView(downloadStatus);
-  main.post(downloadMonitor);
+
   status=text("Alfa Tube wyszukuje przez NewPipe. Odtwarzacz działa wewnątrz PA.",13,MUTED,false);
   pad(status,5,8);playerPane.addView(status);
   provider=text("Wbudowany VLC • osobny NewPipe/SkyTube tylko na Twoje życzenie",11,MUTED,false);
@@ -607,7 +664,9 @@ public final class PA6TubeActivity extends Activity {
   if(getIntent().getBooleanExtra("verify_libvlc",false)&&!player.verifyNative())
    throw new IllegalStateException("PA6 Alfa Tube native player unavailable");
   // First screen shows meaningful content without pretending to have a working feed.
-  if(getIntent().getBooleanExtra("verify_download_validation",false)){
+  if(getIntent().getBooleanExtra("verify_performance",false)){
+   verifyPerformance();
+  }else if(getIntent().getBooleanExtra("verify_download_validation",false)){
    io.execute(()->{
     try{
      File folder=Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
@@ -632,6 +691,31 @@ public final class PA6TubeActivity extends Activity {
    feedback("Sprawdzam odtwarzanie materiału kontrolnego…");
   }else{search.setText(kids?"Bajki":"muzyka");searchVideos(kids?"Bajki":"muzyka");}
  }
+ private void verifyPerformance(){
+  final long started=SystemClock.elapsedRealtime();
+  ArrayList<PA6PipedClient.Result> first=new ArrayList<>(),second=new ArrayList<>();
+  for(int i=0;i<36;i++)first.add(new PA6PipedClient.Result("Film "+i,"Kontrola płynności","","","",""));
+  second.addAll(first.subList(0,3));
+  final PA6PipedClient.Response<List<PA6PipedClient.Result>> old=new PA6PipedClient.Response<List<PA6PipedClient.Result>>(first,"Pamięć testowa");
+  SEARCHES.put(server()+"|pa6 performance",new CachedSearch(old));
+  SEARCHES.put(server()+"|pa6 replacement",new CachedSearch(new PA6PipedClient.Response<List<PA6PipedClient.Result>>(second,"Pamięć testowa")));
+  searchVideos("pa6 performance");final int stale=searchGeneration;
+  main.postDelayed(()->{
+   try{
+    if(results.getChildCount()!=13)throw new IllegalStateException("Result pagination failed");
+    searchVideos("pa6 replacement");
+    showSearchResults(old,stale);
+    if(results.getChildCount()!=3)throw new IllegalStateException("Stale search replaced current results");
+    PA6NewPipeClient.Work work=new PA6NewPipeClient.Work();
+    okhttp3.OkHttpClient client=new okhttp3.OkHttpClient();
+    okhttp3.Call obsolete=client.newCall(new okhttp3.Request.Builder().url("https://example.com/").build());
+    okhttp3.Call independent=client.newCall(new okhttp3.Request.Builder().url("https://example.com/").build());
+    work.add(obsolete);work.cancel();
+    if(!obsolete.isCanceled()||independent.isCanceled())throw new IllegalStateException("Cancellation isolation failed");
+    android.util.Log.i("PA6_PERF","PASS cached search, 12-item page, stale-result rejection, isolated HTTP cancellation; UI_MS="+(SystemClock.elapsedRealtime()-started));
+   }catch(Exception error){android.util.Log.e("PA6_PERF","FAIL performance regression",error);}
+  },200);
+ }
  @Override protected void onActivityResult(int requestCode,int result,Intent data){
   super.onActivityResult(requestCode,result,data);
   if(requestCode!=PICK_FILE||result!=RESULT_OK||data==null||data.getData()==null)return;
@@ -639,7 +723,9 @@ public final class PA6TubeActivity extends Activity {
   title.setText(activeTitle);subtitle.setText("Lokalny plik • offline");
   player.playUri(activeTitle,data.getData());feedback("Odtwarzanie pliku z pamięci urządzenia.");
  }
+ @Override protected void onStart(){super.onStart();main.removeCallbacks(downloadMonitor);main.post(downloadMonitor);}
  @Override protected void onStop(){
+  main.removeCallbacks(downloadMonitor);cancelSearch();cancelPlay();++searchGeneration;clearThumbnails();
   // Never leave hidden video decoding when the user switches to other PA modules.
   cancelWatchdog();++request;activeId="";playbackPending=false;
   if(officialWeb!=null)officialWeb.onPause();
@@ -647,7 +733,7 @@ public final class PA6TubeActivity extends Activity {
   super.onStop();
  }
  @Override protected void onDestroy(){
-  closed=true;main.removeCallbacks(downloadMonitor);cancelWatchdog();request++;io.shutdownNow();thumbnailIo.shutdownNow();
+  closed=true;main.removeCallbacks(downloadMonitor);cancelWatchdog();request++;io.shutdownNow();searchIo.shutdownNow();thumbnailIo.shutdownNow();
   if(officialWeb!=null){officialWeb.stopLoading();officialWeb.destroy();officialWeb=null;}
   if(player!=null)player.release();
   super.onDestroy();

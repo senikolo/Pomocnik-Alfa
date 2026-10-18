@@ -48,6 +48,7 @@ public final class PA6PipedClient {
   return t.endsWith("/")?t.substring(0,t.length()-1):t;
  }
  private static String fetchRaw(String address)throws Exception{
+  PA6NewPipeClient.checkWork();
   HttpURLConnection c=null;
   try{
    c=PA6ModernTls.open(address);
@@ -60,6 +61,7 @@ public final class PA6PipedClient {
    try(InputStream in=c.getInputStream()){
     byte[] buf=new byte[8192];int read;
     while((read=in.read(buf))>0){
+     PA6NewPipeClient.checkWork();
      if(out.size()+read>1250000)throw new IOException("Odpowiedź serwera zbyt duża");
      out.write(buf,0,read);
     }
@@ -92,6 +94,7 @@ public final class PA6PipedClient {
   if(query==null||query.trim().isEmpty())throw new IOException("Wpisz tytuł lub wykonawcę.");
   Exception last=null;
   for(String server:servers(custom)){
+   PA6NewPipeClient.checkWork();
    try{
     JSONObject json=fetch(server+"/search?q="+enc(query.trim())+"&filter=videos");
     JSONArray arr=json.optJSONArray("items");
@@ -117,6 +120,7 @@ public final class PA6PipedClient {
  public static Response<List<Result>> trending(String custom)throws Exception{
   Exception last=null;
   for(String server:servers(custom)){
+   PA6NewPipeClient.checkWork();
    try{
     JSONObject data=fetch(server+"/trending?region=PL");
     // Trending endpoint normally returns JSON array; request it through separate decoder below.
@@ -140,6 +144,7 @@ public final class PA6PipedClient {
   if(id==null||!id.matches("[A-Za-z0-9_-]{11}"))throw new IOException("Nieprawidłowy identyfikator filmu.");
   Exception last=null;
   for(String server:servers(custom)){
+   PA6NewPipeClient.checkWork();
    if(excluded.contains(server))continue;
    try{
     JSONObject data=fetch(server+"/streams/"+id);
