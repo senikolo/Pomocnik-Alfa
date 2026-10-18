@@ -53,6 +53,7 @@ public final class PA6TvActivity extends Activity {
  private LinearLayout results;
  private EditText search,custom;
  private String filter="Wszystkie",onAir="";
+ private int tuneRequest=0;
  private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+.5f);}
  private GradientDrawable box(int bg,int outline,int radius){
   GradientDrawable d=new GradientDrawable();d.setColor(bg);d.setCornerRadius(dp(radius));d.setStroke(dp(1),outline);return d;
@@ -80,10 +81,19 @@ public final class PA6TvActivity extends Activity {
   showChannels();
  }
  private void play(Channel ch){
-  onAir=ch.name;player.play(ch.name,ch.url);
+  onAir=ch.name;
+  final int attempt=++tuneRequest;
   active.setText("▶  "+ch.name);
-  status.setText("Odtwarzanie wewnątrz PA • "+ch.desc);
+  status.setText("Sprawdzam jakość transmisji. Proszę chwilę poczekać…");
   getPreferences(0).edit().putString("tv_last",ch.url).putString("tv_name",ch.name).apply();
+  new Thread(()->{
+   String url=PA6HlsQuality.preferLow(ch.url);
+   runOnUiThread(()->{
+    if(isFinishing()||attempt!=tuneRequest)return;
+    player.play(ch.name,url);
+    status.setText("Łączę z kanałem "+ch.name+". Obraz pojawi się w okienku po rozpoczęciu transmisji.");
+   });
+  },"pa6-tv-quality").start();
  }
  private void replay(){
   String last=getPreferences(0).getString("tv_last","");
@@ -127,7 +137,8 @@ public final class PA6TvActivity extends Activity {
   LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(81));p.setMargins(0,dp(4),0,dp(5));results.addView(l,p);
  }
  @Override public void onCreate(Bundle saved){
-  super.onCreate(saved);getWindow().setStatusBarColor(WHITE);getWindow().setNavigationBarColor(INK);
+  super.onCreate(saved);PA6ModernTls.install(this);
+  getWindow().setStatusBarColor(WHITE);getWindow().setNavigationBarColor(INK);
   getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
   LinearLayout page=col();page.setBackgroundColor(WHITE);
   page.setPadding(dp(12),dp(10),dp(12),dp(5));setContentView(page);
@@ -211,6 +222,7 @@ public final class PA6TvActivity extends Activity {
  }
  @Override protected void onStop(){
   // Never leave hidden video decoding when the user switches to other PA modules.
+  ++tuneRequest;
   if(player!=null)player.stop();
   super.onStop();
  }
