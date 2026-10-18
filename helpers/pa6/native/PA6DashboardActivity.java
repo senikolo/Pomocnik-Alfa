@@ -120,7 +120,7 @@ public final class PA6DashboardActivity extends Activity {
   highlight.addView(text("Włącz telewizję, posłuchaj radia, obejrzyj film lub zaplanuj podróż.",14,false,0xff4b627e));
   gap(highlight,15);
   LinearLayout shortcuts=row();
-  quick(shortcuts,"tv","tv","ALFA TV","25 kanałów",0xff65f1d8);
+  quick(shortcuts,"tv","tv","ALFA TV","PL + rosyjskojęzyczne",0xff65f1d8);
   quick(shortcuts,"tube","tube","ALFA TUBE","Filmy i muzyka",0xffff939e);
   quick(shortcuts,"radio","radio","RADIO","Polskie stacje",0xffffc783);
   highlight.addView(shortcuts);root.addView(highlight);
@@ -135,7 +135,7 @@ public final class PA6DashboardActivity extends Activity {
    {"tube","Alfa Tube","Wyszukuj filmy","tube","ffee283d"},
    {"radio","Radio","Stacje i ulubione","radio","ffbf6a37"},
    {"sounds","Dźwięki spokoju","Relaks offline","sounds","ff5872bd"},
-   {"kids","Alfa Kids","Kącik rodzinny","kids","ffb85d96"}
+   {"kids","Tube Kids","Filmy dla dzieci","kids","ffb85d96"}
   });
   category("Transport i pomoc","Warszawa i Małopolska",new String[][]{
    {"planner","Planer podróży","Trasy i odjazdy","planner","ff3c8b98"},

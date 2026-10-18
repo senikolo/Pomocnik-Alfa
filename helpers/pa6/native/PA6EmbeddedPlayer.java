@@ -26,6 +26,8 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
  private MediaPlayer engine;
  private final Handler ui=new Handler(Looper.getMainLooper());
  private String active="";
+ private Runnable playbackErrorListener;
+ public void setPlaybackErrorListener(Runnable listener){playbackErrorListener=listener;}
  private boolean ready=false;
  private AudioManager audio;
  private boolean hasFocus=false;
@@ -110,8 +112,9 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
    else if(event.type==MediaPlayer.Event.Buffering)state.setText("Buforowanie • "+active);
    else if(event.type==MediaPlayer.Event.EncounteredError){
     android.util.Log.w("PA6_PLAYER","PLAYBACK_ERROR "+active);
-    state.setText("Nie działa ten strumień. Sprawdź inne źródło albo film testowy.");
+    state.setText("Błąd transmisji. Sprawdzam inne źródło, jeśli jest dostępne.");
     placeholder.setVisibility(VISIBLE);
+    if(playbackErrorListener!=null)playbackErrorListener.run();
    }
    else if(event.type==MediaPlayer.Event.EndReached){state.setText("Zakończono odtwarzanie.");placeholder.setVisibility(VISIBLE);}
   }));
@@ -158,6 +161,7 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   if(audio!=null&&hasFocus){try{audio.abandonAudioFocus(focusListener);}catch(Exception ignored){}hasFocus=false;}
  }
  public void release(){
+  playbackErrorListener=null;
   stop();
   if(audio!=null&&hasFocus){try{audio.abandonAudioFocus(focusListener);}catch(Exception ignored){}hasFocus=false;}
   try{if(engine!=null){engine.getVLCVout().detachViews();engine.release();}}catch(Throwable ignored){}

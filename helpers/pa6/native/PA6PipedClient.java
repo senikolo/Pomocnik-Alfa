@@ -14,7 +14,9 @@ public final class PA6PipedClient {
  // Android 6 emulator log from 17 Oct: kavin returned 526, adminforge 404.
  // Start with the server that actually supplied search results in our last test.
  public static final String[] DEFAULT_SERVERS={
-  "https://api.piped.private.coffee"
+  "https://api.piped.private.coffee",
+  "https://piped-api.lunar.icu",
+  "https://api.looleh.xyz"
  };
  public static final class Result {
   public final String title, channel, thumb, id, duration, date;
@@ -125,9 +127,13 @@ public final class PA6PipedClient {
   return h>0?String.format(Locale.US,"%d:%02d:%02d",h,m,s):String.format(Locale.US,"%d:%02d",m,s);
  }
  public static Response<Video> resolve(String id,String custom)throws Exception{
+  return resolve(id,custom,Collections.<String>emptySet());
+ }
+ public static Response<Video> resolve(String id,String custom,Set<String> excluded)throws Exception{
   if(id==null||!id.matches("[A-Za-z0-9_-]{11}"))throw new IOException("Nieprawidłowy identyfikator filmu.");
   Exception last=null;
   for(String server:servers(custom)){
+   if(excluded.contains(server))continue;
    try{
     JSONObject data=fetch(server+"/streams/"+id);
     String name=data.optString("title","Film"),channel=data.optString("uploader","YouTube");
@@ -141,7 +147,7 @@ public final class PA6PipedClient {
     if(videos!=null)for(int i=0;i<videos.length();i++){
      JSONObject v=videos.optJSONObject(i);if(v==null||v.optBoolean("videoOnly",false))continue;
      String stream=https(v.optString("url",""));
-     String codec=v.optString("codec","").toLowerCase(Locale.ROOT);
+     String codec=(v.optString("codec","")+" "+v.optString("mimeType","")).toLowerCase(Locale.ROOT);
      String format=v.optString("mimeType","").toLowerCase(Locale.ROOT);
      int height=v.optInt("height",0);
      // The Acer API23 decoder needs H.264/AVC video with muxed audio.
@@ -157,10 +163,14 @@ public final class PA6PipedClient {
     if(!hls.isEmpty())return new Response<>(new Video(name,channel,hls,"HLS"),server);
     String dash=https(data.optString("dash",""));
     if(!dash.isEmpty())return new Response<>(new Video(name,channel,dash,"DASH"),server);
-    throw new IOException("Serwer nie udostępnia filmu z obrazem i dźwiękiem w jednym strumieniu.");
-   }catch(Exception e){last=e;}
+    throw new IOException("Brak wspólnego obrazu i dźwięku H.264 w tym źródle.");
+   }catch(Exception e){
+    android.util.Log.w("PA6_TUBE_RESOLVE","Piped "+server+" failed: "+e.getClass().getSimpleName()+" "+e.getMessage());
+    last=e;
+   }
   }
-  try{return invidiousResolve(id);}catch(Exception fallback){
+  try{return invidiousResolve(id,excluded);}catch(Exception fallback){
+   android.util.Log.w("PA6_TUBE_RESOLVE","Invidious all sources unavailable: "+fallback.getMessage());
    throw new IOException("Nie można uzyskać zgodnego filmu z obrazem i dźwiękiem. Serwery Piped/Invidious mogą być niedostępne.",fallback);
   }
  }
@@ -200,9 +210,10 @@ public final class PA6PipedClient {
   }
   throw new IOException("Publiczne Invidious nie odpowiada.",last);
  }
- private static Response<Video> invidiousResolve(String id)throws Exception{
+ private static Response<Video> invidiousResolve(String id,Set<String> excluded)throws Exception{
   Exception last=null;
   for(String server:INVIDIOUS){
+   if(excluded.contains(server))continue;
    try{
     JSONObject data=fetch(server+"/api/v1/videos/"+id);
     JSONArray formats=data.optJSONArray("formatStreams");
@@ -223,11 +234,21 @@ public final class PA6PipedClient {
      int score=Math.abs((height<=0?360:height)-480);
      if(!https(url).isEmpty()&&score<best){stream=url;label=resolution;best=score;}
     }
-    if(!stream.isEmpty())return new Response<>(new Video(data.optString("title","Film"),data.optString("author","YouTube"),stream,label),server);
+    if(!stream.isEmpty()){
+     // Route media via the current instance's supported proxy rather than direct
+     // googlevideo hosts that Android6 frequently receives as 403/expired URLs.
+     // The Tube retries through other instances on an actual media decoding error.
+     String proxied=server+"/latest_version?id="+enc(id)+"&itag=18&local=true";
+     android.util.Log.i("PA6_TUBE","Invidious progressive playback via instance proxy: "+server);
+     return new Response<>(new Video(data.optString("title","Film"),data.optString("author","YouTube"),proxied,"MP4 360p • serwer zapasowy"),server);
+    }
     String hls=https(data.optString("hlsUrl",""));
     if(!hls.isEmpty())return new Response<>(new Video(data.optString("title","Film"),data.optString("author","YouTube"),hls,"HLS"),server);
     throw new IOException("Brak zgodnego wideo na serwerze.");
-   }catch(Exception e){last=e;}
+   }catch(Exception e){
+    android.util.Log.w("PA6_TUBE_RESOLVE","Invidious "+server+" failed: "+e.getClass().getSimpleName()+" "+e.getMessage());
+    last=e;
+   }
   }
   throw new IOException("Publiczne Invidious nie udostępnia strumienia.",last);
  }
