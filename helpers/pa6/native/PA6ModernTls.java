@@ -16,6 +16,7 @@ import javax.net.ssl.*;
 public final class PA6ModernTls {
  private static Context context;
  private static SSLSocketFactory socketFactory;
+ private static X509TrustManager validatedTrustManager;
  private PA6ModernTls(){}
  public static void install(Context app){context=app.getApplicationContext();}
  private static X509TrustManager getTrustManager(KeyStore keyStore)throws Exception{
@@ -71,7 +72,16 @@ public final class PA6ModernTls {
   SSLContext ssl=SSLContext.getInstance("TLS");
   ssl.init(null,new TrustManager[]{combined},new SecureRandom());
   socketFactory=ssl.getSocketFactory();
+  validatedTrustManager=combined;
   return socketFactory;
+ }
+ /** Expose the validated trust configuration to OkHttp without disabling TLS checks. */
+ public static synchronized SSLSocketFactory okHttpSocketFactory()throws Exception{
+  return factory();
+ }
+ public static synchronized X509TrustManager okHttpTrustManager()throws Exception{
+  factory();
+  return validatedTrustManager;
  }
  public static HttpURLConnection open(String address)throws Exception{
   URL url=new URL(address);
