@@ -14,6 +14,20 @@ import android.widget.*;
 public final class PA6DashboardActivity extends Activity {
  private static final int BG=0xfff6f8fc,WHITE=Color.WHITE,INK=0xff182338,MUTED=0xff647287,RED=0xffed283d;
  private LinearLayout root;private boolean senior;
+ private String displayMode(){
+  return getSharedPreferences("pa6_display",MODE_PRIVATE).getString("ui_mode","Automatyczny");
+ }
+ private void chooseDisplayMode(){
+  final String[] modes={"Automatyczny","Tablet","Smartfon"};
+  int current=0;
+  for(int i=0;i<modes.length;i++)if(modes[i].equals(displayMode()))current=i;
+  new AlertDialog.Builder(this).setTitle("Układ Pomocnika Alfa")
+   .setSingleChoiceItems(modes,current,(dialog,which)->{
+    getSharedPreferences("pa6_display",MODE_PRIVATE).edit()
+     .putString("ui_mode",modes[which]).apply();
+    dialog.dismiss();render();
+   }).setNegativeButton("Anuluj",null).show();
+ }
  private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+.5f);}
  private GradientDrawable shape(int fill,int stroke,int radius){
   GradientDrawable g=new GradientDrawable();g.setColor(fill);g.setStroke(dp(1),stroke);g.setCornerRadius(dp(radius));return g;
@@ -46,7 +60,7 @@ public final class PA6DashboardActivity extends Activity {
   TextView hint=text(sub,13,false,MUTED);hint.setPadding(dp(5),0,0,dp(11));root.addView(hint);
   DisplayMetrics dm=getResources().getDisplayMetrics();
   int width=(int)(dm.widthPixels/dm.density);
-  int cols=width>=840?4:width>=550?3:2;
+  int cols="Smartfon".equals(displayMode())?2:width>=840?4:width>=550?3:2;
   for(int pos=0;pos<options.length;pos+=cols){
    LinearLayout line=row();line.setGravity(Gravity.TOP);root.addView(line);
    for(int j=0;j<cols;j++){
@@ -67,7 +81,10 @@ public final class PA6DashboardActivity extends Activity {
   column.addView(text(title,15,true,WHITE));
   column.addView(text(desc,11,false,0xffc5d7eb));
   card.addView(column,new LinearLayout.LayoutParams(0,-2,1));
-  LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,dp(senior?81:75),1);
+  boolean stacked=row.getOrientation()==LinearLayout.VERTICAL;
+  LinearLayout.LayoutParams params=stacked?
+   new LinearLayout.LayoutParams(-1,dp(senior?81:75)):
+   new LinearLayout.LayoutParams(0,dp(senior?81:75),1);
   params.setMargins(dp(4),0,dp(4),0);row.addView(card,params);
   card.setOnClickListener(v->open(key));
  }
@@ -91,6 +108,22 @@ public final class PA6DashboardActivity extends Activity {
    startActivity(i);
   }catch(Exception e){Toast.makeText(this,"Nie udało się otworzyć funkcji.",Toast.LENGTH_LONG).show();}
  }
+ private void shortcut(String caption,Intent intent){
+  Button b=new Button(this);b.setAllCaps(false);b.setText(caption);b.setGravity(Gravity.LEFT|Gravity.CENTER_VERTICAL);b.setTextColor(INK);b.setTextSize(15);b.setPadding(dp(14),dp(8),dp(14),dp(8));b.setBackground(shape(WHITE,0xffdfe6ee,12));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(dp(4),dp(4),dp(4),dp(4));b.setMinHeight(dp(50));root.addView(b,p);b.setOnClickListener(v->startActivity(intent));
+ }
+ private void multimedia(){
+  gap(root,17);root.addView(text("Twoje multimedia",20,true,INK));
+  if(PA6AudioService.active)shortcut("♫ Wróć do audio: "+PA6AudioService.title,new Intent(this,PA6TubeActivity.class));
+  android.content.SharedPreferences tube=getSharedPreferences(PA6TubeActivity.class.getName(),0);
+  java.util.LinkedHashSet<String> ids=new java.util.LinkedHashSet<>();for(String id:(tube.getString("favorite_ids","")+tube.getString("recent_ids","")).split(","))if(id.matches("[A-Za-z0-9_-]{11}"))ids.add(id);
+  int shown=0;for(String id:ids){if(shown++>=3)break;shortcut((tube.getString("favorite_ids","").contains(id+",")?"★ ":"◷ ")+tube.getString("recent_title_"+id,"Film"),new Intent(this,PA6TubeActivity.class).putExtra("play_id",id));}
+  android.content.SharedPreferences tv=getSharedPreferences(PA6TvActivity.class.getName(),0);String last=tv.getString("tv_last","");if(!last.isEmpty())shortcut("TV • "+tv.getString("tv_name","Ostatni kanał"),new Intent(this,PA6TvActivity.class).putExtra("play_last",true));
+  int tvCount=0;for(String[] c:PA6TvActivity.saved(this)){if(tvCount++>=2)break;if(!last.equals(c[1]))shortcut("★ TV • "+c[0],new Intent(this,PA6TvActivity.class).putExtra("station_url",c[1]));}
+  android.content.SharedPreferences radio=getSharedPreferences(PA6RadioActivity.class.getName(),0);String url=radio.getString("radio_last_url","");if(!url.isEmpty())shortcut("Radio • "+radio.getString("radio_last_name","Ostatnia stacja"),new Intent(this,PA6RadioActivity.class).putExtra("station_url",url).putExtra("station_name",radio.getString("radio_last_name","Radio")));
+  try{org.json.JSONArray favorites=new org.json.JSONArray(radio.getString("radio_favorites","[]"));for(int i=0;i<Math.min(2,favorites.length());i++){org.json.JSONObject r=favorites.optJSONObject(i);if(r!=null&&!url.equals(r.optString("url")))shortcut("★ Radio • "+r.optString("name"),new Intent(this,PA6RadioActivity.class).putExtra("station_url",r.optString("url")).putExtra("station_name",r.optString("name")));}}catch(Exception ignored){}
+  shortcut("↓ Pobrane filmy • postęp i pliki offline",new Intent(this,PA6DownloadsActivity.class));
+ }
+ @Override protected void onRestart(){super.onRestart();render();}
  private String last(String target){
   switch(target){
    case "tv":return "Telewizja";case "radio":return "Radio";case "tube":return "Alfa Tube";
@@ -101,7 +134,14 @@ public final class PA6DashboardActivity extends Activity {
  }
  private void render(){
   ScrollView sc=new ScrollView(this);sc.setBackgroundColor(BG);sc.setFillViewport(true);
-  root=col();root.setPadding(dp(12),dp(11),dp(12),dp(25));sc.addView(root);setContentView(sc);
+  root=col();root.setPadding(dp(12),dp(11),dp(12),dp(25));
+  // Phone layout remains readable on a 10-inch tablet instead of stretching cards.
+  FrameLayout holder=new FrameLayout(this);
+  sc.addView(holder,new ScrollView.LayoutParams(-1,-2));
+  float widthDp=getResources().getDisplayMetrics().widthPixels/getResources().getDisplayMetrics().density;
+  int contentWidth="Smartfon".equals(displayMode())?(int)Math.min(widthDp,480):-1;
+  holder.addView(root,new FrameLayout.LayoutParams(contentWidth<0?-1:dp(contentWidth),-2,Gravity.TOP|Gravity.CENTER_HORIZONTAL));
+  setContentView(sc);
   LinearLayout brand=row();brand.setPadding(dp(12),dp(11),dp(12),dp(11));
   brand.setBackground(shape(WHITE,0xffe3e8f0,16));
   ImageView cat=new ImageView(this);
@@ -110,8 +150,13 @@ public final class PA6DashboardActivity extends Activity {
   brand.addView(cat,new LinearLayout.LayoutParams(dp(59),dp(59)));
   LinearLayout caption=col();caption.setPadding(dp(12),0,0,0);
   caption.addView(text("POMOCNIK ALFA",23,true,INK));
-  caption.addView(text("UltraSmart  •  Tablet Android 6",13,false,MUTED));
+  caption.addView(text("UltraSmart • Android 6 • "+displayMode(),12,false,MUTED));
   brand.addView(caption,new LinearLayout.LayoutParams(0,-2,1));
+  Button switchLayout=new Button(this);switchLayout.setText("Układ");
+  switchLayout.setAllCaps(false);switchLayout.setTextSize(12);
+  switchLayout.setTextColor(INK);switchLayout.setBackground(shape(0xfff1f4f8,0xffdfe6ef,11));
+  brand.addView(switchLayout,new LinearLayout.LayoutParams(dp(75),dp(45)));
+  switchLayout.setOnClickListener(v->chooseDisplayMode());
   root.addView(brand);gap(root,15);
   LinearLayout highlight=col();highlight.setPadding(dp(18),dp(16),dp(18),dp(17));
   highlight.setBackground(shape(0xffeaf0fb,0xffdce5f5,19));
@@ -119,11 +164,14 @@ public final class PA6DashboardActivity extends Activity {
   gap(highlight,6);
   highlight.addView(text("Włącz telewizję, posłuchaj radia, obejrzyj film lub zaplanuj podróż.",14,false,0xff4b627e));
   gap(highlight,15);
-  LinearLayout shortcuts=row();
+  boolean phone="Smartfon".equals(displayMode())||
+   ("Automatyczny".equals(displayMode())&&widthDp<520);
+  LinearLayout shortcuts=phone?col():row();
   quick(shortcuts,"tv","tv","ALFA TV","PL + rosyjskojęzyczne",0xff65f1d8);
   quick(shortcuts,"tube","tube","ALFA TUBE","Filmy i muzyka",0xffff939e);
   quick(shortcuts,"radio","radio","RADIO","Polskie stacje",0xffffc783);
   highlight.addView(shortcuts);root.addView(highlight);
+  multimedia();
   String previous=getPreferences(0).getString("last","");
   if(!previous.isEmpty()&&!previous.equals("tv")&&!previous.equals("tube")&&!previous.equals("radio")){
    TextView recent=text("↗  Ostatnio: "+last(previous)+"  •  otwórz",14,true,RED);
@@ -156,7 +204,7 @@ public final class PA6DashboardActivity extends Activity {
   root.addView(size,new LinearLayout.LayoutParams(-1,dp(52)));
   size.setOnClickListener(v->{senior=!senior;getPreferences(0).edit().putBoolean("senior",senior).apply();render();});
   gap(root,13);
-  TextView footer=text("PA UltraSmart • API 23 • 2 GB RAM • przyjazny interfejs bez zbędnych animacji",12,false,MUTED);
+  TextView footer=text("PA6 Tube Plus • 2.4.0 TEST • kompilacja 2004000",12,false,MUTED);
   footer.setGravity(Gravity.CENTER);root.addView(footer);
  }
  @Override public void onCreate(Bundle b){

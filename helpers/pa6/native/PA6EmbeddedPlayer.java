@@ -26,6 +26,28 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
  private MediaPlayer engine;
  private final Handler ui=new Handler(Looper.getMainLooper());
  private String active="";
+ private boolean audioOnly=false,backgroundAudio=false,fullscreen=false;
+ private Runnable fullscreenListener;private android.widget.SeekBar timeline;private TextView clock;
+ public void setFullscreenListener(Runnable r){fullscreenListener=r;}
+ public void setFullscreen(boolean value){fullscreen=value;requestLayout();}
+ public void detachSurface(){try{if(engine!=null)engine.getVLCVout().detachViews();}catch(Throwable ignored){}}
+ public void attachSurface(){try{if(engine!=null&&!engine.getVLCVout().areViewsAttached()){engine.getVLCVout().setVideoView(screen);engine.getVLCVout().attachViews();applyVideoGeometry();}}catch(Throwable ignored){}}
+ public void backgroundAudio(String name){releaseLocal();backgroundAudio=true;active=name;setAudioOnly(true);state.setText("Samo audio • działa również po wygaszeniu ekranu");}
+ private long time(){return backgroundAudio?PA6AudioService.position:engine==null?0:Math.max(0,engine.getTime());}
+ private long length(){return backgroundAudio?PA6AudioService.duration:engine==null?0:Math.max(0,engine.getLength());}
+ private void seek(long t){long len=length();if(len<=0)return;t=Math.max(0,Math.min(t,len-1));if(backgroundAudio)PA6AudioService.seek(getContext(),t);else if(engine!=null&&engine.isSeekable())engine.setTime(t);}
+ private static String stamp(long ms){long sec=ms/1000;return String.format(java.util.Locale.ROOT,"%d:%02d",sec/60,sec%60);}
+ private final Runnable tick=new Runnable(){public void run(){long len=length(),pos=time();timeline.setEnabled(len>0);if(!timeline.isPressed())timeline.setProgress(len>0?(int)(pos*1000/len):0);clock.setText(stamp(pos)+" / "+(len>0?stamp(len):"na żywo"));if(backgroundAudio)state.setText(PA6AudioService.active?PA6AudioService.status:"Audio zatrzymane");ui.postDelayed(this,1000);}};
+ @Override protected void onAttachedToWindow(){super.onAttachedToWindow();ui.removeCallbacks(tick);ui.post(tick);}
+ @Override protected void onDetachedFromWindow(){ui.removeCallbacks(tick);super.onDetachedFromWindow();}
+
+ public void setAudioOnly(boolean value){
+  audioOnly=value;screen.setKeepScreenOn(!value);
+  if(value){placeholder.setText("♫\nSamo audio\nSłuchaj bez obrazu");placeholder.setTextSize(22);placeholder.setBackgroundColor(0xff123b45);placeholder.setVisibility(VISIBLE);}
+  else{placeholder.setText("▶  Wybierz film");placeholder.setTextSize(18);placeholder.setBackgroundColor(0xff111827);}
+  requestLayout();
+ }
+
  private Runnable playbackErrorListener,playbackStartListener;
  public void setPlaybackErrorListener(Runnable listener){playbackErrorListener=listener;}
  public void setPlaybackStartListener(Runnable listener){playbackStartListener=listener;}
@@ -51,7 +73,7 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   FrameLayout frame=new FrameLayout(context){
    @Override protected void onMeasure(int widthMeasureSpec,int heightMeasureSpec){
     int width=MeasureSpec.getSize(widthMeasureSpec);
-    int videoHeight=Math.max(dp(130),Math.round(width*9f/16f));
+    int videoHeight=fullscreen?Math.max(dp(100),getResources().getDisplayMetrics().heightPixels-dp(180)):audioOnly?dp(180):Math.max(dp(130),Math.round(width*9f/16f));
     super.onMeasure(widthMeasureSpec,MeasureSpec.makeMeasureSpec(videoHeight,MeasureSpec.EXACTLY));
    }
   };
@@ -76,13 +98,19 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   controls.addView(state,new LinearLayout.LayoutParams(0,-2,1));
   Button pause=new Button(context);pause.setText("⏯");pause.setTextColor(0xfff4f6fc);
   pause.setBackgroundColor(0xff31476a);
-  pause.setOnClickListener(v->{if(engine!=null){try{engine.pause();}catch(Exception ignored){}}});
+  pause.setOnClickListener(v->{if(backgroundAudio){PA6AudioService.command(getContext(),"TOGGLE");}else if(engine!=null){try{if(engine.isPlaying())engine.pause();else engine.play();}catch(Exception ignored){}}});
   controls.addView(pause,new LinearLayout.LayoutParams(dp(60),dp(50)));
   Button stop=new Button(context);stop.setText("■");stop.setTextColor(0xfff4f6fc);
   stop.setBackgroundColor(0xff31476a);
   stop.setOnClickListener(v->stop());
   controls.addView(stop,new LinearLayout.LayoutParams(dp(56),dp(50)));
   addView(controls,new LinearLayout.LayoutParams(-1,dp(60)));
+  LinearLayout transport=new LinearLayout(context);transport.setGravity(Gravity.CENTER_VERTICAL);
+  Button back=new Button(context);back.setText("−10 s");back.setAllCaps(false);back.setOnClickListener(v->seek(time()-10000));transport.addView(back,new LinearLayout.LayoutParams(dp(76),dp(48)));
+  clock=new TextView(context);clock.setTextColor(0xfff4f6fc);clock.setTextSize(12);clock.setGravity(Gravity.CENTER);transport.addView(clock,new LinearLayout.LayoutParams(0,dp(48),1));
+  Button next=new Button(context);next.setText("+10 s");next.setAllCaps(false);next.setOnClickListener(v->seek(time()+10000));transport.addView(next,new LinearLayout.LayoutParams(dp(76),dp(48)));
+  Button full=new Button(context);full.setText("⛶");full.setContentDescription("Pełny ekran / powrót");full.setOnClickListener(v->{if(fullscreenListener!=null)fullscreenListener.run();});transport.addView(full,new LinearLayout.LayoutParams(dp(52),dp(48)));addView(transport);
+  timeline=new android.widget.SeekBar(context);timeline.setMax(1000);timeline.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(android.widget.SeekBar b){}public void onProgressChanged(android.widget.SeekBar b,int p,boolean user){}public void onStopTrackingTouch(android.widget.SeekBar b){seek(length()*b.getProgress()/1000);}});addView(timeline,new LinearLayout.LayoutParams(-1,dp(36)));
  }
  private void applyVideoGeometry(){
   if(engine==null)return;
@@ -111,7 +139,7 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
     state.setText("▶ Odtwarzanie: "+active);
     if(playbackStartListener!=null)playbackStartListener.run();
    }
-   else if(event.type==MediaPlayer.Event.Buffering)state.setText("Buforowanie • "+active);
+   else if(event.type==MediaPlayer.Event.Buffering&&event.getBuffering()<99f)state.setText("Buforowanie • "+active);
    else if(event.type==MediaPlayer.Event.EncounteredError){
     android.util.Log.w("PA6_PLAYER","PLAYBACK_ERROR "+active);
     state.setText("Błąd transmisji. Sprawdzam inne źródło, jeśli jest dostępne.");
@@ -144,7 +172,7 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   playUriWithAudio(name,address,"");
  }
  private void playUriWithAudio(String name,Uri address,String audioAddress){
-  active=name;state.setText("Łączenie • "+name);
+  backgroundAudio=false;active=name;state.setText("Łączenie • "+name);
   try{
    init();
    if(audio==null)audio=(AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
@@ -154,9 +182,10 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
     if(!hasFocus){state.setText("Inne audio zajmuje dźwięk. Zatrzymaj radio.");return;}
    }
    engine.stop();
-   placeholder.setVisibility(GONE);
+   placeholder.setVisibility(audioOnly?VISIBLE:GONE);
    Media media=new Media(vlc,address);
    media.addOption(":network-caching=1500");
+   if(audioOnly){media.addOption(":no-video");android.util.Log.i("PA6_PLAYER","AUDIO_ONLY_MODE=true");}
    media.addOption(":avcodec-hw=none"); // Acer Android 6: avoid audio-only hardware decoding failures.
    media.addOption(":http-reconnect=true");
    media.addOption(":http-user-agent=Mozilla/5.0 (Android 6; Pomocnik Alfa)");
@@ -181,6 +210,7 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   catch(Throwable e){android.util.Log.e("PA6_LIBVLC","INIT_FAILED",e);state.setText("Błąd inicjalizacji silnika wideo: "+e.getClass().getSimpleName());return false;}
  }
  public void stop(){
+  if(backgroundAudio){PA6AudioService.command(getContext(),"STOP");backgroundAudio=false;}
   try{if(engine!=null)engine.stop();}catch(Throwable ignored){}
   state.setText("Zatrzymano.");
   placeholder.setVisibility(VISIBLE);
@@ -188,7 +218,11 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
  }
  public void release(){
   playbackErrorListener=null;playbackStartListener=null;
-  stop();
+  releaseLocal();
+ }
+ private void releaseLocal(){
+  backgroundAudio=false;
+  try{if(engine!=null)engine.stop();}catch(Throwable ignored){}
   if(audio!=null&&hasFocus){try{audio.abandonAudioFocus(focusListener);}catch(Exception ignored){}hasFocus=false;}
   try{if(engine!=null){engine.getVLCVout().detachViews();engine.release();}}catch(Throwable ignored){}
   try{if(vlc!=null)vlc.release();}catch(Throwable ignored){}

@@ -90,11 +90,8 @@ PY
 "$BT/zipalign" -p -f 4 output/raw.apk output/aligned.apk
 "$BT/aapt" dump badging output/aligned.apk | tee output/badging.txt
 grep -q "sdkVersion:'23'" output/badging.txt
-grep -q "package: name='com.senikolo.pa6newpipe'" output/badging.txt
-umask 077
-export PA6_TEST_PASS="$(openssl rand -hex 24)"
-keytool -genkeypair -noprompt -keyalg RSA -keysize 3072 -sigalg SHA256withRSA -validity 3650 -alias pa6-tablet-test -dname 'CN=PA6 Acer test only, O=PA development' -storetype PKCS12 -keystore "$RUNNER_TEMP/pa6-test.p12" -storepass:env PA6_TEST_PASS -keypass:env PA6_TEST_PASS >/dev/null 2>&1
-"$BT/apksigner" sign --ks "$RUNNER_TEMP/pa6-test.p12" --ks-type PKCS12 --ks-key-alias pa6-tablet-test --ks-pass env:PA6_TEST_PASS --key-pass env:PA6_TEST_PASS --out output/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk output/aligned.apk
-"$BT/apksigner" verify --verbose --print-certs output/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk | tee output/signature.txt
-sha256sum output/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk > output/SHA256SUMS.txt
-rm -f "$RUNNER_TEMP/pa6-test.p12"
+grep -q "package: name='com.senikolo.pa6.stable'" output/badging.txt
+# Signing happens with the preserved PA certificate after downloading this build.
+# Never generate an ephemeral replacement key or publish an unsigned APK.
+cp output/aligned.apk output/PA6-2.4.0-unsigned.apk
+sha256sum output/PA6-2.4.0-unsigned.apk > output/SHA256SUMS.txt
