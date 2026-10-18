@@ -134,6 +134,9 @@ public final class PA6PipedClient {
   return resolve(id,custom,Collections.<String>emptySet());
  }
  public static Response<Video> resolve(String id,String custom,Set<String> excluded)throws Exception{
+  return resolve(id,custom,excluded,0);
+ }
+ public static Response<Video> resolve(String id,String custom,Set<String> excluded,int preferredHeight)throws Exception{
   if(id==null||!id.matches("[A-Za-z0-9_-]{11}"))throw new IOException("Nieprawidłowy identyfikator filmu.");
   Exception last=null;
   for(String server:servers(custom)){
@@ -158,7 +161,8 @@ public final class PA6PipedClient {
      // MP4 alone is not sufficient: a few feeds report other video codecs in MP4.
      boolean avc=codec.contains("avc1")||codec.contains("h264")||codec.contains("avc");
      if(stream.isEmpty()||height<=0||height>720||!format.contains("video/mp4")||!avc)continue;
-     int score=Math.abs(height-480);
+     int target=preferredHeight<=0?480:Math.min(720,Math.max(144,preferredHeight));
+     int score=height<=target?target-height:1000+height-target;
      if(score<bestScore){bestScore=score;url=stream;quality=v.optString("quality",height+"p");}
     }
     if(!url.isEmpty())return new Response<>(new Video(name,channel,url,quality),server);
