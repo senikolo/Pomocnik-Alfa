@@ -115,8 +115,8 @@ adb logcat -d -v time > results/app-logcat.txt
 # A UI that merely opens but does not execute its JavaScript is NOT a passed port.
 # YouTube's official modern iframe also runs in this legacy WebView, but
 # its independently broken JS must not be misattributed to the PA planner.
-grep -E 'Uncaught (SyntaxError|TypeError|ReferenceError)|Refused to execute inline script' results/app-logcat.txt | grep -E 'source: https://www.youtube(-nocookie)?\\.com/' > results/youtube-iframe-js-errors.txt || true
-grep -E 'Uncaught (SyntaxError|TypeError|ReferenceError)|Refused to execute inline script' results/app-logcat.txt | grep -Ev 'source: https://www.youtube(-nocookie)?\\.com/' > results/planner-js-errors.txt || true
+grep -E 'Uncaught (SyntaxError|TypeError|ReferenceError)|Refused to execute inline script' results/app-logcat.txt | grep -E 'source: https://www.youtube(-nocookie)?\.com/' > results/youtube-iframe-js-errors.txt || true
+grep -E 'Uncaught (SyntaxError|TypeError|ReferenceError)|Refused to execute inline script' results/app-logcat.txt | grep -Ev 'source: https://www.youtube(-nocookie)?\.com/' > results/planner-js-errors.txt || true
 if test -s results/planner-js-errors.txt; then
  echo 'FAIL JavaScript runtime of actual PA Android 6 transport planner'
  cat results/planner-js-errors.txt
