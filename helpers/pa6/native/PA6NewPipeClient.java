@@ -23,41 +23,52 @@ import java.util.*;
  */
 public final class PA6NewPipeClient {
  private static boolean initialized;
+ private static okhttp3.OkHttpClient httpClient;
  private static synchronized void init(){
   if(initialized)return;
+  try{
+   // Use the same OkHttp transport family as NewPipe itself, with the existing
+   // verified Android 6 TLS roots. HttpURLConnection mishandles some response
+   // encodings and content negotiation required by modern YouTube.
+   okhttp3.OkHttpClient.Builder builder=new okhttp3.OkHttpClient.Builder()
+    .connectTimeout(9000,java.util.concurrent.TimeUnit.MILLISECONDS)
+    .readTimeout(30000,java.util.concurrent.TimeUnit.MILLISECONDS)
+    .followRedirects(true).retryOnConnectionFailure(true);
+   builder.sslSocketFactory(PA6ModernTls.okHttpSocketFactory(),PA6ModernTls.okHttpTrustManager());
+   httpClient=builder.build();
+  }catch(Exception e){
+   throw new IllegalStateException("Nie można skonfigurować bezpiecznego HTTPS w PA6",e);
+  }
   NewPipe.init(new Downloader(){
    @Override public Response execute(Request request)throws IOException{
     String address=request.url();
-    if(!address.startsWith("https://"))throw new IOException("Unsupported protocol");
-    HttpURLConnection c=null;
-    try{
-     try{c=PA6ModernTls.open(address);}catch(Exception tls){throw new IOException("TLS YouTube",tls);}
-     c.setConnectTimeout(9000);c.setReadTimeout(30000);
-     c.setInstanceFollowRedirects(true);
-     c.setRequestMethod(request.httpMethod());
-     c.setRequestProperty("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:153.0) Gecko/20100101 Firefox/153.0");
-     for(Map.Entry<String,List<String>> h:request.headers().entrySet()){
-      if(h.getKey()==null)continue;
-      for(String value:h.getValue())c.addRequestProperty(h.getKey(),value);
-     }
-     // HttpURLConnection on API23 lacks NewPipe OkHttp Brotli support. Request plain responses.
-     c.setRequestProperty("Accept-Encoding","identity");
-     if(request.dataToSend()!=null){
-      c.setDoOutput(true);
-      try(OutputStream out=c.getOutputStream()){out.write(request.dataToSend());}
-     }
-     int code=c.getResponseCode();
-     ByteArrayOutputStream bytes=new ByteArrayOutputStream(65536);
-     InputStream body=code>=400?c.getErrorStream():c.getInputStream();
-     if(body!=null)try(InputStream in=body){
-      byte[] buffer=new byte[8192];int n;
-      while((n=in.read(buffer))!=-1){
-       if(bytes.size()+n>8_000_000)throw new IOException("Too many YouTube bytes");
-       bytes.write(buffer,0,n);
-      }
-     }
-     return new Response(code,c.getResponseMessage(),c.getHeaderFields(),bytes.toString("UTF-8"),c.getURL().toString());
-    }finally{if(c!=null)c.disconnect();}
+    if(address==null||!address.startsWith("https://"))
+     throw new IOException("Only HTTPS sources are accepted.");
+    okhttp3.Request.Builder req=new okhttp3.Request.Builder().url(address)
+     .header("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:153.0) Gecko/20100101 Firefox/153.0");
+    for(Map.Entry<String,List<String>> h:request.headers().entrySet()){
+     if(h.getKey()==null)continue;
+     req.removeHeader(h.getKey());
+     for(String v:h.getValue())if(v!=null)req.addHeader(h.getKey(),v);
+    }
+    // Let OkHttp negotiate gzip and transparently decode it. Do not force identity
+    // or forward Brotli Accept-Encoding without a Brotli decoder on Android 6.
+    req.removeHeader("Accept-Encoding");
+    byte[] data=request.dataToSend();
+    okhttp3.RequestBody body=null;
+    if(data!=null)body=okhttp3.RequestBody.create(data);
+    else if("POST".equalsIgnoreCase(request.httpMethod())||"PUT".equalsIgnoreCase(request.httpMethod()))
+     body=okhttp3.RequestBody.create(new byte[0]);
+    req.method(request.httpMethod(),body);
+    try(okhttp3.Response http=httpClient.newCall(req.build()).execute()){
+     okhttp3.ResponseBody payload=http.body();
+     String content=payload==null?"":payload.string();
+     if(content.length()>8000000)throw new IOException("YouTube response too large.");
+     int code=http.code();
+     if(code>=400)Log.w("PA6_NEWPIPE","Extractor HTTP "+code+" from "+http.request().url().host());
+     return new Response(code,http.message(),http.headers().toMultimap(),
+      content,http.request().url().toString());
+    }
    }
   });
   initialized=true;
