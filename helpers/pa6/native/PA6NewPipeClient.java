@@ -7,6 +7,7 @@ import org.schabi.newpipe.extractor.downloader.Request;
 import org.schabi.newpipe.extractor.downloader.Response;
 import org.schabi.newpipe.extractor.stream.StreamInfo;
 import org.schabi.newpipe.extractor.stream.VideoStream;
+import org.schabi.newpipe.extractor.stream.AudioStream;
 import org.schabi.newpipe.extractor.MediaFormat;
 import org.schabi.newpipe.extractor.ServiceList;
 import org.schabi.newpipe.extractor.InfoItem;
@@ -127,6 +128,36 @@ public final class PA6NewPipeClient {
    Log.i("PA6_NEWPIPE","Progressive MP4 for "+id+" "+bestLabel);
    return new PA6PipedClient.Response<>(new PA6PipedClient.Video(info.getName(),info.getUploaderName(),bestUrl,bestLabel+" • NewPipe"),"NewPipe Extractor");
   }
+  // YouTube commonly exposes video-only MP4 and audio-only M4A streams.
+  // Prior PA6 releases ignored those streams even when the extraction worked.
+  // Prefer a modest H.264-compatible MP4 video with AAC/M4A sound on Android 6.
+  String videoOnlyUrl="",videoQuality="",audioUrl="";
+  int videoScore=Integer.MAX_VALUE,audioScore=Integer.MAX_VALUE;
+  for(VideoStream v:info.getVideoStreams()){
+   if(v==null||!v.isVideoOnly()||!v.isUrl()||v.getFormat()!=MediaFormat.MPEG_4)continue;
+   String url=v.getContent();
+   if(url==null||!url.startsWith("https://")||url.length()>8000)continue;
+   int height=0;
+   String quality=v.getResolution();
+   try{height=Integer.parseInt(quality.replaceAll("[^0-9]",""));}catch(Exception ignored){}
+   if(height<=0||height>720)continue;
+   int score=Math.abs(height-360);
+   if(score<videoScore){videoScore=score;videoOnlyUrl=url;videoQuality=quality;}
+  }
+  for(AudioStream a:info.getAudioStreams()){
+   if(a==null||!a.isUrl()||a.getFormat()!=MediaFormat.M4A)continue;
+   String url=a.getContent();
+   if(url==null||!url.startsWith("https://")||url.length()>8000)continue;
+   int bitrate=a.getAverageBitrate();
+   int score=Math.abs((bitrate<=0?128:bitrate)-128);
+   if(score<audioScore){audioScore=score;audioUrl=url;}
+  }
+  if(!videoOnlyUrl.isEmpty()&&!audioUrl.isEmpty()){
+   Log.i("PA6_NEWPIPE","Selected DASH video-only MP4 "+videoQuality+" with separate M4A audio");
+   return new PA6PipedClient.Response<>(new PA6PipedClient.Video(
+      info.getName(),info.getUploaderName(),videoOnlyUrl,
+      videoQuality+" + AAC • NewPipe",audioUrl),"NewPipe Extractor");
+  }
   String hls=info.getHlsUrl();
   if(hls!=null&&hls.startsWith("https://")){
    return new PA6PipedClient.Response<>(new PA6PipedClient.Video(info.getName(),info.getUploaderName(),hls,"HLS • NewPipe"),"NewPipe Extractor");
@@ -135,7 +166,7 @@ public final class PA6NewPipeClient {
   if(dash!=null&&dash.startsWith("https://")){
    return new PA6PipedClient.Response<>(new PA6PipedClient.Video(info.getName(),info.getUploaderName(),dash,"DASH • NewPipe"),"NewPipe Extractor");
   }
-  throw new IOException("NewPipe nie uzyskał pliku MP4 z dźwiękiem dla tego materiału.");
+  throw new IOException("NewPipe nie udostępnił zgodnego obrazu i dźwięku dla tego filmu.");
  }
  private PA6NewPipeClient(){}
 }
