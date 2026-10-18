@@ -628,7 +628,7 @@ public final class PA6TubeActivity extends Activity {
   actions.addView(downloadButton,downloadParams);
   downloadButton.setOnClickListener(v->downloadCurrent());
   playerPane.addView(actions,new LinearLayout.LayoutParams(-1,-2));
-  downloadStatus=text("",13,MUTED,false);pad(downloadStatus,5,6);playerPane.addView(downloadStatus);
+  downloadStatus=text("",13,INK,true);pad(downloadStatus,12,10);downloadStatus.setBackground(panel(0xffe8f1f5,0xffd5e5ed,12));downloadStatus.setVisibility(View.GONE);playerPane.addView(downloadStatus,0);
 
   status=text("Wybierz film lub posłuchaj samego dźwięku.",13,MUTED,false);
   pad(status,12,10);status.setBackground(panel(0xffeaf0f7,0xffeaf0f7,12));playerPane.addView(status);gap(playerPane,8);
