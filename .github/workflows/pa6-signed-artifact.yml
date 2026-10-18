@@ -1,0 +1,56 @@
+name: PA6 signed APK • downloadable artifact
+on:
+  push:
+    branches: ['work/pa6-tube-download-quality-layout-20261018']
+    paths: ['.github/workflows/pa6-signed-artifact.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: PA6-Acer-B3A32-APK
+          path: unsigned
+          github-token: ${{ github.token }}
+          run-id: 39152606121
+      - name: Reconstruct and verify exact stable-signed APK
+        run: |
+          set -euo pipefail
+          mkdir -p pa6
+          python3 - <<'PY'
+          import hashlib,pathlib,base64,zlib,json
+          patch=json.loads(zlib.decompress(base64.b64decode(pathlib.Path('triggers/pa6-signature.patch.b64').read_text())))
+          source=pathlib.Path('unsigned/PA6-2.4.0-unsigned.apk').read_bytes()
+          assert hashlib.sha256(source).hexdigest()==patch['unsigned_sha256']
+          target=pathlib.Path('pa6/Pomocnik-Alfa-6-2.4.0-TEST.apk')
+          with target.open('wb') as out:
+              for segment in patch['segments']:
+                  if 'copy' in segment:
+                      offset,length=segment['copy']
+                      assert offset>=0 and length>=0 and offset+length<=len(source)
+                      out.write(source[offset:offset+length])
+                  else: out.write(base64.b64decode(segment['data']))
+          digest=hashlib.sha256(target.read_bytes()).hexdigest()
+          assert digest==patch['signed_sha256']=='77de078ce4953b74a893db6f825292b2eed692c8008abaf305a628be96257cc9'
+          print('Exact verified stable signed SHA256',digest)
+          PY
+          bt="$ANDROID_HOME/build-tools/35.0.0"
+          "$bt/apksigner" verify --verbose --print-certs pa6/*.apk | tee pa6/signature.txt
+          grep -qi '361442c898552236a7d4299eeda5c3dc275ba1f368c011292dc07d44b2e8ace1' pa6/signature.txt
+          "$bt/aapt" dump badging pa6/*.apk > pa6/badging.txt
+          grep -q "package: name='com.senikolo.pa6.stable' versionCode='2004000'" pa6/badging.txt
+          (cd pa6 && sha256sum *.apk > SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PA6-2.4.0-Stable-Signed-APK
+          path: |
+            pa6/Pomocnik-Alfa-6-2.4.0-TEST.apk
+            pa6/SHA256SUMS.txt
+            pa6/signature.txt
+            pa6/badging.txt
+          retention-days: 45
