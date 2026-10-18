@@ -84,19 +84,27 @@ adb shell am start -n com.senikolo.pa6audited/com.ispina.lokalnie.PA6TubeActivit
 sleep 35
 adb exec-out screencap -p > results/tube-real-youtube-attempt.png
 adb logcat -d -v time > results/tube-real-youtube-log.txt
+# The success of the Android6 build does NOT mean YouTube accepted a cloud IP.
+# Record bot challenges and HTTP errors separately for the audit report.
+grep -E 'PA6_NEWPIPE|PA6_TUBE_RESOLVE|PA6_PLAYER.*(PLAYING|TIMEOUT|PLAYBACK_ERROR)' results/tube-real-youtube-log.txt > results/tube-extractor-diagnostics.txt || true
 if grep -q "PA6_PLAYER.*PLAYING Me at the zoo" results/tube-real-youtube-log.txt; then
  echo "CONFIRMED: actual YouTube extraction and playback" > results/youtube-status.txt
 else
  echo "UNCONFIRMED: YouTube playback not proved on public instances" > results/youtube-status.txt
 fi
 assert_no_app_crash
-# Official iframe fallback stays inside PA and may carry ads. Verify Android6 WebView boots.
-adb shell am force-stop com.senikolo.pa6audited
-adb shell am start -n com.senikolo.pa6audited/com.ispina.lokalnie.PA6TubeActivity --ez verify_official_embed true
-sleep 12
-adb exec-out screencap -p > results/tube-official-embed.png
-adb logcat -d -v time > results/tube-official-embed-log.txt
-assert_no_app_crash
+# The obsolete YouTube WebView fallback was removed: it cannot parse modern
+# YouTube JavaScript on the stock Android 6 system WebView.
+# Verify every utility module actually opens rather than checking its manifest only.
+for module in PA6WeatherActivity PA6NotesActivity PA6RemindersActivity PA6ReaderActivity; do
+ adb shell am force-stop com.senikolo.pa6audited
+ adb shell am start -n "com.senikolo.pa6audited/com.ispina.lokalnie.$module"
+ sleep 3
+ adb shell dumpsys activity activities > "results/${module}-activity.txt"
+ grep -q "$module" "results/${module}-activity.txt"
+ adb exec-out screencap -p > "results/${module}.png"
+ assert_no_app_crash
+done
 adb logcat -d -v time > results/internal-playback.txt
 test "$(grep -c 'PA6_LIBVLC.*NATIVE_ENGINE_READY' results/internal-playback.txt)" -ge 2
 unzip -l pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk > results/apk-native-libs.txt
