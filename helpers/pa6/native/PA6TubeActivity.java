@@ -124,24 +124,40 @@ public final class PA6TubeActivity extends Activity {
   }
   Uri video=Uri.parse("https://www.youtube.com/watch?v="+activeId);
   String[] packages={"org.schabi.newpipe","free.rm.skytube.oss","free.rm.skytube.extra"};
-  for(String name:packages){
+  String[] labels={"NewPipe","SkyTube","SkyTube Extra"};
+  final ArrayList<Intent> available=new ArrayList<>();
+  final ArrayList<String> names=new ArrayList<>();
+  for(int i=0;i<packages.length;i++){
    try{
-    getPackageManager().getPackageInfo(name,0);
+    getPackageManager().getPackageInfo(packages[i],0);
     Intent intent=new Intent(Intent.ACTION_VIEW,video);
     intent.addCategory(Intent.CATEGORY_BROWSABLE);
-    intent.setPackage(name);
-    if(intent.resolveActivity(getPackageManager())==null)continue;
-    startActivity(intent);return;
+    intent.setPackage(packages[i]);
+    if(intent.resolveActivity(getPackageManager())!=null){
+     available.add(intent);names.add(labels[i]);
+    }
    }catch(android.content.pm.PackageManager.NameNotFoundException ignored){
-   }catch(ActivityNotFoundException e){
-    android.util.Log.w("PA6_BRIDGE","Nie udało się otworzyć "+name,e);
    }catch(SecurityException e){
-    android.util.Log.w("PA6_BRIDGE","Odtwarzacz jest niedostępny "+name,e);
+    android.util.Log.w("PA6_BRIDGE","Odtwarzacz zablokowany",e);
    }
   }
-  new AlertDialog.Builder(this).setTitle("Brak NewPipe lub SkyTube")
-   .setMessage("Zainstaluj zgodny odtwarzacz na tablecie. Nie otwieram przeglądarki bez Twojej zgody.")
-   .setPositiveButton("OK",null).show();
+  if(available.isEmpty()){
+   new AlertDialog.Builder(this).setTitle("Brak NewPipe lub SkyTube")
+    .setMessage("Zainstaluj jeden z odtwarzaczy na tablecie. PA6 nie uruchomi przeglądarki bez Twojej zgody.")
+    .setPositiveButton("OK",null).show();
+   return;
+  }
+  if(available.size()==1){
+   try{startActivity(available.get(0));}
+   catch(ActivityNotFoundException | SecurityException e){feedback("Nie udało się uruchomić zainstalowanego odtwarzacza.");}
+   return;
+  }
+  new AlertDialog.Builder(this)
+   .setTitle("Wybierz działający odtwarzacz")
+   .setItems(names.toArray(new String[0]),(dialog,choice)->{
+    try{startActivity(available.get(choice));}
+    catch(ActivityNotFoundException | SecurityException e){feedback("Nie udało się uruchomić wybranego odtwarzacza.");}
+   }).setNegativeButton("Anuluj",null).show();
  }
  private void showOfficialEmbedded(){
   if(activeId==null||!activeId.matches("[A-Za-z0-9_-]{11}")){
