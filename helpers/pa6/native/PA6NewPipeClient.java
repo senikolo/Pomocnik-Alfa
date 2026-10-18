@@ -32,14 +32,16 @@ public final class PA6NewPipeClient {
     HttpURLConnection c=null;
     try{
      try{c=PA6ModernTls.open(address);}catch(Exception tls){throw new IOException("TLS YouTube",tls);}
-     c.setConnectTimeout(7000);c.setReadTimeout(9000);
+     c.setConnectTimeout(9000);c.setReadTimeout(30000);
      c.setInstanceFollowRedirects(true);
      c.setRequestMethod(request.httpMethod());
-     c.setRequestProperty("User-Agent","Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36");
+     c.setRequestProperty("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:153.0) Gecko/20100101 Firefox/153.0");
      for(Map.Entry<String,List<String>> h:request.headers().entrySet()){
       if(h.getKey()==null)continue;
       for(String value:h.getValue())c.addRequestProperty(h.getKey(),value);
      }
+     // HttpURLConnection on API23 lacks NewPipe OkHttp Brotli support. Request plain responses.
+     c.setRequestProperty("Accept-Encoding","identity");
      if(request.dataToSend()!=null){
       c.setDoOutput(true);
       try(OutputStream out=c.getOutputStream()){out.write(request.dataToSend());}
