@@ -21,10 +21,11 @@ public final class PA6WeatherActivity extends Activity {
   TextView t=new TextView(this);t.setText(text);t.setTextSize(size);t.setTextColor(PA6Ui.INK);t.setPadding(dp(5),dp(7),dp(5),dp(7));return t;
  }
  @Override public void onCreate(Bundle b){
-  super.onCreate(b);PA6ModernTls.install(this);
+  super.onCreate(b);getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);PA6ModernTls.install(this);
   ScrollView sc=new ScrollView(this);sc.setBackgroundColor(PA6Ui.BG);
   LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(15),dp(13),dp(15),dp(26));sc.addView(root);setContentView(sc);
-  root.addView(label("🌤  Pogoda z Alfą",25));
+  root.setFocusableInTouchMode(true);root.requestFocus();
+  root.addView(label("Pogoda z Alfą",25));
   root.addView(label("Podaj miejscowość. Nie zakładam, gdzie jesteś; lokalizacja GPS nie jest wymagana.",15));
   city=new EditText(this);city.setSingleLine(true);city.setHint("Np. Warszawa, Kraków, Ispina");
   city.setText(getPreferences(0).getString("city",""));
