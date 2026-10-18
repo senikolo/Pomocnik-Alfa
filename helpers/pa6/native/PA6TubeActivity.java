@@ -27,7 +27,7 @@ public final class PA6TubeActivity extends Activity {
  private final ExecutorService thumbnailIo=Executors.newFixedThreadPool(2);
  private LinearLayout results,stageWrap,advancedPanel;
  private PA6EmbeddedPlayer player;
- private Button officialButton;
+ private Button officialButton,diagnosticsButton;
  private TextView status,title,subtitle,provider;
  private EditText search,link,serverField;
  private int request=0;
@@ -36,6 +36,7 @@ public final class PA6TubeActivity extends Activity {
  private final HashSet<String> failedProviders=new HashSet<>();
  private int playbackAttempts=0;
  private boolean playbackPending=false;
+ private volatile String engineIssue="brak danych";
  private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+.5f);}
  private GradientDrawable panel(int color,int border,int r){
   GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(r));d.setStroke(dp(1),border);return d;
@@ -62,6 +63,8 @@ public final class PA6TubeActivity extends Activity {
   if(id==null||!id.matches("[A-Za-z0-9_-]{11}")){feedback("Nieprawidłowy adres filmu.");return;}
   if(officialButton!=null)officialButton.setVisibility(View.GONE);
   ++request;activeId=id;playbackAttempts=0;failedProviders.clear();currentProvider="";
+  engineIssue="trwa przygotowanie";
+  if(diagnosticsButton!=null)diagnosticsButton.setVisibility(View.GONE);
   resolveAndPlay(id,request);
  }
  private void resolveAndPlay(final String id,final int seq){
@@ -76,7 +79,10 @@ public final class PA6TubeActivity extends Activity {
      try{
       response=PA6NewPipeClient.resolve(id);
      }catch(Throwable npe){
-      android.util.Log.w("PA6_NEWPIPE","Native extractor not available: "+npe.getClass().getSimpleName()+" "+npe.getMessage());
+      String type=npe.getClass().getSimpleName();
+      engineIssue=type.contains("SignInConfirmNotBot")?"YouTube wymaga potwierdzenia użytkownika":
+       (type.contains("Captcha")?"Serwis wymaga CAPTCHA":type);
+      android.util.Log.w("PA6_NEWPIPE","Native extraction failed: "+type+" "+npe.getMessage());
      }
     }
     if(response==null)response=PA6PipedClient.resolve(id,server(),ignored);
@@ -88,13 +94,10 @@ public final class PA6TubeActivity extends Activity {
      currentProvider=selected.server;
      activeTitle=v.title;title.setText(v.title);
      subtitle.setText(v.channel+" • "+v.quality);
-     provider.setText("Odtwarzanie wbudowane • źródło: "+(selected.server.equals("NewPipe Extractor")?"NewPipe":selected.server.replace("https://","")));
+     provider.setText("Silnik: "+(selected.server.equals("NewPipe Extractor")?"NewPipe":"serwer zapasowy"));
      player.play(v.title,v.stream);
      feedback("Łączenie z filmem… Jeżeli ten strumień nie zadziała, spróbuję innego źródła.");
-     String old=getPreferences(0).getString("recent_ids","");
-     String next=id+","+old.replace(id+",","");
-     if(next.length()>360)next=next.substring(0,360);
-     getPreferences(0).edit().putString("recent_ids",next).putString("recent_title_"+id,v.title).apply();
+
     });
    }catch(Exception e){
     final String why=e.getMessage();
@@ -103,6 +106,7 @@ public final class PA6TubeActivity extends Activity {
      playbackPending=false;
      feedback("Nie mogę teraz odtworzyć tego filmu. YouTube albo pośrednie serwery mogą ograniczać dostęp. Spróbuj innego nagrania lub ponów za chwilę.");
      if(officialButton!=null)officialButton.setVisibility(View.VISIBLE);
+     if(diagnosticsButton!=null)diagnosticsButton.setVisibility(View.VISIBLE);
     });
    }
   });
@@ -113,6 +117,7 @@ public final class PA6TubeActivity extends Activity {
   if(++playbackAttempts>6){
    feedback("Nie można uruchomić tego filmu z dostępnych źródeł. Spróbuj innego nagrania lub ponów po chwili.");
    if(officialButton!=null)officialButton.setVisibility(View.VISIBLE);
+   if(diagnosticsButton!=null)diagnosticsButton.setVisibility(View.VISIBLE);
    return;
   }
   resolveAndPlay(activeId,request);
@@ -269,7 +274,16 @@ public final class PA6TubeActivity extends Activity {
   stageWrap=column();stageWrap.setBackground(panel(0xff101827,0xff101827,14));
   player=new PA6EmbeddedPlayer(this);
   player.setPlaybackErrorListener(()->onVideoPlaybackError());
-  player.setPlaybackStartedListener(()->feedback("Film jest odtwarzany. ▶"));
+  player.setPlaybackStartedListener(()->{
+   feedback("Film jest odtwarzany. ▶");
+   if(activeId.matches("[A-Za-z0-9_-]{11}")){
+    String old=getPreferences(0).getString("recent_ids","");
+    String next=activeId+","+old.replace(activeId+",","");
+    if(next.length()>360)next=next.substring(0,360);
+    getPreferences(0).edit().putString("recent_ids",next)
+     .putString("recent_title_"+activeId,activeTitle).apply();
+   }
+  });
   stageWrap.addView(player,new LinearLayout.LayoutParams(-1,-2));
   title=text("Wybierz film z listy",16,WHITE,true);pad(title,12,4);stageWrap.addView(title);
   subtitle=text("Film pojawi się tutaj, bez opuszczania Pomocnika Alfa",12,0xffc6cbd7,false);pad(subtitle,12,5);stageWrap.addView(subtitle);
@@ -309,6 +323,22 @@ public final class PA6TubeActivity extends Activity {
   below.addView(officialButton,new LinearLayout.LayoutParams(-1,dp(48)));
   officialButton.setVisibility(View.GONE);
   officialButton.setOnClickListener(v->{if(!activeId.isEmpty())playVideo(activeId);});
+  diagnosticsButton=button("Kopiuj informacje o błędzie",RED,false);
+  below.addView(diagnosticsButton,new LinearLayout.LayoutParams(-1,dp(46)));
+  diagnosticsButton.setVisibility(View.GONE);
+  diagnosticsButton.setOnClickListener(v->{
+   String id=activeId.matches("[A-Za-z0-9_-]{11}")?activeId:"brak";
+   String report="Pomocnik Alfa • Android "+android.os.Build.VERSION.RELEASE+
+    " • urządzenie "+android.os.Build.MODEL+
+    "\\nModuł: "+(kids?"Tube Kids":"Alfa Tube")+
+    "\\nFilm: "+id+
+    "\\nProblem ekstraktora: "+engineIssue+
+    "\\nNieskuteczne serwery: "+failedProviders.size()+
+    "\\nOdtwarzanie: nie udało się uruchomić filmu.";
+   android.content.ClipboardManager clip=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
+   if(clip!=null){clip.setPrimaryClip(ClipData.newPlainText("Diagnoza Alfa Tube",report));
+    feedback("Informacje skopiowane. Wklej je do rozmowy, aby łatwiej znaleźć przyczynę.");}
+  });
   Button file=button("Wybierz film zapisany na tablecie",RED,false);below.addView(file,new LinearLayout.LayoutParams(-1,dp(51)));
   file.setOnClickListener(v->{
    try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("video/*").addCategory(Intent.CATEGORY_OPENABLE),PICK_FILE);}
