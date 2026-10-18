@@ -736,6 +736,9 @@ public final class PA6TubeActivity extends Activity {
    useLocalVideo();player.play("Film kontrolny H.264","https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8");
    feedback("Sprawdzam odtwarzanie materiału kontrolnego…");
   }else{search.setText(kids?"Bajki":"muzyka");searchVideos(kids?"Bajki":"muzyka");}
+  if(getIntent().getBooleanExtra("verify_controls",false)){useLocalVideo();player.setAudioOnly(false);player.playUri("Test sterowania",Uri.fromFile(new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),"pa6-av.mp4")));}
+  String shortcut=getIntent().getStringExtra("play_id");if(shortcut!=null&&shortcut.matches("[A-Za-z0-9_-]{11}"))playVideo(shortcut);
+  String offline=getIntent().getStringExtra("offline_path");if(offline!=null)try{File f=new File(offline).getCanonicalFile();File downloads=Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getCanonicalFile();if(f.isFile()&&f.getParentFile().equals(downloads)&&f.getName().endsWith(".mp4")){useLocalVideo();stopService(new Intent(this,PA6AudioService.class));player.setAudioOnly(false);player.playUri(f.getName(),Uri.fromFile(f));title.setText(f.getName());subtitle.setText("Plik z pamięci • offline");}}catch(Exception e){feedback("Nie można otworzyć pliku.");}
  }
  private void verifyPerformance(){
   final long started=SystemClock.elapsedRealtime();
@@ -763,9 +766,7 @@ public final class PA6TubeActivity extends Activity {
     android.util.Log.i("PA6_PERF","PASS cached search, 12-item page, stale-result rejection, isolated HTTP cancellation; UI_MS="+(SystemClock.elapsedRealtime()-started));
    }catch(Exception error){android.util.Log.e("PA6_PERF","FAIL performance regression",error);}
   }},50);
-  if(getIntent().getBooleanExtra("verify_controls",false)){useLocalVideo();player.setAudioOnly(false);player.playUri("Test sterowania",Uri.fromFile(new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),"pa6-av.mp4")));}
-  String shortcut=getIntent().getStringExtra("play_id");if(shortcut!=null&&shortcut.matches("[A-Za-z0-9_-]{11}"))playVideo(shortcut);
-  String offline=getIntent().getStringExtra("offline_path");if(offline!=null)try{File f=new File(offline).getCanonicalFile();File downloads=Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getCanonicalFile();if(f.isFile()&&f.getParentFile().equals(downloads)&&f.getName().endsWith(".mp4")){useLocalVideo();stopService(new Intent(this,PA6AudioService.class));player.setAudioOnly(false);player.playUri(f.getName(),Uri.fromFile(f));title.setText(f.getName());subtitle.setText("Plik z pamięci • offline");}}catch(Exception e){feedback("Nie można otworzyć pliku.");}
+
 
  }
  @Override protected void onActivityResult(int requestCode,int result,Intent data){
