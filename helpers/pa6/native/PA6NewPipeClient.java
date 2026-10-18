@@ -133,8 +133,8 @@ public final class PA6NewPipeClient {
   // Prefer a modest H.264-compatible MP4 video with AAC/M4A sound on Android 6.
   String videoOnlyUrl="",videoQuality="",audioUrl="";
   int videoScore=Integer.MAX_VALUE,audioScore=Integer.MAX_VALUE;
-  for(VideoStream v:info.getVideoStreams()){
-   if(v==null||!v.isVideoOnly()||!v.isUrl()||v.getFormat()!=MediaFormat.MPEG_4)continue;
+  for(VideoStream v:info.getVideoOnlyStreams()){
+   if(v==null||!v.isUrl()||v.getFormat()!=MediaFormat.MPEG_4)continue;
    String url=v.getContent();
    if(url==null||!url.startsWith("https://")||url.length()>8000)continue;
    int height=0;
