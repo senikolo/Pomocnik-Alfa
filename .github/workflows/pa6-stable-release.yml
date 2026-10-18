@@ -11,22 +11,41 @@ jobs:
     timeout-minutes: 28
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch the signed APK and verify its identity
+      - name: Select the completed build
+        id: config
+        run: |
+          python3 - <<'PYCODE'
+          import json,os
+          config=json.load(open('triggers/pa6-stable-release.json'))
+          with open(os.environ['GITHUB_OUTPUT'],'a') as out:
+              out.write('run_id='+str(int(config['build_run_id']))+'\n')
+          PYCODE
+      - uses: actions/download-artifact@v4
+        with:
+          name: PA6-Acer-B3A32-APK
+          path: unsigned
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.config.outputs.run_id }}
+      - name: Reconstruct the locally signed APK and verify its identity
         run: |
           set -euo pipefail
           mkdir -p pa6
           python3 - <<'PY'
-          import json,hashlib,urllib.request,pathlib
+          import json,hashlib,pathlib,base64,zlib
           config=json.loads(pathlib.Path('triggers/pa6-stable-release.json').read_text())
-          url=config['url']
-          assert url.startswith('https://')
+          patch=json.loads(zlib.decompress(base64.b64decode(pathlib.Path('triggers/pa6-signature.patch.b64').read_text())))
+          source=pathlib.Path('unsigned/PA6-2.4.0-unsigned.apk').read_bytes()
+          assert hashlib.sha256(source).hexdigest()==patch['unsigned_sha256'],'Unsigned build mismatch'
           target=pathlib.Path('pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk')
-          with urllib.request.urlopen(url,timeout=120) as response,target.open('wb') as out:
-              while True:
-                  data=response.read(1024*1024)
-                  if not data: break
-                  out.write(data)
-          assert hashlib.sha256(target.read_bytes()).hexdigest()==config['sha256'],'APK hash mismatch'
+          with target.open('wb') as out:
+              for segment in patch['segments']:
+                  if 'copy' in segment:
+                      offset,length=segment['copy'];assert offset>=0 and length>=0 and offset+length<=len(source)
+                      out.write(source[offset:offset+length])
+                  else: out.write(base64.b64decode(segment['data']))
+          digest=hashlib.sha256(target.read_bytes()).hexdigest()
+          assert digest==patch['signed_sha256']==config['sha256'],'Signed APK hash mismatch'
+          print('PASS exact locally signed APK reconstructed; SHA256',digest)
           PY
           bt="$ANDROID_HOME/build-tools/35.0.0"
           "$bt/apksigner" verify --verbose --print-certs pa6/*.apk | tee pa6/signature.txt
@@ -64,7 +83,9 @@ jobs:
           set -euo pipefail
           source_sha=$(python3 -c "import json;print(json.load(open('triggers/pa6-stable-release.json'))['source_sha'])")
           tag="pa6-stable-2.4.0-${source_sha:0:8}"
+          mv pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk pa6/Pomocnik-Alfa-6-2.4.0-TEST.apk
+          (cd pa6 && sha256sum *.apk > SHA256SUMS.txt)
           gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$source_sha" --prerelease \
             --title 'Pomocnik Alfa 6 • 2.4.0 TEST • stały podpis PA' \
             --notes 'Audio w tle i po wygaszeniu ekranu, sterowanie w powiadomieniu i na blokadzie; oś czasu i przewijanie ±10 sekund; pełny ekran Tube/TV; ulubione i ostatnie multimedia na ekranie głównym; lista pobrań z anulowaniem, ponowieniem i odtwarzaniem offline. Zachowano NewPipe Extractor i LibVLC, natywny lekki interfejs oraz kontrolę obrazu i dźwięku MP4. Pakiet com.senikolo.pa6.stable, kod 2004000. Podpis zachowanym kluczem PA (SHA256 361442c898552236a7d4299eeda5c3dc275ba1f368c011292dc07d44b2e8ace1). Nowy stały pakiet instaluje się obok wcześniejszych testów; nie usuwa danych i nie aktualizuje ich niezgodnego podpisu. Kolejne wydania tego pakietu muszą używać tego samego klucza. Testy podpisanego APK: Android 6 API23, audio w tle/wygaszony ekran/pauza/wznowienie/przewijanie, sterowanie i pełny ekran lokalnego MP4, zachowanie preferencji po reinstalacji, walidacja kompletnego MP4 i odrzucenie filmu bez dźwięku, komunikaty i lista pobrań, Tablet/Smartfon, katalog TV. Dostęp do YouTube i poszczególnych transmisji zależy od serwera, regionu i zabezpieczeń; test na fizycznym Acerze pozostaje do wykonania. TVP może wymagać polskiego adresu IP. Wydanie testowe.' \
-            pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk pa6/SHA256SUMS.txt pa6/signature.txt
+            pa6/Pomocnik-Alfa-6-2.4.0-TEST.apk pa6/SHA256SUMS.txt pa6/signature.txt
