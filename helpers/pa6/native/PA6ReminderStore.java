@@ -19,11 +19,20 @@ public final class PA6ReminderStore {
  public static boolean saveAndSchedule(Context ctx,String id,String title,String body,long at,String recurrence){
   try{
    if(at<=System.currentTimeMillis())return false;
-   JSONArray items=list(ctx);
+   JSONArray source=list(ctx),items=new JSONArray();
+   // Prune expired one-off reminders so long-lived tablets do not accumulate
+   // stale alarms indefinitely; preserve all future items.
+   for(int i=0;i<source.length();i++){
+    JSONObject prior=source.optJSONObject(i);
+    if(prior!=null&&prior.optLong("when",0)>System.currentTimeMillis())items.put(prior);
+   }
+   if(items.length()>=200)return false;
    JSONObject row=new JSONObject();row.put("id",id);row.put("title",title);row.put("body",body);row.put("when",at);
    items.put(row);
-   if(!persist(ctx,items))return false;
+   // Schedule before persisting, and cancel if persistence fails. Never claim a
+   // saved reminder if the OS rejected its alarm.
    schedule(ctx,row);
+   if(!persist(ctx,items)){cancel(ctx,id);return false;}
    return true;
   }catch(Exception e){return false;}
  }
