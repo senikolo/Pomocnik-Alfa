@@ -31,7 +31,7 @@ public final class PA6TubeActivity extends Activity {
  private LinearLayout results,stageWrap;
  private PA6EmbeddedPlayer player;
  private WebView officialWeb;
- private Button officialButton;
+ private Button officialButton,compatiblePlayerButton;
  private TextView status,title,subtitle,provider;
  private EditText search,link,serverField;
  private int request=0;
@@ -67,6 +67,7 @@ public final class PA6TubeActivity extends Activity {
   switchBackToNative();
   if(officialButton!=null)officialButton.setVisibility(View.GONE);
   ++request;activeId=id;playbackAttempts=0;failedProviders.clear();currentProvider="";
+  if(compatiblePlayerButton!=null)compatiblePlayerButton.setVisibility(View.VISIBLE);
   resolveAndPlay(id,request);
  }
  private void resolveAndPlay(final String id,final int seq){
@@ -106,12 +107,41 @@ public final class PA6TubeActivity extends Activity {
     main.post(()->{
      if(closed||seq!=request)return;
      playbackPending=false;
-     feedback("NewPipe i serwery zapasowe nie udostępniły tego filmu. "+why+
-      " Możesz spróbować oficjalnego odtwarzacza wbudowanego w PA (możliwe reklamy).");
+     feedback("Wewnętrzny odtwarzacz nie pobrał filmu. "+why+
+      " Możesz otworzyć go w NewPipe lub SkyTube.");
      if(officialButton!=null)officialButton.setVisibility(View.VISIBLE);
     });
    }
   });
+ }
+ /**
+  * A user-selected compatibility fallback, not an embedded player.
+  * Android 6 does not allow displaying another app's Activity inside PA6.
+  */
+ private void openInstalledCompatiblePlayer(){
+  if(activeId==null||!activeId.matches("[A-Za-z0-9_-]{11}")){
+   feedback("Najpierw wybierz film.");return;
+  }
+  Uri video=Uri.parse("https://www.youtube.com/watch?v="+activeId);
+  String[] packages={"org.schabi.newpipe","free.rm.skytube.oss","free.rm.skytube.extra"};
+  for(String name:packages){
+   try{
+    getPackageManager().getPackageInfo(name,0);
+    Intent intent=new Intent(Intent.ACTION_VIEW,video);
+    intent.addCategory(Intent.CATEGORY_BROWSABLE);
+    intent.setPackage(name);
+    if(intent.resolveActivity(getPackageManager())==null)continue;
+    startActivity(intent);return;
+   }catch(android.content.pm.PackageManager.NameNotFoundException ignored){
+   }catch(ActivityNotFoundException e){
+    android.util.Log.w("PA6_BRIDGE","Nie udało się otworzyć "+name,e);
+   }catch(SecurityException e){
+    android.util.Log.w("PA6_BRIDGE","Odtwarzacz jest niedostępny "+name,e);
+   }
+  }
+  new AlertDialog.Builder(this).setTitle("Brak NewPipe lub SkyTube")
+   .setMessage("Zainstaluj zgodny odtwarzacz na tablecie. Nie otwieram przeglądarki bez Twojej zgody.")
+   .setPositiveButton("OK",null).show();
  }
  private void showOfficialEmbedded(){
   if(activeId==null||!activeId.matches("[A-Za-z0-9_-]{11}")){
@@ -153,7 +183,7 @@ public final class PA6TubeActivity extends Activity {
   if(closed||activeId.isEmpty()||playbackPending)return;
   if(!currentProvider.isEmpty())failedProviders.add(currentProvider);
   if(++playbackAttempts>6){
-   feedback("Nie udało się odtworzyć tego filmu z publicznych źródeł. Wybierz wbudowany tryb oficjalny.");
+   feedback("Wewnętrzny odtwarzacz nie uruchomił filmu. Wybierz NewPipe lub SkyTube (osobna aplikacja).");
    if(officialButton!=null)officialButton.setVisibility(View.VISIBLE);
    return;
   }
@@ -318,7 +348,7 @@ public final class PA6TubeActivity extends Activity {
   playerPane.addView(stageWrap,new LinearLayout.LayoutParams(-1,-2));
   status=text("Alfa Tube wyszukuje przez NewPipe. Odtwarzacz działa wewnątrz PA.",13,MUTED,false);
   pad(status,5,8);playerPane.addView(status);
-  provider=text("Bez WebView • bez zewnętrznych programów",11,MUTED,false);
+  provider=text("Wbudowany VLC • osobny NewPipe/SkyTube tylko na Twoje życzenie",11,MUTED,false);
   playerPane.addView(provider);gap(playerPane,6);
   LinearLayout links=line();
   Button recent=button("◷ Historia",RED,false);links.addView(recent,new LinearLayout.LayoutParams(0,dp(46),1));
@@ -327,6 +357,12 @@ public final class PA6TubeActivity extends Activity {
   LinearLayout.LayoutParams fp=new LinearLayout.LayoutParams(0,dp(46),1);fp.setMargins(dp(7),0,0,0);links.addView(favorites,fp);
   favorites.setOnClickListener(v->{if(activeId.isEmpty())feedback("Najpierw wybierz film.");else playVideo(activeId);});
   playerPane.addView(links);
+  compatiblePlayerButton=button("▶ Otwórz w NewPipe / SkyTube (osobna aplikacja)",RED,false);
+  compatiblePlayerButton.setVisibility(View.GONE);
+  LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,dp(54));
+  cp.setMargins(0,dp(7),0,dp(5));
+  playerPane.addView(compatiblePlayerButton,cp);
+  compatiblePlayerButton.setOnClickListener(v->openInstalledCompatiblePlayer());
   ScrollView sc=new ScrollView(this);sc.setFillViewport(false);
   feedPane.addView(sc,new LinearLayout.LayoutParams(-1,0,1));
   LinearLayout below=column();sc.addView(below);
@@ -370,7 +406,7 @@ public final class PA6TubeActivity extends Activity {
    }else feedback("Wpisz poprawny adres serwera HTTPS.");
   });
   gap(below,18);
-  TextView foot=text("Alfa Tube działa wewnątrz PA bez instalowania NewPipe. NewPipe wyszukuje na urządzeniu, a serwery Piped i Invidious są wyłącznie zapasowe. Nie obsługuje DRM.",12,MUTED,false);pad(foot,9,12);below.addView(foot);
+  TextView foot=text("Wewnętrzny VLC nadal działa w PA. Jeśli YouTube zablokuje strumień, możesz świadomie otworzyć film w osobno zainstalowanym NewPipe lub SkyTube. To tryb zgodności, nie odtwarzanie wewnątrz PA.",12,MUTED,false);pad(foot,9,12);below.addView(foot);
   page.setFocusableInTouchMode(true);page.requestFocus();
   if(getIntent().getBooleanExtra("verify_libvlc",false)&&!player.verifyNative())
    throw new IllegalStateException("PA6 Alfa Tube native player unavailable");
