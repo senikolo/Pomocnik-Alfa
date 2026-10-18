@@ -700,7 +700,9 @@ public final class PA6TubeActivity extends Activity {
   SEARCHES.put(server()+"|pa6 performance",new CachedSearch(old));
   SEARCHES.put(server()+"|pa6 replacement",new CachedSearch(new PA6PipedClient.Response<List<PA6PipedClient.Result>>(second,"Pamięć testowa")));
   searchVideos("pa6 performance");final int stale=searchGeneration;
-  main.postDelayed(()->{
+  main.postDelayed(new Runnable(){public void run(){
+   if(closed)return;
+   if(results.getChildCount()!=13&&SystemClock.elapsedRealtime()-started<5000){main.postDelayed(this,50);return;}
    try{
     if(results.getChildCount()!=13)throw new IllegalStateException("Result pagination failed");
     searchVideos("pa6 replacement");
@@ -714,7 +716,7 @@ public final class PA6TubeActivity extends Activity {
     if(!obsolete.isCanceled()||independent.isCanceled())throw new IllegalStateException("Cancellation isolation failed");
     android.util.Log.i("PA6_PERF","PASS cached search, 12-item page, stale-result rejection, isolated HTTP cancellation; UI_MS="+(SystemClock.elapsedRealtime()-started));
    }catch(Exception error){android.util.Log.e("PA6_PERF","FAIL performance regression",error);}
-  },200);
+  }},50);
  }
  @Override protected void onActivityResult(int requestCode,int result,Intent data){
   super.onActivityResult(requestCode,result,data);

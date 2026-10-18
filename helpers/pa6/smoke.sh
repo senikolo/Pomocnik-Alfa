@@ -12,7 +12,11 @@ adb shell pm grant "$pkg" android.permission.READ_EXTERNAL_STORAGE
 adb logcat -c
 adb shell am start -W -n "$pkg/com.ispina.lokalnie.PA6DashboardActivity" > results/cold-start.txt
 adb shell am start -W -n "$activity" --ez verify_performance true > results/tube-start.txt
-sleep 3
+for attempt in {1..10}; do
+ adb logcat -d > results/performance.txt
+ grep -q 'PA6_PERF.*PASS cached search' results/performance.txt && break
+ sleep 1
+done
 adb logcat -d > results/performance.txt
 grep -q 'PA6_PERF.*PASS cached search, 12-item page, stale-result rejection, isolated HTTP cancellation' results/performance.txt
 adb shell am force-stop "$pkg"
