@@ -15,8 +15,8 @@ public final class PA6PipedClient {
  // Start with the server that actually supplied search results in our last test.
  public static final String[] DEFAULT_SERVERS={
   "https://api.piped.private.coffee",
-  "https://pipedapi.r4fo.com",
-  "https://pipedapi.lunar.icu"
+  "https://piped-api.lunar.icu",
+  "https://api.looleh.xyz"
  };
  public static final class Result {
   public final String title, channel, thumb, id, duration, date;
