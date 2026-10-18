@@ -36,6 +36,10 @@ sleep 20
 adb shell dumpsys activity activities > results/tv-activity.txt
 grep -q "PA6TvActivity" results/tv-activity.txt
 adb exec-out screencap -p > results/tv.png
+adb shell am force-stop com.senikolo.pa6kidsru
+adb shell am start -n com.senikolo.pa6kidsru/com.ispina.lokalnie.PA6TvActivity --ez verify_ru_catalog true
+sleep 5
+adb exec-out screencap -p > results/tv-russian-catalog.png
 adb logcat -d -v time > results/tv-h264-playback.txt
 assert_no_app_crash
 adb logcat -d -v time > results/native-libvlc.txt
@@ -63,6 +67,28 @@ adb shell am start -n com.senikolo.pa6kidsru/com.ispina.lokalnie.PA6TubeActivity
 sleep 24
 adb exec-out screencap -p > results/tube-search-after-24s.png
 adb logcat -d -v time > results/tube-search-network.txt
+assert_no_app_crash
+# Verify Tube Kids is a real functional activity with child-oriented discovery.
+adb shell am force-stop com.senikolo.pa6kidsru
+adb shell am start -n com.senikolo.pa6kidsru/com.ispina.lokalnie.PA6TubeActivity --ez kids true
+sleep 15
+adb exec-out screencap -p > results/tube-kids-search.png
+adb logcat -d -v time > results/tube-kids-network.txt
+assert_no_app_crash
+# Crucial regression: unlike the H264 test clip, this requires an actual
+# public metadata resolver for a known YouTube upload (Me at the zoo).
+# A platform/media-provider failure is logged, not misreported as successful.
+adb shell am force-stop com.senikolo.pa6kidsru
+adb logcat -c
+adb shell am start -n com.senikolo.pa6kidsru/com.ispina.lokalnie.PA6TubeActivity --ez verify_real_youtube true
+sleep 35
+adb exec-out screencap -p > results/tube-real-youtube-attempt.png
+adb logcat -d -v time > results/tube-real-youtube-log.txt
+if grep -q "PA6_PLAYER.*PLAYING Me at the zoo" results/tube-real-youtube-log.txt; then
+ echo "CONFIRMED: actual YouTube extraction and playback" > results/youtube-status.txt
+else
+ echo "UNCONFIRMED: YouTube playback not proved on public instances" > results/youtube-status.txt
+fi
 assert_no_app_crash
 adb logcat -d -v time > results/internal-playback.txt
 test "$(grep -c 'PA6_LIBVLC.*NATIVE_ENGINE_READY' results/internal-playback.txt)" -ge 2
