@@ -12,6 +12,26 @@ npm install --no-audit --no-fund --prefix build/pa6-node @babel/core@7 @babel/pr
 NODE_PATH="$PWD/build/pa6-node/node_modules" node helpers/pa6/transpile.cjs helpers/pa2 build/pa6-assets/pa_regions
 python3 helpers/pa6/prepare_tablet.py build/pa6-data build/pa6-assets/pa_regions
 python3 helpers/pa6/compat_patch.py build/pa6-java
+# NewPipeExtractor runs inside Alfa Tube on the tablet (GPLv3), not via a public API.
+mkdir -p build/pa6-newpipe
+mvn -B -q -f helpers/pa6/newpipe-pom.xml dependency:copy-dependencies \
+ -DincludeScope=runtime -DoutputDirectory="$PWD/build/pa6-newpipe"
+test "$(find build/pa6-newpipe -iname '*NewPipeExtractor*.jar' | wc -l)" -ge 1
+NP_JARS="$(find build/pa6-newpipe -name '*.jar' | sort | paste -sd: -)"
+# NewPipe Extractor v0.26.5 uses java.util.Optional and java.nio.file APIs
+# unavailable on Android API23. D8 rewrites these APIs; L8 ships runtime j$.
+DESUGAR_VERSION=2.1.5
+DESUGAR_BASE="https://dl.google.com/dl/android/maven2/com/android/tools"
+mkdir -p build/pa6-desugar-dex
+for artifact in desugar_jdk_libs_nio desugar_jdk_libs_configuration_nio; do
+ curl -fL --retry 3 --connect-timeout 20 --max-time 180 \
+   "$DESUGAR_BASE/$artifact/$DESUGAR_VERSION/$artifact-$DESUGAR_VERSION.jar" \
+   -o "build/$artifact.jar"
+done
+unzip -p build/desugar_jdk_libs_configuration_nio.jar META-INF/desugar/d8/desugar.json > build/pa6-desugar.json
+python3 -m json.tool build/pa6-desugar.json >/dev/null
+test -s build/pa6-desugar.json
+
 cp helpers/pa6/assets/pa6-ca-bundle.pem build/pa6-assets/pa6-ca-bundle.pem
 cp helpers/pa6/assets/pa6-ca-license.txt build/pa6-assets/pa6-ca-license.txt
 # Bundle a real embedded VLC decoder into the APK. No external VLC application needed.
@@ -40,15 +60,37 @@ gh release download pa2-rail-alpha10-isolated-e44250d0 -p Pomocnik-Alfa-alpha10-
 cp baseline/Pomocnik-Alfa-alpha10-POLREGIO-Intercity-OSOBNY-TEST.apk baseline.apk
 test -s baseline.apk
 python3 helpers/pa6/extract_icon.py baseline.apk build/pa6-res/drawable-nodpi/ic_cat.png
-javac -source 8 -target 8 -encoding UTF-8 -cp "$SDK/platforms/android-35/android.jar:build/pa6-libvlc/classes.jar" -d build/pa6-classes build/pa6-java/*.java
-find build/pa6-classes -name '*.class' -print0 | xargs -0 "$BT/d8" --min-api 23 --lib "$SDK/platforms/android-35/android.jar" --output build/pa6-dex build/pa6-libvlc/classes.jar
+javac -source 8 -target 8 -encoding UTF-8 -cp "$SDK/platforms/android-35/android.jar:build/pa6-libvlc/classes.jar:$NP_JARS" -d build/pa6-classes build/pa6-java/*.java
+find build/pa6-classes -name '*.class' -print0 | xargs -0 "$BT/d8" --min-api 23 \
+ --desugared-lib build/pa6-desugar.json \
+ --lib "$SDK/platforms/android-35/android.jar" --output build/pa6-dex \
+ build/pa6-libvlc/classes.jar $(find build/pa6-newpipe -name '*.jar' | sort)
+java -cp "$BT/lib/d8.jar" com.android.tools.r8.L8 \
+ --min-api 23 --lib "$SDK/platforms/android-35/android.jar" \
+ --desugared-lib build/pa6-desugar.json --output build/pa6-desugar-dex \
+ build/desugar_jdk_libs_nio.jar
+# Append the L8 runtime as an additional dex file. Android 6 natively supports multidex.
+python3 - <<'PY'
+from pathlib import Path
+existing=list(Path("build/pa6-dex").glob("classes*.dex"))
+runtime=Path("build/pa6-desugar-dex/classes.dex")
+assert runtime.stat().st_size>10000,(runtime,existing)
+numbers=[]
+for entry in existing:
+ stem=entry.stem
+ numbers.append(1 if stem=="classes" else int(stem.replace("classes","")))
+nextdex=max(numbers)+1
+target=Path("build/pa6-dex")/f"classes{nextdex}.dex"
+target.write_bytes(runtime.read_bytes())
+print("PASS L8 desugar runtime packaged into",target)
+PY
 "$BT/aapt" package -f -M helpers/pa6/AndroidManifest.xml -S build/pa6-res -A build/pa6-assets -I "$SDK/platforms/android-35/android.jar" -F output/raw.apk
 (cd build/pa6-dex && zip -q -0 ../../output/raw.apk classes*.dex)
 (cd build/pa6-package && zip -q -r -9 ../../output/raw.apk lib)
 "$BT/zipalign" -p -f 4 output/raw.apk output/aligned.apk
 "$BT/aapt" dump badging output/aligned.apk | tee output/badging.txt
 grep -q "sdkVersion:'23'" output/badging.txt
-grep -q "package: name='com.senikolo.pa6kidsru'" output/badging.txt
+grep -q "package: name='com.senikolo.pa6newpipe'" output/badging.txt
 umask 077
 export PA6_TEST_PASS="$(openssl rand -hex 24)"
 keytool -genkeypair -noprompt -keyalg RSA -keysize 3072 -sigalg SHA256withRSA -validity 3650 -alias pa6-tablet-test -dname 'CN=PA6 Acer test only, O=PA development' -storetype PKCS12 -keystore "$RUNNER_TEMP/pa6-test.p12" -storepass:env PA6_TEST_PASS -keypass:env PA6_TEST_PASS >/dev/null 2>&1
