@@ -1,8 +1,8 @@
-name: PA6 Video Fix • Android 6
+name: PA6 Tube Kids TV RU • Android 6
 on:
   workflow_dispatch:
   push:
-    branches: ['work/pa6-media-reliability-20261018']
+    branches: ['work/pa6-tube-kids-tv-ru-20261018']
     paths: ['.github/workflows/pa6-acer-tablet.yml', 'helpers/pa6/**']
 defaults:
   run:
@@ -87,8 +87,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="pa6-videofix-media-$(echo "$GITHUB_SHA" | cut -c1-8)"
+          tag="pa6-tubekids-ru-$(echo "$GITHUB_SHA" | cut -c1-8)"
           gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
-            --title 'Pomocnik Alfa Video Fix • Android 6 TEST' \
-            --notes 'PA6 VIDEO FIX TEST na Android 6 API23: usunieto dwa serwery Piped z potwierdzonymi bledami, poprawiono wyszukiwanie i miniatury Tube, wybrane kanaly HLS startuja w lzejszej jakosci 360-480p, wideo ma proporcje 16:9, nowe komunikaty bledow odtwarzania. Bez wychodzenia do innych aplikacji. Zachowano radio i reszte modulow. Instalacja rownolegla. Live streamy wymagaja sprawdzenia na fizycznym Acerze. W CI zapisujemy zdarzenia odtwarzacza i zrzuty rzeczywistego testu H264, ale nie gwarantuje to dostepnosci wszystkich transmisji.' \
+            --title 'Pomocnik Alfa Tube Kids TV RU • Android 6 TEST' \
+            --notes 'PA6 TUBE KIDS TV RU TEST • Android 6 API23: automatyczne przełączanie odtwarzacza po rzeczywistym bledzie strumienia; Piped + Invidious proxy; wyszukiwanie bajek i piosenek w Tube Kids; kategoria rosyjskojezyczna z ośmioma otwartymi kanalami nieobjętymi sankcjami UE; ponawianie TV przez zapasowy URL; 16:9 wewnatrz PA. Rzeczywiste filmy YouTube zalezne od dzialania publicznych serwerow. Wszystkie telewizyjne transmisje wymagaja testu na Acerze. W CI test odtwarzania filmu kontrolnego, rosyjskich kanałów i próba prawdziwego YouTube.' \
             release/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk release/SHA256SUMS.txt release/signature.txt
