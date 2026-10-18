@@ -19,7 +19,7 @@ import java.util.concurrent.*;
 
 /**
  * Alfa Tube: native, YouTube-inspired layout and NewPipe-style workflow.
- * Search/metadata: Piped public API; video: bundled LibVLC. No browser or external application.
+ * Direct NewPipe search/metadata + bundled LibVLC. Piped/Invidious are backups.
  * No DRM bypass, user login or scraping in WebView.
  */
 public final class PA6TubeActivity extends Activity {
@@ -166,7 +166,15 @@ public final class PA6TubeActivity extends Activity {
   results.removeAllViews();
   io.execute(()->{
    try{
-    PA6PipedClient.Response<java.util.List<PA6PipedClient.Result>> response=PA6PipedClient.search(kids?(query+" bajki dla dzieci"):query,server());
+    String terms=kids?(query+" bajki dla dzieci"):query;
+    PA6PipedClient.Response<java.util.List<PA6PipedClient.Result>> selected;
+    try{
+     selected=PA6NewPipeClient.search(terms);
+    }catch(Exception | LinkageError nativeFailure){
+     android.util.Log.w("PA6_NEWPIPE","Direct search unavailable; trying backup catalogs",nativeFailure);
+     selected=PA6PipedClient.search(terms,server());
+    }
+    final PA6PipedClient.Response<java.util.List<PA6PipedClient.Result>> response=selected;
     main.post(()->{
      if(closed||seq!=request)return;
      java.util.List<PA6PipedClient.Result> list=response.data;
@@ -178,7 +186,7 @@ public final class PA6TubeActivity extends Activity {
     final String reason=e.getMessage();
     main.post(()->{if(closed||seq!=request)return;
      feedback(reason+" Możesz spróbować ponownie lub zmienić serwer.");
-     TextView empty=text("Brak połączenia z katalogiem filmów. Możesz spróbować innego serwera Piped lub odtworzyć lokalny plik.",15,MUTED,false);
+     TextView empty=text("Nie udało się wyszukać filmów przez NewPipe ani serwery zapasowe. Sprawdź internet lub odtwórz plik z tabletu.",15,MUTED,false);
      pad(empty,14,17);results.addView(empty);
     });
    }
@@ -308,7 +316,7 @@ public final class PA6TubeActivity extends Activity {
   subtitle=text("Film pojawi się tutaj, bez opuszczania Pomocnika Alfa",12,0xffc6cbd7,false);pad(subtitle,12,5);stageWrap.addView(subtitle);
   gap(stageWrap,7);
   playerPane.addView(stageWrap,new LinearLayout.LayoutParams(-1,-2));
-  status=text("Alfa Tube korzysta z publicznych katalogów Piped lub Invidious i odtwarzacza w PA.",13,MUTED,false);
+  status=text("Alfa Tube wyszukuje przez NewPipe. Odtwarzacz działa wewnątrz PA.",13,MUTED,false);
   pad(status,5,8);playerPane.addView(status);
   provider=text("Bez WebView • bez zewnętrznych programów",11,MUTED,false);
   playerPane.addView(provider);gap(playerPane,6);
@@ -362,7 +370,7 @@ public final class PA6TubeActivity extends Activity {
    }else feedback("Wpisz poprawny adres serwera HTTPS.");
   });
   gap(below,18);
-  TextView foot=text("Alfa Tube działa wewnątrz PA bez instalowania NewPipe. Publiczne serwery Piped i Invidious oraz dostępność filmów mogą się zmieniać. Nie obsługuje DRM.",12,MUTED,false);pad(foot,9,12);below.addView(foot);
+  TextView foot=text("Alfa Tube działa wewnątrz PA bez instalowania NewPipe. NewPipe wyszukuje na urządzeniu, a serwery Piped i Invidious są wyłącznie zapasowe. Nie obsługuje DRM.",12,MUTED,false);pad(foot,9,12);below.addView(foot);
   page.setFocusableInTouchMode(true);page.requestFocus();
   if(getIntent().getBooleanExtra("verify_libvlc",false)&&!player.verifyNative())
    throw new IllegalStateException("PA6 Alfa Tube native player unavailable");
