@@ -1,8 +1,8 @@
-name: PA6 Legacy Plus • Android 6
+name: PA6 Video Fix • Android 6
 on:
   workflow_dispatch:
   push:
-    branches: ['work/pa6-legacy-completion-20261017']
+    branches: ['work/pa6-media-reliability-20261018']
     paths: ['.github/workflows/pa6-acer-tablet.yml', 'helpers/pa6/**']
 defaults:
   run:
@@ -11,7 +11,7 @@ permissions:
   contents: write
   actions: read
 concurrency:
-  group: pa6-legacyplus-${{ github.ref }}
+  group: pa6-videofix-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build:
@@ -87,8 +87,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="pa6-legacyplus-media-$(echo "$GITHUB_SHA" | cut -c1-8)"
+          tag="pa6-videofix-media-$(echo "$GITHUB_SHA" | cut -c1-8)"
           gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
-            --title 'Pomocnik Alfa Legacy Plus • Android 6 TEST' \
-            --notes 'Legacy Plus TEST dla Acer Android 6 API23 2GB RAM. Wbudowany LibVLC dla TV i Alfa Tube, poprawa kompatybilnosci linkow YouTube Shorts i wyboru H264. Katalog radia korzysta z zaufanych CA, a modul wideo bezpiecznie obsluguje audio focus i przejscie w tlo. Osobny pakiet testowy. Streamy publicznych serwerow Piped i TV wymagaja sprawdzenia na fizycznym Acerze. Nie jest to jeszcze pelny port wszystkich funkcji PA11.' \
+            --title 'Pomocnik Alfa Video Fix • Android 6 TEST' \
+            --notes 'PA6 VIDEO FIX TEST na Android 6 API23: usunieto dwa serwery Piped z potwierdzonymi bledami, poprawiono wyszukiwanie i miniatury Tube, wybrane kanaly HLS startuja w lzejszej jakosci 360-480p, wideo ma proporcje 16:9, nowe komunikaty bledow odtwarzania. Bez wychodzenia do innych aplikacji. Zachowano radio i reszte modulow. Instalacja rownolegla. Live streamy wymagaja sprawdzenia na fizycznym Acerze. W CI zapisujemy zdarzenia odtwarzacza i zrzuty rzeczywistego testu H264, ale nie gwarantuje to dostepnosci wszystkich transmisji.' \
             release/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk release/SHA256SUMS.txt release/signature.txt

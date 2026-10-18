@@ -68,7 +68,7 @@ public final class PA6TubeActivity extends Activity {
      subtitle.setText(v.channel+" • "+v.quality);
      provider.setText("Odtwarzacz PA • katalog: "+response.server.replace("https://",""));
      player.play(v.title,v.stream);
-     feedback("Łączenie z materiałem • "+v.quality+". Oglądasz w Alfa Tube.");
+     feedback("Łączę z filmem • "+v.quality+". Poczekaj na obraz i dźwięk w okienku.");
      String old=getPreferences(0).getString("recent_ids","");
      String next=id+","+old.replace(id+",","");
      if(next.length()>360)next=next.substring(0,360);
@@ -105,26 +105,37 @@ public final class PA6TubeActivity extends Activity {
    }
   });
  }
- private void thumb(ImageView image,String url){
-  if(url==null||!url.startsWith("https://")||url.length()>2400)return;
+ private void thumb(ImageView image,String suggested,String videoId){
+  if(videoId==null||!videoId.matches("[A-Za-z0-9_-]{11}"))return;
+  // Prefer Google's compact 320px thumbnail; old tablet has only 2 GB RAM.
+  final String direct="https://i.ytimg.com/vi/"+videoId+"/mqdefault.jpg";
   thumbnailIo.execute(()->{
-   HttpURLConnection c=null;
-   try{
-    c=PA6ModernTls.open(url);c.setConnectTimeout(5000);c.setReadTimeout(7000);
-    if(c.getResponseCode()!=200||c.getContentLength()>450000) return;
-    byte[] data;
-    try(InputStream in=c.getInputStream();ByteArrayOutputStream out=new ByteArrayOutputStream()){
-     byte[] buf=new byte[4096];int n;
-     while((n=in.read(buf))>0){if(out.size()+n>450000)return;out.write(buf,0,n);}
-     data=out.toByteArray();
-    }
-    BitmapFactory.Options o=new BitmapFactory.Options();o.inJustDecodeBounds=true;
-    BitmapFactory.decodeByteArray(data,0,data.length,o);
-    o.inSampleSize=Math.max(1,Math.max(o.outWidth/220,o.outHeight/140));
-    o.inJustDecodeBounds=false;o.inPreferredConfig=Bitmap.Config.RGB_565;
-    Bitmap result=BitmapFactory.decodeByteArray(data,0,data.length,o);
-    main.post(()->{if(!closed&&result!=null)image.setImageBitmap(result);});
-   }catch(Exception ignored){}finally{if(c!=null)c.disconnect();}
+   String[] urls={direct,suggested};
+   for(String url:urls){
+    if(url==null||!url.startsWith("https://")||url.length()>2400)continue;
+    HttpURLConnection c=null;
+    try{
+     c=PA6ModernTls.open(url);c.setConnectTimeout(3500);c.setReadTimeout(4500);
+     c.setRequestProperty("User-Agent","Mozilla/5.0 (Android 6; Alfa Tube)");
+     if(c.getResponseCode()!=200||c.getContentLength()>300000)continue;
+     ByteArrayOutputStream out=new ByteArrayOutputStream(26000);
+     try(InputStream in=c.getInputStream()){
+      byte[] buf=new byte[4096];int n;
+      while((n=in.read(buf))>0){if(out.size()+n>300000)break;out.write(buf,0,n);}
+     }
+     byte[] data=out.toByteArray();
+     if(data.length==0||data.length>300000)continue;
+     BitmapFactory.Options o=new BitmapFactory.Options();o.inSampleSize=2;
+     o.inPreferredConfig=Bitmap.Config.RGB_565;
+     Bitmap result=BitmapFactory.decodeByteArray(data,0,data.length,o);
+     if(result!=null){
+      main.post(()->{if(!closed&&!isFinishing())image.setImageBitmap(result);});
+      return;
+     }
+    }catch(Exception e){
+     android.util.Log.w("PA6_THUMB","Miniatura chwilowo niedostępna: "+e.getClass().getSimpleName());
+    }finally{if(c!=null)c.disconnect();}
+   }
   });
  }
  private void movieCard(PA6PipedClient.Result video){
@@ -132,8 +143,14 @@ public final class PA6TubeActivity extends Activity {
   card.setBackground(panel(WHITE,0xffe0e5ed,14));
   ImageView poster=new ImageView(this);poster.setScaleType(ImageView.ScaleType.CENTER_CROP);
   poster.setBackground(panel(0xffe6ebf3,0xffe6ebf3,9));
-  card.addView(poster,new LinearLayout.LayoutParams(dp(157),dp(91)));
-  thumb(poster,video.thumb);
+  FrameLayout imageFrame=new FrameLayout(this);
+  imageFrame.addView(poster,new FrameLayout.LayoutParams(-1,-1));
+  TextView playBadge=text("▶",23,WHITE,true);
+  playBadge.setGravity(Gravity.CENTER);playBadge.setBackground(panel(0xcced263b,0xcced263b,24));
+  FrameLayout.LayoutParams badgeParams=new FrameLayout.LayoutParams(dp(39),dp(39),Gravity.CENTER);
+  imageFrame.addView(playBadge,badgeParams);
+  card.addView(imageFrame,new LinearLayout.LayoutParams(dp(157),dp(91)));
+  thumb(poster,video.thumb,video.id);
   LinearLayout copy=column();copy.setPadding(dp(13),0,0,0);
   TextView h=text(video.title,15,INK,true);h.setMaxLines(2);copy.addView(h);
   TextView c=text(video.channel,13,MUTED,false);c.setMaxLines(1);copy.addView(c);
@@ -265,7 +282,12 @@ public final class PA6TubeActivity extends Activity {
   if(getIntent().getBooleanExtra("verify_libvlc",false)&&!player.verifyNative())
    throw new IllegalStateException("PA6 Alfa Tube native player unavailable");
   // First screen shows meaningful content without pretending to have a working feed.
-  search.setText("muzyka");searchVideos("muzyka");
+  if(getIntent().getBooleanExtra("verify_video_stream",false)){
+   title.setText("Film kontrolny H.264");
+   subtitle.setText("Test obrazu i dźwięku na Androidzie 6");
+   player.play("Film kontrolny H.264","https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8");
+   feedback("Sprawdzam odtwarzanie materiału kontrolnego…");
+  }else{search.setText("muzyka");searchVideos("muzyka");}
  }
  @Override protected void onActivityResult(int requestCode,int result,Intent data){
   super.onActivityResult(requestCode,result,data);
