@@ -11,9 +11,9 @@ import java.util.*;
  * Public instances are independent services and can be unavailable without warning.
  */
 public final class PA6PipedClient {
+ // Android 6 emulator log from 17 Oct: kavin returned 526, adminforge 404.
+ // Start with the server that actually supplied search results in our last test.
  public static final String[] DEFAULT_SERVERS={
-  "https://pipedapi.kavin.rocks",
-  "https://pipedapi.adminforge.de",
   "https://api.piped.private.coffee"
  };
  public static final class Result {
@@ -45,7 +45,7 @@ public final class PA6PipedClient {
   HttpURLConnection c=null;
   try{
    c=PA6ModernTls.open(address);
-   c.setConnectTimeout(4000);c.setReadTimeout(6000);c.setInstanceFollowRedirects(true);
+   c.setConnectTimeout(3500);c.setReadTimeout(5500);c.setInstanceFollowRedirects(true);
    c.setRequestProperty("User-Agent","PomocnikAlfa/6.0 (Android 6 native multimedia client)");
    c.setRequestProperty("Accept","application/json");
    int code=c.getResponseCode();
@@ -167,8 +167,10 @@ public final class PA6PipedClient {
 
  // Only official-listed Invidious hosts. They can become unavailable, so never promise every video.
  private static final String[] INVIDIOUS={
-  "https://invidious.tiekoetter.com",
-  "https://inv.nadeko.net"
+  "https://inv.nadeko.net",
+  "https://invidious.nerdvpn.de",
+  "https://yt.chocolatemoo53.com",
+  "https://invidious.tiekoetter.com"
  };
  private static String thumbnail(JSONArray thumbs){
   if(thumbs==null)return "";
