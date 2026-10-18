@@ -21,9 +21,10 @@ public final class PA6RemindersActivity extends Activity {
  private TextView label(String value,int size){TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setTextColor(PA6Ui.INK);t.setPadding(dp(4),dp(8),dp(4),dp(8));return t;}
  private String format(long when){return new SimpleDateFormat("dd.MM.yyyy HH:mm",new Locale("pl","PL")).format(new Date(when));}
  @Override public void onCreate(Bundle b){
-  super.onCreate(b);
+  super.onCreate(b);getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
   ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(PA6Ui.BG);
   LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(17),dp(12),dp(17),dp(24));scroll.addView(root);setContentView(scroll);
+  root.setFocusableInTouchMode(true);root.requestFocus();
   root.addView(label("🔔  Przypomnienia Alfa",25));
   root.addView(label("Ustaw termin. Powiadomienie działa bez internetu, ale oszczędzanie baterii może je opóźnić.",14));
   note=new EditText(this);note.setSingleLine(false);note.setMinLines(2);note.setHint("O czym mam przypomnieć?");
