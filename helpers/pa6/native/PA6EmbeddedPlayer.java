@@ -121,11 +121,27 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   ready=true;
  }
  public void play(String name,String address){
-  if(address==null||address.length()>8000||!(address.startsWith("https://")||address.startsWith("http://"))
-      ||address.contains("\n")||address.contains(" ")){state.setText("Nieprawidłowy adres materiału.");return;}
-  playUri(name,Uri.parse(address));
+  play(name,address,"");
+ }
+ /**
+  * Video-only MP4 and its M4A audio stream are played by bundled LibVLC.
+  */
+ public void play(String name,String address,String audioAddress){
+  if(!validUrl(address)){state.setText("Nieprawidłowy adres materiału.");return;}
+  if(audioAddress!=null&&!audioAddress.isEmpty()&&!validUrl(audioAddress)){
+   state.setText("Nieprawidłowy adres ścieżki dźwiękowej.");return;
+  }
+  playUriWithAudio(name,Uri.parse(address),audioAddress);
+ }
+ private boolean validUrl(String address){
+  return address!=null&&address.length()<8000
+   &&(address.startsWith("https://")||address.startsWith("http://"))
+   &&!address.contains("\n")&&!address.contains(" ");
  }
  public void playUri(String name,Uri address){
+  playUriWithAudio(name,address,"");
+ }
+ private void playUriWithAudio(String name,Uri address,String audioAddress){
   active=name;state.setText("Łączenie • "+name);
   try{
    init();
@@ -141,6 +157,11 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
    media.addOption(":network-caching=1500");
    media.addOption(":avcodec-hw=none"); // Acer Android 6: avoid audio-only hardware decoding failures.
    media.addOption(":http-reconnect=true");
+   // Attach the separate AAC/M4A track before playback. This is still in-app.
+   if(audioAddress!=null&&!audioAddress.isEmpty()){
+    media.addOption(":input-slave="+audioAddress);
+    android.util.Log.i("PA6_PLAYER","ADAPTIVE_AUDIO_SLAVE_ATTACHED");
+   }
    engine.setMedia(media);
    media.release();
    engine.play();
