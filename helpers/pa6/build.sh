@@ -12,6 +12,12 @@ npm install --no-audit --no-fund --prefix build/pa6-node @babel/core@7 @babel/pr
 NODE_PATH="$PWD/build/pa6-node/node_modules" node helpers/pa6/transpile.cjs helpers/pa2 build/pa6-assets/pa_regions
 python3 helpers/pa6/prepare_tablet.py build/pa6-data build/pa6-assets/pa_regions
 python3 helpers/pa6/compat_patch.py build/pa6-java
+# NewPipeExtractor runs inside Alfa Tube on the tablet (GPLv3), not via a public API.
+mkdir -p build/pa6-newpipe
+mvn -B -q -f helpers/pa6/newpipe-pom.xml dependency:copy-dependencies \
+ -DincludeScope=runtime -DoutputDirectory="$PWD/build/pa6-newpipe"
+test "$(find build/pa6-newpipe -iname '*NewPipeExtractor*.jar' | wc -l)" -ge 1
+NP_JARS="$(find build/pa6-newpipe -name '*.jar' | sort | paste -sd: -)"
 cp helpers/pa6/assets/pa6-ca-bundle.pem build/pa6-assets/pa6-ca-bundle.pem
 cp helpers/pa6/assets/pa6-ca-license.txt build/pa6-assets/pa6-ca-license.txt
 # Bundle a real embedded VLC decoder into the APK. No external VLC application needed.
@@ -40,8 +46,8 @@ gh release download pa2-rail-alpha10-isolated-e44250d0 -p Pomocnik-Alfa-alpha10-
 cp baseline/Pomocnik-Alfa-alpha10-POLREGIO-Intercity-OSOBNY-TEST.apk baseline.apk
 test -s baseline.apk
 python3 helpers/pa6/extract_icon.py baseline.apk build/pa6-res/drawable-nodpi/ic_cat.png
-javac -source 8 -target 8 -encoding UTF-8 -cp "$SDK/platforms/android-35/android.jar:build/pa6-libvlc/classes.jar" -d build/pa6-classes build/pa6-java/*.java
-find build/pa6-classes -name '*.class' -print0 | xargs -0 "$BT/d8" --min-api 23 --lib "$SDK/platforms/android-35/android.jar" --output build/pa6-dex build/pa6-libvlc/classes.jar
+javac -source 8 -target 8 -encoding UTF-8 -cp "$SDK/platforms/android-35/android.jar:build/pa6-libvlc/classes.jar:$NP_JARS" -d build/pa6-classes build/pa6-java/*.java
+find build/pa6-classes -name '*.class' -print0 | xargs -0 "$BT/d8" --min-api 23 --lib "$SDK/platforms/android-35/android.jar" --output build/pa6-dex build/pa6-libvlc/classes.jar $(find build/pa6-newpipe -name '*.jar' | sort)
 "$BT/aapt" package -f -M helpers/pa6/AndroidManifest.xml -S build/pa6-res -A build/pa6-assets -I "$SDK/platforms/android-35/android.jar" -F output/raw.apk
 (cd build/pa6-dex && zip -q -0 ../../output/raw.apk classes*.dex)
 (cd build/pa6-package && zip -q -r -9 ../../output/raw.apk lib)
