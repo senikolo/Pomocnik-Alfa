@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 mkdir -p results
-pkg=com.senikolo.pa6tubeplus
+pkg=com.senikolo.pa6tubeplus.test221
 activity=$pkg/com.ispina.lokalnie.PA6TubeActivity
 trap 'adb logcat -d -v time > results/logcat.txt || true' EXIT
 adb install pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk

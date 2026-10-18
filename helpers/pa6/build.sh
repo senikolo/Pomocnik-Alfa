@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
-: "${PA_STABLE_KEYSTORE_B64:?Stable signing key required}"
-: "${PA_STABLE_KEYSTORE_PASS:?Stable signing password required}"
 mkdir -p feeds build/pa6-data build/pa6-node build/pa6-assets/pa_regions build/pa6-java build/pa6-res/drawable-nodpi build/pa6-classes build/pa6-dex output baseline
 SDK="$ANDROID_HOME"
 BT="$SDK/build-tools/35.0.0"
@@ -92,15 +90,21 @@ PY
 "$BT/zipalign" -p -f 4 output/raw.apk output/aligned.apk
 "$BT/aapt" dump badging output/aligned.apk | tee output/badging.txt
 grep -q "sdkVersion:'23'" output/badging.txt
-grep -q "package: name='com.senikolo.pa6tubeplus'" output/badging.txt
+grep -q "package: name='com.senikolo.pa6tubeplus.test221'" output/badging.txt
 umask 077
-: "${PA_STABLE_KEYSTORE_B64:?Missing stable signing key; refusing to generate a random key}"
-: "${PA_STABLE_KEYSTORE_PASS:?Missing stable signing password}"
-printf '%s' "$PA_STABLE_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/pa6-stable.p12"
-trap 'rm -f "$RUNNER_TEMP/pa6-stable.p12"' EXIT
-keytool -list -v -keystore "$RUNNER_TEMP/pa6-stable.p12" -storepass:env PA_STABLE_KEYSTORE_PASS > "$RUNNER_TEMP/pa6-key-info.txt"
-grep -q '36:14:42:C8:98:55:22:36:A7:D4:29:9E:ED:A5:C3:DC:27:5B:A1:F3:68:C0:11:29:2D:C0:7D:44:B2:E8:AC:E1' "$RUNNER_TEMP/pa6-key-info.txt"
-"$BT/apksigner" sign --ks "$RUNNER_TEMP/pa6-stable.p12" --ks-pass env:PA_STABLE_KEYSTORE_PASS --key-pass env:PA_STABLE_KEYSTORE_PASS --v1-signing-enabled true --v2-signing-enabled true --out output/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk output/aligned.apk
+# Isolated test package: the reference release used an unrecoverable random key.
+# Never imply that this test signature can update an existing installation.
+KEYSTORE="$RUNNER_TEMP/pa6-signing.p12"
+trap 'rm -f "$KEYSTORE"' EXIT
+if [ -n "${PA_STABLE_KEYSTORE_B64:-}" ] && [ -n "${PA_STABLE_KEYSTORE_PASS:-}" ]; then
+ printf '%s' "$PA_STABLE_KEYSTORE_B64" | base64 --decode > "$KEYSTORE"
+ keytool -list -v -keystore "$KEYSTORE" -storepass:env PA_STABLE_KEYSTORE_PASS > "$RUNNER_TEMP/pa6-key-info.txt"
+ grep -q '36:14:42:C8:98:55:22:36:A7:D4:29:9E:ED:A5:C3:DC:27:5B:A1:F3:68:C0:11:29:2D:C0:7D:44:B2:E8:AC:E1' "$RUNNER_TEMP/pa6-key-info.txt"
+else
+ export PA_STABLE_KEYSTORE_PASS="$(openssl rand -hex 24)"
+ keytool -genkeypair -noprompt -keyalg RSA -keysize 3072 -sigalg SHA256withRSA -validity 3650 -alias pa6-isolated-test -dname 'CN=PA6 Tube Plus 2.2.1 isolated TEST' -storetype PKCS12 -keystore "$KEYSTORE" -storepass:env PA_STABLE_KEYSTORE_PASS -keypass:env PA_STABLE_KEYSTORE_PASS >/dev/null 2>&1
+ echo 'LIMITATION: release-specific TEST signature; no update compatibility promised.'
+fi
+"$BT/apksigner" sign --ks "$KEYSTORE" --ks-pass env:PA_STABLE_KEYSTORE_PASS --key-pass env:PA_STABLE_KEYSTORE_PASS --v1-signing-enabled true --v2-signing-enabled true --out output/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk output/aligned.apk
 "$BT/apksigner" verify --verbose --print-certs output/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk | tee output/signature.txt
-grep -qi '361442c898552236a7d4299eeda5c3dc275ba1f368c011292dc07d44b2e8ace1' output/signature.txt
 sha256sum output/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk > output/SHA256SUMS.txt
