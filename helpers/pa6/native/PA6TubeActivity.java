@@ -282,7 +282,12 @@ public final class PA6TubeActivity extends Activity {
   if(getIntent().getBooleanExtra("verify_libvlc",false)&&!player.verifyNative())
    throw new IllegalStateException("PA6 Alfa Tube native player unavailable");
   // First screen shows meaningful content without pretending to have a working feed.
-  search.setText("muzyka");searchVideos("muzyka");
+  if(getIntent().getBooleanExtra("verify_video_stream",false)){
+   title.setText("Film kontrolny H.264");
+   subtitle.setText("Test obrazu i dźwięku na Androidzie 6");
+   player.play("Film kontrolny H.264","https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8");
+   feedback("Sprawdzam odtwarzanie materiału kontrolnego…");
+  }else{search.setText("muzyka");searchVideos("muzyka");}
  }
  @Override protected void onActivityResult(int requestCode,int result,Intent data){
   super.onActivityResult(requestCode,result,data);
