@@ -31,9 +31,9 @@ public final class PA6DashboardActivity extends Activity {
   LinearLayout badge=row();badge.setGravity(Gravity.CENTER);
   badge.setBackground(shape(0xfff3f5fa,0xffe8edf3,12));
   PA6GlyphView glyph=new PA6GlyphView(this,type,tint);
-  badge.addView(glyph,new LinearLayout.LayoutParams(dp(40),dp(40)));
-  card.addView(badge,new LinearLayout.LayoutParams(dp(58),dp(56)));
-  gap(card,12);
+  badge.addView(glyph,new LinearLayout.LayoutParams(dp(38),dp(38)));
+  card.addView(badge,new LinearLayout.LayoutParams(dp(55),dp(52)));
+  gap(card,7);
   TextView caption=text(label,15,true,INK);caption.setGravity(Gravity.CENTER);caption.setMaxLines(2);card.addView(caption);
   TextView sub=text(desc,12,false,MUTED);sub.setGravity(Gravity.CENTER);sub.setMaxLines(2);card.addView(sub);
   card.setContentDescription(label+". "+desc);
@@ -41,33 +41,33 @@ public final class PA6DashboardActivity extends Activity {
   return card;
  }
  private void category(String title,String sub,String[][] options){
-  gap(root,24);
+  gap(root,16);
   TextView h=text(title,20,true,INK);h.setPadding(dp(5),0,0,dp(5));root.addView(h);
   TextView hint=text(sub,13,false,MUTED);hint.setPadding(dp(5),0,0,dp(11));root.addView(hint);
   DisplayMetrics dm=getResources().getDisplayMetrics();
   int width=(int)(dm.widthPixels/dm.density);
-  int cols=width>=840?4:width>=550?3:2;
+  int cols=options.length==2?2:width>=840?4:width>=550?3:2;
   for(int pos=0;pos<options.length;pos+=cols){
    LinearLayout line=row();line.setGravity(Gravity.TOP);root.addView(line);
    for(int j=0;j<cols;j++){
     if(pos+j>=options.length){line.addView(new View(this),new LinearLayout.LayoutParams(0,dp(3),1));continue;}
     String[] entry=options[pos+j];
     View card=tile(entry[0],entry[1],entry[2],entry[3],(int)Long.parseLong(entry[4],16));
-    LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(senior?155:140),1);
+    LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(senior?146:125),1);
     p.setMargins(dp(4),dp(4),dp(4),dp(4));line.addView(card,p);
    }
   }
  }
  private void quick(LinearLayout row,String key,String type,String title,String desc,int tint){
   LinearLayout card=row();card.setPadding(dp(13),dp(11),dp(11),dp(11));
-  card.setBackground(shape(0xff172c48,0xff172c48,15));
+  card.setBackground(shape(0xff19334f,0xff19334f,15));
   PA6GlyphView icon=new PA6GlyphView(this,type,tint);
   card.addView(icon,new LinearLayout.LayoutParams(dp(41),dp(41)));
   LinearLayout column=col();column.setPadding(dp(9),0,0,0);
   column.addView(text(title,15,true,WHITE));
   column.addView(text(desc,11,false,0xffc5d7eb));
   card.addView(column,new LinearLayout.LayoutParams(0,-2,1));
-  LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,dp(senior?81:75),1);
+  LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,dp(senior?81:73),1);
   params.setMargins(dp(4),0,dp(4),0);row.addView(card,params);
   card.setOnClickListener(v->open(key));
  }
@@ -101,27 +101,27 @@ public final class PA6DashboardActivity extends Activity {
  }
  private void render(){
   ScrollView sc=new ScrollView(this);sc.setBackgroundColor(BG);sc.setFillViewport(true);
-  root=col();root.setPadding(dp(12),dp(11),dp(12),dp(25));sc.addView(root);setContentView(sc);
+  root=col();root.setPadding(dp(12),dp(11),dp(12),dp(22));sc.addView(root);setContentView(sc);
   LinearLayout brand=row();brand.setPadding(dp(12),dp(11),dp(12),dp(11));
   brand.setBackground(shape(WHITE,0xffe3e8f0,16));
   ImageView cat=new ImageView(this);
   cat.setImageResource(getResources().getIdentifier("ic_cat","drawable",getPackageName()));
   cat.setScaleType(ImageView.ScaleType.FIT_CENTER);
-  brand.addView(cat,new LinearLayout.LayoutParams(dp(59),dp(59)));
+  brand.addView(cat,new LinearLayout.LayoutParams(dp(51),dp(51)));
   LinearLayout caption=col();caption.setPadding(dp(12),0,0,0);
   caption.addView(text("POMOCNIK ALFA",23,true,INK));
-  caption.addView(text("UltraSmart  •  Tablet Android 6",13,false,MUTED));
+  caption.addView(text("UltraSmart • tablet • Android 6",13,false,MUTED));
   brand.addView(caption,new LinearLayout.LayoutParams(0,-2,1));
-  root.addView(brand);gap(root,15);
-  LinearLayout highlight=col();highlight.setPadding(dp(18),dp(16),dp(18),dp(17));
-  highlight.setBackground(shape(0xffeaf0fb,0xffdce5f5,19));
-  highlight.addView(text("Wszystko w jednym miejscu",23,true,INK));
-  gap(highlight,6);
-  highlight.addView(text("Włącz telewizję, posłuchaj radia, obejrzyj film lub zaplanuj podróż.",14,false,0xff4b627e));
-  gap(highlight,15);
+  root.addView(brand);gap(root,10);
+  LinearLayout highlight=col();highlight.setPadding(dp(14),dp(12),dp(14),dp(12));
+  highlight.setBackground(shape(0xffeaf0fb,0xffdce5f5,18));
+  highlight.addView(text("Szybki dostęp",20,true,INK));
+  gap(highlight,3);
+  highlight.addView(text("Najczęściej używane funkcje na jednym ekranie",13,false,0xff4b627e));
+  gap(highlight,10);
   LinearLayout shortcuts=row();
   quick(shortcuts,"tv","tv","ALFA TV","PL + rosyjskojęzyczne",0xff65f1d8);
-  quick(shortcuts,"tube","tube","ALFA TUBE","Filmy i muzyka",0xffff939e);
+  quick(shortcuts,"tube","tube","ALFA TUBE","Wideo • test",0xffff939e);
   quick(shortcuts,"radio","radio","RADIO","Polskie stacje",0xffffc783);
   highlight.addView(shortcuts);root.addView(highlight);
   String previous=getPreferences(0).getString("last","");
@@ -130,12 +130,9 @@ public final class PA6DashboardActivity extends Activity {
    recent.setPadding(dp(14),dp(13),dp(12),dp(6));root.addView(recent);
    recent.setOnClickListener(v->open(previous));
   }
-  category("Multimedia","Oglądaj i słuchaj bez przełączania do innych programów",new String[][]{
-   {"tv","Telewizja","Kanały w okienku","tv","ffe13349"},
-   {"tube","Alfa Tube","Wyszukuj filmy","tube","ffee283d"},
-   {"radio","Radio","Stacje i ulubione","radio","ffbf6a37"},
-   {"sounds","Dźwięki spokoju","Relaks offline","sounds","ff5872bd"},
-   {"kids","Tube Kids","Filmy dla dzieci","kids","ffb85d96"}
+  category("Multimedia","Dodatkowe funkcje multimedialne",new String[][]{
+   {"kids","Tube Kids","Bajki i piosenki • test","kids","ffb85d96"},
+   {"sounds","Dźwięki spokoju","Relaks bez internetu","sounds","ff5872bd"}
   });
   category("Transport i pomoc","Warszawa i Małopolska",new String[][]{
    {"planner","Planer podróży","Trasy i odjazdy","planner","ff3c8b98"},
@@ -156,7 +153,7 @@ public final class PA6DashboardActivity extends Activity {
   root.addView(size,new LinearLayout.LayoutParams(-1,dp(52)));
   size.setOnClickListener(v->{senior=!senior;getPreferences(0).edit().putBoolean("senior",senior).apply();render();});
   gap(root,13);
-  TextView footer=text("PA UltraSmart • API 23 • 2 GB RAM • przyjazny interfejs bez zbędnych animacji",12,false,MUTED);
+  TextView footer=text("Pomocnik Alfa • Android 6.0 • wydanie testowe",12,false,MUTED);
   footer.setGravity(Gravity.CENTER);root.addView(footer);
  }
  @Override public void onCreate(Bundle b){
