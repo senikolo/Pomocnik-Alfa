@@ -163,6 +163,77 @@ public final class PA6TubeActivity extends Activity {
      feedback("Ustawienia zapisane. Jakość zadziała od kolejnego filmu.");
    }).setNegativeButton("Anuluj",null).show();
  }
+ private void downloadCurrent(){
+  if(activeId==null||!activeId.matches("[A-Za-z0-9_-]{11}")){
+   feedback("Wybierz film, który chcesz pobrać.");return;
+  }
+  final String id=activeId;
+  new AlertDialog.Builder(this).setTitle("Pobierz film")
+   .setMessage("Zapiszę dostępny plik MP4 z obrazem i dźwiękiem do folderu Pobrane. Wybrana jakość jest limitem; nie każdy film ma taką wersję. Pobieraj tylko materiały, na których zapis masz zgodę.")
+   .setPositiveButton("Pobierz",(dialog,which)->{
+    if(Build.VERSION.SDK_INT>=23 &&
+      checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)!=PackageManager.PERMISSION_GRANTED){
+      pendingDownloadId=id;
+      requestPermissions(new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE},STORAGE_PERMISSION);
+    }else startDownload(id);
+   }).setNegativeButton("Anuluj",null).show();
+ }
+ private void startDownload(final String id){
+  feedback("Przygotowuję plik MP4 do pobrania…");
+  if(downloadButton!=null)downloadButton.setEnabled(false);
+  final int quality=selectedQuality();
+  io.execute(()->{
+   try{
+    // Only a progressive MP4 contains both image and audio. Never store a
+    // silent DASH video track as if it were a complete offline movie.
+    final PA6PipedClient.Video video=PA6NewPipeClient.resolveDownload(id,quality).data;
+    main.post(()->{
+     if(closed)return;
+     if(downloadButton!=null)downloadButton.setEnabled(true);
+     try{
+      DownloadManager mgr=(DownloadManager)getSystemService(DOWNLOAD_SERVICE);
+      if(mgr==null)throw new IOException("Systemowy menedżer pobierania jest niedostępny");
+      Uri uri=Uri.parse(video.stream);
+      if(!"https".equalsIgnoreCase(uri.getScheme()))throw new IOException("Niebezpieczny adres pliku");
+      DownloadManager.Request req=new DownloadManager.Request(uri);
+      req.setTitle("Alfa Tube • "+(video.title==null?"Film":video.title));
+      req.setDescription("MP4 z obrazem i dźwiękiem • "+video.quality);
+      req.setMimeType("video/mp4");
+      req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+      req.setAllowedOverRoaming(false);
+      req.setAllowedNetworkTypes(getPreferences(0).getBoolean("tube_wifi_only",true)?
+        DownloadManager.Request.NETWORK_WIFI:
+        DownloadManager.Request.NETWORK_WIFI|DownloadManager.Request.NETWORK_MOBILE);
+      String filename="AlfaTube_"+id+"_"+System.currentTimeMillis()+".mp4";
+      req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS,filename);
+      long taskId=mgr.enqueue(req);
+      feedback("Dodano pobieranie "+video.quality+". Sprawdź powiadomienie i folder Pobrane.");
+      Toast.makeText(this,"Rozpoczęto pobieranie • zadanie "+taskId,Toast.LENGTH_LONG).show();
+     }catch(Exception ex){
+      feedback("Nie udało się zapisać filmu: "+ex.getMessage());
+     }
+    });
+   }catch(Throwable ex){
+    android.util.Log.w("PA6_DOWNLOAD","No supported complete MP4 to download",ex);
+    main.post(()->{
+     if(closed)return;
+     if(downloadButton!=null)downloadButton.setEnabled(true);
+     feedback("Pobieranie niedostępne: brak pliku MP4 z obrazem i dźwiękiem albo serwer odmówił dostępu.");
+     new AlertDialog.Builder(this).setTitle("Nie można pobrać filmu")
+      .setMessage("To źródło nie udostępniło kompletnego pliku MP4. Oglądanie nadal może działać, ponieważ odtwarzacz potrafi łączyć osobne ścieżki obrazu i dźwięku. Spróbuj innego filmu.")
+      .setPositiveButton("OK",null).show();
+    });
+   }
+  });
+ }
+ @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] granted){
+  super.onRequestPermissionsResult(code,permissions,granted);
+  if(code!=STORAGE_PERMISSION)return;
+  String id=pendingDownloadId;pendingDownloadId="";
+  if(granted.length>0&&granted[0]==PackageManager.PERMISSION_GRANTED&&!id.isEmpty())
+   startDownload(id);
+  else feedback("Nie przyznano dostępu do pamięci. Pobieranie anulowane.");
+ }
  private void feedback(String message){status.setText(message);}
  private void disableKeyboard(){
   try{((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(search.getWindowToken(),0);}catch(Exception ignored){}
