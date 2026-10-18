@@ -14,6 +14,20 @@ import android.widget.*;
 public final class PA6DashboardActivity extends Activity {
  private static final int BG=0xfff6f8fc,WHITE=Color.WHITE,INK=0xff182338,MUTED=0xff647287,RED=0xffed283d;
  private LinearLayout root;private boolean senior;
+ private String displayMode(){
+  return getSharedPreferences("pa6_display",MODE_PRIVATE).getString("ui_mode","Automatyczny");
+ }
+ private void chooseDisplayMode(){
+  final String[] modes={"Automatyczny","Tablet","Smartfon"};
+  int current=0;
+  for(int i=0;i<modes.length;i++)if(modes[i].equals(displayMode()))current=i;
+  new AlertDialog.Builder(this).setTitle("Układ Pomocnika Alfa")
+   .setSingleChoiceItems(modes,current,(dialog,which)->{
+    getSharedPreferences("pa6_display",MODE_PRIVATE).edit()
+     .putString("ui_mode",modes[which]).apply();
+    dialog.dismiss();render();
+   }).setNegativeButton("Anuluj",null).show();
+ }
  private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+.5f);}
  private GradientDrawable shape(int fill,int stroke,int radius){
   GradientDrawable g=new GradientDrawable();g.setColor(fill);g.setStroke(dp(1),stroke);g.setCornerRadius(dp(radius));return g;
@@ -46,7 +60,7 @@ public final class PA6DashboardActivity extends Activity {
   TextView hint=text(sub,13,false,MUTED);hint.setPadding(dp(5),0,0,dp(11));root.addView(hint);
   DisplayMetrics dm=getResources().getDisplayMetrics();
   int width=(int)(dm.widthPixels/dm.density);
-  int cols=width>=840?4:width>=550?3:2;
+  int cols="Smartfon".equals(displayMode())?2:width>=840?4:width>=550?3:2;
   for(int pos=0;pos<options.length;pos+=cols){
    LinearLayout line=row();line.setGravity(Gravity.TOP);root.addView(line);
    for(int j=0;j<cols;j++){
@@ -67,7 +81,10 @@ public final class PA6DashboardActivity extends Activity {
   column.addView(text(title,15,true,WHITE));
   column.addView(text(desc,11,false,0xffc5d7eb));
   card.addView(column,new LinearLayout.LayoutParams(0,-2,1));
-  LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,dp(senior?81:75),1);
+  boolean stacked=row.getOrientation()==LinearLayout.VERTICAL;
+  LinearLayout.LayoutParams params=stacked?
+   new LinearLayout.LayoutParams(-1,dp(senior?81:75)):
+   new LinearLayout.LayoutParams(0,dp(senior?81:75),1);
   params.setMargins(dp(4),0,dp(4),0);row.addView(card,params);
   card.setOnClickListener(v->open(key));
  }
@@ -101,7 +118,14 @@ public final class PA6DashboardActivity extends Activity {
  }
  private void render(){
   ScrollView sc=new ScrollView(this);sc.setBackgroundColor(BG);sc.setFillViewport(true);
-  root=col();root.setPadding(dp(12),dp(11),dp(12),dp(25));sc.addView(root);setContentView(sc);
+  root=col();root.setPadding(dp(12),dp(11),dp(12),dp(25));
+  // Phone layout remains readable on a 10-inch tablet instead of stretching cards.
+  FrameLayout holder=new FrameLayout(this);
+  sc.addView(holder,new ScrollView.LayoutParams(-1,-2));
+  float widthDp=getResources().getDisplayMetrics().widthPixels/getResources().getDisplayMetrics().density;
+  int contentWidth="Smartfon".equals(displayMode())?(int)Math.min(widthDp,480):-1;
+  holder.addView(root,new FrameLayout.LayoutParams(contentWidth<0?-1:dp(contentWidth),-2,Gravity.TOP|Gravity.CENTER_HORIZONTAL));
+  setContentView(sc);
   LinearLayout brand=row();brand.setPadding(dp(12),dp(11),dp(12),dp(11));
   brand.setBackground(shape(WHITE,0xffe3e8f0,16));
   ImageView cat=new ImageView(this);
@@ -110,8 +134,13 @@ public final class PA6DashboardActivity extends Activity {
   brand.addView(cat,new LinearLayout.LayoutParams(dp(59),dp(59)));
   LinearLayout caption=col();caption.setPadding(dp(12),0,0,0);
   caption.addView(text("POMOCNIK ALFA",23,true,INK));
-  caption.addView(text("UltraSmart  •  Tablet Android 6",13,false,MUTED));
+  caption.addView(text("UltraSmart • Android 6 • "+displayMode(),12,false,MUTED));
   brand.addView(caption,new LinearLayout.LayoutParams(0,-2,1));
+  Button switchLayout=new Button(this);switchLayout.setText("Układ");
+  switchLayout.setAllCaps(false);switchLayout.setTextSize(12);
+  switchLayout.setTextColor(INK);switchLayout.setBackground(shape(0xfff1f4f8,0xffdfe6ef,11));
+  brand.addView(switchLayout,new LinearLayout.LayoutParams(dp(75),dp(45)));
+  switchLayout.setOnClickListener(v->chooseDisplayMode());
   root.addView(brand);gap(root,15);
   LinearLayout highlight=col();highlight.setPadding(dp(18),dp(16),dp(18),dp(17));
   highlight.setBackground(shape(0xffeaf0fb,0xffdce5f5,19));
@@ -119,7 +148,9 @@ public final class PA6DashboardActivity extends Activity {
   gap(highlight,6);
   highlight.addView(text("Włącz telewizję, posłuchaj radia, obejrzyj film lub zaplanuj podróż.",14,false,0xff4b627e));
   gap(highlight,15);
-  LinearLayout shortcuts=row();
+  boolean phone="Smartfon".equals(displayMode())||
+   ("Automatyczny".equals(displayMode())&&widthDp<520);
+  LinearLayout shortcuts=phone?col():row();
   quick(shortcuts,"tv","tv","ALFA TV","PL + rosyjskojęzyczne",0xff65f1d8);
   quick(shortcuts,"tube","tube","ALFA TUBE","Filmy i muzyka",0xffff939e);
   quick(shortcuts,"radio","radio","RADIO","Polskie stacje",0xffffc783);
