@@ -119,7 +119,7 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
     state.setText("▶ Odtwarzanie: "+active);
     if(playbackStartListener!=null)playbackStartListener.run();
    }
-   else if(event.type==MediaPlayer.Event.Buffering)state.setText("Buforowanie • "+active);
+   else if(event.type==MediaPlayer.Event.Buffering&&event.getBuffering()<99f)state.setText("Buforowanie • "+active);
    else if(event.type==MediaPlayer.Event.EncounteredError){
     android.util.Log.w("PA6_PLAYER","PLAYBACK_ERROR "+active);
     state.setText("Błąd transmisji. Sprawdzam inne źródło, jeśli jest dostępne.");
