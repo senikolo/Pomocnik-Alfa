@@ -358,7 +358,10 @@ public final class PA6TubeActivity extends Activity {
   if(getIntent().getBooleanExtra("verify_libvlc",false)&&!player.verifyNative())
    throw new IllegalStateException("PA6 Alfa Tube native player unavailable");
   // First screen shows meaningful content without pretending to have a working feed.
-  if(getIntent().getBooleanExtra("verify_real_youtube",false)){
+  if(getIntent().getBooleanExtra("verify_official_embed",false)){
+   activeId="jNQXAC9IVRw";title.setText("YouTube • film demonstracyjny");
+   showOfficialEmbedded();
+  }else if(getIntent().getBooleanExtra("verify_real_youtube",false)){
    playVideo("jNQXAC9IVRw");
   }else if(getIntent().getBooleanExtra("verify_video_stream",false)){
    title.setText("Film kontrolny H.264");
