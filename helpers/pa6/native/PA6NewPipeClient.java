@@ -27,7 +27,7 @@ public final class PA6NewPipeClient {
     if(!address.startsWith("https://"))throw new IOException("Unsupported protocol");
     HttpURLConnection c=null;
     try{
-     c=PA6ModernTls.open(address);
+     try{c=PA6ModernTls.open(address);}catch(Exception tls){throw new IOException("TLS YouTube",tls);}
      c.setConnectTimeout(7000);c.setReadTimeout(9000);
      c.setInstanceFollowRedirects(true);
      c.setRequestMethod(request.httpMethod());
