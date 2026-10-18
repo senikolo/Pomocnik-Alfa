@@ -25,9 +25,13 @@ public final class PA6PipedClient {
   }
  }
  public static final class Video {
-  public final String title,channel,stream,quality;
+  public final String title,channel,stream,quality,audioStream;
   Video(String title,String channel,String stream,String quality){
+   this(title,channel,stream,quality,"");
+  }
+  Video(String title,String channel,String stream,String quality,String audioStream){
    this.title=title;this.channel=channel;this.stream=stream;this.quality=quality;
+   this.audioStream=audioStream==null?"":audioStream;
   }
  }
  public static final class Response<T>{
