@@ -244,6 +244,7 @@ public final class PA6TubeActivity extends Activity {
   if(officialButton!=null)officialButton.setVisibility(View.GONE);
   ++request;activeId=id;playbackAttempts=0;failedProviders.clear();currentProvider="";
   if(compatiblePlayerButton!=null)compatiblePlayerButton.setVisibility(View.VISIBLE);
+  if(downloadButton!=null)downloadButton.setEnabled(true);
   resolveAndPlay(id,request);
  }
  private void resolveAndPlay(final String id,final int seq){
@@ -256,7 +257,7 @@ public final class PA6TubeActivity extends Activity {
     PA6PipedClient.Response<PA6PipedClient.Video> response=null;
     if(!ignored.contains("NewPipe Extractor")){
      try{
-      response=PA6NewPipeClient.resolve(id);
+      response=PA6NewPipeClient.resolve(id,selectedQuality());
      }catch(Throwable npe){
       android.util.Log.w("PA6_NEWPIPE","Native extractor not available: "+npe.getClass().getSimpleName()+" "+npe.getMessage());
       final String type=npe.getClass().getSimpleName();
@@ -271,7 +272,7 @@ public final class PA6TubeActivity extends Activity {
       });
      }
     }
-    if(response==null)response=PA6PipedClient.resolve(id,server(),ignored);
+    if(response==null)response=PA6PipedClient.resolve(id,server(),ignored,selectedQuality());
     final PA6PipedClient.Response<PA6PipedClient.Video> selected=response;
     main.post(()->{
      if(closed||seq!=request)return;
@@ -279,7 +280,7 @@ public final class PA6TubeActivity extends Activity {
      PA6PipedClient.Video v=selected.data;
      currentProvider=selected.server;
      activeTitle=v.title;title.setText(v.title);
-     subtitle.setText(v.channel+" • "+v.quality);
+     subtitle.setText(v.channel+" • Faktyczny format: "+v.quality);
      provider.setText("Źródło filmu: "+selected.server.replace("https://",""));
      armWatchdog(seq);
      player.play(v.title,v.stream,v.audioStream);
@@ -473,7 +474,9 @@ public final class PA6TubeActivity extends Activity {
   playBadge.setGravity(Gravity.CENTER);playBadge.setBackground(panel(0xcced263b,0xcced263b,24));
   FrameLayout.LayoutParams badgeParams=new FrameLayout.LayoutParams(dp(39),dp(39),Gravity.CENTER);
   imageFrame.addView(playBadge,badgeParams);
-  card.addView(imageFrame,new LinearLayout.LayoutParams(dp(157),dp(91)));
+  float screenDp=getResources().getDisplayMetrics().widthPixels/getResources().getDisplayMetrics().density;
+  int posterWidth=screenDp<430?120:157;
+  card.addView(imageFrame,new LinearLayout.LayoutParams(dp(posterWidth),dp(posterWidth*9/16)));
   thumb(poster,video.thumb,video.id);
   LinearLayout copy=column();copy.setPadding(dp(13),0,0,0);
   TextView h=text(video.title,15,INK,true);h.setMaxLines(2);copy.addView(h);
@@ -515,7 +518,9 @@ public final class PA6TubeActivity extends Activity {
   logo.setBackground(panel(RED,RED,11));heading.addView(logo,new LinearLayout.LayoutParams(dp(47),dp(42)));
   TextView name=text(kids?"Tube Kids":"Alfa Tube",23,INK,true);name.setPadding(dp(9),0,0,0);
   heading.addView(name,new LinearLayout.LayoutParams(0,-2,1));
-  TextView tag=text("ANDROID 6",11,MUTED,true);heading.addView(tag);
+  Button settings=button("⚙ Ustawienia",RED,false);settings.setTextSize(12);
+  heading.addView(settings,new LinearLayout.LayoutParams(dp(110),dp(44)));
+  settings.setOnClickListener(v->showTubeSettings());
   page.addView(heading);gap(page,12);
   LinearLayout searchBar=line();
   search=new EditText(this);search.setSingleLine(true);search.setHint("Szukaj filmów i muzyki…");
@@ -528,24 +533,17 @@ public final class PA6TubeActivity extends Activity {
   for(String q:(kids?new String[]{"Bajki","Piosenki dla dzieci","Zwierzęta","Nauka"}:
      new String[]{"Muzyka","Wiadomości","Podróże","Technologia"})){
    Button tab=button(q,RED,false);tab.setTextSize(12);
-   LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(42),1);p.setMargins(dp(2),0,dp(2),0);quick.addView(tab,p);
+   LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-2,dp(42));
+   p.setMargins(dp(2),0,dp(5),0);quick.addView(tab,p);
    tab.setOnClickListener(v->{search.setText(q);searchVideos(q);});
   }
-  page.addView(quick);gap(page,9);
-  float widthDp=getResources().getDisplayMetrics().widthPixels/getResources().getDisplayMetrics().density;
-  boolean wide=widthDp>=660;
-  LinearLayout mediaArea=column();
-  mediaArea.setOrientation(wide?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL);
-  page.addView(mediaArea,new LinearLayout.LayoutParams(-1,0,1));
-  LinearLayout playerPane=column(),feedPane=column();
-  if(wide){
-   LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(0,-1,4);pp.setMargins(0,0,dp(13),0);
-   mediaArea.addView(playerPane,pp);
-   mediaArea.addView(feedPane,new LinearLayout.LayoutParams(0,-1,5));
-  }else{
-   mediaArea.addView(playerPane,new LinearLayout.LayoutParams(-1,-2));
-   mediaArea.addView(feedPane,new LinearLayout.LayoutParams(-1,0,1));
-  }
+  HorizontalScrollView topics=new HorizontalScrollView(this);
+  topics.setHorizontalScrollBarEnabled(false);
+  topics.addView(quick,new android.widget.FrameLayout.LayoutParams(-2,-2));
+  page.addView(topics);gap(page,9);
+  mediaArea=column();page.addView(mediaArea,new LinearLayout.LayoutParams(-1,0,1));
+  playerPane=column();feedPane=column();
+  applyLayoutMode();
   stageWrap=column();stageWrap.setBackground(panel(0xff101827,0xff101827,14));
   player=new PA6EmbeddedPlayer(this);player.setPlaybackErrorListener(()->onVideoPlaybackError());
   player.setPlaybackStartListener(()->{
@@ -556,7 +554,18 @@ public final class PA6TubeActivity extends Activity {
   title=text("Wybierz film z listy",16,WHITE,true);pad(title,12,4);stageWrap.addView(title);
   subtitle=text("Film pojawi się tutaj, bez opuszczania Pomocnika Alfa",12,0xffc6cbd7,false);pad(subtitle,12,5);stageWrap.addView(subtitle);
   gap(stageWrap,7);
-  playerPane.addView(stageWrap,new LinearLayout.LayoutParams(-1,-2));
+  playerPane.addView(stageWrap,new LinearLayout.LayoutParams(-1,-2));gap(playerPane,8);
+  LinearLayout actions=line();
+  qualityButton=button("⚙ Jakość: "+qualityLabel(),RED,false);
+  qualityButton.setOnClickListener(v->chooseQuality());
+  actions.addView(qualityButton,new LinearLayout.LayoutParams(0,dp(49),1));
+  downloadButton=button("↓ Pobierz MP4",RED,true);
+  downloadButton.setEnabled(false);
+  LinearLayout.LayoutParams downloadParams=new LinearLayout.LayoutParams(0,dp(49),1);
+  downloadParams.setMargins(dp(7),0,0,0);
+  actions.addView(downloadButton,downloadParams);
+  downloadButton.setOnClickListener(v->downloadCurrent());
+  playerPane.addView(actions,new LinearLayout.LayoutParams(-1,-2));
   status=text("Alfa Tube wyszukuje przez NewPipe. Odtwarzacz działa wewnątrz PA.",13,MUTED,false);
   pad(status,5,8);playerPane.addView(status);
   provider=text("Wbudowany VLC • osobny NewPipe/SkyTube tylko na Twoje życzenie",11,MUTED,false);
@@ -579,7 +588,7 @@ public final class PA6TubeActivity extends Activity {
   LinearLayout below=column();sc.addView(below);
   TextView section=text("Propozycje filmów",19,INK,true);pad(section,7,15);below.addView(section);
   results=column();below.addView(results);
-  TextView advanced=text("Własne filmy i ustawienia",17,INK,true);pad(advanced,7,12);below.addView(advanced);
+  TextView advanced=text("Własne filmy i źródła",17,INK,true);pad(advanced,7,12);below.addView(advanced);
   link=new EditText(this);link.setSingleLine(true);link.setTextSize(14);
   link.setHint("Wklej link YouTube / MP4 / HLS");link.setBackground(panel(PALE,0xffdde2eb,11));pad(link,12,6);
   below.addView(link,new LinearLayout.LayoutParams(-1,dp(53)));
