@@ -57,6 +57,13 @@ else
 fi
 assert_no_app_crash
 assert_no_app_crash
+# Separately exercise the live Alfa Tube search and images; the media fixture did not.
+adb shell am force-stop com.senikolo.pa6legacyplus
+adb shell am start -n com.senikolo.pa6legacyplus/com.ispina.lokalnie.PA6TubeActivity
+sleep 24
+adb exec-out screencap -p > results/tube-search-after-24s.png
+adb logcat -d -v time > results/tube-search-network.txt
+assert_no_app_crash
 adb logcat -d -v time > results/internal-playback.txt
 test "$(grep -c 'PA6_LIBVLC.*NATIVE_ENGINE_READY' results/internal-playback.txt)" -ge 2
 unzip -l pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk > results/apk-native-libs.txt
