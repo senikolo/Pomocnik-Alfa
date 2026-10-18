@@ -15,21 +15,24 @@ public final class PA6RemindersActivity extends Activity {
  private LinearLayout rows;
  private EditText note;
  private TextView chosen;
- private Calendar calendar=Calendar.getInstance(TimeZone.getTimeZone("Europe/Warsaw"));
+ private Calendar calendar=Calendar.getInstance();
  private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+.5f);}
- private Button button(String label){Button b=new Button(this);b.setText(label);b.setAllCaps(false);b.setTextColor(0xff6845a2);b.setTextSize(16);b.setMinHeight(dp(56));return b;}
- private TextView label(String value,int size){TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setTextColor(0xff443265);t.setPadding(dp(4),dp(8),dp(4),dp(8));return t;}
+ private Button button(String title){return PA6Ui.button(this,title,title.contains("Zapisz"));}
+ private TextView label(String value,int size){TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setTextColor(PA6Ui.INK);t.setPadding(dp(4),dp(8),dp(4),dp(8));return t;}
  private String format(long when){return new SimpleDateFormat("dd.MM.yyyy HH:mm",new Locale("pl","PL")).format(new Date(when));}
  @Override public void onCreate(Bundle b){
-  super.onCreate(b);
-  ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(0xfff6f3fa);
+  super.onCreate(b);getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+  ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(PA6Ui.BG);
   LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(17),dp(12),dp(17),dp(24));scroll.addView(root);setContentView(scroll);
+  root.setFocusableInTouchMode(true);root.requestFocus();
   root.addView(label("🔔  Przypomnienia Alfa",25));
   root.addView(label("Ustaw termin. Powiadomienie działa bez internetu, ale oszczędzanie baterii może je opóźnić.",14));
   note=new EditText(this);note.setSingleLine(false);note.setMinLines(2);note.setHint("O czym mam przypomnieć?");
+  PA6Ui.input(this,note);
   root.addView(note,new LinearLayout.LayoutParams(-1,dp(86)));
   calendar.add(Calendar.HOUR_OF_DAY,1);
   calendar.set(Calendar.MINUTE,0);
+  calendar.set(Calendar.SECOND,0);calendar.set(Calendar.MILLISECOND,0);
   chosen=label("Termin: "+format(calendar.getTimeInMillis()),16);root.addView(chosen);
   Button date=button("📅  Wybierz datę");root.addView(date);
   date.setOnClickListener(v->new DatePickerDialog(this,(view,y,m,d)->{
@@ -66,7 +69,10 @@ public final class PA6RemindersActivity extends Activity {
    row.addView(item,new LinearLayout.LayoutParams(0,-2,1));
    Button remove=button("Usuń");remove.setTextSize(14);row.addView(remove,new LinearLayout.LayoutParams(dp(95),dp(55)));
    remove.setOnClickListener(v->new AlertDialog.Builder(this).setMessage("Usunąć przypomnienie?").setNegativeButton("Nie",null).setPositiveButton("Usuń",(d,w)->{PA6ReminderStore.cancel(this,id);refresh();}).show());
-   rows.addView(row);
+   row.setBackground(PA6Ui.surface(this,PA6Ui.WHITE,PA6Ui.BORDER,12));
+   row.setPadding(dp(8),dp(5),dp(7),dp(5));
+   LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(-1,-2);rp.setMargins(0,dp(4),0,dp(4));
+   rows.addView(row,rp);
   }
   if(shown==0)rows.addView(label("Nie masz jeszcze zaplanowanych przypomnień.",14));
  }

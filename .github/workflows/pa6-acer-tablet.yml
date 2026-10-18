@@ -1,8 +1,8 @@
-name: PA6 NewPipe Extractor • Android 6
+name: PA6 FULL AUDIT • Android 6
 on:
   workflow_dispatch:
   push:
-    branches: ['work/pa6-newpipe-extractor-20261018']
+    branches: ['work/pa6-full-audit-ui-20261018']
     paths: ['.github/workflows/pa6-acer-tablet.yml', 'helpers/pa6/**']
 defaults:
   run:
@@ -87,8 +87,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="pa6-native-newpipe-$(echo "$GITHUB_SHA" | cut -c1-8)"
+          tag="pa6-audit-$(echo "$GITHUB_SHA" | cut -c1-8)"
           gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
-            --title 'Pomocnik Alfa NewPipe • Android 6 TEST' \
-            --notes 'PA6 NEWPIPE EXTRACTOR API23 TEST • Android 6 API23: automatyczne przełączanie odtwarzacza po rzeczywistym bledzie strumienia; Piped + Invidious proxy; wyszukiwanie bajek i piosenek w Tube Kids; kategoria rosyjskojezyczna z ośmioma otwartymi kanalami nieobjętymi sankcjami UE; ponawianie TV przez zapasowy URL; 16:9 wewnatrz PA. Rzeczywiste filmy YouTube zalezne od dzialania publicznych serwerow. Wszystkie telewizyjne transmisje wymagaja testu na Acerze. W CI test odtwarzania filmu kontrolnego, rosyjskich kanałów i próba prawdziwego YouTube.' \
+            --title 'Pomocnik Alfa 2.1 Audyt • Android 6 TEST' \
+            --notes 'PA6 Android6 AUDYT 2.1 test: usunieto duplikaty kafelkow TV/Tube/Radio i stacji ZET, spojny granatowy styl Notes/Weather/Reminders/Sounds/Reader, odswiezona gestosc pulpitu, stabilizacja LibVLC i wykrywanie timeoutu 25s, proste komunikaty o bledach Tube, kopiowanie diagnozy do schowka, historia dopiero po rzeczywistym odtwarzaniu, ustawienia techniczne schowane, usunieto niedzialajacy fallback WebView YouTube. Natywny NewPipeExtractor v0.26.5 (GPLv3) + L8 desugaring, reszta PA6 zachowana. Android 6 CI sprawdza ekrany wszystkich modulow. Odtwarzanie YouTube moze byc blokowane przez LOGIN_REQUIRED/CAPTCHA, szczegolnie w CI — tego NIE mozna zagwarantowac. Rosyjskojezyczne kanaly nadal w aplikacji; dostepnosc stacji zalezy od nadawcy.' \
             release/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk release/SHA256SUMS.txt release/signature.txt

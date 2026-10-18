@@ -26,8 +26,22 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
  private MediaPlayer engine;
  private final Handler ui=new Handler(Looper.getMainLooper());
  private String active="";
- private Runnable playbackErrorListener;
+ private Runnable playbackErrorListener, playbackStartedListener, watchdog;
+ private long playbackToken=0;
+ private boolean playbackStarted=false;
  public void setPlaybackErrorListener(Runnable listener){playbackErrorListener=listener;}
+ public void setPlaybackStartedListener(Runnable listener){playbackStartedListener=listener;}
+ private void cancelWatchdog(){
+  if(watchdog!=null){ui.removeCallbacks(watchdog);watchdog=null;}
+ }
+ private void failPlayback(String explanation){
+  if(playbackStarted)return;
+  cancelWatchdog();
+  playbackStarted=true; // Do not dispatch a timeout/error twice for the same request.
+  state.setText(explanation);
+  placeholder.setVisibility(VISIBLE);
+  if(playbackErrorListener!=null)playbackErrorListener.run();
+ }
  private boolean ready=false;
  private AudioManager audio;
  private boolean hasFocus=false;
@@ -105,16 +119,17 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   applyVideoGeometry();
   engine.setEventListener(event->ui.post(()->{
    if(event.type==MediaPlayer.Event.Playing){
+    cancelWatchdog();playbackStarted=true;
     applyVideoGeometry();
     android.util.Log.i("PA6_PLAYER","PLAYING "+active);
     state.setText("▶ Odtwarzanie: "+active);
+    if(playbackStartedListener!=null)playbackStartedListener.run();
    }
    else if(event.type==MediaPlayer.Event.Buffering)state.setText("Buforowanie • "+active);
    else if(event.type==MediaPlayer.Event.EncounteredError){
     android.util.Log.w("PA6_PLAYER","PLAYBACK_ERROR "+active);
-    state.setText("Błąd transmisji. Sprawdzam inne źródło, jeśli jest dostępne.");
-    placeholder.setVisibility(VISIBLE);
-    if(playbackErrorListener!=null)playbackErrorListener.run();
+    playbackStarted=false;
+    failPlayback("Strumień nie działa. Sprawdzam inne źródło…");
    }
    else if(event.type==MediaPlayer.Event.EndReached){state.setText("Zakończono odtwarzanie.");placeholder.setVisibility(VISIBLE);}
   }));
@@ -127,6 +142,8 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
  }
  public void playUri(String name,Uri address){
   active=name;state.setText("Łączenie • "+name);
+  cancelWatchdog();playbackStarted=false;
+  final long token=++playbackToken;
   try{
    init();
    if(audio==null)audio=(AudioManager)getContext().getSystemService(Context.AUDIO_SERVICE);
@@ -144,6 +161,13 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
    engine.setMedia(media);
    media.release();
    engine.play();
+   watchdog=()->{
+    if(token==playbackToken&&!playbackStarted&&engine!=null){
+     android.util.Log.w("PA6_PLAYER","TIMEOUT "+active);
+     failPlayback("Połączenie trwa zbyt długo. Zmieniam źródło…");
+    }
+   };
+   ui.postDelayed(watchdog,25000);
   }catch(Throwable e){
    android.util.Log.e("PA6_PLAYER","PLAYBACK_START_ERROR",e);
    placeholder.setVisibility(VISIBLE);
@@ -155,13 +179,14 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   catch(Throwable e){android.util.Log.e("PA6_LIBVLC","INIT_FAILED",e);state.setText("Błąd inicjalizacji silnika wideo: "+e.getClass().getSimpleName());return false;}
  }
  public void stop(){
+  ++playbackToken;cancelWatchdog();playbackStarted=false;
   try{if(engine!=null)engine.stop();}catch(Throwable ignored){}
   state.setText("Zatrzymano.");
   placeholder.setVisibility(VISIBLE);
   if(audio!=null&&hasFocus){try{audio.abandonAudioFocus(focusListener);}catch(Exception ignored){}hasFocus=false;}
  }
  public void release(){
-  playbackErrorListener=null;
+  playbackErrorListener=null;playbackStartedListener=null;
   stop();
   if(audio!=null&&hasFocus){try{audio.abandonAudioFocus(focusListener);}catch(Exception ignored){}hasFocus=false;}
   try{if(engine!=null){engine.getVLCVout().detachViews();engine.release();}}catch(Throwable ignored){}
