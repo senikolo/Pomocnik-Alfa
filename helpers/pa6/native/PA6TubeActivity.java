@@ -71,12 +71,20 @@ public final class PA6TubeActivity extends Activity {
  }
  private void resolveAndPlay(final String id,final int seq){
   playbackPending=true;
-  feedback(playbackAttempts==0?"Wybieram zgodne wideo H.264…":
+  feedback(playbackAttempts==0?"Sprawdzam film bezpośrednio przez NewPipe Extractor…":
     "Pierwsze źródło nie odtworzyło filmu. Sprawdzam serwer zapasowy ("+playbackAttempts+"/6)…");
   final HashSet<String> ignored=new HashSet<>(failedProviders);
   io.execute(()->{
    try{
-    PA6PipedClient.Response<PA6PipedClient.Video> response=PA6PipedClient.resolve(id,server(),ignored);
+    PA6PipedClient.Response<PA6PipedClient.Video> response=null;
+    if(!ignored.contains("NewPipe Extractor")){
+     try{
+      response=PA6NewPipeClient.resolve(id);
+     }catch(Throwable npe){
+      android.util.Log.w("PA6_NEWPIPE","Native extractor not available: "+npe.getClass().getSimpleName()+" "+npe.getMessage());
+     }
+    }
+    if(response==null)response=PA6PipedClient.resolve(id,server(),ignored);
     main.post(()->{
      if(closed||seq!=request)return;
      playbackPending=false;
@@ -97,7 +105,7 @@ public final class PA6TubeActivity extends Activity {
     main.post(()->{
      if(closed||seq!=request)return;
      playbackPending=false;
-     feedback("Źródła Piped/Invidious nie udostępniły tego filmu. "+why+
+     feedback("NewPipe i serwery zapasowe nie udostępniły tego filmu. "+why+
       " Możesz spróbować oficjalnego odtwarzacza wbudowanego w PA (możliwe reklamy).");
      if(officialButton!=null)officialButton.setVisibility(View.VISIBLE);
     });
