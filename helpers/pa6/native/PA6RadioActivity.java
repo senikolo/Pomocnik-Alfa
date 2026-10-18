@@ -205,7 +205,6 @@ public final class PA6RadioActivity extends Activity {
   station(presets,"Radio ZET 2000","https://zt03.cdn.eurozet.pl/ZET200.mp3");
   station(presets,"Radio ZET Love","https://zt03.cdn.eurozet.pl/ZETLOV.mp3");
   station(presets,"RMF FM","https://rs103-krk.rmfstream.pl/RMFFM48");
-  station(presets,"Radio ZET 2000 • HTTP","http://zet.cdn.eurozet.pl/ZET200.mp3");
   gap(page,10);
   TextView catalog=label("Wszystkie stacje",20,INK,true);page.addView(catalog);gap(page,8);
   search=new EditText(this);search.setSingleLine(true);search.setHint("Szukaj: Trójka, TOK FM, jazz…");
@@ -213,11 +212,16 @@ public final class PA6RadioActivity extends Activity {
   page.addView(search,new LinearLayout.LayoutParams(-1,dp(50)));
   Button searchButton=button("Szukaj stacji",true);
   page.addView(searchButton,new LinearLayout.LayoutParams(-1,dp(49)));
-  searchButton.setOnClickListener(v->load(search.getText().toString().trim()));gap(page,8);
-  LinearLayout tabs=row();
-  for(String label:new String[]{"Wszystkie","Pop","Rock","Jazz","Wiadomości","Relaks","★ Ulubione"}){
-   // Horizontal scroll preserves readable button sizes on 10-inch tablets.
-  }
+  searchButton.setOnClickListener(v->load(search.getText().toString().trim()));
+  search.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);
+  search.setOnEditorActionListener((view,action,event)->{
+   if(action==android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH){
+    load(search.getText().toString().trim());return true;
+   }
+   return false;
+  });
+  gap(page,8);
+  // Horizontal category chips preserve readable button sizes on tablets.
   HorizontalScrollView tabsScroll=new HorizontalScrollView(this);tabsScroll.setHorizontalScrollBarEnabled(false);
   LinearLayout chips=row();
   for(String label:new String[]{"Wszystkie","Pop","Rock","Jazz","Wiadomości","Relaks","★ Ulubione"}){
