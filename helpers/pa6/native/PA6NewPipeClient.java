@@ -107,6 +107,16 @@ public final class PA6NewPipeClient {
   Log.i("PA6_NEWPIPE","SEARCH_RESULTS count="+found.size());
   return new PA6PipedClient.Response<List<PA6PipedClient.Result>>(found,"NewPipe Extractor");
  }
+ private static boolean isAvc(String codec){
+  if(codec==null)return false;
+  String c=codec.toLowerCase(Locale.ROOT);
+  return c.contains("avc1")||c.contains("h264")||c.contains("h.264")||c.contains("avc");
+ }
+ private static boolean isAac(String codec){
+  if(codec==null)return false;
+  String c=codec.toLowerCase(Locale.ROOT);
+  return c.contains("mp4a")||c.contains("aac");
+ }
  public static PA6PipedClient.Response<PA6PipedClient.Video> resolve(String id)throws Exception{
   if(id==null||!id.matches("[A-Za-z0-9_-]{11}"))throw new IOException("Nieprawidłowy identyfikator");
   init();
@@ -114,7 +124,7 @@ public final class PA6NewPipeClient {
   String bestUrl="",bestLabel="";
   int bestScore=Integer.MAX_VALUE;
   for(VideoStream v:info.getVideoStreams()){
-   if(v==null||v.isVideoOnly()||!v.isUrl()||v.getFormat()!=MediaFormat.MPEG_4)continue;
+   if(v==null||v.isVideoOnly()||!v.isUrl()||v.getFormat()!=MediaFormat.MPEG_4||!isAvc(v.getCodec()))continue;
    String url=v.getContent();
    if(!url.startsWith("https://")||url.length()>8000)continue;
    String quality=v.getResolution();
@@ -134,7 +144,7 @@ public final class PA6NewPipeClient {
   String videoOnlyUrl="",videoQuality="",audioUrl="";
   int videoScore=Integer.MAX_VALUE,audioScore=Integer.MAX_VALUE;
   for(VideoStream v:info.getVideoOnlyStreams()){
-   if(v==null||!v.isUrl()||v.getFormat()!=MediaFormat.MPEG_4)continue;
+   if(v==null||!v.isUrl()||v.getFormat()!=MediaFormat.MPEG_4||!isAvc(v.getCodec()))continue;
    String url=v.getContent();
    if(url==null||!url.startsWith("https://")||url.length()>8000)continue;
    int height=0;
@@ -145,7 +155,7 @@ public final class PA6NewPipeClient {
    if(score<videoScore){videoScore=score;videoOnlyUrl=url;videoQuality=quality;}
   }
   for(AudioStream a:info.getAudioStreams()){
-   if(a==null||!a.isUrl()||a.getFormat()!=MediaFormat.M4A)continue;
+   if(a==null||!a.isUrl()||a.getFormat()!=MediaFormat.M4A||!isAac(a.getCodec()))continue;
    String url=a.getContent();
    if(url==null||!url.startsWith("https://")||url.length()>8000)continue;
    int bitrate=a.getAverageBitrate();

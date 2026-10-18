@@ -40,6 +40,23 @@ public final class PA6TubeActivity extends Activity {
  private final HashSet<String> failedProviders=new HashSet<>();
  private int playbackAttempts=0;
  private boolean playbackPending=false;
+ private Runnable playbackWatchdog;
+ private void cancelWatchdog(){
+  if(playbackWatchdog!=null){main.removeCallbacks(playbackWatchdog);playbackWatchdog=null;}
+ }
+ private void armWatchdog(final int seq){
+  cancelWatchdog();
+  // A stalled HTTP stream may never produce a VLC error event. Retry instead
+  // of displaying a permanent black frame or endless "Buffering" state.
+  playbackWatchdog=()->{
+   if(closed||seq!=request||playbackPending||activeId.isEmpty())return;
+   playbackWatchdog=null;
+   feedback("To źródło nie rozpoczęło odtwarzania. Sprawdzam następne…");
+   player.stop();
+   onVideoPlaybackError();
+  };
+  main.postDelayed(playbackWatchdog,25000);
+ }
  private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+.5f);}
  private GradientDrawable panel(int color,int border,int r){
   GradientDrawable d=new GradientDrawable();d.setColor(color);d.setCornerRadius(dp(r));d.setStroke(dp(1),border);return d;
@@ -64,7 +81,7 @@ public final class PA6TubeActivity extends Activity {
  }
  private void playVideo(final String id){
   if(id==null||!id.matches("[A-Za-z0-9_-]{11}")){feedback("Nieprawidłowy adres filmu.");return;}
-  switchBackToNative();
+  cancelWatchdog();switchBackToNative();
   if(officialButton!=null)officialButton.setVisibility(View.GONE);
   ++request;activeId=id;playbackAttempts=0;failedProviders.clear();currentProvider="";
   if(compatiblePlayerButton!=null)compatiblePlayerButton.setVisibility(View.VISIBLE);
@@ -105,6 +122,7 @@ public final class PA6TubeActivity extends Activity {
      activeTitle=v.title;title.setText(v.title);
      subtitle.setText(v.channel+" • "+v.quality);
      provider.setText("Źródło filmu: "+selected.server.replace("https://",""));
+     armWatchdog(seq);
      player.play(v.title,v.stream,v.audioStream);
      if(v.audioStream!=null&&!v.audioStream.isEmpty()){
       android.util.Log.i("PA6_TUBE","Adaptive playback requested (separate video/audio)");
@@ -176,7 +194,7 @@ public final class PA6TubeActivity extends Activity {
   if(activeId==null||!activeId.matches("[A-Za-z0-9_-]{11}")){
    feedback("Najpierw wybierz film z wyników albo wklej link YouTube.");return;
   }
-  ++request;playbackPending=false;
+  cancelWatchdog();++request;playbackPending=false;
   player.stop();player.setVisibility(View.GONE);
   if(officialWeb==null){
    officialWeb=new WebView(this);
@@ -210,6 +228,7 @@ public final class PA6TubeActivity extends Activity {
  }
  private void onVideoPlaybackError(){
   if(closed||activeId.isEmpty()||playbackPending)return;
+  cancelWatchdog();
   if(!currentProvider.isEmpty())failedProviders.add(currentProvider);
   if(++playbackAttempts>6){
    feedback("Wewnętrzny odtwarzacz nie uruchomił filmu. Wybierz NewPipe lub SkyTube (osobna aplikacja).");
@@ -321,7 +340,7 @@ public final class PA6TubeActivity extends Activity {
   String raw=link.getText().toString().trim();String id=PA6PipedClient.extractId(raw);
   if(!id.isEmpty()){playVideo(id);return;}
   if(raw.startsWith("https://")&&raw.length()<4000&&(raw.contains(".mp4")||raw.contains(".m3u8"))){
-   ++request;activeId="";activeTitle="Własny film";
+   cancelWatchdog();++request;activeId="";activeTitle="Własny film";
    title.setText(activeTitle);subtitle.setText("Bezpośredni strumień • w PA");
    player.play("Wideo internetowe",raw);feedback("Odtwarzanie w aplikacji.");return;
   }
@@ -370,6 +389,10 @@ public final class PA6TubeActivity extends Activity {
   }
   stageWrap=column();stageWrap.setBackground(panel(0xff101827,0xff101827,14));
   player=new PA6EmbeddedPlayer(this);player.setPlaybackErrorListener(()->onVideoPlaybackError());
+  player.setPlaybackStartListener(()->{
+   cancelWatchdog();
+   if(!closed&&!activeId.isEmpty())feedback("Film jest odtwarzany wewnątrz Alfa Tube.");
+  });
   stageWrap.addView(player,new LinearLayout.LayoutParams(-1,-2));
   title=text("Wybierz film z listy",16,WHITE,true);pad(title,12,4);stageWrap.addView(title);
   subtitle=text("Film pojawi się tutaj, bez opuszczania Pomocnika Alfa",12,0xffc6cbd7,false);pad(subtitle,12,5);stageWrap.addView(subtitle);
@@ -406,7 +429,7 @@ public final class PA6TubeActivity extends Activity {
   Button demo=button("▶ Uruchom film kontrolny w Alfa Tube",RED,false);
   below.addView(demo,new LinearLayout.LayoutParams(-1,dp(50)));
   demo.setOnClickListener(v->{
-   ++request;activeId="";title.setText("Film kontrolny H.264");
+   cancelWatchdog();++request;activeId="";title.setText("Film kontrolny H.264");
    subtitle.setText("Test zgodności tabletu • obraz + dźwięk");
    player.play("Film kontrolny","https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8");
    feedback("Materiał testowy, nie YouTube. Odtwarzanie odbywa się wewnątrz PA.");
@@ -455,19 +478,19 @@ public final class PA6TubeActivity extends Activity {
  @Override protected void onActivityResult(int requestCode,int result,Intent data){
   super.onActivityResult(requestCode,result,data);
   if(requestCode!=PICK_FILE||result!=RESULT_OK||data==null||data.getData()==null)return;
-  ++request;activeId="";activeTitle="Film z tabletu";
+  cancelWatchdog();++request;activeId="";activeTitle="Film z tabletu";
   title.setText(activeTitle);subtitle.setText("Lokalny plik • offline");
   player.playUri(activeTitle,data.getData());feedback("Odtwarzanie pliku z pamięci urządzenia.");
  }
  @Override protected void onStop(){
   // Never leave hidden video decoding when the user switches to other PA modules.
-  ++request;activeId="";playbackPending=false;
+  cancelWatchdog();++request;activeId="";playbackPending=false;
   if(officialWeb!=null)officialWeb.onPause();
   if(player!=null)player.stop();
   super.onStop();
  }
  @Override protected void onDestroy(){
-  closed=true;request++;io.shutdownNow();thumbnailIo.shutdownNow();
+  closed=true;cancelWatchdog();request++;io.shutdownNow();thumbnailIo.shutdownNow();
   if(officialWeb!=null){officialWeb.stopLoading();officialWeb.destroy();officialWeb=null;}
   if(player!=null)player.release();
   super.onDestroy();

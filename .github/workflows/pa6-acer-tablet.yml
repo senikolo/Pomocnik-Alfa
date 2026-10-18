@@ -2,7 +2,7 @@ name: PA6 NewPipe compatibility • Android 6
 on:
   workflow_dispatch:
   push:
-    branches: ['work/pa6-newpipe-extractor-20261018', 'work/pa6-installed-player-bridge-20261018', 'work/pa6-native-okhttp-20261018', 'work/pa6-adaptive-av-20261018']
+    branches: ['work/pa6-newpipe-extractor-20261018', 'work/pa6-installed-player-bridge-20261018', 'work/pa6-native-okhttp-20261018', 'work/pa6-adaptive-av-20261018', 'work/pa6-playback-watchdog-codecs-20261018']
     paths: ['.github/workflows/pa6-acer-tablet.yml', 'helpers/pa6/**']
 defaults:
   run:
@@ -87,8 +87,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="pa6-adaptive-$(echo "$GITHUB_SHA" | cut -c1-8)"
+          tag="pa6-playback-$(echo "$GITHUB_SHA" | cut -c1-8)"
           gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
-            --title 'PA6 Alfa Tube – adaptive audio/video Android 6 TEST' \
-            --notes 'PA6 Android 6 TEST: Nowa proba odtwarzania filmu w Alfa Tube i Tube Kids. Wbudowany NewPipe/OkHttp wybiera tez osobne strumienie MP4 wideo i M4A audio, które LibVLC próbuje odtworzyc jednoczesnie. Moduly radio, TV, transport bez zmian. Kompilacja i test Android 6 potwierdzaja uruchomienie, nie gwarantuja rzeczywistego odtwarzania YouTube na tablecie; serwer testowy moze byc blokowany przez YouTube.' \
+            --title 'PA6 Alfa Tube – playback recovery Android 6 TEST' \
+            --notes 'PA6 Android 6 TEST: AVC/AAC stream selection and 25-second VLC playback watchdog retry for Alfa Tube and Tube Kids. Wbudowany NewPipe/OkHttp wybiera tez osobne strumienie MP4 wideo i M4A audio, które LibVLC próbuje odtworzyc jednoczesnie. Moduly radio, TV, transport bez zmian. Kompilacja i test Android 6 potwierdzaja uruchomienie, nie gwarantuja rzeczywistego odtwarzania YouTube na tablecie; serwer testowy moze byc blokowany przez YouTube.' \
             release/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk release/SHA256SUMS.txt release/signature.txt
