@@ -95,7 +95,10 @@ public final class PA6TubeActivity extends Activity {
      activeTitle=v.title;title.setText(v.title);
      subtitle.setText(v.channel+" • "+v.quality);
      provider.setText("Źródło filmu: "+selected.server.replace("https://",""));
-     player.play(v.title,v.stream);
+     player.play(v.title,v.stream,v.audioStream);
+     if(v.audioStream!=null&&!v.audioStream.isEmpty()){
+      android.util.Log.i("PA6_TUBE","Adaptive playback requested (separate video/audio)");
+     }
      feedback("Łączenie z filmem. Jeśli ten serwer zawiedzie, aplikacja wybierze następny.");
      String old=getPreferences(0).getString("recent_ids","");
      String next=id+","+old.replace(id+",","");
