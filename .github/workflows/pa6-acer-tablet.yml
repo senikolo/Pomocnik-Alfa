@@ -1,8 +1,8 @@
-name: PA6 NewPipe Extractor • Android 6
+name: PA6 NewPipe compatibility • Android 6
 on:
   workflow_dispatch:
   push:
-    branches: ['work/pa6-newpipe-extractor-20261018']
+    branches: ['work/pa6-newpipe-extractor-20261018', 'work/pa6-installed-player-bridge-20261018']
     paths: ['.github/workflows/pa6-acer-tablet.yml', 'helpers/pa6/**']
 defaults:
   run:
@@ -87,8 +87,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          tag="pa6-native-newpipe-$(echo "$GITHUB_SHA" | cut -c1-8)"
+          tag="pa6-bridge-$(echo "$GITHUB_SHA" | cut -c1-8)"
           gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
-            --title 'Pomocnik Alfa NewPipe • Android 6 TEST' \
-            --notes 'PA6 NEWPIPE EXTRACTOR API23 TEST • Android 6 API23: automatyczne przełączanie odtwarzacza po rzeczywistym bledzie strumienia; Piped + Invidious proxy; wyszukiwanie bajek i piosenek w Tube Kids; kategoria rosyjskojezyczna z ośmioma otwartymi kanalami nieobjętymi sankcjami UE; ponawianie TV przez zapasowy URL; 16:9 wewnatrz PA. Rzeczywiste filmy YouTube zalezne od dzialania publicznych serwerow. Wszystkie telewizyjne transmisje wymagaja testu na Acerze. W CI test odtwarzania filmu kontrolnego, rosyjskich kanałów i próba prawdziwego YouTube.' \
+            --title 'Pomocnik Alfa Tube – NewPipe/SkyTube compatibility Android 6 TEST' \
+            --notes 'PA6 API23: Poprawiony wewnętrzny NewPipe Extractor/HTTP. Alfa Tube i Tube Kids udostępniają dobrowolny przycisk otwierający film w osobno zainstalowanym NewPipe lub SkyTube. Nie jest to odtwarzanie wewnątrz PA. Radio, TV, transport i reszta modułów bez zmian. Emulator weryfikuje instalację i start, a oglądanie YouTube na fizycznym Acerze wymaga testu użytkownika.' \
             release/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk release/SHA256SUMS.txt release/signature.txt
