@@ -219,6 +219,10 @@ public final class PA6TvActivity extends Activity {
   disclaimer.setPadding(0,dp(10),0,dp(20));content.addView(disclaimer);
   page.setFocusableInTouchMode(true);page.requestFocus();
   showChannels();
+  // CI diagnostics: actually request a real H.264 media stream, not merely initialize LibVLC.
+  if(getIntent().getBooleanExtra("verify_video_stream",false))
+   play(new Channel("Film kontrolny H.264","Test","Test odtwarzania wideo w PA",
+    "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"));
  }
  @Override protected void onStop(){
   // Never leave hidden video decoding when the user switches to other PA modules.
