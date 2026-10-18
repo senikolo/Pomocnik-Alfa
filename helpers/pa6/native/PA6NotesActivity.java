@@ -16,10 +16,11 @@ public final class PA6NotesActivity extends Activity {
   return PA6Ui.button(this,title,title.contains("Zapisz"));
  }
  @Override public void onCreate(Bundle saved){
-  super.onCreate(saved);
+  super.onCreate(saved);getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
   ScrollView sc=new ScrollView(this);sc.setBackgroundColor(PA6Ui.BG);
   LinearLayout root=new LinearLayout(this);root.setPadding(dp(18),dp(17),dp(18),dp(26));root.setOrientation(1);
   sc.addView(root);setContentView(sc);
+  root.setFocusableInTouchMode(true);root.requestFocus();
   TextView heading=PA6Ui.text(this,"Notatnik Alfa",25,true);
   root.addView(heading);
   TextView hint=new TextView(this);hint.setText("Notatki zapisują się w pamięci tabletu. Ten sam notatnik jest dostępny dla Asystenta Alfa.");
