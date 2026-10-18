@@ -107,9 +107,17 @@ for node in ET.parse('results/quality-menu.xml').iter('node'):
 else: raise AssertionError('240p not selectable')
 PYCODE
 sleep 1
+# The quality label may be offscreen in the full activity hierarchy. Reopen
+# the native radio menu and assert the actual persisted selection instead.
+adb shell am force-stop "$pkg"
+adb shell am start -n "$activity" --ez verify_quality_menu true
+sleep 2
 adb shell uiautomator dump /sdcard/quality-selected.xml
 adb pull /sdcard/quality-selected.xml results/quality-selected.xml
-grep -q 'Jakość obrazu.*240p' results/quality-selected.xml
+python3 - <<'PYCODE'
+import xml.etree.ElementTree as ET
+assert any(n.get('text')=='240p' and n.get('checked')=='true' for n in ET.parse('results/quality-selected.xml').iter('node')), '240p selection did not persist'
+PYCODE
 adb shell am force-stop "$pkg"
 adb install -r pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk
 adb shell am start -n "$activity" --ez verify_quality_menu true
