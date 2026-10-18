@@ -79,7 +79,7 @@ assert_no_app_crash
 # public metadata resolver for a known YouTube upload (Me at the zoo).
 # A platform/media-provider failure is logged, not misreported as successful.
 adb shell am force-stop com.senikolo.pa6kidsru
-adb logcat -c
+# DO NOT clear logcat; subsequent LibVLC smoke assertions rely on prior events.
 adb shell am start -n com.senikolo.pa6kidsru/com.ispina.lokalnie.PA6TubeActivity --ez verify_real_youtube true
 sleep 35
 adb exec-out screencap -p > results/tube-real-youtube-attempt.png
@@ -89,6 +89,13 @@ if grep -q "PA6_PLAYER.*PLAYING Me at the zoo" results/tube-real-youtube-log.txt
 else
  echo "UNCONFIRMED: YouTube playback not proved on public instances" > results/youtube-status.txt
 fi
+assert_no_app_crash
+# Official iframe fallback stays inside PA and may carry ads. Verify Android6 WebView boots.
+adb shell am force-stop com.senikolo.pa6kidsru
+adb shell am start -n com.senikolo.pa6kidsru/com.ispina.lokalnie.PA6TubeActivity --ez verify_official_embed true
+sleep 12
+adb exec-out screencap -p > results/tube-official-embed.png
+adb logcat -d -v time > results/tube-official-embed-log.txt
 assert_no_app_crash
 adb logcat -d -v time > results/internal-playback.txt
 test "$(grep -c 'PA6_LIBVLC.*NATIVE_ENGINE_READY' results/internal-playback.txt)" -ge 2
