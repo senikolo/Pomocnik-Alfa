@@ -83,6 +83,16 @@ public final class PA6TubeActivity extends Activity {
       response=PA6NewPipeClient.resolve(id);
      }catch(Throwable npe){
       android.util.Log.w("PA6_NEWPIPE","Native extractor not available: "+npe.getClass().getSimpleName()+" "+npe.getMessage());
+      final String type=npe.getClass().getSimpleName();
+      final String reason=type.contains("SignInConfirmNotBot")
+          ?"YouTube odrzucił połączenie i żąda potwierdzenia, że użytkownik nie jest botem."
+          :"NewPipe nie pobrał strumienia ("+type+").";
+      main.post(()->{
+       if(!closed&&seq==request){
+        feedback(reason+" Sprawdzam źródła zapasowe…");
+        if(compatiblePlayerButton!=null)compatiblePlayerButton.setVisibility(View.VISIBLE);
+       }
+      });
      }
     }
     if(response==null)response=PA6PipedClient.resolve(id,server(),ignored);
