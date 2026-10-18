@@ -19,7 +19,10 @@ public final class PA6TvActivity extends Activity {
  private static final int WHITE=0xfff8fafc,INK=0xff182135,MUTED=0xff596675,RED=0xffea283b;
  private static final class Channel {
   final String name,kind,desc,url;
-  Channel(String n,String k,String d,String u){name=n;kind=k;desc=d;url=u;}
+  final String[] backup;
+  Channel(String n,String k,String d,String u,String... alternatives){
+   name=n;kind=k;desc=d;url=u;backup=alternatives;
+  }
  }
  private static final Channel[] CHANNELS={
   new Channel("Euronews Polska","Wiadomości","Informacje międzynarodowe • PL","https://cdn-euronews.akamaized.net/live/eds/euronews-pl/26382/index.m3u8"),
@@ -46,7 +49,18 @@ public final class PA6TvActivity extends Activity {
   new Channel("TVT","Regiony","Telewizja regionalna","https://live.streamtvt.pl/LiveAppStreamTVT/streams/853271271313930867905724.m3u8"),
   new Channel("TVK Stella","Regiony","Telewizja lokalna","https://stream.tvkstella.pl/stella/stella.m3u8"),
   new Channel("Twoja.TV","Regiony","Telewizja internetowa","https://stream.twoja.tv/ttv_hls/live_720p/index.m3u8"),
-  new Channel("Telewizja Relax","Regiony","Telewizja lokalna","https://srv1.streamingo.pl/memfs/be50f17e-6579-4bdf-86b1-31207aec85b8.m3u8")
+  new Channel("Telewizja Relax","Regiony","Telewizja lokalna","https://srv1.streamingo.pl/memfs/be50f17e-6579-4bdf-86b1-31207aec85b8.m3u8"),
+  // Free Russian-language channels. No restricted EU-sanctioned broadcasters.
+  new Channel("RU.TV Kids","Rosyjskojęzyczne","Piosenki i teledyski dla dzieci po rosyjsku","https://rutvkids.ru/live/efir/index.m3u8"),
+  new Channel("Univer TV","Rosyjskojęzyczne","Edukacja, uczelnie i nauka","https://cdn.universmotri.ru/live/smil:univer.smil/playlist.m3u8",
+     "https://cdn.universmotri.ru/live/smil:mbr.smil/playlist.m3u8"),
+  new Channel("ProBusiness","Rosyjskojęzyczne","Biznes i przedsiębiorczość po rosyjsku","https://tv-streaming.bsh.ru:21938/probusiness/probusiness.stream/playlist.m3u8"),
+  new Channel("Prodwizhenije","Rosyjskojęzyczne","Telewizja regionalna i rozrywka po rosyjsku","https://streaming.astrakhan.ru/proastrakhanhd/index.m3u8"),
+  new Channel("Radost Moya","Rosyjskojęzyczne","Kanał rodzinny i kultura po rosyjsku","https://radm.mediacdn.ru/cdn/radost/playlist_sdhigh.m3u8"),
+  new Channel("RTVi","Rosyjskojęzyczne","Informacje międzynarodowe po rosyjsku","https://shift03.isp.bg/RTVi/index.m3u8",
+     "https://s70378.cdn.ngenix.net/rtvi/index.m3u8"),
+  new Channel("RU.TV Muzyka","Rosyjskojęzyczne","Rosyjskojęzyczne teledyski","https://stream8.cinerama.uz/1202/tracks-v1a1/mono.m3u8"),
+  new Channel("World Fashion RU","Rosyjskojęzyczne","Moda i pokazy, rosyjska ścieżka","https://cdn.wfc.tv/cdn/stream-rus.m3u8")
  };
  private PA6EmbeddedPlayer player;
  private TextView status,active,listingCount;
@@ -54,6 +68,8 @@ public final class PA6TvActivity extends Activity {
  private EditText search,custom;
  private String filter="Wszystkie",onAir="";
  private int tuneRequest=0;
+ private Channel currentChannel;
+ private int currentSource=0;
  private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+.5f);}
  private GradientDrawable box(int bg,int outline,int radius){
   GradientDrawable d=new GradientDrawable();d.setColor(bg);d.setCornerRadius(dp(radius));d.setStroke(dp(1),outline);return d;
@@ -81,19 +97,33 @@ public final class PA6TvActivity extends Activity {
   showChannels();
  }
  private void play(Channel ch){
+  currentChannel=ch;currentSource=0;playChannelSource(ch,0);
+ }
+ private void playChannelSource(Channel ch,int index){
   onAir=ch.name;
   final int attempt=++tuneRequest;
+  final String input=index==0?ch.url:ch.backup[index-1];
   active.setText("▶  "+ch.name);
-  status.setText("Sprawdzam jakość transmisji. Proszę chwilę poczekać…");
+  status.setText(index==0?"Sprawdzam jakość transmisji…":"Pierwsza transmisja zawiodła. Łączę z zapasową…");
   getPreferences(0).edit().putString("tv_last",ch.url).putString("tv_name",ch.name).apply();
   new Thread(()->{
-   String url=PA6HlsQuality.preferLow(ch.url);
+   String url=PA6HlsQuality.preferLow(input);
    runOnUiThread(()->{
     if(isFinishing()||attempt!=tuneRequest)return;
     player.play(ch.name,url);
-    status.setText("Łączę z kanałem "+ch.name+". Obraz pojawi się w okienku po rozpoczęciu transmisji.");
+    status.setText("Łączę z "+ch.name+" • "+(index==0?"źródło główne":"źródło zapasowe")+".");
    });
   },"pa6-tv-quality").start();
+ }
+ private void onChannelPlaybackError(){
+  if(currentChannel==null||isFinishing())return;
+  if(currentSource<currentChannel.backup.length){
+   ++currentSource;
+   playChannelSource(currentChannel,currentSource);
+  }else{
+   status.setText("Kanał „"+currentChannel.name+"” obecnie nie nadaje pod dostępnym adresem. Wybierz inny.");
+   currentChannel=null;
+  }
  }
  private void replay(){
   String last=getPreferences(0).getString("tv_last","");
@@ -112,7 +142,7 @@ public final class PA6TvActivity extends Activity {
    if(!query.isEmpty()&&!((ch.name+" "+ch.desc+" "+ch.kind).toLowerCase(Locale.ROOT).contains(query)))continue;
    found++;channelRow(ch);
   }
-  listingCount.setText(found+" dostępnych pozycji katalogu • odbiór zależy od nadawcy");
+  listingCount.setText(found+" kanałów w katalogu • dostępność strumienia nie jest gwarantowana");
   if(found==0){
    TextView none=text("Brak pozycji. Zmień kategorię lub wyczyść wyszukiwanie.",14,MUTED,false);
    none.setPadding(dp(11),dp(20),dp(11),dp(20));results.addView(none);
@@ -163,6 +193,7 @@ public final class PA6TvActivity extends Activity {
    panes.addView(catalogPane,new LinearLayout.LayoutParams(-1,0,1));
   }
   player=new PA6EmbeddedPlayer(this);
+  player.setPlaybackErrorListener(()->onChannelPlaybackError());
   playerPane.addView(player,new LinearLayout.LayoutParams(-1,-2));
   if(getIntent().getBooleanExtra("verify_libvlc",false)&&!player.verifyNative())
    throw new IllegalStateException("PA6 native player unavailable");
@@ -196,7 +227,12 @@ public final class PA6TvActivity extends Activity {
    LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(46),1);p.setMargins(dp(1),0,dp(1),0);tabs.addView(tab,p);
    tab.setOnClickListener(v->{filter=label;showChannels();status.setText("Kategoria: "+(label.equals("★")?"Ulubione":label));});
   }
-  content.addView(tabs);space(content,8);
+  content.addView(tabs);space(content,5);
+  Button russian=action("Rosyjskojęzyczne • TV po rosyjsku",false);
+  content.addView(russian,new LinearLayout.LayoutParams(-1,dp(42)));
+  russian.setOnClickListener(v->{filter="Rosyjskojęzyczne";showChannels();
+    status.setText("Kanały rosyjskojęzyczne dostępne do odbioru w Polsce, zależnie od nadawcy.");});
+  space(content,8);
   results=col();content.addView(results);
   space(content,15);
   TextView own=text("Własny kanał",18,INK,true);content.addView(own);space(content,7);
@@ -226,7 +262,7 @@ public final class PA6TvActivity extends Activity {
  }
  @Override protected void onStop(){
   // Never leave hidden video decoding when the user switches to other PA modules.
-  ++tuneRequest;
+  ++tuneRequest;currentChannel=null;
   if(player!=null)player.stop();
   super.onStop();
  }
