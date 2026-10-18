@@ -254,6 +254,8 @@ public final class PA6TvActivity extends Activity {
   TextView disclaimer=text("Lista zawiera otwarte kanały internetowe i przekazy regionalne. Niektóre mogą być niedostępne poza regionem lub zmieniać adres. Nie oferujemy płatnych kanałów ani obchodzenia DRM.",12,MUTED,false);
   disclaimer.setPadding(0,dp(10),0,dp(20));content.addView(disclaimer);
   page.setFocusableInTouchMode(true);page.requestFocus();
+  if(getIntent().getBooleanExtra("verify_ru_catalog",false))
+   filter="Rosyjskojęzyczne";
   showChannels();
   // CI diagnostics: actually request a real H.264 media stream, not merely initialize LibVLC.
   if(getIntent().getBooleanExtra("verify_video_stream",false))
