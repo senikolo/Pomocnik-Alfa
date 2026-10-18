@@ -164,9 +164,13 @@ public final class PA6PipedClient {
     String dash=https(data.optString("dash",""));
     if(!dash.isEmpty())return new Response<>(new Video(name,channel,dash,"DASH"),server);
     throw new IOException("Brak wspólnego obrazu i dźwięku H.264 w tym źródle.");
-   }catch(Exception e){last=e;}
+   }catch(Exception e){
+    android.util.Log.w("PA6_TUBE_RESOLVE","Piped "+server+" failed: "+e.getClass().getSimpleName()+" "+e.getMessage());
+    last=e;
+   }
   }
   try{return invidiousResolve(id,excluded);}catch(Exception fallback){
+   android.util.Log.w("PA6_TUBE_RESOLVE","Invidious all sources unavailable: "+fallback.getMessage());
    throw new IOException("Nie można uzyskać zgodnego filmu z obrazem i dźwiękiem. Serwery Piped/Invidious mogą być niedostępne.",fallback);
   }
  }
@@ -241,7 +245,10 @@ public final class PA6PipedClient {
     String hls=https(data.optString("hlsUrl",""));
     if(!hls.isEmpty())return new Response<>(new Video(data.optString("title","Film"),data.optString("author","YouTube"),hls,"HLS"),server);
     throw new IOException("Brak zgodnego wideo na serwerze.");
-   }catch(Exception e){last=e;}
+   }catch(Exception e){
+    android.util.Log.w("PA6_TUBE_RESOLVE","Invidious "+server+" failed: "+e.getClass().getSimpleName()+" "+e.getMessage());
+    last=e;
+   }
   }
   throw new IOException("Publiczne Invidious nie udostępnia strumienia.",last);
  }
