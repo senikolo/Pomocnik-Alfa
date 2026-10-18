@@ -8,6 +8,9 @@ import android.net.Uri;
 import android.os.*;
 import android.view.*;
 import android.view.inputmethod.InputMethodManager;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.webkit.WebChromeClient;
 import android.widget.*;
 import java.io.*;
 import java.net.*;
@@ -27,6 +30,8 @@ public final class PA6TubeActivity extends Activity {
  private final ExecutorService thumbnailIo=Executors.newFixedThreadPool(2);
  private LinearLayout results,stageWrap;
  private PA6EmbeddedPlayer player;
+ private WebView officialWeb;
+ private Button officialButton;
  private TextView status,title,subtitle,provider;
  private EditText search,link,serverField;
  private int request=0;
@@ -59,6 +64,8 @@ public final class PA6TubeActivity extends Activity {
  }
  private void playVideo(final String id){
   if(id==null||!id.matches("[A-Za-z0-9_-]{11}")){feedback("Nieprawidłowy adres filmu.");return;}
+  switchBackToNative();
+  if(officialButton!=null)officialButton.setVisibility(View.GONE);
   ++request;activeId=id;playbackAttempts=0;failedProviders.clear();currentProvider="";
   resolveAndPlay(id,request);
  }
@@ -90,17 +97,55 @@ public final class PA6TubeActivity extends Activity {
     main.post(()->{
      if(closed||seq!=request)return;
      playbackPending=false;
-     feedback("Film jest teraz niedostępny w publicznych serwerach. "+why+
-      " Możesz spróbować innego filmu lub odtworzyć plik zapisany na tablecie.");
+     feedback("Źródła Piped/Invidious nie udostępniły tego filmu. "+why+
+      " Możesz spróbować oficjalnego odtwarzacza wbudowanego w PA (możliwe reklamy).");
+     if(officialButton!=null)officialButton.setVisibility(View.VISIBLE);
     });
    }
   });
+ }
+ private void showOfficialEmbedded(){
+  if(activeId==null||!activeId.matches("[A-Za-z0-9_-]{11}")){
+   feedback("Najpierw wybierz film z wyników albo wklej link YouTube.");return;
+  }
+  ++request;playbackPending=false;
+  player.stop();player.setVisibility(View.GONE);
+  if(officialWeb==null){
+   officialWeb=new WebView(this);
+   officialWeb.setBackgroundColor(0xff101827);
+   officialWeb.getSettings().setJavaScriptEnabled(true);
+   officialWeb.getSettings().setDomStorageEnabled(true);
+   officialWeb.getSettings().setMediaPlaybackRequiresUserGesture(true);
+   officialWeb.getSettings().setAllowFileAccess(false);
+   officialWeb.getSettings().setAllowContentAccess(false);
+   officialWeb.setWebViewClient(new WebViewClient(){
+    @Override public boolean shouldOverrideUrlLoading(WebView view,String url){
+     return !(url.startsWith("https://www.youtube-nocookie.com/")||
+              url.startsWith("https://www.youtube.com/")||
+              url.startsWith("https://accounts.google.com/"));
+    }
+   });
+   officialWeb.setWebChromeClient(new WebChromeClient());
+   stageWrap.addView(officialWeb,0,new LinearLayout.LayoutParams(-1,dp(300)));
+  }
+  officialWeb.setVisibility(View.VISIBLE);
+  officialWeb.onResume();
+  String url="https://www.youtube-nocookie.com/embed/"+activeId+"?playsinline=1&rel=0";
+  officialWeb.loadUrl(url);
+  if(officialButton!=null)officialButton.setVisibility(View.GONE);
+  feedback("Tryb awaryjny wewnątrz PA • oficjalny YouTube może wyświetlać reklamy i wymagać aktualizacji Android System WebView.");
+ }
+ private void switchBackToNative(){
+  if(officialWeb!=null){officialWeb.stopLoading();officialWeb.loadUrl("about:blank");
+   officialWeb.onPause();officialWeb.setVisibility(View.GONE);}
+  player.setVisibility(View.VISIBLE);
  }
  private void onVideoPlaybackError(){
   if(closed||activeId.isEmpty()||playbackPending)return;
   if(!currentProvider.isEmpty())failedProviders.add(currentProvider);
   if(++playbackAttempts>6){
-   feedback("Nie udało się odtworzyć filmu na dostępnych serwerach. Spróbuj innego nagrania.");
+   feedback("Nie udało się odtworzyć tego filmu z publicznych źródeł. Wybierz wbudowany tryb oficjalny.");
+   if(officialButton!=null)officialButton.setVisibility(View.VISIBLE);
    return;
   }
   resolveAndPlay(activeId,request);
@@ -214,7 +259,7 @@ public final class PA6TubeActivity extends Activity {
   LinearLayout heading=line();
   TextView logo=text("▶",20,WHITE,true);logo.setGravity(Gravity.CENTER);
   logo.setBackground(panel(RED,RED,11));heading.addView(logo,new LinearLayout.LayoutParams(dp(47),dp(42)));
-  TextView name=text(kids?"ALFA KIDS":"Alfa Tube",23,INK,true);name.setPadding(dp(9),0,0,0);
+  TextView name=text(kids?"Tube Kids":"Alfa Tube",23,INK,true);name.setPadding(dp(9),0,0,0);
   heading.addView(name,new LinearLayout.LayoutParams(0,-2,1));
   TextView tag=text("ANDROID 6",11,MUTED,true);heading.addView(tag);
   page.addView(heading);gap(page,12);
@@ -284,6 +329,10 @@ public final class PA6TubeActivity extends Activity {
    player.play("Film kontrolny","https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8");
    feedback("Materiał testowy, nie YouTube. Odtwarzanie odbywa się wewnątrz PA.");
   });
+  officialButton=button("Awaryjnie: oglądaj w PA przez YouTube (możliwe reklamy)",RED,false);
+  below.addView(officialButton,new LinearLayout.LayoutParams(-1,dp(52)));
+  officialButton.setVisibility(View.GONE);
+  officialButton.setOnClickListener(v->showOfficialEmbedded());
   Button file=button("Wybierz film zapisany na tablecie",RED,false);below.addView(file,new LinearLayout.LayoutParams(-1,dp(51)));
   file.setOnClickListener(v->{
    try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("video/*").addCategory(Intent.CATEGORY_OPENABLE),PICK_FILE);}
@@ -328,11 +377,14 @@ public final class PA6TubeActivity extends Activity {
  @Override protected void onStop(){
   // Never leave hidden video decoding when the user switches to other PA modules.
   ++request;activeId="";playbackPending=false;
+  if(officialWeb!=null)officialWeb.onPause();
   if(player!=null)player.stop();
   super.onStop();
  }
  @Override protected void onDestroy(){
-  closed=true;request++;io.shutdownNow();thumbnailIo.shutdownNow();if(player!=null)player.release();
+  closed=true;request++;io.shutdownNow();thumbnailIo.shutdownNow();
+  if(officialWeb!=null){officialWeb.stopLoading();officialWeb.destroy();officialWeb=null;}
+  if(player!=null)player.release();
   super.onDestroy();
  }
 }
