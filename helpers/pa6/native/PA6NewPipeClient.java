@@ -8,6 +8,10 @@ import org.schabi.newpipe.extractor.downloader.Response;
 import org.schabi.newpipe.extractor.stream.StreamInfo;
 import org.schabi.newpipe.extractor.stream.VideoStream;
 import org.schabi.newpipe.extractor.MediaFormat;
+import org.schabi.newpipe.extractor.ServiceList;
+import org.schabi.newpipe.extractor.InfoItem;
+import org.schabi.newpipe.extractor.search.SearchInfo;
+import org.schabi.newpipe.extractor.stream.StreamInfoItem;
 import java.io.*;
 import java.net.*;
 import java.util.*;
@@ -55,6 +59,39 @@ public final class PA6NewPipeClient {
    }
   });
   initialized=true;
+ }
+ /**
+  * Search YouTube directly on the device using NewPipeExtractor.
+  * This deliberately avoids depending on a public Piped/Invidious search API.
+  * Must run on the caller's background executor, never the Android UI thread.
+  */
+ public static PA6PipedClient.Response<List<PA6PipedClient.Result>> search(String query)throws Exception{
+  if(query==null||query.trim().isEmpty())throw new IOException("Wpisz nazwę filmu.");
+  init();
+  SearchInfo info=SearchInfo.getInfo(ServiceList.YouTube,
+      ServiceList.YouTube.getSearchQHFactory().fromQuery(query.trim()));
+  ArrayList<PA6PipedClient.Result> found=new ArrayList<>();
+  for(InfoItem entry:info.getRelatedItems()){
+   if(!(entry instanceof StreamInfoItem))continue;
+   StreamInfoItem video=(StreamInfoItem)entry;
+   String id=PA6PipedClient.extractId(video.getUrl());
+   if(id.isEmpty()||video.getName()==null||video.getName().trim().isEmpty())continue;
+   long seconds=video.getDuration();
+   String duration="";
+   if(seconds>0){
+    long hours=seconds/3600,minutes=(seconds%3600)/60,remain=seconds%60;
+    duration=hours>0?String.format(Locale.US,"%d:%02d:%02d",hours,minutes,remain):
+        String.format(Locale.US,"%d:%02d",minutes,remain);
+   }
+   String uploader=video.getUploaderName();
+   String date=video.getTextualUploadDate();
+   found.add(new PA6PipedClient.Result(video.getName(),
+       uploader==null||uploader.trim().isEmpty()?"Kanał":uploader,
+       "https://i.ytimg.com/vi/"+id+"/mqdefault.jpg",id,duration,date==null?"":date));
+   if(found.size()>=36)break;
+  }
+  Log.i("PA6_NEWPIPE","SEARCH_RESULTS count="+found.size());
+  return new PA6PipedClient.Response<List<PA6PipedClient.Result>>(found,"NewPipe Extractor");
  }
  public static PA6PipedClient.Response<PA6PipedClient.Video> resolve(String id)throws Exception{
   if(id==null||!id.matches("[A-Za-z0-9_-]{11}"))throw new IOException("Nieprawidłowy identyfikator");
