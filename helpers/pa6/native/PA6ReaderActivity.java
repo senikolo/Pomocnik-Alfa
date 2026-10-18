@@ -20,11 +20,11 @@ public final class PA6ReaderActivity extends Activity {
  private Bitmap bitmap;
  private int page=0,request=0;
  private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+.5f);}
- private TextView label(String s,int size){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(0xff503b70);t.setPadding(dp(6),dp(8),dp(6),dp(8));return t;}
- private Button button(String s){Button b=new Button(this);b.setAllCaps(false);b.setText(s);b.setTextColor(0xff68499e);b.setTextSize(16);b.setMinHeight(dp(55));return b;}
+ private TextView label(String s,int size){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(PA6Ui.INK);t.setPadding(dp(6),dp(8),dp(6),dp(8));return t;}
+ private Button button(String s){return PA6Ui.button(this,s,s.contains("Wybierz"));}
  @Override public void onCreate(Bundle b){
   super.onCreate(b);
-  ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(0xfff7f4fa);
+  ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(PA6Ui.BG);
   LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(13),dp(12),dp(13),dp(30));
   scroll.addView(root);setContentView(scroll);
   root.addView(label("📖  Czytnik Alfa",26));
@@ -41,7 +41,7 @@ public final class PA6ReaderActivity extends Activity {
   controls.addView(next,new LinearLayout.LayoutParams(0,dp(53),1));
   prev.setOnClickListener(v->render(page-1));next.setOnClickListener(v->render(page+1));
   status=label("Nie otwarto dokumentu.",14);root.addView(status);
-  pageImage=new ImageView(this);pageImage.setAdjustViewBounds(true);pageImage.setScaleType(ImageView.ScaleType.FIT_CENTER);pageImage.setBackgroundColor(0xffffffff);
+  pageImage=new ImageView(this);pageImage.setAdjustViewBounds(true);pageImage.setScaleType(ImageView.ScaleType.FIT_CENTER);pageImage.setBackground(PA6Ui.surface(this,PA6Ui.WHITE,PA6Ui.BORDER,12));
   root.addView(pageImage,new LinearLayout.LayoutParams(-1,-2));
   textPage=label("",17);textPage.setTextIsSelectable(true);root.addView(textPage);
  }
