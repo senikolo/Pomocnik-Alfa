@@ -85,14 +85,15 @@ public final class PA6TubeActivity extends Activity {
      }
     }
     if(response==null)response=PA6PipedClient.resolve(id,server(),ignored);
+    final PA6PipedClient.Response<PA6PipedClient.Video> selected=response;
     main.post(()->{
      if(closed||seq!=request)return;
      playbackPending=false;
-     PA6PipedClient.Video v=response.data;
-     currentProvider=response.server;
+     PA6PipedClient.Video v=selected.data;
+     currentProvider=selected.server;
      activeTitle=v.title;title.setText(v.title);
      subtitle.setText(v.channel+" • "+v.quality);
-     provider.setText("Źródło filmu: "+response.server.replace("https://",""));
+     provider.setText("Źródło filmu: "+selected.server.replace("https://",""));
      player.play(v.title,v.stream);
      feedback("Łączenie z filmem. Jeśli ten serwer zawiedzie, aplikacja wybierze następny.");
      String old=getPreferences(0).getString("recent_ids","");
