@@ -131,10 +131,17 @@ public final class PA6NewPipeClient {
   int preferred=target<=0?480:Math.min(720,Math.max(144,target));
   return height<=preferred?preferred-height:1000+height-preferred;
  }
- private static StreamInfo load(String id)throws Exception{
+ private static String cachedId="";
+ private static StreamInfo cachedInfo;
+ private static long cachedAt;
+ static okhttp3.OkHttpClient downloadClient(){init();return httpClient;}
+ private static synchronized StreamInfo load(String id)throws Exception{
   if(id==null||!id.matches("[A-Za-z0-9_-]{11}"))throw new IOException("Nieprawidłowy identyfikator filmu");
   init();
-  return StreamInfo.getInfo("https://www.youtube.com/watch?v="+id);
+  long now=android.os.SystemClock.elapsedRealtime();
+  if(id.equals(cachedId)&&cachedInfo!=null&&now-cachedAt<120000)return cachedInfo;
+  StreamInfo info=StreamInfo.getInfo("https://www.youtube.com/watch?v="+id);
+  cachedId=id;cachedInfo=info;cachedAt=now;return info;
  }
  private static PA6PipedClient.Video progressive(StreamInfo info,int preferred){
   VideoStream best=null;int bestScore=Integer.MAX_VALUE;
@@ -170,6 +177,15 @@ public final class PA6NewPipeClient {
   if(video==null||audio==null)return null;
   return new PA6PipedClient.Video(info.getName(),info.getUploaderName(),
    video.getContent(),video.getResolution()+" • H.264 + osobne AAC",audio.getContent());
+ }
+ public static int[] availableQualities(String id)throws Exception{
+  StreamInfo info=load(id);java.util.TreeSet<Integer> heights=new java.util.TreeSet<>();
+  for(int h:new int[]{240,360,480,720}){
+   PA6PipedClient.Video single=progressive(info,h),split=adaptive(info,h);
+   if((single!=null&&height(single.quality)==h)||(split!=null&&height(split.quality)==h))heights.add(h);
+  }
+  int[] result=new int[heights.size()+1];int i=1;for(int h:heights)result[i++]=h;
+  return result;
  }
  public static PA6PipedClient.Response<PA6PipedClient.Video> resolve(String id)throws Exception{
   return resolve(id,0);

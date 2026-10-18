@@ -68,7 +68,7 @@ public final class PA6TubeActivity extends Activity {
  }
  private Button button(String value,int color,boolean emphasized){
   Button b=new Button(this);b.setAllCaps(false);b.setText(value);b.setTextSize(14);
-  b.setTextColor(emphasized?WHITE:INK);b.setMinHeight(dp(47));
+  b.setTextColor(emphasized?WHITE:INK);b.setMinHeight(dp(48));b.setPadding(dp(8),dp(6),dp(8),dp(6));
   b.setBackground(panel(emphasized?color:WHITE,emphasized?color:0xffdce2ed,12));return b;
  }
  private void pad(View v,int x,int y){v.setPadding(dp(x),dp(y),dp(x),dp(y));}
@@ -81,18 +81,22 @@ public final class PA6TubeActivity extends Activity {
  private String qualityLabel(){int q=selectedQuality();return q==0?"Auto":q+"p";}
  private static final int[] QUALITY_VALUES={0,240,360,480,720};
  private static final String[] QUALITY_OPTIONS={"Automatyczna","240p (oszczędna)","360p","480p","720p (jeśli dostępna)"};
+ private int[] availableQualities={0};
  private void updateQualityButton(){
   if(qualityButton!=null)qualityButton.setText("⚙ Jakość: "+qualityLabel());
  }
  private void chooseQuality(){
+  final int[] values=availableQualities;
+  String[] labels=new String[values.length];
+  for(int i=0;i<values.length;i++)labels[i]=values[i]==0?"Auto":values[i]+"p";
   int selected=0;
-  for(int i=0;i<QUALITY_VALUES.length;i++)if(QUALITY_VALUES[i]==selectedQuality())selected=i;
+  for(int i=0;i<values.length;i++)if(values[i]==selectedQuality())selected=i;
   new AlertDialog.Builder(this).setTitle("Jakość odtwarzania")
-   .setSingleChoiceItems(QUALITY_OPTIONS,selected,(dialog,which)->{
-    getPreferences(0).edit().putInt("tube_quality",QUALITY_VALUES[which]).apply();
+   .setSingleChoiceItems(labels,selected,(dialog,which)->{
+    getPreferences(0).edit().putInt("tube_quality",values[which]).apply();
     updateQualityButton();dialog.dismiss();
     if(!activeId.isEmpty()){
-     feedback("Sprawdzam jakość "+qualityLabel()+". Dostępny format może być niższy.");
+     feedback("Ustawiam jakość "+qualityLabel()+".");
      playVideo(activeId);
     }
    }).setNegativeButton("Anuluj",null).show();
@@ -108,14 +112,17 @@ public final class PA6TubeActivity extends Activity {
   mediaArea.setGravity(Gravity.TOP|Gravity.CENTER_HORIZONTAL);
   if(wide){
    LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(0,-1,4);
-   pp.setMargins(0,0,dp(13),0);mediaArea.addView(playerPane,pp);
+   pp.setMargins(0,0,dp(13),0);
+   ScrollView playerScroll=new ScrollView(this);playerScroll.addView(playerPane);mediaArea.addView(playerScroll,pp);
    mediaArea.addView(feedPane,new LinearLayout.LayoutParams(0,-1,5));
   }else{
    LinearLayout stack=column();
    int max=(int)Math.min(widthDp-24, "Smartfon".equals(layoutMode())?460:widthDp);
-   mediaArea.addView(stack,new LinearLayout.LayoutParams(dp(max),-1));
+   ScrollView all=new ScrollView(this);all.setFillViewport(true);
+   all.addView(stack,new ScrollView.LayoutParams(-1,-2));
+   mediaArea.addView(all,new LinearLayout.LayoutParams(dp(max),-1));
    stack.addView(playerPane,new LinearLayout.LayoutParams(-1,-2));
-   stack.addView(feedPane,new LinearLayout.LayoutParams(-1,0,1));
+   stack.addView(feedPane,new LinearLayout.LayoutParams(-1,dp(650)));
   }
  }
  private void showTubeSettings(){
@@ -129,14 +136,14 @@ public final class PA6TubeActivity extends Activity {
   modeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
   mode.setAdapter(modeAdapter);
   for(int i=0;i<modes.length;i++)if(modes[i].equals(layoutMode()))mode.setSelection(i);
-  panel.addView(mode,new LinearLayout.LayoutParams(-1,dp(52)));gap(panel,12);
+  panel.addView(mode,new LinearLayout.LayoutParams(-1,-2));gap(panel,12);
   TextView qualityTitle=text("Domyślna jakość filmu",15,INK,true);panel.addView(qualityTitle);
   Spinner quality=new Spinner(this);
   ArrayAdapter<String> qualityAdapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_item,QUALITY_OPTIONS);
   qualityAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
   quality.setAdapter(qualityAdapter);
   for(int i=0;i<QUALITY_VALUES.length;i++)if(QUALITY_VALUES[i]==selectedQuality())quality.setSelection(i);
-  panel.addView(quality,new LinearLayout.LayoutParams(-1,dp(52)));gap(panel,10);
+  panel.addView(quality,new LinearLayout.LayoutParams(-1,-2));gap(panel,10);
   CheckBox wifi=new CheckBox(this);
   wifi.setText("Pobieraj tylko przez Wi-Fi");
   wifi.setTextColor(INK);
@@ -145,7 +152,7 @@ public final class PA6TubeActivity extends Activity {
   TextView hint=text("Pobrane filmy MP4 znajdziesz w folderze Pobrane. Pobieranie jest możliwe tylko, gdy źródło oferuje plik z obrazem i dźwiękiem bez zabezpieczeń.",12,MUTED,false);
   pad(hint,2,9);panel.addView(hint);gap(panel,12);
   Button clear=button("Wyczyść historię Alfa Tube",RED,false);
-  panel.addView(clear,new LinearLayout.LayoutParams(-1,dp(48)));
+  panel.addView(clear,new LinearLayout.LayoutParams(-1,-2));
   clear.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Usunąć historię?")
    .setMessage("Lista ostatnio oglądanych filmów zostanie wyczyszczona.")
    .setPositiveButton("Usuń",(dialog,which)->{
@@ -180,53 +187,16 @@ public final class PA6TubeActivity extends Activity {
    }).setNegativeButton("Anuluj",null).show();
  }
  private void startDownload(final String id){
-  feedback("Przygotowuję plik MP4 do pobrania…");
-  if(downloadButton!=null)downloadButton.setEnabled(false);
-  final int quality=selectedQuality();
-  io.execute(()->{
-   try{
-    // Only a progressive MP4 contains both image and audio. Never store a
-    // silent DASH video track as if it were a complete offline movie.
-    final PA6PipedClient.Video video=PA6NewPipeClient.resolveDownload(id,quality).data;
-    main.post(()->{
-     if(closed)return;
-     if(downloadButton!=null)downloadButton.setEnabled(true);
-     try{
-      DownloadManager mgr=(DownloadManager)getSystemService(DOWNLOAD_SERVICE);
-      if(mgr==null)throw new IOException("Systemowy menedżer pobierania jest niedostępny");
-      Uri uri=Uri.parse(video.stream);
-      if(!"https".equalsIgnoreCase(uri.getScheme()))throw new IOException("Niebezpieczny adres pliku");
-      DownloadManager.Request req=new DownloadManager.Request(uri);
-      req.setTitle("Alfa Tube • "+(video.title==null?"Film":video.title));
-      req.setDescription("MP4 z obrazem i dźwiękiem • "+video.quality);
-      req.setMimeType("video/mp4");
-      req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-      req.setAllowedOverRoaming(false);
-      req.setAllowedNetworkTypes(getPreferences(0).getBoolean("tube_wifi_only",true)?
-        DownloadManager.Request.NETWORK_WIFI:
-        DownloadManager.Request.NETWORK_WIFI|DownloadManager.Request.NETWORK_MOBILE);
-      String filename="AlfaTube_"+id+"_"+System.currentTimeMillis()+".mp4";
-      req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS,filename);
-      long taskId=mgr.enqueue(req);
-      feedback("Dodano pobieranie "+video.quality+". Sprawdź powiadomienie i folder Pobrane.");
-      Toast.makeText(this,"Rozpoczęto pobieranie • zadanie "+taskId,Toast.LENGTH_LONG).show();
-     }catch(Exception ex){
-      feedback("Nie udało się zapisać filmu: "+ex.getMessage());
-     }
-    });
-   }catch(Throwable ex){
-    android.util.Log.w("PA6_DOWNLOAD","No supported complete MP4 to download",ex);
-    main.post(()->{
-     if(closed)return;
-     if(downloadButton!=null)downloadButton.setEnabled(true);
-     feedback("Pobieranie niedostępne: brak pliku MP4 z obrazem i dźwiękiem albo serwer odmówił dostępu.");
-     new AlertDialog.Builder(this).setTitle("Nie można pobrać filmu")
-      .setMessage("To źródło nie udostępniło kompletnego pliku MP4. Oglądanie nadal może działać, ponieważ odtwarzacz potrafi łączyć osobne ścieżki obrazu i dźwięku. Spróbuj innego filmu.")
-      .setPositiveButton("OK",null).show();
-    });
-   }
-  });
+  Intent job=new Intent(this,PA6DownloadService.class).putExtra("id",id)
+   .putExtra("quality",selectedQuality()).putExtra("wifi",getPreferences(0).getBoolean("tube_wifi_only",true));
+  startService(job);
  }
+ private TextView downloadStatus;
+ private final Runnable downloadMonitor=new Runnable(){public void run(){
+  if(closed)return;
+  if(downloadStatus!=null)downloadStatus.setText(getSharedPreferences("pa6_download",0).getString("status",""));
+  main.postDelayed(this,1000);
+ }};
  @Override public void onRequestPermissionsResult(int code,String[] permissions,int[] granted){
   super.onRequestPermissionsResult(code,permissions,granted);
   if(code!=STORAGE_PERMISSION)return;
@@ -243,7 +213,7 @@ public final class PA6TubeActivity extends Activity {
   if(id==null||!id.matches("[A-Za-z0-9_-]{11}")){feedback("Nieprawidłowy adres filmu.");return;}
   cancelWatchdog();switchBackToNative();
   if(officialButton!=null)officialButton.setVisibility(View.GONE);
-  ++request;activeId=id;playbackAttempts=0;failedProviders.clear();currentProvider="";
+  ++request;activeId=id;availableQualities=new int[]{0};playbackAttempts=0;failedProviders.clear();currentProvider="";
   if(compatiblePlayerButton!=null)compatiblePlayerButton.setVisibility(View.VISIBLE);
   if(downloadButton!=null)downloadButton.setEnabled(true);
   resolveAndPlay(id,request);
@@ -275,9 +245,12 @@ public final class PA6TubeActivity extends Activity {
     }
     if(response==null)response=PA6PipedClient.resolve(id,server(),ignored,selectedQuality());
     final PA6PipedClient.Response<PA6PipedClient.Video> selected=response;
+    int[] heights=new int[]{0};
+    if("NewPipe Extractor".equals(selected.server))try{heights=PA6NewPipeClient.availableQualities(id);}catch(Exception ignoredQuality){}
+    final int[] options=heights;
     main.post(()->{
      if(closed||seq!=request)return;
-     playbackPending=false;
+     playbackPending=false;availableQualities=options;
      PA6PipedClient.Video v=selected.data;
      currentProvider=selected.server;
      activeTitle=v.title;title.setText(v.title);
@@ -516,25 +489,25 @@ public final class PA6TubeActivity extends Activity {
   LinearLayout page=column();page.setBackgroundColor(WHITE);pad(page,12,8);setContentView(page);
   LinearLayout heading=line();
   TextView logo=text("▶",20,WHITE,true);logo.setGravity(Gravity.CENTER);
-  logo.setBackground(panel(RED,RED,11));heading.addView(logo,new LinearLayout.LayoutParams(dp(47),dp(42)));
+  logo.setBackground(panel(RED,RED,11));heading.addView(logo,new LinearLayout.LayoutParams(dp(47),-2));
   TextView name=text(kids?"Tube Kids":"Alfa Tube",23,INK,true);name.setPadding(dp(9),0,0,0);
   heading.addView(name,new LinearLayout.LayoutParams(0,-2,1));
   Button settings=button("⚙ Ustawienia",RED,false);settings.setTextSize(12);
-  heading.addView(settings,new LinearLayout.LayoutParams(dp(110),dp(44)));
+  heading.addView(settings,new LinearLayout.LayoutParams(dp(110),-2));
   settings.setOnClickListener(v->showTubeSettings());
   page.addView(heading);gap(page,12);
   LinearLayout searchBar=line();
   search=new EditText(this);search.setSingleLine(true);search.setHint("Szukaj filmów i muzyki…");
   search.setTextSize(15);search.setBackground(panel(PALE,0xffe1e5ec,11));pad(search,13,4);
-  searchBar.addView(search,new LinearLayout.LayoutParams(0,dp(49),1));
+  searchBar.addView(search,new LinearLayout.LayoutParams(0,-2,1));
   Button go=button("Szukaj",RED,true);go.setOnClickListener(v->searchVideos(search.getText().toString().trim()));
-  LinearLayout.LayoutParams gb=new LinearLayout.LayoutParams(dp(92),dp(49));gb.setMargins(dp(8),0,0,0);searchBar.addView(go,gb);
+  LinearLayout.LayoutParams gb=new LinearLayout.LayoutParams(dp(92),-2);gb.setMargins(dp(8),0,0,0);searchBar.addView(go,gb);
   page.addView(searchBar);gap(page,9);
   LinearLayout quick=line();
   for(String q:(kids?new String[]{"Bajki","Piosenki dla dzieci","Zwierzęta","Nauka"}:
      new String[]{"Muzyka","Wiadomości","Podróże","Technologia"})){
    Button tab=button(q,RED,false);tab.setTextSize(12);
-   LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-2,dp(42));
+   LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-2,-2);
    p.setMargins(dp(2),0,dp(5),0);quick.addView(tab,p);
    tab.setOnClickListener(v->{search.setText(q);searchVideos(q);});
   }
@@ -559,28 +532,30 @@ public final class PA6TubeActivity extends Activity {
   LinearLayout actions=line();
   qualityButton=button("⚙ Jakość: "+qualityLabel(),RED,false);
   qualityButton.setOnClickListener(v->chooseQuality());
-  actions.addView(qualityButton,new LinearLayout.LayoutParams(0,dp(49),1));
+  actions.addView(qualityButton,new LinearLayout.LayoutParams(0,-2,1));
   downloadButton=button("↓ Pobierz MP4",RED,true);
   downloadButton.setEnabled(false);
-  LinearLayout.LayoutParams downloadParams=new LinearLayout.LayoutParams(0,dp(49),1);
+  LinearLayout.LayoutParams downloadParams=new LinearLayout.LayoutParams(0,-2,1);
   downloadParams.setMargins(dp(7),0,0,0);
   actions.addView(downloadButton,downloadParams);
   downloadButton.setOnClickListener(v->downloadCurrent());
   playerPane.addView(actions,new LinearLayout.LayoutParams(-1,-2));
+  downloadStatus=text("",13,MUTED,false);pad(downloadStatus,5,6);playerPane.addView(downloadStatus);
+  main.post(downloadMonitor);
   status=text("Alfa Tube wyszukuje przez NewPipe. Odtwarzacz działa wewnątrz PA.",13,MUTED,false);
   pad(status,5,8);playerPane.addView(status);
   provider=text("Wbudowany VLC • osobny NewPipe/SkyTube tylko na Twoje życzenie",11,MUTED,false);
   playerPane.addView(provider);gap(playerPane,6);
   LinearLayout links=line();
-  Button recent=button("◷ Historia",RED,false);links.addView(recent,new LinearLayout.LayoutParams(0,dp(46),1));
+  Button recent=button("◷ Historia",RED,false);links.addView(recent,new LinearLayout.LayoutParams(0,-2,1));
   recent.setOnClickListener(v->history());
   Button favorites=button("★ Obejrzyj ponownie",RED,false);
-  LinearLayout.LayoutParams fp=new LinearLayout.LayoutParams(0,dp(46),1);fp.setMargins(dp(7),0,0,0);links.addView(favorites,fp);
+  LinearLayout.LayoutParams fp=new LinearLayout.LayoutParams(0,-2,1);fp.setMargins(dp(7),0,0,0);links.addView(favorites,fp);
   favorites.setOnClickListener(v->{if(activeId.isEmpty())feedback("Najpierw wybierz film.");else playVideo(activeId);});
   playerPane.addView(links);
   compatiblePlayerButton=button("▶ Otwórz w NewPipe / SkyTube (osobna aplikacja)",RED,false);
   compatiblePlayerButton.setVisibility(View.GONE);
-  LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,dp(54));
+  LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);
   cp.setMargins(0,dp(7),0,dp(5));
   playerPane.addView(compatiblePlayerButton,cp);
   compatiblePlayerButton.setOnClickListener(v->openInstalledCompatiblePlayer());
@@ -592,11 +567,11 @@ public final class PA6TubeActivity extends Activity {
   TextView advanced=text("Własne filmy i źródła",17,INK,true);pad(advanced,7,12);below.addView(advanced);
   link=new EditText(this);link.setSingleLine(true);link.setTextSize(14);
   link.setHint("Wklej link YouTube / MP4 / HLS");link.setBackground(panel(PALE,0xffdde2eb,11));pad(link,12,6);
-  below.addView(link,new LinearLayout.LayoutParams(-1,dp(53)));
-  Button open=button("▶ Odtwórz link wewnątrz PA",RED,true);below.addView(open,new LinearLayout.LayoutParams(-1,dp(51)));
+  below.addView(link,new LinearLayout.LayoutParams(-1,-2));
+  Button open=button("▶ Odtwórz link wewnątrz PA",RED,true);below.addView(open,new LinearLayout.LayoutParams(-1,-2));
   open.setOnClickListener(v->openLink());gap(below,8);
   Button demo=button("▶ Uruchom film kontrolny w Alfa Tube",RED,false);
-  below.addView(demo,new LinearLayout.LayoutParams(-1,dp(50)));
+  below.addView(demo,new LinearLayout.LayoutParams(-1,-2));
   demo.setOnClickListener(v->{
    cancelWatchdog();++request;activeId="";title.setText("Film kontrolny H.264");
    subtitle.setText("Test zgodności tabletu • obraz + dźwięk");
@@ -604,10 +579,10 @@ public final class PA6TubeActivity extends Activity {
    feedback("Materiał testowy, nie YouTube. Odtwarzanie odbywa się wewnątrz PA.");
   });
   officialButton=button("Awaryjnie: oglądaj w PA przez YouTube (możliwe reklamy)",RED,false);
-  below.addView(officialButton,new LinearLayout.LayoutParams(-1,dp(52)));
+  below.addView(officialButton,new LinearLayout.LayoutParams(-1,-2));
   officialButton.setVisibility(View.GONE);
   officialButton.setOnClickListener(v->showOfficialEmbedded());
-  Button file=button("Wybierz film zapisany na tablecie",RED,false);below.addView(file,new LinearLayout.LayoutParams(-1,dp(51)));
+  Button file=button("Wybierz film zapisany na tablecie",RED,false);below.addView(file,new LinearLayout.LayoutParams(-1,-2));
   file.setOnClickListener(v->{
    try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("video/*").addCategory(Intent.CATEGORY_OPENABLE),PICK_FILE);}
    catch(Exception e){feedback("Nie udało się wybrać pliku.");}
@@ -617,8 +592,8 @@ public final class PA6TubeActivity extends Activity {
   serverField=new EditText(this);serverField.setSingleLine(true);serverField.setHint("https://pipedapi…");
   serverField.setText(getPreferences(0).getString("piped_server",""));
   serverField.setBackground(panel(PALE,0xffdde2eb,11));pad(serverField,12,6);
-  below.addView(serverField,new LinearLayout.LayoutParams(-1,dp(52)));
-  Button save=button("Zapisz serwer",RED,false);below.addView(save,new LinearLayout.LayoutParams(-1,dp(48)));
+  below.addView(serverField,new LinearLayout.LayoutParams(-1,-2));
+  Button save=button("Zapisz serwer",RED,false);below.addView(save,new LinearLayout.LayoutParams(-1,-2));
   save.setOnClickListener(v->{
    String value=serverField.getText().toString().trim();
    if(value.isEmpty()||!PA6PipedClient.validServer(value).isEmpty()){
@@ -632,7 +607,20 @@ public final class PA6TubeActivity extends Activity {
   if(getIntent().getBooleanExtra("verify_libvlc",false)&&!player.verifyNative())
    throw new IllegalStateException("PA6 Alfa Tube native player unavailable");
   // First screen shows meaningful content without pretending to have a working feed.
-  if(getIntent().getBooleanExtra("verify_official_embed",false)){
+  if(getIntent().getBooleanExtra("verify_download_validation",false)){
+   io.execute(()->{
+    try{
+     File folder=Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
+     PA6DownloadService.verifyComplete(new File(folder,"pa6-av.mp4"));
+     boolean rejected=false;
+     try{PA6DownloadService.verifyComplete(new File(folder,"pa6-silent.mp4"));}catch(IOException expected){rejected=true;}
+     if(!rejected)throw new IOException("Silent MP4 accepted");
+     android.util.Log.i("PA6_DOWNLOAD_TEST","PASS complete AV accepted; silent MP4 rejected");
+    }catch(Exception error){android.util.Log.e("PA6_DOWNLOAD_TEST","FAIL MP4 validation",error);}
+   });
+  }else if(getIntent().getBooleanExtra("verify_download_failure",false)){
+   startDownload("invalid");
+  }else if(getIntent().getBooleanExtra("verify_official_embed",false)){
    activeId="jNQXAC9IVRw";title.setText("YouTube • film demonstracyjny");
    showOfficialEmbedded();
   }else if(getIntent().getBooleanExtra("verify_real_youtube",false)){
@@ -659,7 +647,7 @@ public final class PA6TubeActivity extends Activity {
   super.onStop();
  }
  @Override protected void onDestroy(){
-  closed=true;cancelWatchdog();request++;io.shutdownNow();thumbnailIo.shutdownNow();
+  closed=true;main.removeCallbacks(downloadMonitor);cancelWatchdog();request++;io.shutdownNow();thumbnailIo.shutdownNow();
   if(officialWeb!=null){officialWeb.stopLoading();officialWeb.destroy();officialWeb=null;}
   if(player!=null)player.release();
   super.onDestroy();
