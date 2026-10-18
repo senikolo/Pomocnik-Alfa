@@ -5,6 +5,7 @@ import android.content.*;
 import android.graphics.*;
 import android.graphics.drawable.*;
 import android.net.Uri;
+import android.content.pm.PackageManager;
 import android.os.*;
 import android.view.*;
 import android.view.inputmethod.InputMethodManager;
@@ -23,20 +24,20 @@ import java.util.concurrent.*;
  * No DRM bypass, user login or scraping in WebView.
  */
 public final class PA6TubeActivity extends Activity {
- private static final int PICK_FILE=791;
+ private static final int PICK_FILE=791, STORAGE_PERMISSION=792;
  private static final int WHITE=0xfff8fafc,INK=0xff172036,MUTED=0xff596574,RED=0xffed263b,PALE=0xffedf0f5;
  private final Handler main=new Handler(Looper.getMainLooper());
  private final ExecutorService io=Executors.newFixedThreadPool(2);
  private final ExecutorService thumbnailIo=Executors.newFixedThreadPool(2);
- private LinearLayout results,stageWrap;
+ private LinearLayout results,stageWrap,mediaArea,playerPane,feedPane;
  private PA6EmbeddedPlayer player;
  private WebView officialWeb;
- private Button officialButton,compatiblePlayerButton;
+ private Button officialButton,compatiblePlayerButton,qualityButton,downloadButton;
  private TextView status,title,subtitle,provider;
  private EditText search,link,serverField;
  private int request=0;
  private boolean closed=false,kids;
- private String activeId="",activeTitle="",currentProvider="";
+ private String activeId="",activeTitle="",currentProvider="",pendingDownloadId="";
  private final HashSet<String> failedProviders=new HashSet<>();
  private int playbackAttempts=0;
  private boolean playbackPending=false;
@@ -75,6 +76,93 @@ public final class PA6TubeActivity extends Activity {
  private LinearLayout line(){LinearLayout l=new LinearLayout(this);l.setGravity(Gravity.CENTER_VERTICAL);return l;}
  private LinearLayout column(){LinearLayout l=new LinearLayout(this);l.setOrientation(1);return l;}
  private String server(){return getPreferences(0).getString("piped_server","");}
+ private int selectedQuality(){return getPreferences(0).getInt("tube_quality",0);}
+ private String layoutMode(){return getPreferences(0).getString("tube_layout","Automatyczny");}
+ private String qualityLabel(){int q=selectedQuality();return q==0?"Auto":q+"p";}
+ private static final int[] QUALITY_VALUES={0,240,360,480,720};
+ private static final String[] QUALITY_OPTIONS={"Automatyczna","240p (oszczędna)","360p","480p","720p (jeśli dostępna)"};
+ private void updateQualityButton(){
+  if(qualityButton!=null)qualityButton.setText("⚙ Jakość: "+qualityLabel());
+ }
+ private void chooseQuality(){
+  int selected=0;
+  for(int i=0;i<QUALITY_VALUES.length;i++)if(QUALITY_VALUES[i]==selectedQuality())selected=i;
+  new AlertDialog.Builder(this).setTitle("Jakość odtwarzania")
+   .setSingleChoiceItems(QUALITY_OPTIONS,selected,(dialog,which)->{
+    getPreferences(0).edit().putInt("tube_quality",QUALITY_VALUES[which]).apply();
+    updateQualityButton();dialog.dismiss();
+    if(!activeId.isEmpty()){
+     feedback("Sprawdzam jakość "+qualityLabel()+". Dostępny format może być niższy.");
+     playVideo(activeId);
+    }
+   }).setNegativeButton("Anuluj",null).show();
+ }
+ private void applyLayoutMode(){
+  if(mediaArea==null||playerPane==null||feedPane==null)return;
+  if(playerPane.getParent() instanceof ViewGroup)((ViewGroup)playerPane.getParent()).removeView(playerPane);
+  if(feedPane.getParent() instanceof ViewGroup)((ViewGroup)feedPane.getParent()).removeView(feedPane);
+  mediaArea.removeAllViews();
+  float widthDp=getResources().getDisplayMetrics().widthPixels/getResources().getDisplayMetrics().density;
+  boolean wide=widthDp>=("Tablet".equals(layoutMode())?600:660) && !"Smartfon".equals(layoutMode());
+  mediaArea.setOrientation(wide?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL);
+  mediaArea.setGravity(Gravity.TOP|Gravity.CENTER_HORIZONTAL);
+  if(wide){
+   LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(0,-1,4);
+   pp.setMargins(0,0,dp(13),0);mediaArea.addView(playerPane,pp);
+   mediaArea.addView(feedPane,new LinearLayout.LayoutParams(0,-1,5));
+  }else{
+   LinearLayout stack=column();
+   int max=(int)Math.min(widthDp-24, "Smartfon".equals(layoutMode())?460:widthDp);
+   mediaArea.addView(stack,new LinearLayout.LayoutParams(dp(max),-1));
+   stack.addView(playerPane,new LinearLayout.LayoutParams(-1,-2));
+   stack.addView(feedPane,new LinearLayout.LayoutParams(-1,0,1));
+  }
+ }
+ private void showTubeSettings(){
+  final String[] modes={"Automatyczny","Tablet","Smartfon"};
+  LinearLayout panel=column();pad(panel,19,11);
+  TextView note=text("Personalizacja Alfa Tube i Tube Kids. Ustawienia zostaną zapamiętane.",13,MUTED,false);
+  panel.addView(note);gap(panel,12);
+  TextView modeTitle=text("Układ ekranu",15,INK,true);panel.addView(modeTitle);
+  Spinner mode=new Spinner(this);
+  ArrayAdapter<String> modeAdapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_item,modes);
+  modeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+  mode.setAdapter(modeAdapter);
+  for(int i=0;i<modes.length;i++)if(modes[i].equals(layoutMode()))mode.setSelection(i);
+  panel.addView(mode,new LinearLayout.LayoutParams(-1,dp(52)));gap(panel,12);
+  TextView qualityTitle=text("Domyślna jakość filmu",15,INK,true);panel.addView(qualityTitle);
+  Spinner quality=new Spinner(this);
+  ArrayAdapter<String> qualityAdapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_item,QUALITY_OPTIONS);
+  qualityAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+  quality.setAdapter(qualityAdapter);
+  for(int i=0;i<QUALITY_VALUES.length;i++)if(QUALITY_VALUES[i]==selectedQuality())quality.setSelection(i);
+  panel.addView(quality,new LinearLayout.LayoutParams(-1,dp(52)));gap(panel,10);
+  CheckBox wifi=new CheckBox(this);
+  wifi.setText("Pobieraj tylko przez Wi-Fi");
+  wifi.setTextColor(INK);
+  wifi.setChecked(getPreferences(0).getBoolean("tube_wifi_only",true));
+  panel.addView(wifi);
+  TextView hint=text("Pobrane filmy MP4 znajdziesz w folderze Pobrane. Pobieranie jest możliwe tylko, gdy źródło oferuje plik z obrazem i dźwiękiem bez zabezpieczeń.",12,MUTED,false);
+  pad(hint,2,9);panel.addView(hint);gap(panel,12);
+  Button clear=button("Wyczyść historię Alfa Tube",RED,false);
+  panel.addView(clear,new LinearLayout.LayoutParams(-1,dp(48)));
+  clear.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Usunąć historię?")
+   .setMessage("Lista ostatnio oglądanych filmów zostanie wyczyszczona.")
+   .setPositiveButton("Usuń",(dialog,which)->{
+    getPreferences(0).edit().remove("recent_ids").apply();
+    feedback("Historia została wyczyszczona.");
+   }).setNegativeButton("Anuluj",null).show());
+  ScrollView scroll=new ScrollView(this);scroll.addView(panel);
+  new AlertDialog.Builder(this).setTitle("Ustawienia Alfa Tube")
+   .setView(scroll).setPositiveButton("Zapisz",(dialog,which)->{
+     getPreferences(0).edit()
+      .putString("tube_layout",modes[mode.getSelectedItemPosition()])
+      .putInt("tube_quality",QUALITY_VALUES[quality.getSelectedItemPosition()])
+      .putBoolean("tube_wifi_only",wifi.isChecked()).apply();
+     updateQualityButton();applyLayoutMode();
+     feedback("Ustawienia zapisane. Jakość zadziała od kolejnego filmu.");
+   }).setNegativeButton("Anuluj",null).show();
+ }
  private void feedback(String message){status.setText(message);}
  private void disableKeyboard(){
   try{((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(search.getWindowToken(),0);}catch(Exception ignored){}
