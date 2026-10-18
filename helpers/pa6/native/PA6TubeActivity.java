@@ -182,7 +182,7 @@ public final class PA6TubeActivity extends Activity {
     if(Build.VERSION.SDK_INT>=23 &&
       checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)!=PackageManager.PERMISSION_GRANTED){
       pendingDownloadId=id;
-      requestPermissions(new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE},STORAGE_PERMISSION);
+      requestPermissions(new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE,android.Manifest.permission.READ_EXTERNAL_STORAGE},STORAGE_PERMISSION);
     }else startDownload(id);
    }).setNegativeButton("Anuluj",null).show();
  }

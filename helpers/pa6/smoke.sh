@@ -8,6 +8,7 @@ adb install pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk
 # Installing the very same signed build over itself must retain data.
 adb install -r pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk
 adb shell pm grant "$pkg" android.permission.WRITE_EXTERNAL_STORAGE
+adb shell pm grant "$pkg" android.permission.READ_EXTERNAL_STORAGE
 adb logcat -c
 adb shell am start -n "$pkg/com.ispina.lokalnie.PA6DashboardActivity"
 sleep 3

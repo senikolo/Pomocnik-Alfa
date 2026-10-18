@@ -78,8 +78,8 @@ public final class PA6DownloadService extends Service {
  }
  static void verifyComplete(File file)throws IOException{
    MediaExtractor extractor=new MediaExtractor();boolean audio=false,videoTrack=false;
-   try{
-    extractor.setDataSource(file.getAbsolutePath());
+   try(FileInputStream input=new FileInputStream(file)){
+    extractor.setDataSource(input.getFD());
     for(int i=0;i<extractor.getTrackCount();i++){
      String mime=extractor.getTrackFormat(i).getString(MediaFormat.KEY_MIME);
      audio|=mime!=null&&mime.startsWith("audio/");videoTrack|=mime!=null&&mime.startsWith("video/");
