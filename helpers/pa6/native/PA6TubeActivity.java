@@ -77,7 +77,7 @@ public final class PA6TubeActivity extends Activity {
  private LinearLayout column(){LinearLayout l=new LinearLayout(this);l.setOrientation(1);return l;}
  private String server(){return getPreferences(0).getString("piped_server","");}
  private int selectedQuality(){return getPreferences(0).getInt("tube_quality",0);}
- private String layoutMode(){return getPreferences(0).getString("tube_layout","Automatyczny");}
+ private String layoutMode(){return getSharedPreferences("pa6_display",MODE_PRIVATE).getString("ui_mode","Automatyczny");}
  private String qualityLabel(){int q=selectedQuality();return q==0?"Auto":q+"p";}
  private static final int[] QUALITY_VALUES={0,240,360,480,720};
  private static final String[] QUALITY_OPTIONS={"Automatyczna","240p (oszczędna)","360p","480p","720p (jeśli dostępna)"};
@@ -156,9 +156,10 @@ public final class PA6TubeActivity extends Activity {
   new AlertDialog.Builder(this).setTitle("Ustawienia Alfa Tube")
    .setView(scroll).setPositiveButton("Zapisz",(dialog,which)->{
      getPreferences(0).edit()
-      .putString("tube_layout",modes[mode.getSelectedItemPosition()])
       .putInt("tube_quality",QUALITY_VALUES[quality.getSelectedItemPosition()])
       .putBoolean("tube_wifi_only",wifi.isChecked()).apply();
+     getSharedPreferences("pa6_display",MODE_PRIVATE).edit()
+      .putString("ui_mode",modes[mode.getSelectedItemPosition()]).apply();
      updateQualityButton();applyLayoutMode();
      feedback("Ustawienia zapisane. Jakość zadziała od kolejnego filmu.");
    }).setNegativeButton("Anuluj",null).show();
