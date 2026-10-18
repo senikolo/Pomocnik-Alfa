@@ -330,11 +330,11 @@ public final class PA6TubeActivity extends Activity {
    String id=activeId.matches("[A-Za-z0-9_-]{11}")?activeId:"brak";
    String report="Pomocnik Alfa • Android "+android.os.Build.VERSION.RELEASE+
     " • urządzenie "+android.os.Build.MODEL+
-    "\\nModuł: "+(kids?"Tube Kids":"Alfa Tube")+
-    "\\nFilm: "+id+
-    "\\nProblem ekstraktora: "+engineIssue+
-    "\\nNieskuteczne serwery: "+failedProviders.size()+
-    "\\nOdtwarzanie: nie udało się uruchomić filmu.";
+    "\nModuł: "+(kids?"Tube Kids":"Alfa Tube")+
+    "\nFilm: "+id+
+    "\nProblem ekstraktora: "+engineIssue+
+    "\nNieskuteczne serwery: "+failedProviders.size()+
+    "\nOdtwarzanie: nie udało się uruchomić filmu.";
    android.content.ClipboardManager clip=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
    if(clip!=null){clip.setPrimaryClip(ClipData.newPlainText("Diagnoza Alfa Tube",report));
     feedback("Informacje skopiowane. Wklej je do rozmowy, aby łatwiej znaleźć przyczynę.");}
