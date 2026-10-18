@@ -31,24 +31,30 @@ adb shell dumpsys activity activities > results/radio-activity.txt
 grep -q "PA6RadioActivity" results/radio-activity.txt
 adb exec-out screencap -p > results/radio.png
 assert_no_app_crash
-adb shell am start -n com.senikolo.pa6legacyplus/com.ispina.lokalnie.PA6TvActivity --ez verify_libvlc true
-sleep 3
+adb shell am start -n com.senikolo.pa6legacyplus/com.ispina.lokalnie.PA6TvActivity --ez verify_libvlc true --ez verify_video_stream true
+sleep 20
 adb shell dumpsys activity activities > results/tv-activity.txt
 grep -q "PA6TvActivity" results/tv-activity.txt
 adb exec-out screencap -p > results/tv.png
+adb logcat -d -v time > results/tv-h264-playback.txt
 assert_no_app_crash
 adb logcat -d -v time > results/native-libvlc.txt
 grep -q "PA6_LIBVLC.*NATIVE_ENGINE_READY" results/native-libvlc.txt
 # Verify that the redesigned Alfa Tube also opens on Android API23.
-adb shell am start -n com.senikolo.pa6legacyplus/com.ispina.lokalnie.PA6TubeActivity --ez verify_libvlc true
-sleep 3
+adb shell am start -n com.senikolo.pa6legacyplus/com.ispina.lokalnie.PA6TubeActivity --ez verify_libvlc true --ez verify_video_stream true
+sleep 16
 adb shell dumpsys activity activities > results/tube-activity.txt
 grep -q "PA6TubeActivity" results/tube-activity.txt
 adb exec-out screencap -p > results/tube.png
-# This is an external live API, not part of the boot check: record longer real loading.
-sleep 38
+# Observe actual LibVLC media events; failure of an external sample stream is recorded, not hidden.
+sleep 5
 adb exec-out screencap -p > results/tube-after-40s.png
 adb logcat -d -v time > results/tube-api-network-log.txt
+if grep -q 'PA6_PLAYER.*PLAYING' results/tube-api-network-log.txt; then
+ echo "OBSERVED: LibVLC reported actual media playback start" | tee results/video-status.txt
+else
+ echo "UNCONFIRMED: no media playback start; check actual Acer / HLS network" | tee results/video-status.txt
+fi
 assert_no_app_crash
 assert_no_app_crash
 adb logcat -d -v time > results/internal-playback.txt
