@@ -97,7 +97,7 @@ public final class PA6TubeActivity extends Activity {
  private String server(){return getPreferences(0).getString("piped_server","");}
  private int selectedQuality(){return getPreferences(0).getInt("tube_quality",0);}
  private String layoutMode(){return getSharedPreferences("pa6_display",MODE_PRIVATE).getString("ui_mode","Automatyczny");}
- private void useLocalVideo(){getPreferences(0).edit().putBoolean("tube_audio_only",false).apply();player.setAudioOnly(false);updateQualityButton();}
+ private void useLocalVideo(){stopService(new Intent(this,PA6AudioService.class));getPreferences(0).edit().putBoolean("tube_audio_only",false).apply();player.setAudioOnly(false);updateQualityButton();}
  private boolean audioOnly(){return getPreferences(0).getBoolean("tube_audio_only",false);}
  private void chooseMode(boolean audio){
   getPreferences(0).edit().putBoolean("tube_audio_only",audio).apply();updateQualityButton();
@@ -735,7 +735,7 @@ public final class PA6TubeActivity extends Activity {
    subtitle.setText("Test obrazu i dźwięku na Androidzie 6");
    useLocalVideo();player.play("Film kontrolny H.264","https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8");
    feedback("Sprawdzam odtwarzanie materiału kontrolnego…");
-  }else{search.setText(kids?"Bajki":"muzyka");searchVideos(kids?"Bajki":"muzyka");}
+  }else if(!PA6AudioService.active&&!getIntent().hasExtra("offline_path")&&!getIntent().hasExtra("play_id")&&!getIntent().getBooleanExtra("verify_controls",false)){search.setText(kids?"Bajki":"muzyka");searchVideos(kids?"Bajki":"muzyka");}
   if(getIntent().getBooleanExtra("verify_controls",false)){useLocalVideo();player.setAudioOnly(false);player.playUri("Test sterowania",Uri.fromFile(new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),"pa6-av.mp4")));}
   String shortcut=getIntent().getStringExtra("play_id");if(shortcut!=null&&shortcut.matches("[A-Za-z0-9_-]{11}"))playVideo(shortcut);
   String offline=getIntent().getStringExtra("offline_path");if(offline!=null)try{File f=new File(offline).getCanonicalFile();File downloads=Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getCanonicalFile();if(f.isFile()&&f.getParentFile().equals(downloads)&&f.getName().endsWith(".mp4")){useLocalVideo();stopService(new Intent(this,PA6AudioService.class));player.setAudioOnly(false);player.playUri(f.getName(),Uri.fromFile(f));title.setText(f.getName());subtitle.setText("Plik z pamięci • offline");}}catch(Exception e){feedback("Nie można otworzyć pliku.");}
@@ -777,7 +777,7 @@ public final class PA6TubeActivity extends Activity {
   player.setAudioOnly(audioOnly());player.playUri(activeTitle,data.getData());feedback("Odtwarzanie pliku z pamięci urządzenia.");
  }
  @Override public void onConfigurationChanged(android.content.res.Configuration c){super.onConfigurationChanged(c);applyLayoutMode();}
- @Override protected void onStart(){super.onStart();if(PA6AudioService.active){activeId=PA6AudioService.videoId;activeTitle=PA6AudioService.title;title.setText(activeTitle);player.backgroundAudio(activeTitle);}main.removeCallbacks(downloadMonitor);main.post(downloadMonitor);}
+ @Override protected void onStart(){super.onStart();if(PA6AudioService.active&&activeId.isEmpty()&&!getIntent().hasExtra("offline_path")&&!getIntent().getBooleanExtra("verify_controls",false)){activeId=PA6AudioService.videoId;activeTitle=PA6AudioService.title;title.setText(activeTitle);player.backgroundAudio(activeTitle);}main.removeCallbacks(downloadMonitor);main.post(downloadMonitor);}
  @Override protected void onStop(){
   main.removeCallbacks(downloadMonitor);cancelSearch();cancelPlay();++searchGeneration;clearThumbnails();
   // Never leave hidden video decoding when the user switches to other PA modules.
