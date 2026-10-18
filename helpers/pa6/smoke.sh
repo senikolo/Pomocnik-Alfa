@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 mkdir -p results
-pkg=com.senikolo.pa6tubeplus.test230
+pkg=com.senikolo.pa6.stable
 activity=$pkg/com.ispina.lokalnie.PA6TubeActivity
 trap 'adb logcat -d -v time > results/logcat.txt || true' EXIT
+adb root
+adb wait-for-device
 adb install pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk
 # Installing the very same signed build over itself must retain data.
 adb install -r pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk
@@ -24,22 +26,61 @@ adb shell am force-stop "$pkg"
 adb shell am start -n "$pkg/com.ispina.lokalnie.PA6DashboardActivity"
 sleep 3
 adb exec-out screencap -p > results/dashboard.png
-ffmpeg -v error -f lavfi -i color=c=blue:s=320x240:r=15 -f lavfi -i sine=frequency=440 -t 1 -c:v libx264 -pix_fmt yuv420p -c:a aac -y results/pa6-av.mp4
+ffmpeg -v error -f lavfi -i color=c=blue:s=320x240:r=15 -f lavfi -i sine=frequency=440 -t 35 -c:v libx264 -pix_fmt yuv420p -c:a aac -y results/pa6-av.mp4
 ffmpeg -v error -i results/pa6-av.mp4 -an -c:v copy -y results/pa6-silent.mp4
 adb push results/pa6-av.mp4 /sdcard/Download/pa6-av.mp4
 adb push results/pa6-silent.mp4 /sdcard/Download/pa6-silent.mp4
-ffmpeg -v error -f lavfi -i sine=frequency=440 -t 5 -c:a aac -y results/pa6-audio.m4a
+ffmpeg -v error -f lavfi -i sine=frequency=440 -t 60 -c:a aac -y results/pa6-audio.m4a
 adb push results/pa6-audio.m4a /sdcard/Download/pa6-audio.m4a
 adb shell am force-stop "$pkg"
 adb shell am start -n "$activity" --ez verify_audio_only true
 for attempt in {1..10}; do
  adb logcat -d > results/audio-only.txt
- grep -q 'PA6_PLAYER.*PLAYING Test samego audio' results/audio-only.txt && break
+ grep -q 'PA6_AUDIO.*BACKGROUND_PLAYING' results/audio-only.txt && break
  sleep 1
 done
-grep -q 'PA6_PLAYER.*AUDIO_ONLY_MODE=true' results/audio-only.txt
-grep -q 'PA6_PLAYER.*PLAYING Test samego audio' results/audio-only.txt
+adb shell input keyevent 3
+adb shell input keyevent 223
+sleep 2
+adb shell dumpsys activity services "$pkg" > results/background-audio.txt
+grep -q 'PA6AudioService' results/background-audio.txt
+adb shell am startservice -n "$pkg/com.ispina.lokalnie.PA6AudioService" -a PAUSE
+sleep 1
+adb logcat -d > results/audio-paused.txt
+grep -q 'PA6_AUDIO.*PAUSED' results/audio-paused.txt
+adb shell am startservice -n "$pkg/com.ispina.lokalnie.PA6AudioService" -a SEEK --el time 10000
+adb shell am startservice -n "$pkg/com.ispina.lokalnie.PA6AudioService" -a RESUME
+sleep 1
+adb logcat -d > results/audio-resumed.txt
+grep -q 'PA6_AUDIO.*SEEK_REQUEST=10000' results/audio-resumed.txt
+adb shell input keyevent 224
+adb shell wm dismiss-keyguard
+adb shell am start -n "$activity"
+grep -q 'PA6_AUDIO.*BACKGROUND_PLAYING' results/audio-only.txt
 adb exec-out screencap -p > results/audio-only.png
+adb shell am force-stop "$pkg"
+adb shell am start -n "$activity" --ez verify_controls true --es verify_layout Tablet
+sleep 3
+adb shell uiautomator dump /sdcard/controls.xml
+adb pull /sdcard/controls.xml results/controls.xml
+python3 - <<'PYCODE'
+import re,subprocess,xml.etree.ElementTree as ET
+nodes=list(ET.parse('results/controls.xml').iter('node'))
+for target in ['+10 s','Pełny ekran / powrót']:
+ for node in nodes:
+  if node.get('text')==target or node.get('content-desc')==target:
+   x1,y1,x2,y2=map(int,re.findall(r'\d+',node.get('bounds')))
+   subprocess.run(['adb','shell','input','tap',str((x1+x2)//2),str((y1+y2)//2)],check=True)
+   break
+ else: raise AssertionError(target+' absent')
+PYCODE
+sleep 2
+adb exec-out screencap -p > results/fullscreen.png
+adb shell uiautomator dump /sdcard/fullscreen.xml
+adb pull /sdcard/fullscreen.xml results/fullscreen.xml
+# Local 35-second MP4 should advance beyond ten seconds after +10s.
+grep -Eq '0:(1[0-9]|2[0-9]).*/ 0:35' results/fullscreen.xml
+adb shell input keyevent 4
 adb shell am force-stop "$pkg"
 adb shell am start -n "$activity" --ez verify_quality_menu true
 sleep 2
@@ -61,6 +102,16 @@ adb shell uiautomator dump /sdcard/quality-selected.xml
 adb pull /sdcard/quality-selected.xml results/quality-selected.xml
 grep -q 'Jakość obrazu.*240p' results/quality-selected.xml
 adb shell am force-stop "$pkg"
+adb install -r pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk
+adb shell am start -n "$activity" --ez verify_quality_menu true
+sleep 2
+adb shell uiautomator dump /sdcard/after-update.xml
+adb pull /sdcard/after-update.xml results/after-update.xml
+python3 - <<'PYCODE'
+import xml.etree.ElementTree as ET
+assert any(n.get('text')=='240p' and n.get('checked')=='true' for n in ET.parse('results/after-update.xml').iter('node')), 'Update lost preferences'
+PYCODE
+adb shell am force-stop "$pkg"
 
 adb shell am start -n "$activity" --ez verify_download_validation true --ez verify_libvlc true
 sleep 5
@@ -75,6 +126,11 @@ grep -q 'PA6_DOWNLOAD.*Download failed' results/download-error.txt
 adb shell uiautomator dump /sdcard/window.xml
 adb pull /sdcard/window.xml results/download-error-window.xml
 grep -q 'Nie można pobrać filmu' results/download-error-window.xml
+adb shell am start -n "$pkg/com.ispina.lokalnie.PA6DownloadsActivity"
+sleep 2
+adb shell uiautomator dump /sdcard/downloads.xml
+adb pull /sdcard/downloads.xml results/downloads.xml
+grep -q 'Ponów pobieranie' results/downloads.xml
 # Explicit phone/tablet modes: no app-data wipe, no second APK build.
 for mode in Smartfon Tablet; do
  adb shell am force-stop "$pkg"

@@ -108,6 +108,22 @@ public final class PA6DashboardActivity extends Activity {
    startActivity(i);
   }catch(Exception e){Toast.makeText(this,"Nie udało się otworzyć funkcji.",Toast.LENGTH_LONG).show();}
  }
+ private void shortcut(String caption,Intent intent){
+  Button b=new Button(this);b.setAllCaps(false);b.setText(caption);b.setGravity(Gravity.LEFT|Gravity.CENTER_VERTICAL);b.setTextColor(INK);b.setTextSize(15);b.setPadding(dp(14),dp(8),dp(14),dp(8));b.setBackground(shape(WHITE,0xffdfe6ee,12));LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(dp(4),dp(4),dp(4),dp(4));b.setMinHeight(dp(50));root.addView(b,p);b.setOnClickListener(v->startActivity(intent));
+ }
+ private void multimedia(){
+  gap(root,17);root.addView(text("Twoje multimedia",20,true,INK));
+  if(PA6AudioService.active)shortcut("♫ Wróć do audio: "+PA6AudioService.title,new Intent(this,PA6TubeActivity.class));
+  android.content.SharedPreferences tube=getSharedPreferences(PA6TubeActivity.class.getName(),0);
+  java.util.LinkedHashSet<String> ids=new java.util.LinkedHashSet<>();for(String id:(tube.getString("favorite_ids","")+tube.getString("recent_ids","")).split(","))if(id.matches("[A-Za-z0-9_-]{11}"))ids.add(id);
+  int shown=0;for(String id:ids){if(shown++>=3)break;shortcut((tube.getString("favorite_ids","").contains(id+",")?"★ ":"◷ ")+tube.getString("recent_title_"+id,"Film"),new Intent(this,PA6TubeActivity.class).putExtra("play_id",id));}
+  android.content.SharedPreferences tv=getSharedPreferences(PA6TvActivity.class.getName(),0);String last=tv.getString("tv_last","");if(!last.isEmpty())shortcut("TV • "+tv.getString("tv_name","Ostatni kanał"),new Intent(this,PA6TvActivity.class).putExtra("play_last",true));
+  int tvCount=0;for(String[] c:PA6TvActivity.saved(this)){if(tvCount++>=2)break;if(!last.equals(c[1]))shortcut("★ TV • "+c[0],new Intent(this,PA6TvActivity.class).putExtra("station_url",c[1]));}
+  android.content.SharedPreferences radio=getSharedPreferences(PA6RadioActivity.class.getName(),0);String url=radio.getString("radio_last_url","");if(!url.isEmpty())shortcut("Radio • "+radio.getString("radio_last_name","Ostatnia stacja"),new Intent(this,PA6RadioActivity.class).putExtra("station_url",url).putExtra("station_name",radio.getString("radio_last_name","Radio")));
+  try{org.json.JSONArray favorites=new org.json.JSONArray(radio.getString("radio_favorites","[]"));for(int i=0;i<Math.min(2,favorites.length());i++){org.json.JSONObject r=favorites.optJSONObject(i);if(r!=null&&!url.equals(r.optString("url")))shortcut("★ Radio • "+r.optString("name"),new Intent(this,PA6RadioActivity.class).putExtra("station_url",r.optString("url")).putExtra("station_name",r.optString("name")));}}catch(Exception ignored){}
+  shortcut("↓ Pobrane filmy • postęp i pliki offline",new Intent(this,PA6DownloadsActivity.class));
+ }
+ @Override protected void onRestart(){super.onRestart();render();}
  private String last(String target){
   switch(target){
    case "tv":return "Telewizja";case "radio":return "Radio";case "tube":return "Alfa Tube";
@@ -155,6 +171,7 @@ public final class PA6DashboardActivity extends Activity {
   quick(shortcuts,"tube","tube","ALFA TUBE","Filmy i muzyka",0xffff939e);
   quick(shortcuts,"radio","radio","RADIO","Polskie stacje",0xffffc783);
   highlight.addView(shortcuts);root.addView(highlight);
+  multimedia();
   String previous=getPreferences(0).getString("last","");
   if(!previous.isEmpty()&&!previous.equals("tv")&&!previous.equals("tube")&&!previous.equals("radio")){
    TextView recent=text("↗  Ostatnio: "+last(previous)+"  •  otwórz",14,true,RED);
@@ -187,7 +204,7 @@ public final class PA6DashboardActivity extends Activity {
   root.addView(size,new LinearLayout.LayoutParams(-1,dp(52)));
   size.setOnClickListener(v->{senior=!senior;getPreferences(0).edit().putBoolean("senior",senior).apply();render();});
   gap(root,13);
-  TextView footer=text("PA6 Tube Plus • 2.3.0 TEST • kompilacja 2003000",12,false,MUTED);
+  TextView footer=text("PA6 Tube Plus • 2.4.0 TEST • kompilacja 2004000",12,false,MUTED);
   footer.setGravity(Gravity.CENTER);root.addView(footer);
  }
  @Override public void onCreate(Bundle b){

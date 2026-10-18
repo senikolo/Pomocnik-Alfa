@@ -16,6 +16,7 @@ import java.util.*;
  * No paid, tokenized, DRM or unauthorized retransmissions.
  */
 public final class PA6TvActivity extends Activity {
+ private final PA6Fullscreen fullscreen=new PA6Fullscreen();
  private static String countryFor(String name){
   if(name.startsWith("Rossija 1")||name.equals("Univer TV"))return "Rosja";
   if(name.startsWith("World Fashion"))return "Międzynarodowe";
@@ -92,6 +93,7 @@ public final class PA6TvActivity extends Activity {
  private LinearLayout row(){LinearLayout l=new LinearLayout(this);l.setGravity(Gravity.CENTER_VERTICAL);return l;}
  private LinearLayout col(){LinearLayout l=new LinearLayout(this);l.setOrientation(1);return l;}
  private void space(LinearLayout l,int h){l.addView(new View(this),new LinearLayout.LayoutParams(1,dp(h)));}
+ static java.util.ArrayList<String[]> saved(android.content.Context context){java.util.ArrayList<String[]> out=new java.util.ArrayList<>();String all=context.getSharedPreferences(PA6TvActivity.class.getName(),0).getString("fav_tv","|");for(Channel c:CHANNELS)if(all.contains("|"+c.url+"|"))out.add(new String[]{c.name,c.url});return out;}
  private String favorites(){return getPreferences(0).getString("fav_tv","|");}
  private boolean favorite(String url){return favorites().contains("|"+url+"|");}
  private void toggle(Channel channel){
@@ -213,13 +215,13 @@ public final class PA6TvActivity extends Activity {
   LinearLayout playerPane=col(),catalogPane=col();
   if(wide){
    LinearLayout.LayoutParams left=new LinearLayout.LayoutParams(0,-1,5);
-   left.setMargins(0,0,dp(12),0);panes.addView(playerPane,left);
+   left.setMargins(0,0,dp(12),0);ScrollView playerScroll=new ScrollView(this);playerScroll.addView(playerPane);panes.addView(playerScroll,left);
    panes.addView(catalogPane,new LinearLayout.LayoutParams(0,-1,4));
   }else{
    panes.addView(playerPane,new LinearLayout.LayoutParams(-1,-2));
    panes.addView(catalogPane,new LinearLayout.LayoutParams(-1,0,1));
   }
-  player=new PA6EmbeddedPlayer(this);
+  player=new PA6EmbeddedPlayer(this);player.setFullscreenListener(()->fullscreen.toggle(this,player));
   player.setPlaybackErrorListener(()->onChannelPlaybackError());
   player.setPlaybackStartListener(()->{cancelTuneWatchdog();if(currentChannel!=null)status.setText("Na żywo • "+currentChannel.name);});
   playerPane.addView(player,new LinearLayout.LayoutParams(-1,-2));
@@ -234,6 +236,7 @@ public final class PA6TvActivity extends Activity {
   Button stop=action("■  Stop",false);LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(0,dp(46),1);
   sp.setMargins(dp(7),0,0,0);tools.addView(stop,sp);stop.setOnClickListener(v->player.stop());
   playerPane.addView(tools);space(playerPane,10);
+  Button hide=action("Zwiń / rozwiń katalog",false);page.addView(hide,1,new LinearLayout.LayoutParams(-1,dp(46)));hide.setOnClickListener(v->catalogPane.setVisibility(catalogPane.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE));
   ScrollView scroll=new ScrollView(this);catalogPane.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
   LinearLayout content=col();scroll.addView(content);
   TextView sect=text("Kanały telewizyjne",20,INK,true);
@@ -312,11 +315,12 @@ public final class PA6TvActivity extends Activity {
    play(new Channel("Film kontrolny H.264","Test","Test odtwarzania wideo w PA",
     "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"));
  }
+ @Override protected void onStart(){super.onStart();if(getIntent().getBooleanExtra("play_last",false)){getIntent().removeExtra("play_last");replay();}String shortcut=getIntent().getStringExtra("station_url");if(shortcut!=null){getIntent().removeExtra("station_url");for(Channel c:CHANNELS)if(c.url.equals(shortcut)){play(c);break;}}}
  @Override protected void onStop(){
   // Never leave hidden video decoding when the user switches to other PA modules.
   cancelTuneWatchdog();++tuneRequest;currentChannel=null;
   if(player!=null)player.stop();
   super.onStop();
  }
- @Override protected void onDestroy(){cancelTuneWatchdog();if(player!=null)player.release();super.onDestroy();}
+ @Override protected void onDestroy(){fullscreen.close();cancelTuneWatchdog();if(player!=null)player.release();super.onDestroy();}
 }

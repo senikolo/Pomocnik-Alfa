@@ -90,21 +90,8 @@ PY
 "$BT/zipalign" -p -f 4 output/raw.apk output/aligned.apk
 "$BT/aapt" dump badging output/aligned.apk | tee output/badging.txt
 grep -q "sdkVersion:'23'" output/badging.txt
-grep -q "package: name='com.senikolo.pa6tubeplus.test230'" output/badging.txt
-umask 077
-# Isolated test package: the reference release used an unrecoverable random key.
-# Never imply that this test signature can update an existing installation.
-KEYSTORE="$RUNNER_TEMP/pa6-signing.p12"
-trap 'rm -f "$KEYSTORE"' EXIT
-if [ -n "${PA_STABLE_KEYSTORE_B64:-}" ] && [ -n "${PA_STABLE_KEYSTORE_PASS:-}" ]; then
- printf '%s' "$PA_STABLE_KEYSTORE_B64" | base64 --decode > "$KEYSTORE"
- keytool -list -v -keystore "$KEYSTORE" -storepass:env PA_STABLE_KEYSTORE_PASS > "$RUNNER_TEMP/pa6-key-info.txt"
- grep -q '36:14:42:C8:98:55:22:36:A7:D4:29:9E:ED:A5:C3:DC:27:5B:A1:F3:68:C0:11:29:2D:C0:7D:44:B2:E8:AC:E1' "$RUNNER_TEMP/pa6-key-info.txt"
-else
- export PA_STABLE_KEYSTORE_PASS="$(openssl rand -hex 24)"
- keytool -genkeypair -noprompt -keyalg RSA -keysize 3072 -sigalg SHA256withRSA -validity 3650 -alias pa6-isolated-test -dname 'CN=PA6 Tube Plus 2.3.0 isolated TEST' -storetype PKCS12 -keystore "$KEYSTORE" -storepass:env PA_STABLE_KEYSTORE_PASS -keypass:env PA_STABLE_KEYSTORE_PASS >/dev/null 2>&1
- echo 'LIMITATION: release-specific TEST signature; no update compatibility promised.'
-fi
-"$BT/apksigner" sign --ks "$KEYSTORE" --ks-pass env:PA_STABLE_KEYSTORE_PASS --key-pass env:PA_STABLE_KEYSTORE_PASS --v1-signing-enabled true --v2-signing-enabled true --out output/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk output/aligned.apk
-"$BT/apksigner" verify --verbose --print-certs output/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk | tee output/signature.txt
-sha256sum output/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk > output/SHA256SUMS.txt
+grep -q "package: name='com.senikolo.pa6.stable'" output/badging.txt
+# Signing happens with the preserved PA certificate after downloading this build.
+# Never generate an ephemeral replacement key or publish an unsigned APK.
+cp output/aligned.apk output/PA6-2.4.0-unsigned.apk
+sha256sum output/PA6-2.4.0-unsigned.apk > output/SHA256SUMS.txt

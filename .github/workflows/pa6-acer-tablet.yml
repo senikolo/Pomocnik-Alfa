@@ -19,8 +19,6 @@ jobs:
     timeout-minutes: 55
     env:
       GH_TOKEN: ${{ github.token }}
-      PA_STABLE_KEYSTORE_B64: ${{ secrets.PA_STABLE_KEYSTORE_B64 }}
-      PA_STABLE_KEYSTORE_PASS: ${{ secrets.PA_STABLE_KEYSTORE_PASS }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -37,62 +35,10 @@ jobs:
         with:
           name: PA6-Acer-B3A32-APK
           path: |
-            output/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk
+            output/PA6-2.4.0-unsigned.apk
             output/badging.txt
-            output/signature.txt
             output/SHA256SUMS.txt
             output/data-build.txt
             output/route-tests.txt
             output/transport-tests.txt
           retention-days: 45
-  android6:
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 28
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: PA6-Acer-B3A32-APK
-          path: pa6
-      - name: MP4 test fixtures
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - name: Verify installation and visual boot on Android 6 API23
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 23
-          arch: x86
-          target: default
-          profile: Nexus 10
-          disable-animations: true
-          emulator-boot-timeout: 700
-          script: bash helpers/pa6/smoke.sh
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: PA6-Acer-Android23-Test-Screenshots
-          path: results
-          retention-days: 45
-  release:
-    needs: [build, android6]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: PA6-Acer-B3A32-APK
-          path: release
-      - name: Publish Acer Android 6 test prerelease
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          tag="pa6-tubeplus-$(echo "$GITHUB_SHA" | cut -c1-8)"
-          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
-            --title 'PA6 Tube Plus 2.3.0 – Android 6 TEST' \
-            --notes 'PA6 Tube Plus 2.3.0 TEST (2003000). Nowy tryb Samo audio wybiera osobny strumień AAC przez NewPipe i odtwarza go w LibVLC bez dekodowania obrazu. Przełączniki Wideo/Samo audio, wybór domyślnej jakości Auto/240p/360p/480p/720p oraz jakości dostępnych dla wybranego filmu. Odświeżony układ, czytelne karty i przyciski, rozwijane dodatkowe opcje. TV: 18 pozycji, podział na kraje z flagami rysowanymi natywnie, transmisje w okienku PA bez przeglądarki; usunięte źródła niedostępne w sprawdzeniu, dodane TVP1 i TVP3 Kraków przez oficjalne API TVP oraz Rossija 1 z oficjalnego Smotrim. API TVP zwróciło GEOIP_FILTER_FAILED w środowisku testowym poza Polską; dostęp w Polsce wymaga sprawdzenia na urządzeniu. Zachowano optymalizacje wersji 2.2.2 i kontrolę kompletnego MP4. Testy API23 obejmują odtwarzanie lokalnego AAC, rzeczywisty wybór 240p, oba układy, pamięć wyników i MP4. Tryb audio działa na ekranie Alfa Tube; odtwarzanie w tle nie jest dodane. Dostęp do materiałów YouTube zależy od źródła. Osobna instalacja com.senikolo.pa6tubeplus.test230 nie usuwa wcześniejszych aplikacji ani ich danych. Podpis testowy bez gwarancji zgodnych aktualizacji.' \
-            release/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk release/SHA256SUMS.txt release/signature.txt

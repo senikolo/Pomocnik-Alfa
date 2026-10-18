@@ -47,6 +47,7 @@ public final class PA6TubeActivity extends Activity {
  private void cancelPlay(){if(playWork!=null)playWork.cancel();if(playTask!=null)playTask.cancel(true);}
  private void clearThumbnails(){thumbnailGeneration++;thumbnailIo.getQueue().clear();}
 
+ private final PA6Fullscreen fullscreen=new PA6Fullscreen();
  private LinearLayout results,stageWrap,mediaArea,playerPane,feedPane;
  private PA6EmbeddedPlayer player;
  private WebView officialWeb;
@@ -300,9 +301,9 @@ public final class PA6TubeActivity extends Activity {
      activeTitle=v.title;title.setText(v.title);
      subtitle.setText(v.channel+" • Faktyczny format: "+v.quality);
      provider.setText(audio?"Słuchasz bez pobierania obrazu":"Odtwarzanie wewnątrz Alfa Tube");
-     armWatchdog(seq);
      player.setAudioOnly(audio);
-     player.play(v.title,v.stream,v.audioStream);
+     if(audio){cancelWatchdog();player.backgroundAudio(v.title);PA6AudioService.start(this,id,v.title,v.stream);}
+     else{stopService(new Intent(this,PA6AudioService.class));armWatchdog(seq);player.play(v.title,v.stream,v.audioStream);}
      updateQualityButton();
      if(v.audioStream!=null&&!v.audioStream.isEmpty()){
       android.util.Log.i("PA6_TUBE","Adaptive playback requested (separate video/audio)");
@@ -539,15 +540,16 @@ public final class PA6TubeActivity extends Activity {
   card.setContentDescription(video.title+", "+video.channel);
   card.setOnClickListener(v->playVideo(video.id));
  }
- private void history(){
-  cancelSearch();++searchGeneration;clearThumbnails();results.removeAllViews();String raw=getPreferences(0).getString("recent_ids","");
+ private void history(){savedFilms("recent_ids","Ostatnio oglądane");}
+ private void savedFilms(String key,String caption){
+  cancelSearch();++searchGeneration;clearThumbnails();results.removeAllViews();String raw=getPreferences(0).getString(key,"");
   int shown=0;
   for(String id:raw.split(",")){
    if(!id.matches("[A-Za-z0-9_-]{11}")||shown++>=12)continue;
    String name=getPreferences(0).getString("recent_title_"+id,"Film");
-   movieCard(new PA6PipedClient.Result(name,"Ostatnio oglądane","",""+id,"",""));
+   movieCard(new PA6PipedClient.Result(name,caption,"",""+id,"",""));
   }
-  feedback(shown==0?"Historia jest pusta.":"Twoja historia oglądania.");
+  feedback(shown==0?"Lista jest pusta.":caption);
  }
  private void openLink(){
   String raw=link.getText().toString().trim();String id=PA6PipedClient.extractId(raw);
@@ -601,7 +603,7 @@ public final class PA6TubeActivity extends Activity {
   playerPane=column();feedPane=column();
   applyLayoutMode();
   stageWrap=column();stageWrap.setBackground(panel(0xff101827,0xff101827,14));
-  player=new PA6EmbeddedPlayer(this);player.setPlaybackErrorListener(()->onVideoPlaybackError());
+  player=new PA6EmbeddedPlayer(this);player.setFullscreenListener(()->fullscreen.toggle(this,player));player.setPlaybackErrorListener(()->onVideoPlaybackError());
   player.setPlaybackStartListener(()->{
    cancelWatchdog();
    if(!closed&&!activeId.isEmpty())feedback("Film jest odtwarzany wewnątrz Alfa Tube.");
@@ -637,10 +639,12 @@ public final class PA6TubeActivity extends Activity {
   LinearLayout links=line();
   Button recent=button("◷ Historia",RED,false);links.addView(recent,new LinearLayout.LayoutParams(0,-2,1));
   recent.setOnClickListener(v->history());
-  Button favorites=button("★ Obejrzyj ponownie",RED,false);
+  Button favorites=button("★ Dodaj / usuń",RED,false);
   LinearLayout.LayoutParams fp=new LinearLayout.LayoutParams(0,-2,1);fp.setMargins(dp(7),0,0,0);links.addView(favorites,fp);
-  favorites.setOnClickListener(v->{if(activeId.isEmpty())feedback("Najpierw wybierz film.");else playVideo(activeId);});
+  favorites.setOnClickListener(v->{if(activeId.isEmpty()){feedback("Najpierw wybierz film.");return;}String all=getPreferences(0).getString("favorite_ids","");String token=activeId+",";boolean had=all.contains(token);all=all.replace(token,"");if(!had)all=token+all;if(all.length()>360)all=all.substring(0,360);getPreferences(0).edit().putString("favorite_ids",all).putString("recent_title_"+activeId,activeTitle).apply();feedback(had?"Usunięto z ulubionych.":"Dodano do ulubionych.");});
   playerPane.addView(links);
+  LinearLayout saved=line();Button stars=button("★ Ulubione",RED,false);saved.addView(stars,new LinearLayout.LayoutParams(0,-2,1));stars.setOnClickListener(v->savedFilms("favorite_ids","Ulubione filmy"));Button downloads=button("↓ Pobrane",RED,false);saved.addView(downloads,new LinearLayout.LayoutParams(0,-2,1));downloads.setOnClickListener(v->startActivity(new Intent(this,PA6DownloadsActivity.class)));playerPane.addView(saved);
+  Button catalog=button("Zwiń / rozwiń listę filmów",RED,false);playerPane.addView(catalog);catalog.setOnClickListener(v->feedPane.setVisibility(feedPane.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE));
   compatiblePlayerButton=button("▶ Otwórz w NewPipe / SkyTube (osobna aplikacja)",RED,false);
   compatiblePlayerButton.setVisibility(View.GONE);
   LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);
@@ -702,7 +706,7 @@ public final class PA6TubeActivity extends Activity {
   if(getIntent().getBooleanExtra("verify_audio_only",false)){
    getPreferences(0).edit().putBoolean("tube_audio_only",true).apply();updateQualityButton();
    player.setAudioOnly(true);title.setText("Test samego audio");subtitle.setText("AAC • bez dekodowania wideo");
-   player.playUri("Test samego audio",Uri.fromFile(new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),"pa6-audio.m4a")));
+   player.backgroundAudio("Test samego audio");PA6AudioService.start(this,"","Test samego audio",Uri.fromFile(new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),"pa6-audio.m4a")).toString());
    feedback("Samo audio • słuchasz bez obrazu");
   }else if(getIntent().getBooleanExtra("verify_quality_menu",false)){
    getPreferences(0).edit().putBoolean("tube_audio_only",false).apply();updateQualityButton();chooseQuality();
@@ -759,6 +763,10 @@ public final class PA6TubeActivity extends Activity {
     android.util.Log.i("PA6_PERF","PASS cached search, 12-item page, stale-result rejection, isolated HTTP cancellation; UI_MS="+(SystemClock.elapsedRealtime()-started));
    }catch(Exception error){android.util.Log.e("PA6_PERF","FAIL performance regression",error);}
   }},50);
+  if(getIntent().getBooleanExtra("verify_controls",false)){useLocalVideo();player.setAudioOnly(false);player.playUri("Test sterowania",Uri.fromFile(new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),"pa6-av.mp4")));}
+  String shortcut=getIntent().getStringExtra("play_id");if(shortcut!=null&&shortcut.matches("[A-Za-z0-9_-]{11}"))playVideo(shortcut);
+  String offline=getIntent().getStringExtra("offline_path");if(offline!=null)try{File f=new File(offline).getCanonicalFile();File downloads=Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getCanonicalFile();if(f.isFile()&&f.getParentFile().equals(downloads)&&f.getName().endsWith(".mp4")){useLocalVideo();stopService(new Intent(this,PA6AudioService.class));player.setAudioOnly(false);player.playUri(f.getName(),Uri.fromFile(f));title.setText(f.getName());subtitle.setText("Plik z pamięci • offline");}}catch(Exception e){feedback("Nie można otworzyć pliku.");}
+
  }
  @Override protected void onActivityResult(int requestCode,int result,Intent data){
   super.onActivityResult(requestCode,result,data);
@@ -767,17 +775,18 @@ public final class PA6TubeActivity extends Activity {
   title.setText(activeTitle);subtitle.setText("Lokalny plik • offline");
   player.setAudioOnly(audioOnly());player.playUri(activeTitle,data.getData());feedback("Odtwarzanie pliku z pamięci urządzenia.");
  }
- @Override protected void onStart(){super.onStart();main.removeCallbacks(downloadMonitor);main.post(downloadMonitor);}
+ @Override public void onConfigurationChanged(android.content.res.Configuration c){super.onConfigurationChanged(c);applyLayoutMode();}
+ @Override protected void onStart(){super.onStart();if(PA6AudioService.active){activeId=PA6AudioService.videoId;activeTitle=PA6AudioService.title;title.setText(activeTitle);player.backgroundAudio(activeTitle);}main.removeCallbacks(downloadMonitor);main.post(downloadMonitor);}
  @Override protected void onStop(){
   main.removeCallbacks(downloadMonitor);cancelSearch();cancelPlay();++searchGeneration;clearThumbnails();
   // Never leave hidden video decoding when the user switches to other PA modules.
   cancelWatchdog();++request;activeId="";playbackPending=false;
   if(officialWeb!=null)officialWeb.onPause();
-  if(player!=null)player.stop();
+  if(player!=null&&!PA6AudioService.active)player.stop();
   super.onStop();
  }
  @Override protected void onDestroy(){
-  closed=true;main.removeCallbacks(downloadMonitor);cancelWatchdog();request++;io.shutdownNow();searchIo.shutdownNow();thumbnailIo.shutdownNow();
+  fullscreen.close();closed=true;main.removeCallbacks(downloadMonitor);cancelWatchdog();request++;io.shutdownNow();searchIo.shutdownNow();thumbnailIo.shutdownNow();
   if(officialWeb!=null){officialWeb.stopLoading();officialWeb.destroy();officialWeb=null;}
   if(player!=null)player.release();
   super.onDestroy();

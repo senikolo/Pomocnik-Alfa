@@ -242,7 +242,7 @@ public final class PA6RadioActivity extends Activity {
   page.setFocusableInTouchMode(true);page.requestFocus();
   load("");
  }
- @Override protected void onStart(){super.onStart();if(!listening){registerReceiver(updates,new IntentFilter(PA6RadioService.ACTION_STATE));listening=true;}}
+ @Override protected void onStart(){super.onStart();String url=getIntent().getStringExtra("station_url");if(url!=null){getIntent().removeExtra("station_url");play(getIntent().getStringExtra("station_name"),url);}if(!listening){registerReceiver(updates,new IntentFilter(PA6RadioService.ACTION_STATE));listening=true;}}
  @Override protected void onStop(){if(listening){unregisterReceiver(updates);listening=false;}super.onStop();}
  @Override protected void onDestroy(){serial++;super.onDestroy();}
 }
