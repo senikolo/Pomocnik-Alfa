@@ -90,5 +90,5 @@ jobs:
           tag="pa6-tubeplus-$(echo "$GITHUB_SHA" | cut -c1-8)"
           gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease \
             --title 'PA6 Alfa Tube Plus – Pobieranie, Jakość, Tryby TEST' \
-            --notes 'PA6 Android 6 TEST: Alfa Tube i Tube Kids z przyciskami jakości i pobierania MP4 z kompletnym obrazem i dźwiękiem, ustawieniami (Wi-Fi, jakość, historia) oraz wspólnym trybem Tablet/Smartfon na pulpicie. Pobieranie respektuje ograniczenia dostępnych źródeł. Test CI potwierdza uruchomienie na emulatorze Android 6, nie gwarantuje pobierania każdego materiału. Radio, telewizja i transport pozostają bez zmian.' \\
+            --notes 'PA6 Android 6 TEST: Alfa Tube i Tube Kids z przyciskami jakości i pobierania MP4 z kompletnym obrazem i dźwiękiem, ustawieniami (Wi-Fi, jakość, historia) oraz wspólnym trybem Tablet/Smartfon na pulpicie. Pobieranie respektuje ograniczenia dostępnych źródeł. Test CI potwierdza uruchomienie na emulatorze Android 6, nie gwarantuje pobierania każdego materiału. Radio, telewizja i transport pozostają bez zmian.' \
             release/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk release/SHA256SUMS.txt release/signature.txt
