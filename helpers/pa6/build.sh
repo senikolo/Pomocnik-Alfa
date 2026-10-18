@@ -90,7 +90,7 @@ PY
 "$BT/zipalign" -p -f 4 output/raw.apk output/aligned.apk
 "$BT/aapt" dump badging output/aligned.apk | tee output/badging.txt
 grep -q "sdkVersion:'23'" output/badging.txt
-grep -q "package: name='com.senikolo.pa6newpipe'" output/badging.txt
+grep -q "package: name='com.senikolo.pa6tubeplus'" output/badging.txt
 umask 077
 export PA6_TEST_PASS="$(openssl rand -hex 24)"
 keytool -genkeypair -noprompt -keyalg RSA -keysize 3072 -sigalg SHA256withRSA -validity 3650 -alias pa6-tablet-test -dname 'CN=PA6 Acer test only, O=PA development' -storetype PKCS12 -keystore "$RUNNER_TEMP/pa6-test.p12" -storepass:env PA6_TEST_PASS -keypass:env PA6_TEST_PASS >/dev/null 2>&1
