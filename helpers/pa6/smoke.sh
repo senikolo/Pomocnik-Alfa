@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 mkdir -p results
-pkg=com.senikolo.pa6tubeplus.test222
+pkg=com.senikolo.pa6tubeplus.test230
 activity=$pkg/com.ispina.lokalnie.PA6TubeActivity
 trap 'adb logcat -d -v time > results/logcat.txt || true' EXIT
 adb install pa6/Pomocnik-Alfa-Tablet-Android6-B3-A32-TEST.apk
@@ -28,6 +28,40 @@ ffmpeg -v error -f lavfi -i color=c=blue:s=320x240:r=15 -f lavfi -i sine=frequen
 ffmpeg -v error -i results/pa6-av.mp4 -an -c:v copy -y results/pa6-silent.mp4
 adb push results/pa6-av.mp4 /sdcard/Download/pa6-av.mp4
 adb push results/pa6-silent.mp4 /sdcard/Download/pa6-silent.mp4
+ffmpeg -v error -f lavfi -i sine=frequency=440 -t 5 -c:a aac -y results/pa6-audio.m4a
+adb push results/pa6-audio.m4a /sdcard/Download/pa6-audio.m4a
+adb shell am force-stop "$pkg"
+adb shell am start -n "$activity" --ez verify_audio_only true
+for attempt in {1..10}; do
+ adb logcat -d > results/audio-only.txt
+ grep -q 'PA6_PLAYER.*PLAYING Test samego audio' results/audio-only.txt && break
+ sleep 1
+done
+grep -q 'PA6_PLAYER.*AUDIO_ONLY_MODE=true' results/audio-only.txt
+grep -q 'PA6_PLAYER.*PLAYING Test samego audio' results/audio-only.txt
+adb exec-out screencap -p > results/audio-only.png
+adb shell am force-stop "$pkg"
+adb shell am start -n "$activity" --ez verify_quality_menu true
+sleep 2
+adb shell uiautomator dump /sdcard/quality.xml
+adb pull /sdcard/quality.xml results/quality-menu.xml
+for quality in 240p 360p 480p 720p; do grep -q "$quality" results/quality-menu.xml; done
+adb exec-out screencap -p > results/quality-menu.png
+python3 - <<'PYCODE'
+import re,subprocess,xml.etree.ElementTree as ET
+for node in ET.parse('results/quality-menu.xml').iter('node'):
+ if node.get('text')=='240p':
+  x1,y1,x2,y2=map(int,re.findall(r'\d+',node.get('bounds')))
+  subprocess.run(['adb','shell','input','tap',str((x1+x2)//2),str((y1+y2)//2)],check=True)
+  break
+else: raise AssertionError('240p not selectable')
+PYCODE
+sleep 1
+adb shell uiautomator dump /sdcard/quality-selected.xml
+adb pull /sdcard/quality-selected.xml results/quality-selected.xml
+grep -q 'Jakość obrazu.*240p' results/quality-selected.xml
+adb shell am force-stop "$pkg"
+
 adb shell am start -n "$activity" --ez verify_download_validation true --ez verify_libvlc true
 sleep 5
 adb logcat -d > results/mp4-validation.txt
@@ -69,6 +103,20 @@ if grep -q 'PA6_PLAYER.*PLAYING Me at the zoo' results/youtube.txt; then
 else
  echo 'UNCONFIRMED live YouTube playback; real Acer test required' > results/youtube-status.txt
 fi
+adb shell am force-stop "$pkg"
+adb shell am start -n "$pkg/com.ispina.lokalnie.PA6TvActivity" --ez verify_tv_catalog true --ez verify_russia1 true --es verify_tv_country Rosja
+sleep 15
+adb logcat -d > results/tv-new-catalog.txt
+grep -q 'PA6_TV_TEST.*PASS requested channels' results/tv-new-catalog.txt
+adb exec-out screencap -p > results/tv-new-catalog.png
+adb shell uiautomator dump /sdcard/tv-countries.xml
+adb pull /sdcard/tv-countries.xml results/tv-countries.xml
+for country in Polska Rosja; do grep -q "$country" results/tv-countries.xml; done
+if grep -q 'PA6_PLAYER.*PLAYING Rossija 1' results/tv-new-catalog.txt; then
+ echo 'CONFIRMED official Russia 1 playback on API23' > results/tv-russia1-status.txt
+else
+ echo 'UNCONFIRMED Russia 1 live playback on CI network' > results/tv-russia1-status.txt
+fi
 adb logcat -d -b crash > results/crashes.txt
 ! grep -q "Process: $pkg" results/crashes.txt
-echo 'PASS API23 install/reinstall, complete AV validation, silent MP4 rejection, download error UI, Tablet/Smartfon startup, native LibVLC initialization'
+echo 'PASS local AAC audio-only playback, quality selection 240p-720p; API23 install/reinstall, complete AV validation, silent MP4 rejection, download error UI, Tablet/Smartfon startup, native LibVLC initialization'

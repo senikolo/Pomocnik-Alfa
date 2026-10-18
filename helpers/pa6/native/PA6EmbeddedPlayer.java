@@ -26,6 +26,14 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
  private MediaPlayer engine;
  private final Handler ui=new Handler(Looper.getMainLooper());
  private String active="";
+ private boolean audioOnly=false;
+ public void setAudioOnly(boolean value){
+  audioOnly=value;screen.setKeepScreenOn(!value);
+  if(value){placeholder.setText("♫\nSamo audio\nSłuchaj bez obrazu");placeholder.setTextSize(22);placeholder.setBackgroundColor(0xff123b45);placeholder.setVisibility(VISIBLE);}
+  else{placeholder.setText("▶  Wybierz film");placeholder.setTextSize(18);placeholder.setBackgroundColor(0xff111827);}
+  requestLayout();
+ }
+
  private Runnable playbackErrorListener,playbackStartListener;
  public void setPlaybackErrorListener(Runnable listener){playbackErrorListener=listener;}
  public void setPlaybackStartListener(Runnable listener){playbackStartListener=listener;}
@@ -51,7 +59,7 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   FrameLayout frame=new FrameLayout(context){
    @Override protected void onMeasure(int widthMeasureSpec,int heightMeasureSpec){
     int width=MeasureSpec.getSize(widthMeasureSpec);
-    int videoHeight=Math.max(dp(130),Math.round(width*9f/16f));
+    int videoHeight=audioOnly?dp(180):Math.max(dp(130),Math.round(width*9f/16f));
     super.onMeasure(widthMeasureSpec,MeasureSpec.makeMeasureSpec(videoHeight,MeasureSpec.EXACTLY));
    }
   };
@@ -154,9 +162,10 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
     if(!hasFocus){state.setText("Inne audio zajmuje dźwięk. Zatrzymaj radio.");return;}
    }
    engine.stop();
-   placeholder.setVisibility(GONE);
+   placeholder.setVisibility(audioOnly?VISIBLE:GONE);
    Media media=new Media(vlc,address);
    media.addOption(":network-caching=1500");
+   if(audioOnly){media.addOption(":no-video");android.util.Log.i("PA6_PLAYER","AUDIO_ONLY_MODE=true");}
    media.addOption(":avcodec-hw=none"); // Acer Android 6: avoid audio-only hardware decoding failures.
    media.addOption(":http-reconnect=true");
    media.addOption(":http-user-agent=Mozilla/5.0 (Android 6; Pomocnik Alfa)");

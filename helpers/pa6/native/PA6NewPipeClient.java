@@ -204,6 +204,20 @@ public final class PA6NewPipeClient {
   int[] result=new int[heights.size()+1];int i=1;for(int h:heights)result[i++]=h;
   return result;
  }
+ /** Audio playback downloads only the AAC stream, never the video track. */
+ public static PA6PipedClient.Response<PA6PipedClient.Video> resolveAudio(String id)throws Exception{
+  StreamInfo info=load(id);AudioStream best=null;int bestScore=Integer.MAX_VALUE;
+  for(AudioStream audio:info.getAudioStreams()){
+   if(audio==null||!audio.isUrl()||audio.getFormat()!=MediaFormat.M4A||!isAac(audio.getCodec()))continue;
+   String url=audio.getContent();if(url==null||!url.startsWith("https://")||url.length()>8000)continue;
+   int bitrate=audio.getAverageBitrate();int points=Math.abs((bitrate>0?bitrate:128)-128);
+   if(points<bestScore){best=audio;bestScore=points;}
+  }
+  if(best==null)throw new IOException("Ten materiał nie udostępnia osobnego dźwięku AAC. Wybierz tryb Wideo lub inny film.");
+  int bitrate=best.getAverageBitrate();
+  return new PA6PipedClient.Response<>(new PA6PipedClient.Video(info.getName(),info.getUploaderName(),best.getContent(),
+   "Samo audio • AAC"+(bitrate>0?" • "+bitrate+" kb/s":"")),"NewPipe Extractor");
+ }
  public static PA6PipedClient.Response<PA6PipedClient.Video> resolve(String id)throws Exception{
   return resolve(id,0);
  }
