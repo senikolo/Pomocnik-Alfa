@@ -120,7 +120,7 @@ public final class PA6NewPipeClient {
  private static int height(String label){
   if(label==null)return 0;
   try{
-   String digits=label.replaceAll("[^0-9]","");
+   String digits=label.split("p",2)[0].replaceAll("[^0-9]","");
    return digits.isEmpty()?0:Integer.parseInt(digits);
   }catch(Exception e){return 0;}
  }
