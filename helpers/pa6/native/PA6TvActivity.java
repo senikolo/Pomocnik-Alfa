@@ -47,7 +47,7 @@ public final class PA6TvActivity extends PA6BaseActivity {
   }
  }
  private static final Channel[] CHANNELS={
-  new Channel("Das Erste","Rozrywka","ARD • telewizja publiczna","https://daserste-live.ard-mcdn.de/daserste/live/hls/de/master.m3u8","https://daserste-live.ard-mcdn.de/daserste/live/hls/int/master.m3u8"),
+  new Channel("Das Erste","Rozrywka","ARD • telewizja publiczna","https://daserste-live.ard-mcdn.de/daserste/live/hls/int/master.m3u8","https://daserste-live.ard-mcdn.de/daserste/live/hls/de/master.m3u8"),
   new Channel("BR Fernsehen","Regiony","Bawaria • program regionalny","https://mcdn.br.de/br/fs/bfs_sued/hls/de/master.m3u8","https://mcdn.br.de/br/fs/bfs_nord/hls/de/master.m3u8"),
   new Channel("KiKA","Dla dzieci","ARD i ZDF • program dla dzieci","https://kikahls.akamaized.net/hls/live/2022690/livetvkika_ww/master.m3u8","https://kikageohls.akamaized.net/hls/live/2022693/livetvkika_de/master.m3u8"),
   new Channel("NDR Fernsehen","Regiony","Północne Niemcy • wersja międzynarodowa","https://ndrint.akamaized.net/hls/live/2020766/ndr_int/index.m3u8","https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_nds/master.m3u8"),
@@ -145,7 +145,7 @@ public final class PA6TvActivity extends PA6BaseActivity {
   tuneTask=tuning.submit(()->{
    try{
     PA6HlsQuality.Playlist available=PA6HlsQuality.inspect(PA6TvSources.resolve(input));
-    int requested=getPreferences(0).getInt("tv_quality_"+ch.url,0);
+    int requested=getPreferences(0).getInt("tv_quality_"+ch.url,"Das Erste".equals(ch.name)?360:0);
     String url=available.selected(this,requested);
     runOnUiThread(()->{
      if(isFinishing()||attempt!=tuneRequest)return;

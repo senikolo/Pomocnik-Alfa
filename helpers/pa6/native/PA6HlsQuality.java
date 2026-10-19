@@ -46,6 +46,7 @@ public final class PA6HlsQuality {
  static Playlist parse(String source,String body)throws IOException{
   Playlist p=new Playlist(source);
   if(!body.trim().startsWith("#EXTM3U"))throw new IOException("Serwer nie udostępnił transmisji. Spróbuj później.");
+   body=PA6StreamRelay.normalizeLegacyArdMaster(source,body);
   String metadata="";TreeMap<Integer,Variant> unique=new TreeMap<>();
   for(String raw:body.split("\\r?\\n")){
    String line=raw.trim();

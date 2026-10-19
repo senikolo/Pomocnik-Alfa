@@ -132,8 +132,35 @@ final class PA6StreamRelay implements Closeable {
    if(!closed&&!committed)try{head(socket.getOutputStream(),502,"text/plain",0,Collections.emptyMap());}catch(IOException ignored){}
   }finally{try{socket.close();}catch(IOException ignored){}if(connection!=null){upstream.remove(connection);connection.disconnect();}sockets.remove(socket);}
  }
+ /**
+  * Das Erste's live HLS master can advertise an unsupported external subtitles
+  * rendition (mastersubs.m3u8). On legacy decoders this optional track can abort
+  * the entire live programme. Suppress only this optional rendition; keep AUDIO
+  * groups and video variants exactly as offered by the broadcaster.
+  *
+  * Apply both before selecting a fixed-quality variant and when relaying
+  * the automatic-quality master. Never change unrelated channels.
+  */
+ static String normalizeLegacyArdMaster(String source,String playlist) {
+  try {
+   if(!"daserste-live.ard-mcdn.de".equalsIgnoreCase(new URL(source).getHost())
+       ||!playlist.contains("#EXT-X-MEDIA:TYPE=SUBTITLES"))return playlist;
+  }catch(Exception invalid){return playlist;}
+  StringBuilder fixed=new StringBuilder(playlist.length());
+  for(String line:playlist.split("\\r?\\n",-1)){
+   if(line.startsWith("#EXT-X-MEDIA:TYPE=SUBTITLES"))continue;
+   if(line.startsWith("#EXT-X-STREAM-INF:")){
+    // Remove references to a non-existent subtitles group, preserving AUDIO.
+    line=line.replaceAll(",SUBTITLES=\"[^\"]*\"","")
+             .replaceAll("SUBTITLES=\"[^\"]*\",","");
+   }
+   fixed.append(line).append('\n');
+  }
+  return fixed.toString();
+ }
  String rewrite(String source,String body)throws IOException {
   if(!body.trim().startsWith("#EXTM3U"))throw new IOException("Nieprawidłowa lista transmisji.");
+  body=normalizeLegacyArdMaster(source,body);
   StringBuilder result=new StringBuilder(body.length()+512);URL base=new URL(source);
   for(String raw:body.split("\\r?\\n")){
    String text=raw.trim();
