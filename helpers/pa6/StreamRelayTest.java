@@ -24,7 +24,13 @@ public final class StreamRelayTest {
   CountDownLatch stalled=new CountDownLatch(1),resume=new CountDownLatch(1);
   origin.createContext("/",exchange->{try{
    String path=exchange.getRequestURI().getPath();paths.add(exchange.getRequestURI().toString());
-   if(path.equals("/live/master.m3u8"))send(exchange,200,"application/vnd.apple.mpegurl",("#EXTM3U\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"aac\",NAME=\"Deutsch\",DEFAULT=YES,URI=\"audio.m3u8?sig=a%2Fb\"\n#EXT-X-STREAM-INF:BANDWIDTH=600000,RESOLUTION=640x360,AUDIO=\"aac\"\nvideo/low.m3u8?sig=abc&x=1\n").getBytes(StandardCharsets.UTF_8));
+   if(path.equals("/daserste/master.m3u8"))send(exchange,200,"application/vnd.apple.mpegurl",(
+    "#EXTM3U\n"
+   +"#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID=\"subs\",NAME=\"Deutsch\",URI=\"mastersubs.m3u8\"\n"
+   +"#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"program_audio\",NAME=\"Deutsch\",URI=\"masteraudio1.m3u8\"\n"
+   +"#EXT-X-STREAM-INF:BANDWIDTH=600000,RESOLUTION=640x360,AUDIO=\"program_audio\",SUBTITLES=\"subs\"\n"
+   +"master360p1200.m3u8\n").getBytes(StandardCharsets.UTF_8));
+   else if(path.equals("/live/master.m3u8"))send(exchange,200,"application/vnd.apple.mpegurl",("#EXTM3U\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"aac\",NAME=\"Deutsch\",DEFAULT=YES,URI=\"audio.m3u8?sig=a%2Fb\"\n#EXT-X-STREAM-INF:BANDWIDTH=600000,RESOLUTION=640x360,AUDIO=\"aac\"\nvideo/low.m3u8?sig=abc&x=1\n").getBytes(StandardCharsets.UTF_8));
    else if(path.endsWith("/low.m3u8")||path.endsWith("/audio.m3u8"))send(exchange,200,"application/vnd.apple.mpegurl",("#EXTM3U\n#EXT-X-TARGETDURATION:4\n#EXT-X-KEY:METHOD=AES-128,URI=\"/key.bin\"\n#EXTINF:4,\n/segment.ts\n#EXT-X-ENDLIST\n").getBytes(StandardCharsets.UTF_8));
    else if(path.equals("/redirect.m3u8")){exchange.getResponseHeaders().set("Location","/live/master.m3u8");exchange.sendResponseHeaders(302,-1);exchange.close();}
    else if(path.equals("/fail"))send(exchange,403,"text/plain","forbidden".getBytes(StandardCharsets.UTF_8));
@@ -40,6 +46,15 @@ public final class StreamRelayTest {
   origin.start();
   PA6StreamRelay relay=new PA6StreamRelay(address->{URL target=new URL(address);return (HttpURLConnection)new URL("http://127.0.0.1:"+origin.getAddress().getPort()+target.getFile()).openConnection();});
   try{
+   String ard="https://daserste-live.ard-mcdn.de/daserste/master.m3u8";
+   String ardMaster=fetch(relay.route(ard));
+   check(!ardMaster.contains("TYPE=SUBTITLES")&&!ardMaster.contains("SUBTITLES=\"subs\""),"Das Erste relay omits incompatible optional subtitles");
+   check(ardMaster.contains("TYPE=AUDIO")&&ardMaster.contains("AUDIO=\"program_audio\""),"Das Erste retains German audio and video group metadata");
+   check(ardMaster.contains("http://127.0.0.1:"),"Das Erste media references stay session-local");
+   String hlsFixture="#EXTM3U\n#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID=\"subs\",NAME=\"Deutsch\",URI=\"mastersubs.m3u8\"\n#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"program_audio\",URI=\"masteraudio1.m3u8\"\n#EXT-X-STREAM-INF:BANDWIDTH=600000,RESOLUTION=640x360,AUDIO=\"program_audio\",SUBTITLES=\"subs\"\nmaster360p1200.m3u8\n";
+   check(PA6StreamRelay.normalizeLegacyArdMaster("https://tagesschau.akamaized.net/live/master.m3u8",hlsFixture).equals(hlsFixture),"non-ARD channels remain byte-identical");
+   String legacySelection=PA6StreamRelay.normalizeLegacyArdMaster(ard,hlsFixture);
+   check(legacySelection.contains("TYPE=AUDIO")&&!legacySelection.contains("SUBTITLES"),"fixed-quality ARD master retains audio but omits subtitles");
    String master=fetch(relay.route("https://broadcaster.test/redirect.m3u8"));
    check(master.contains("RESOLUTION=640x360")&&master.contains("AUDIO=\"aac\""),"master retains resolution and separate audio group");
    check(!master.contains("broadcaster.test")&&!master.contains("URI=\"audio"),"all remote HLS references use loopback");
