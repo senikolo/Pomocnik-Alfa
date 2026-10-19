@@ -56,14 +56,14 @@ jobs:
             --ks-key-alias qa247 --ks-pass env:QA_KEY_PASS --key-pass env:QA_KEY_PASS \
             --v1-signing-enabled true --v2-signing-enabled true \
             --out pa6/Pomocnik-Alfa-6-2.4.7-Das-Erste-TEST.apk output/aligned.apk
-          "$BT/apksigner" verify --verbose --print-certs pa6/Pomocnik-Alfa-6-2.4.7-Niemiecka-TV-TEST.apk > pa6/signature.txt
-          "$BT/aapt" dump badging pa6/Pomocnik-Alfa-6-2.4.7-Niemiecka-TV-TEST.apk | tee pa6/badging.txt
+          "$BT/apksigner" verify --verbose --print-certs pa6/Pomocnik-Alfa-6-2.4.7-Das-Erste-TEST.apk > pa6/signature.txt
+          "$BT/aapt" dump badging pa6/Pomocnik-Alfa-6-2.4.7-Das-Erste-TEST.apk | tee pa6/badging.txt
           grep -q "package: name='com.senikolo.pa6.tv247' versionCode='2004007'" pa6/badging.txt
           grep -q "sdkVersion:'23'" pa6/badging.txt
           (cd pa6 && sha256sum *.apk > SHA256SUMS.txt)
           echo 'Test APK has separate package and signing certificate. Install alongside current PA6.' > pa6/QA-NOT-RELEASE.txt
           # The old smoke test still refers to the prior version's APK filename.
-          sed -i 's/Pomocnik-Alfa-6-2.4.2-Premium-Preview.apk/Pomocnik-Alfa-6-2.4.7-Niemiecka-TV-TEST.apk/g' helpers/pa6/smoke.sh
+          sed -i 's/Pomocnik-Alfa-6-2.4.2-Premium-Preview.apk/Pomocnik-Alfa-6-2.4.7-Das-Erste-TEST.apk/g' helpers/pa6/smoke.sh
       - name: Install local video test fixtures
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - name: Enable emulator hardware acceleration
@@ -92,7 +92,7 @@ jobs:
             results
             pa6/badging.txt
             pa6/signature.txt
-            pa6/Pomocnik-Alfa-6-2.4.7-Niemiecka-TV-TEST.apk
+            pa6/Pomocnik-Alfa-6-2.4.7-Das-Erste-TEST.apk
             pa6/SHA256SUMS.txt
             output/stream-relay-tests.txt
             output/tv-source-audit.json
