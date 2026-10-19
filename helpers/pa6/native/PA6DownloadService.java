@@ -17,7 +17,7 @@ public final class PA6DownloadService extends Service {
 
  private static final int NOTICE=6201;
  private void report(String message,int percent,boolean done){
-  getSharedPreferences("pa6_download",0).edit().putString("status",message).apply();
+  getSharedPreferences("pa6_download",0).edit().putString("status",message).putLong("status_time",System.currentTimeMillis()).apply();
   Notification.Builder n=new Notification.Builder(this).setSmallIcon(android.R.drawable.stat_sys_download)
    .setContentTitle("Alfa Tube • pobieranie MP4").setContentText(message)
    .setStyle(new Notification.BigTextStyle().bigText(message)).setOngoing(!done);
