@@ -1,4 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.senikolo.pa6.stable" android:versionCode="2004000" android:versionName="2.4.0-tubeplus-test">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.senikolo.pa6.stable" android:versionCode="2004001" android:versionName="2.4.1-reliability-test">
   <uses-sdk android:minSdkVersion="23" android:targetSdkVersion="23"/>
   <uses-permission android:name="android.permission.INTERNET"/>
   <uses-permission android:name="android.permission.WAKE_LOCK"/>
@@ -8,7 +8,7 @@
   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-  <application android:label="PA6 Tube Plus 2.4.0 TEST" android:icon="@drawable/ic_cat" android:allowBackup="false" android:extractNativeLibs="true" android:usesCleartextTraffic="true" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:hardwareAccelerated="true" android:supportsRtl="true">
+  <application android:label="Pomocnik Alfa 6 • 2.4.1 TEST" android:icon="@drawable/ic_cat" android:allowBackup="false" android:extractNativeLibs="true" android:usesCleartextTraffic="true" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:hardwareAccelerated="true" android:supportsRtl="true">
     <activity android:name="com.ispina.lokalnie.PA6DashboardActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
     <service android:name="com.ispina.lokalnie.PA6AudioService" android:exported="false"/>
     <activity android:name="com.ispina.lokalnie.PA6DownloadsActivity" android:exported="false"/>
