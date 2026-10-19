@@ -37,12 +37,12 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
  private long length(){return backgroundAudio?PA6AudioService.duration:engine==null?0:Math.max(0,engine.getLength());}
  private void seek(long t){long len=length();if(len<=0)return;t=Math.max(0,Math.min(t,len-1));if(backgroundAudio)PA6AudioService.seek(getContext(),t);else if(engine!=null&&engine.isSeekable())engine.setTime(t);}
  private static String stamp(long ms){long sec=ms/1000;return String.format(java.util.Locale.ROOT,"%d:%02d",sec/60,sec%60);}
- private final Runnable tick=new Runnable(){public void run(){long len=length(),pos=time();timeline.setEnabled(len>0);if(!timeline.isPressed())timeline.setProgress(len>0?(int)(pos*1000/len):0);clock.setText(stamp(pos)+" / "+(len>0?stamp(len):"na żywo"));if(backgroundAudio)state.setText(PA6AudioService.active?PA6AudioService.status:"Audio zatrzymane");ui.postDelayed(this,1000);}};
+ private final Runnable tick=new Runnable(){public void run(){screen.setKeepScreenOn(!audioOnly&&!backgroundAudio&&engine!=null&&engine.isPlaying());long len=length(),pos=time();timeline.setEnabled(len>0);if(!timeline.isPressed())timeline.setProgress(len>0?(int)(pos*1000/len):0);clock.setText(stamp(pos)+" / "+(len>0?stamp(len):"na żywo"));if(backgroundAudio)state.setText(PA6AudioService.active?PA6AudioService.status:"Audio zatrzymane");ui.postDelayed(this,1000);}};
  @Override protected void onAttachedToWindow(){super.onAttachedToWindow();ui.removeCallbacks(tick);ui.post(tick);}
  @Override protected void onDetachedFromWindow(){ui.removeCallbacks(tick);super.onDetachedFromWindow();}
 
  public void setAudioOnly(boolean value){
-  audioOnly=value;screen.setKeepScreenOn(!value);
+  audioOnly=value;screen.setKeepScreenOn(!value && engine!=null && engine.isPlaying());
   if(value){placeholder.setText("♫\nSamo audio\nSłuchaj bez obrazu");placeholder.setTextSize(22);placeholder.setBackgroundColor(0xff123b45);placeholder.setVisibility(VISIBLE);}
   else{placeholder.setText("▶  Wybierz film");placeholder.setTextSize(18);placeholder.setBackgroundColor(0xff111827);}
   requestLayout();
@@ -78,7 +78,7 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
    }
   };
   frame.setBackgroundColor(Color.BLACK);
-  screen=new SurfaceView(context);screen.setKeepScreenOn(true);
+  screen=new SurfaceView(context);screen.setKeepScreenOn(false);
   frame.addView(screen,new FrameLayout.LayoutParams(-1,-1));
   screen.addOnLayoutChangeListener((v,l,t,r,b,oldL,oldT,oldR,oldB)->applyVideoGeometry());
   screen.getHolder().addCallback(new android.view.SurfaceHolder.Callback(){
@@ -135,18 +135,18 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   engine.setEventListener(event->ui.post(()->{
    if(event.type==MediaPlayer.Event.Playing){
     applyVideoGeometry();
-    android.util.Log.i("PA6_PLAYER","PLAYING "+active);
+    android.util.Log.i("PA6_PLAYER","PLAYING "+active);screen.setKeepScreenOn(!audioOnly);
     state.setText("▶ Odtwarzanie: "+active);
     if(playbackStartListener!=null)playbackStartListener.run();
    }
    else if(event.type==MediaPlayer.Event.Buffering&&event.getBuffering()<99f)state.setText("Buforowanie • "+active);
    else if(event.type==MediaPlayer.Event.EncounteredError){
-    android.util.Log.w("PA6_PLAYER","PLAYBACK_ERROR "+active);
+    android.util.Log.w("PA6_PLAYER","PLAYBACK_ERROR "+active);screen.setKeepScreenOn(false);
     state.setText("Błąd transmisji. Sprawdzam inne źródło, jeśli jest dostępne.");
     placeholder.setVisibility(VISIBLE);
     if(playbackErrorListener!=null)playbackErrorListener.run();
    }
-   else if(event.type==MediaPlayer.Event.EndReached){state.setText("Zakończono odtwarzanie.");placeholder.setVisibility(VISIBLE);}
+   else if(event.type==MediaPlayer.Event.EndReached){screen.setKeepScreenOn(false);state.setText("Zakończono odtwarzanie.");placeholder.setVisibility(VISIBLE);}
   }));
   ready=true;
  }
@@ -210,6 +210,7 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   catch(Throwable e){android.util.Log.e("PA6_LIBVLC","INIT_FAILED",e);state.setText("Błąd inicjalizacji silnika wideo: "+e.getClass().getSimpleName());return false;}
  }
  public void stop(){
+  screen.setKeepScreenOn(false);
   if(backgroundAudio){PA6AudioService.command(getContext(),"STOP");backgroundAudio=false;}
   try{if(engine!=null)engine.stop();}catch(Throwable ignored){}
   state.setText("Zatrzymano.");
@@ -221,7 +222,7 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
   releaseLocal();
  }
  private void releaseLocal(){
-  backgroundAudio=false;
+  screen.setKeepScreenOn(false);backgroundAudio=false;
   try{if(engine!=null)engine.stop();}catch(Throwable ignored){}
   if(audio!=null&&hasFocus){try{audio.abandonAudioFocus(focusListener);}catch(Exception ignored){}hasFocus=false;}
   try{if(engine!=null){engine.getVLCVout().detachViews();engine.release();}}catch(Throwable ignored){}
