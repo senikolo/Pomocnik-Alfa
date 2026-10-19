@@ -13,10 +13,13 @@ def dump(name):
     with open('results/'+name+'.png','wb') as out:subprocess.run(['adb','exec-out','screencap','-p'],stdout=out,check=True)
     return list(ET.fromstring(xml).iter('node'))
 def click(nodes,text):
-    for n in nodes:
-        if text in (n.get('text','')+' '+n.get('content-desc','')) and n.get('clickable')=='true':
-            x1,y1,x2,y2=map(int,re.findall(r'\d+',n.get('bounds')))
-            adb('shell','input','tap',str((x1+x2)//2),str((y1+y2)//2));time.sleep(2);return
+    for attempt in range(5):
+        for n in nodes:
+            if text in (n.get('text','')+' '+n.get('content-desc','')) and n.get('clickable')=='true':
+                x1,y1,x2,y2=map(int,re.findall(r'\d+',n.get('bounds')))
+                adb('shell','input','tap',str((x1+x2)//2),str((y1+y2)//2));time.sleep(2);return
+        adb('shell','input','swipe','1280','1300','1280','450','400');time.sleep(1)
+        nodes=dump('scroll-'+str(attempt))
     raise AssertionError('Missing clickable '+text)
 adb('shell','am','force-stop',package)
 for tab,key in [('planner','planner'),('bus','liveBus'),('assistant','assistant'),('favorites','favorites')]:
