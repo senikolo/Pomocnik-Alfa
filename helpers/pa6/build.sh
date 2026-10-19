@@ -90,8 +90,8 @@ PY
 "$BT/zipalign" -p -f 4 output/raw.apk output/aligned.apk
 "$BT/aapt" dump badging output/aligned.apk | tee output/badging.txt
 grep -q "sdkVersion:'23'" output/badging.txt
-grep -q "package: name='com.senikolo.pa6.stable'" output/badging.txt
+grep -q "package: name='${PA6_APP_ID:-com.senikolo.pa6.stable}'" output/badging.txt
 # Signing happens with the preserved PA certificate after downloading this build.
 # Never generate an ephemeral replacement key or publish an unsigned APK.
-cp output/aligned.apk output/PA6-2.4.0-unsigned.apk
-sha256sum output/PA6-2.4.0-unsigned.apk > output/SHA256SUMS.txt
+cp output/aligned.apk output/PA6-2.4.1-unsigned.apk
+sha256sum output/PA6-2.4.1-unsigned.apk > output/SHA256SUMS.txt
