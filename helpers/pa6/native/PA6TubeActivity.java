@@ -255,7 +255,7 @@ public final class PA6TubeActivity extends PA6BaseActivity {
  }
  private void playVideo(final String id){
   if(id==null||!id.matches("[A-Za-z0-9_-]{11}")){feedback("Nieprawidłowy adres filmu.");return;}
-  cancelSearch();cancelPlay();cancelWatchdog();switchBackToNative();
+  cancelSearch();cancelPlay();cancelWatchdog();switchBackToNative();player.stop();
   if(officialButton!=null)officialButton.setVisibility(View.GONE);
   ++request;activeId=id;availableQualities=new int[]{0};playbackAttempts=0;failedProviders.clear();currentProvider="";
   if(compatiblePlayerButton!=null)compatiblePlayerButton.setVisibility(View.GONE);
@@ -268,7 +268,7 @@ public final class PA6TubeActivity extends PA6BaseActivity {
     "Bezpośredni strumień nie działa. Sprawdzam serwer zapasowy ("+playbackAttempts+"/3)…");
   final HashSet<String> ignored=new HashSet<>(failedProviders);
   cancelPlay();final PA6NewPipeClient.Work work=new PA6NewPipeClient.Work();playWork=work;
-  playDeadline=()->{if(closed||seq!=request||work.completed)return;work.cancel();if(playTask!=null)playTask.cancel(true);playbackPending=false;++request;PA6Haptics.emit(this,"error");feedback("Połączenie trwa zbyt długo. Sprawdź internet i spróbuj ponownie.");};main.postDelayed(playDeadline,45000);
+  playDeadline=()->{if(closed||seq!=request||work.completed)return;work.cancel();if(playTask!=null)playTask.cancel(true);playbackPending=false;++request;player.showMessage("Połączenie trwa zbyt długo.\nSprawdź internet i spróbuj ponownie.");PA6Haptics.emit(this,"error");feedback("Połączenie trwa zbyt długo. Sprawdź internet i spróbuj ponownie.");};main.postDelayed(playDeadline,45000);
   final boolean audio=audioOnly();
   final int preferredQuality=selectedQuality();final String preferredServer=server();
   playTask=io.submit(()->{
@@ -326,7 +326,7 @@ public final class PA6TubeActivity extends PA6BaseActivity {
     final String why=e.getMessage();
     main.post(()->{
      if(closed||seq!=request)return;
-     playbackPending=false;
+     playbackPending=false;player.showMessage("Ten materiał jest obecnie niedostępny.\nWybierz inny lub spróbuj później.");PA6Haptics.emit(this,"error");
      feedback(audio?"Nie udało się odtworzyć samego dźwięku. Wybierz Wideo lub spróbuj innego filmu.":
       "Ten film jest obecnie niedostępny. Wybierz inny lub spróbuj później.");
      if(officialButton!=null)officialButton.setVisibility(View.VISIBLE);
@@ -423,6 +423,7 @@ public final class PA6TubeActivity extends PA6BaseActivity {
   cancelWatchdog();
   if(!currentProvider.isEmpty())failedProviders.add(currentProvider);
   if(++playbackAttempts>3){
+   player.showMessage("Nie udało się połączyć z filmem.\nWybierz inny lub spróbuj później.");PA6Haptics.emit(this,"error");
    feedback("Źródła bezpośrednie nie działają. Użyj przycisku oficjalnego YouTube wewnątrz PA albo wybierz inny film.");
    if(officialButton!=null)officialButton.setVisibility(View.VISIBLE);
    return;
@@ -642,7 +643,7 @@ public final class PA6TubeActivity extends PA6BaseActivity {
   downloadStatus=text("",13,INK,true);pad(downloadStatus,12,10);downloadStatus.setBackground(panel(0xffe8f1f5,0xffd5e5ed,12));downloadStatus.setVisibility(View.GONE);playerPane.addView(downloadStatus,0);
 
   status=text("Wybierz film lub posłuchaj samego dźwięku.",13,MUTED,false);
-  pad(status,12,10);status.setBackground(panel(0xffeaf0f7,0xffeaf0f7,12));playerPane.addView(status);gap(playerPane,8);
+  pad(status,12,10);status.setBackground(panel(0xffeaf0f7,0xffeaf0f7,12));playerPane.addView(status,0);gap(playerPane,8);
   provider=text("Odtwarzanie wewnątrz aplikacji",11,MUTED,false);
   playerPane.addView(provider);gap(playerPane,6);
   LinearLayout links=line();
@@ -759,6 +760,7 @@ public final class PA6TubeActivity extends PA6BaseActivity {
    main.postDelayed(()->{fullscreen.mini(this,player);android.util.Log.i("PA6_WINDOW","MINI");},2000);
    main.postDelayed(()->{fullscreen.toggle(this,player);android.util.Log.i("PA6_WINDOW","FULL");},5000);
    main.postDelayed(()->{fullscreen.close();android.util.Log.i("PA6_WINDOW","EMBEDDED");},8000);
+   main.postDelayed(()->{if(player.isPlaying()&&player.playbackPosition()>7500)android.util.Log.i("PA6_WINDOW","PASS continuous playback after surface transitions position="+player.playbackPosition());else android.util.Log.e("PA6_WINDOW","FAIL interrupted playback position="+player.playbackPosition());},10000);
   }
   if(getIntent().getBooleanExtra("verify_controls",false)){useLocalVideo();player.setAudioOnly(false);player.playUri("Test sterowania",Uri.fromFile(new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),"pa6-av.mp4")));}
   String shortcut=getIntent().getStringExtra("play_id");if(shortcut!=null&&shortcut.matches("[A-Za-z0-9_-]{11}"))playVideo(shortcut);

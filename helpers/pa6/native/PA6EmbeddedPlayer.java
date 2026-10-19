@@ -29,10 +29,13 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
  private String active="";
  private boolean audioOnly=false,backgroundAudio=false,fullscreen=false;
  private Runnable fullscreenListener;private android.widget.SeekBar timeline;private TextView clock;
+ public long playbackPosition(){return time();}
+ public boolean isPlaying(){return backgroundAudio?PA6AudioService.active&&!PA6AudioService.paused:engine!=null&&engine.isPlaying();}
  public void setFullscreenListener(Runnable r){fullscreenListener=r;}
  public void setFullscreen(boolean value){fullscreen=value;if(videoFrame!=null)videoFrame.setLayoutParams(new LinearLayout.LayoutParams(-1,value?0:-2,value?1:0));requestLayout();}
  public void detachSurface(){try{if(engine!=null)engine.getVLCVout().detachViews();}catch(Throwable ignored){}}
  public void attachSurface(){try{if(engine!=null&&!engine.getVLCVout().areViewsAttached()){engine.getVLCVout().setVideoView(screen);engine.getVLCVout().attachViews();applyVideoGeometry();}}catch(Throwable ignored){}}
+ public void showMessage(String message){placeholder.setText(message);placeholder.setTextSize(17);placeholder.setVisibility(VISIBLE);}
  public void backgroundAudio(String name){releaseLocal();backgroundAudio=true;active=name;setAudioOnly(true);state.setText("Samo audio • działa również po wygaszeniu ekranu");}
  private long time(){return backgroundAudio?PA6AudioService.position:engine==null?0:Math.max(0,engine.getTime());}
  private long length(){return backgroundAudio?PA6AudioService.duration:engine==null?0:Math.max(0,engine.getLength());}

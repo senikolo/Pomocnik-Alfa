@@ -44,6 +44,9 @@ public final class PA6ReaderActivity extends PA6BaseActivity {
   pageImage=new ImageView(this);pageImage.setAdjustViewBounds(true);pageImage.setScaleType(ImageView.ScaleType.FIT_CENTER);pageImage.setBackgroundColor(0xffffffff);
   root.addView(pageImage,new LinearLayout.LayoutParams(-1,-2));
   textPage=label("",17);textPage.setTextIsSelectable(true);root.addView(textPage);
+  String fixture=getIntent().getStringExtra("verify_file");
+  if(fixture!=null)try{File f=new File(fixture).getCanonicalFile();File folder=Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getCanonicalFile();if(f.getParentFile().equals(folder)&&f.isFile())onActivityResult(OPEN,RESULT_OK,new Intent().setData(Uri.fromFile(f)));}catch(Exception e){android.util.Log.e("PA6_READER","Fixture failed",e);}
+
  }
  @Override protected void onActivityResult(int requestCode,int resultCode,Intent data){
   super.onActivityResult(requestCode,resultCode,data);

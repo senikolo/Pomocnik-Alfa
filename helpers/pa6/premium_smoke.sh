@@ -39,11 +39,12 @@ sleep 4
 adb exec-out screencap -p > results/premium-mini.png
 sleep 3
 adb exec-out screencap -p > results/premium-fullscreen.png
-sleep 3
+sleep 4
 adb exec-out screencap -p > results/premium-embedded-return.png
 adb logcat -d > results/premium-window-modes.txt
 for event in MINI FULL EMBEDDED; do grep -q "PA6_WINDOW.*$event" results/premium-window-modes.txt; done
 grep -q 'PA6_PLAYER.*PLAYING Test okienek' results/premium-window-modes.txt
+grep -q 'PA6_WINDOW.*PASS continuous playback' results/premium-window-modes.txt
 # Radio engine over a deterministic HTTP audio fixture, no dependency on live station availability.
 python3 -m http.server 8765 --directory results > results/radio-fixture-server.txt 2>&1 &
 server=$!

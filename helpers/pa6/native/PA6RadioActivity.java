@@ -19,7 +19,8 @@ public final class PA6RadioActivity extends PA6BaseActivity {
  private LinearLayout list;
  private TextView state,playback;
  private EditText search,custom;
- private int serial=0;private boolean listening;
+ private volatile int serial=0;private boolean listening;
+ private final java.util.concurrent.ThreadPoolExecutor catalogIo=(java.util.concurrent.ThreadPoolExecutor)java.util.concurrent.Executors.newFixedThreadPool(1);
  private String category="Wszystkie",activeName="";
  private final BroadcastReceiver updates=new BroadcastReceiver(){
   @Override public void onReceive(Context c,Intent i){
@@ -42,7 +43,7 @@ public final class PA6RadioActivity extends PA6BaseActivity {
  private void gap(LinearLayout l,int h){l.addView(new View(this),new LinearLayout.LayoutParams(1,dp(h)));}
  private Button button(String txt,boolean solid){
   Button b=new Button(this);b.setAllCaps(false);b.setText(txt);b.setTextSize(14);
-  b.setTextColor(solid?Color.WHITE:INK);
+  b.setPadding(dp(12),dp(8),dp(12),dp(8));b.setTextColor(solid?Color.WHITE:INK);
   b.setBackground(bg(solid?RED:WHITE,solid?RED:0xffdce2eb,11));b.setMinHeight(dp(50));b.setStateListAnimator(null);PA6Premium.touch(b);return b;
  }
  private boolean valid(String url){
@@ -109,7 +110,7 @@ public final class PA6RadioActivity extends PA6BaseActivity {
   labels.addView(label("Radio internetowe • dotknij, aby słuchać",11,MUTED,false));
   card.addView(labels,new LinearLayout.LayoutParams(0,-2,1));
   Button star=button(favorite(url)?"★":"☆",false);star.setTextSize(19);star.setTextColor(RED);
-  card.addView(star,new LinearLayout.LayoutParams(dp(50),dp(47)));
+  card.addView(star,new LinearLayout.LayoutParams(dp(50),dp(50)));
   star.setOnClickListener(v->toggle(name,url));
   card.setOnClickListener(v->play(name,url));PA6Premium.touch(card);
   card.setContentDescription("Słuchaj "+name);
@@ -124,10 +125,10 @@ public final class PA6RadioActivity extends PA6BaseActivity {
  private String encode(String s){try{return URLEncoder.encode(s,"UTF-8");}catch(Exception e){return "";}}
  private void load(String query){
   if(category.equals("★ Ulubione")){loadFavorites();return;}
-  final int seq=++serial;
+  final int seq=++serial;catalogIo.getQueue().clear();
   list.removeAllViews();state.setText("Pobieram aktualną listę stacji…");
   final String group=category;
-  new Thread(()->{
+  catalogIo.execute(()->{
    ArrayList<String[]> stations=new ArrayList<>();String failure=null;
    String params="countrycode=PL&hidebroken=true&order=clickcount&reverse=true&limit=50";
    if(!query.isEmpty())params+="&name="+encode(query);
@@ -138,6 +139,7 @@ public final class PA6RadioActivity extends PA6BaseActivity {
    if(group.equals("Wiadomości"))params+="&tag=news";
    String req="/json/stations/search?"+params;
    for(String host:new String[]{"https://de1.api.radio-browser.info","https://all.api.radio-browser.info"}){
+    if(seq!=serial||Thread.currentThread().isInterrupted())return;
     HttpURLConnection c=null;
     try{
      // Android 6 may lack current CA roots. Use the bundled verified trust store.
@@ -171,7 +173,7 @@ public final class PA6RadioActivity extends PA6BaseActivity {
      stations.isEmpty()?"Nie znaleziono stacji. Zmień hasło lub kategorię.":"Stacje znalezione: "+stations.size()+" • wybierz do słuchania");
     for(String[] r:stations)station(list,r[0],r[1]);
    });
-  }).start();
+  });
  }
  @Override public void onCreate(Bundle b){
   super.onCreate(b);PA6ModernTls.install(this);
@@ -222,7 +224,7 @@ public final class PA6RadioActivity extends PA6BaseActivity {
   LinearLayout chips=row();
   for(String label:new String[]{"Wszystkie","Pop","Rock","Jazz","Wiadomości","Relaks","★ Ulubione"}){
    Button tab=button(label,false);tab.setTextSize(12);
-   LinearLayout.LayoutParams t=new LinearLayout.LayoutParams(dp(label.length()>9?121:88),dp(47));
+   LinearLayout.LayoutParams t=new LinearLayout.LayoutParams(dp(label.length()>9?121:88),dp(50));
    t.setMargins(dp(2),0,dp(3),0);chips.addView(tab,t);
    tab.setOnClickListener(v->{category=label;load(search.getText().toString().trim());});
   }
@@ -244,5 +246,5 @@ public final class PA6RadioActivity extends PA6BaseActivity {
  }
  @Override protected void onStart(){super.onStart();String url=getIntent().getStringExtra("station_url");if(url!=null){getIntent().removeExtra("station_url");play(getIntent().getStringExtra("station_name"),url);}if(!listening){registerReceiver(updates,new IntentFilter(PA6RadioService.ACTION_STATE));listening=true;}}
  @Override protected void onStop(){if(listening){unregisterReceiver(updates);listening=false;}super.onStop();}
- @Override protected void onDestroy(){serial++;super.onDestroy();}
+ @Override protected void onDestroy(){serial++;catalogIo.shutdownNow();super.onDestroy();}
 }

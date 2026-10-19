@@ -44,5 +44,6 @@ public final class PA6NotesActivity extends PA6BaseActivity {
   PA6Haptics.emit(this,ok?"success":"error");
   Toast.makeText(this,ok?"Notatka zapisana":"Nie udało się zapisać notatki",Toast.LENGTH_SHORT).show();
  }
+ @Override protected void onPause(){if(editor!=null&&!editor.getText().toString().equals(getSharedPreferences("native_notes",0).getString("note","")))save();super.onPause();}
  @Override public void onBackPressed(){save();super.onBackPressed();}
 }

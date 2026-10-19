@@ -69,6 +69,7 @@ public final class PA6TvActivity extends PA6BaseActivity {
  private TextView status,active,listingCount;
  private LinearLayout results;
  private EditText search,custom;
+ private final Map<String,View> countryTabs=new LinkedHashMap<>(),categoryTabs=new LinkedHashMap<>();
  private String filter="Wszystkie",countryFilter="Wszystkie",onAir="";
  private final android.os.Handler main=new android.os.Handler();
  private Runnable tuneWatchdog;
@@ -86,7 +87,7 @@ public final class PA6TvActivity extends PA6BaseActivity {
  }
  private Button action(String value,boolean red){
   Button b=new Button(this);b.setAllCaps(false);b.setText(value);b.setTextSize(14);
-  b.setMinHeight(dp(48));b.setMinWidth(0);b.setMinimumWidth(0);b.setMaxLines(2);
+  b.setPadding(dp(13),dp(7),dp(13),dp(7));b.setMinHeight(dp(48));b.setMinWidth(0);b.setMinimumWidth(0);b.setMaxLines(2);
   b.setTextColor(red?Color.WHITE:INK);b.setBackground(box(red?RED:WHITE,red?RED:0xffdde3eb,12));
   b.setMinHeight(dp(50));b.setStateListAnimator(null);PA6Premium.touch(b);return b;
  }
@@ -159,6 +160,8 @@ public final class PA6TvActivity extends PA6BaseActivity {
  private void showChannels(){
   if(results==null)return;
   results.removeAllViews();
+  for(Map.Entry<String,View> tab:countryTabs.entrySet())styleTab(tab.getValue(),countryFilter.equals(tab.getKey()));
+  for(Map.Entry<String,View> tab:categoryTabs.entrySet())styleTab(tab.getValue(),filter.equals(tab.getKey()));
   String query=search.getText().toString().trim().toLowerCase(Locale.ROOT);
   int found=0;
   for(String country:new String[]{"Polska","Rosja","Międzynarodowe"}){
@@ -187,6 +190,10 @@ public final class PA6TvActivity extends PA6BaseActivity {
   long played=getPreferences(0).getLong("verified_"+channel.url,0);
   if(played>0)return "Odtwarzano na tym urządzeniu • "+android.text.format.DateFormat.format("dd.MM HH:mm",played);
   return PA6TvAudit.label(this,channel.name);
+ }
+ private void styleTab(View tab,boolean selected){
+  tab.setBackground(box(selected?0xffdcecf7:0xfffffefd,selected?RED:0xffdce6ef,15));PA6Premium.touch(tab);
+  if(tab instanceof Button)((Button)tab).setTextColor(selected?0xff24597e:INK);
  }
  private void channelRow(Channel channel){
   LinearLayout l=row();l.setPadding(dp(11),dp(10),dp(9),dp(10));
@@ -275,14 +282,14 @@ public final class PA6TvActivity extends PA6BaseActivity {
    if(!country.equals("Wszystkie"))tab.addView(new FlagView(country),new LinearLayout.LayoutParams(dp(24),dp(16)));
    TextView label=text(country.equals("Międzynarodowe")?"Świat":country,14,INK,true);label.setPadding(dp(7),0,0,0);tab.addView(label);
    LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-2,dp(48));cp.setMargins(0,0,dp(6),0);countries.addView(tab,cp);
-   tab.setContentDescription("Kraj: "+country);
+   countryTabs.put(country,tab);tab.setContentDescription("Kraj: "+country);
    tab.setOnClickListener(v->{countryFilter=country;filter="Wszystkie";showChannels();status.setText(country.equals("Wszystkie")?"Wszystkie kraje":country);});
   }
   HorizontalScrollView countryScroll=new HorizontalScrollView(this);countryScroll.setHorizontalScrollBarEnabled(false);countryScroll.addView(countries);content.addView(countryScroll);space(content,9);
   LinearLayout tabs=row();
   for(String label:new String[]{"Wszystkie","Wiadomości","Muzyka","Regiony","Rozrywka","★"}){
-   Button tab=action(label.equals("★")?"★":label,false);tab.setTextSize(11);
-   LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-2,dp(48));p.setMargins(dp(1),0,dp(1),0);tabs.addView(tab,p);
+   Button tab=action(label.equals("★")?"★":label,false);tab.setTextSize(13);categoryTabs.put(label,tab);
+   LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-2,dp(48));p.setMargins(0,0,dp(6),0);tabs.addView(tab,p);
    tab.setOnClickListener(v->{filter=label;showChannels();status.setText("Kategoria: "+(label.equals("★")?"Ulubione":label));});
   }
   HorizontalScrollView categoryScroll=new HorizontalScrollView(this);categoryScroll.setHorizontalScrollBarEnabled(false);categoryScroll.addView(tabs);content.addView(categoryScroll);space(content,8);

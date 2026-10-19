@@ -38,7 +38,7 @@ public final class PA6NewPipeClient {
   Work w=currentWork.get();if(Thread.currentThread().isInterrupted()||(w!=null&&w.cancelled))throw new InterruptedIOException("Cancelled");
  }
  private static boolean initialized;
- private static okhttp3.OkHttpClient httpClient;
+ private static okhttp3.OkHttpClient httpClient,downloadHttpClient;
  private static synchronized void init(){
   if(initialized)return;
   try{
@@ -52,6 +52,8 @@ public final class PA6NewPipeClient {
     .followRedirects(true).retryOnConnectionFailure(false);
    builder.sslSocketFactory(PA6ModernTls.okHttpSocketFactory(),PA6ModernTls.okHttpTrustManager());
    httpClient=builder.build();
+   // Large MP4 files may take minutes; only idle network I/O has a deadline.
+   downloadHttpClient=httpClient.newBuilder().callTimeout(0,java.util.concurrent.TimeUnit.MILLISECONDS).readTimeout(30,java.util.concurrent.TimeUnit.SECONDS).build();
   }catch(Exception e){
    throw new IllegalStateException("Nie można skonfigurować bezpiecznego HTTPS w PA6",e);
   }
@@ -158,7 +160,7 @@ public final class PA6NewPipeClient {
  private static String cachedId="";
  private static StreamInfo cachedInfo;
  private static long cachedAt;
- static okhttp3.OkHttpClient downloadClient(){init();return httpClient;}
+ static okhttp3.OkHttpClient downloadClient(){init();return downloadHttpClient;}
  private static synchronized StreamInfo load(String id)throws Exception{
   if(id==null||!id.matches("[A-Za-z0-9_-]{11}"))throw new IOException("Nieprawidłowy identyfikator filmu");
   checkWork();init();
