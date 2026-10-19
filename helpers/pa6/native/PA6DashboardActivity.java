@@ -204,7 +204,7 @@ public final class PA6DashboardActivity extends Activity {
   root.addView(size,new LinearLayout.LayoutParams(-1,dp(52)));
   size.setOnClickListener(v->{senior=!senior;getPreferences(0).edit().putBoolean("senior",senior).apply();render();});
   gap(root,13);
-  TextView footer=text("PA6 Tube Plus • 2.4.0 TEST • kompilacja 2004000",12,false,MUTED);
+  TextView footer=text("Pomocnik Alfa 6 • 2.4.1 TEST • kompilacja 2004001",12,false,MUTED);
   footer.setGravity(Gravity.CENTER);root.addView(footer);
  }
  @Override public void onCreate(Bundle b){
