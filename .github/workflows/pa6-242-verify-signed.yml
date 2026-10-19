@@ -1,0 +1,73 @@
+name: PA6 Premium • final verification of exact signed APK
+on:
+  push:
+    branches: ['work/pa6-242-premium-20261019']
+    paths: ['.github/workflows/pa6-242-verify-signed.yml']
+permissions:
+  contents: write
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: PA6-2.4.2-Android6-Signed-APK
+          github-token: ${{ github.token }}
+          run-id: 39205434362
+          path: signed
+      - uses: actions/download-artifact@v4
+        with:
+          name: PA6-2.4.2-Android6-Test-Reports
+          github-token: ${{ github.token }}
+          run-id: 39205434362
+          path: results
+      - name: Preserve exact APK and correct the test command argument
+        run: |
+          cp -r signed/pa6 pa6
+          # adb shell serializes arguments with spaces; this fixture label must be one token.
+          sed -i 's/Radio kontrolne/Radio_kontrolne/g' helpers/pa6/premium_smoke.sh
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs pa6/*.apk
+          (cd pa6 && sha256sum -c SHA256SUMS.txt)
+          cat > /tmp/verify-signed.sh <<'SH'
+          set -euo pipefail
+          adb root
+          adb wait-for-device
+          adb install pa6/Pomocnik-Alfa-6-2.4.2-Premium-Preview.apk
+          pkg=com.senikolo.pa6.preview242
+          adb shell pm grant "$pkg" android.permission.WRITE_EXTERNAL_STORAGE
+          adb shell pm grant "$pkg" android.permission.READ_EXTERNAL_STORAGE
+          for f in pa6-av.mp4 pa6-silent.mp4 pa6-audio.m4a; do adb push "results/$f" "/sdcard/Download/$f"; done
+          adb logcat -c
+          bash helpers/pa6/premium_smoke.sh
+          SH
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 23
+          arch: x86
+          target: default
+          profile: Nexus 10
+          disable-animations: true
+          emulator-boot-timeout: 700
+          script: bash /tmp/verify-signed.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PA6-2.4.2-Final-Exact-APK-Verification
+          path: results
+          retention-days: 45
+      - name: Publish the same verified signed APK
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          source_sha=aa23153060b60de9d03ca3c89d63fab0f05a6c22
+          tag=pa6-2.4.2-premium-aa231530
+          gh release create "$tag" --target "$source_sha" --prerelease --title 'Pomocnik Alfa 6 • 2.4.2 Premium Preview' --notes-file helpers/pa6/PREMIUM_RELEASE.md pa6/Pomocnik-Alfa-6-2.4.2-Premium-Preview.apk pa6/SHA256SUMS.txt pa6/signature.txt pa6/INSTALLATION-TYPE.txt signed/output/tv-source-audit.md
