@@ -10,7 +10,7 @@ import android.view.*;
 import android.widget.*;
 
 /** Large controls for 10-inch Android 6 tablet; sound generation happens in a Service. */
-public final class PA6SoundsActivity extends Activity {
+public final class PA6SoundsActivity extends PA6BaseActivity {
  private final String[] ids={"white","pink","brown","rain","fan","waves"};
  private final String[] names={"Biały szum","Różowy szum","Brązowy szum","Szum deszczu","Szum wentylatora","Fale morskie"};
  private final String[] emojis={"⚪","🌷","🌙","🌧","🌀","🌊"};
@@ -20,10 +20,10 @@ public final class PA6SoundsActivity extends Activity {
  private SeekBar volume;
  private Spinner timer;
  private TextView status;
- private int violet=0xff604397;
+ private int violet=PA6Premium.BLUE;
  private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+0.5f);}
  private TextView text(String value,int size,boolean bold){
-  TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setTextColor(0xff38264e);
+  TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setTextColor(PA6Premium.INK);
   if(bold)t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
   t.setPadding(dp(6),dp(8),dp(6),dp(8));return t;
  }
@@ -37,10 +37,10 @@ public final class PA6SoundsActivity extends Activity {
  @Override public void onCreate(Bundle b){
   super.onCreate(b);
   android.content.SharedPreferences prefs=getSharedPreferences(PA6SoundsService.PREF,0);
-  ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(0xfff6f2fa);scroll.setFillViewport(true);
+  ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(PA6Premium.BG);scroll.setFillViewport(true);
   LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setPadding(dp(18),dp(14),dp(18),dp(24));
   scroll.addView(root);setContentView(scroll);
-  root.addView(text("🎵  Dźwięki spokoju • Alfa",25,true));
+  root.addView(text("Dźwięki spokoju",25,true));
   root.addView(text("Wybierz szum lub dźwięk do odpoczynku. Działają bez internetu, także przy zablokowanym ekranie.",15,false));
   root.addView(text("Wybierz dźwięk",20,true));
   choices=new RadioGroup(this);choices.setOrientation(RadioGroup.VERTICAL);root.addView(choices);
@@ -48,7 +48,7 @@ public final class PA6SoundsActivity extends Activity {
   for(int i=0;i<ids.length;i++){
    RadioButton item=new RadioButton(this);
    item.setId(300+i);item.setText(emojis[i]+"   "+names[i]);item.setTextSize(18);
-   item.setTextColor(0xff392953);item.setPadding(dp(14),dp(7),dp(12),dp(7));
+   item.setTextColor(PA6Premium.INK);item.setPadding(dp(14),dp(7),dp(12),dp(7));
    item.setMinHeight(dp(53));item.setBackground(surface());
    RadioGroup.LayoutParams lp=new RadioGroup.LayoutParams(-1,dp(58));lp.setMargins(0,dp(3),0,dp(3));
    choices.addView(item,lp);if(ids[i].equals(last))choices.check(item.getId());

@@ -68,7 +68,7 @@ public final class PA6AudioService extends Service {
      else if(e.type==MediaPlayer.Event.EncounteredError){status="Nie można odtworzyć audio. Otwórz Alfa Tube i spróbuj ponownie.";pause();status="Błąd źródła audio • spróbuj ponownie";publish();}
      else if(e.type==MediaPlayer.Event.EndReached){stopSelf();}
     }));
-    Media m=new Media(vlc,android.net.Uri.parse(url));m.addOption(":no-video");m.addOption(":network-caching=1500");m.addOption(":http-reconnect=true");m.addOption(":avcodec-hw=none");player.setMedia(m);m.release();play();
+    Media m=new Media(vlc,android.net.Uri.parse(url));m.addOption(":no-video");m.addOption(":network-caching=1500");m.addOption(":http-reconnect=false");m.addOption(":avcodec-hw=none");player.setMedia(m);m.release();play();
     main.removeCallbacks(tick);main.post(tick);
    }catch(Throwable e){android.util.Log.e("PA6_AUDIO","START_FAILED",e);stopSelf();}
   }else if(!active){stopSelf();}

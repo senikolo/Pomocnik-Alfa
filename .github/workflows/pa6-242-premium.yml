@@ -1,0 +1,129 @@
+name: PA6 2.4.2 premium • Android 6 build and tests
+on:
+  push:
+    branches: ['work/pa6-242-premium-20261019']
+    paths: ['.github/workflows/pa6-242-premium.yml', 'helpers/pa6/**']
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: pa6-242-premium
+  cancel-in-progress: true
+jobs:
+  android6:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Select safe signing mode before compilation
+        env:
+          KEYSTORE_B64: ${{ secrets.PA_STABLE_KEYSTORE_B64 }}
+          KEYSTORE_PASS: ${{ secrets.PA_STABLE_KEYSTORE_PASS }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$KEYSTORE_B64" && -n "$KEYSTORE_PASS" ]]; then
+            echo "PA6_APP_ID=com.senikolo.pa6.stable" >> "$GITHUB_ENV"
+            echo "PA6_SIGN_MODE=stable" >> "$GITHUB_ENV"
+            echo "Using stable package with existing repository signing secret."
+          else
+            # NEVER overwrite the user's stable installation with an unrelated signature.
+            sed -i 's/package="com.senikolo.pa6.stable"/package="com.senikolo.pa6.preview242"/' helpers/pa6/AndroidManifest.xml
+            echo "PA6_APP_ID=com.senikolo.pa6.preview242" >> "$GITHUB_ENV"
+            echo "PA6_SIGN_MODE=preview" >> "$GITHUB_ENV"
+            echo "Using separately installable preview package; no stable signing key available."
+          fi
+      - name: Build full PA6 application for API23
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash helpers/pa6/build.sh
+      - name: Sign APK and verify package and certificate
+        env:
+          KEYSTORE_B64: ${{ secrets.PA_STABLE_KEYSTORE_B64 }}
+          KEYSTORE_PASS: ${{ secrets.PA_STABLE_KEYSTORE_PASS }}
+        run: |
+          set -euo pipefail
+          mkdir -p pa6
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          alias_name="pomocnik-alfa-stable"
+          password="$KEYSTORE_PASS"
+          if [[ "$PA6_SIGN_MODE" == stable ]]; then
+            printf '%s' "$KEYSTORE_B64" | base64 -d > signing.p12
+            actual=$(keytool -list -v -storetype PKCS12 -keystore signing.p12 -storepass "$password" -alias "$alias_name" | awk -F': ' '/SHA256:/{print $2; exit}')
+            test "$actual" = '36:14:42:C8:98:55:22:36:A7:D4:29:9E:ED:A5:C3:DC:27:5B:A1:F3:68:C0:11:29:2D:C0:7D:44:B2:E8:AC:E1'
+          else
+            alias_name="pa6-preview242"
+            password="ephemeral-ci-only-20261019"
+            keytool -genkeypair -noprompt -alias "$alias_name" -keyalg RSA -keysize 3072 -validity 90 -storetype PKCS12 -keystore signing.p12 -storepass "$password" -keypass "$password" -dname "CN=PA6 2.4.2 Preview,OU=QA,O=Development,C=PL"
+          fi
+          export KS_PASSWORD="$password"
+          "$BT/apksigner" sign --ks signing.p12 --ks-type PKCS12 --ks-key-alias "$alias_name" --ks-pass env:KS_PASSWORD --key-pass env:KS_PASSWORD --v1-signing-enabled true --v2-signing-enabled true --out pa6/Pomocnik-Alfa-6-2.4.2-Premium-Preview.apk output/aligned.apk
+          "$BT/apksigner" verify --verbose --print-certs pa6/Pomocnik-Alfa-6-2.4.2-Premium-Preview.apk | tee pa6/signature.txt
+          "$BT/aapt" dump badging pa6/Pomocnik-Alfa-6-2.4.2-Premium-Preview.apk | tee pa6/badging.txt
+          grep -q "package: name='$PA6_APP_ID' versionCode='2004002'" pa6/badging.txt
+          grep -q "sdkVersion:'23'" pa6/badging.txt
+          if [[ "$PA6_SIGN_MODE" == stable ]]; then
+            grep -qi '361442c898552236a7d4299eeda5c3dc275ba1f368c011292dc07d44b2e8ace1' pa6/signature.txt
+          fi
+          echo "$PA6_SIGN_MODE" > pa6/INSTALLATION-TYPE.txt
+          (cd pa6 && sha256sum *.apk > SHA256SUMS.txt)
+      - name: Install video fixture generator
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Test actual signed APK on Android 6 API23 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 23
+          arch: x86
+          target: default
+          profile: Nexus 10
+          disable-animations: true
+          emulator-boot-timeout: 700
+          script: bash helpers/pa6/smoke.sh && bash helpers/pa6/premium_smoke.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PA6-2.4.2-Android6-Signed-APK
+          path: |
+            pa6/Pomocnik-Alfa-6-2.4.2-Premium-Preview.apk
+            pa6/INSTALLATION-TYPE.txt
+            pa6/SHA256SUMS.txt
+            pa6/badging.txt
+            pa6/signature.txt
+            output/data-build.txt
+            output/route-tests.txt
+            output/transport-tests.txt
+            output/tv-source-audit.json
+            output/tv-source-audit.md
+            results/sample-status.txt
+            results/youtube-status.txt
+            results/tv-russia1-status.txt
+            results/crashes.txt
+          retention-days: 45
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PA6-2.4.2-Android6-Test-Reports
+          path: results
+          retention-days: 45
+      - name: Publish tested Premium Preview
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="pa6-2.4.2-premium-${GITHUB_SHA:0:8}"
+          gh release create "$tag" --target "$GITHUB_SHA" --prerelease --title 'Pomocnik Alfa 6 • 2.4.2 Premium Preview' --notes-file helpers/pa6/PREMIUM_RELEASE.md pa6/Pomocnik-Alfa-6-2.4.2-Premium-Preview.apk pa6/SHA256SUMS.txt pa6/signature.txt pa6/INSTALLATION-TYPE.txt output/tv-source-audit.md

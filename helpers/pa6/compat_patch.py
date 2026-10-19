@@ -14,6 +14,7 @@ src=repo/'helpers'/'pa2'
 for name in ('PARegionsActivity.java','PALive.java','PADataStore.java','PAOSMTiles.java'):
     code=(src/name).read_text(encoding='utf-8')
     if name=='PARegionsActivity.java':
+        code=code.replace('extends Activity', 'extends PA6BaseActivity')
         old='if(!nm.areNotificationsEnabled())'
         assert old in code
         code=code.replace(old,'if(Build.VERSION.SDK_INT>=24&&!nm.areNotificationsEnabled())')

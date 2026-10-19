@@ -14,8 +14,8 @@ import java.net.*;
 import java.util.*;
 
 /** Studio-quality radio directory with in-app station selection. Playback service is unchanged. */
-public final class PA6RadioActivity extends Activity {
- private static final int WHITE=0xfff8fafc,INK=0xff1a2336,MUTED=0xff606b7b,RED=0xffe9263e;
+public final class PA6RadioActivity extends PA6BaseActivity {
+ private static final int WHITE=PA6Premium.BG,INK=PA6Premium.INK,MUTED=PA6Premium.MUTED,RED=PA6Premium.BLUE;
  private LinearLayout list;
  private TextView state,playback;
  private EditText search,custom;
@@ -43,7 +43,7 @@ public final class PA6RadioActivity extends Activity {
  private Button button(String txt,boolean solid){
   Button b=new Button(this);b.setAllCaps(false);b.setText(txt);b.setTextSize(14);
   b.setTextColor(solid?Color.WHITE:INK);
-  b.setBackground(bg(solid?RED:WHITE,solid?RED:0xffdce2eb,11));return b;
+  b.setBackground(bg(solid?RED:WHITE,solid?RED:0xffdce2eb,11));b.setMinHeight(dp(50));b.setStateListAnimator(null);PA6Premium.touch(b);return b;
  }
  private boolean valid(String url){
   return url!=null&&(url.startsWith("https://")||url.startsWith("http://"))&&
@@ -102,16 +102,16 @@ public final class PA6RadioActivity extends Activity {
   LinearLayout card=row();card.setPadding(dp(11),dp(10),dp(10),dp(10));
   card.setBackground(bg(WHITE,0xffe0e5ee,14));card.setTag(url);
   TextView logo=label(name.substring(0,Math.min(2,name.length())).toUpperCase(Locale.ROOT),17,RED,true);
-  logo.setGravity(Gravity.CENTER);logo.setBackground(bg(0xffffeef1,0xffffe0e4,12));
+  logo.setGravity(Gravity.CENTER);logo.setBackground(bg(0xffeaf2f8,0xffdbe9f4,12));
   card.addView(logo,new LinearLayout.LayoutParams(dp(57),dp(57)));
   LinearLayout labels=col();labels.setPadding(dp(12),0,0,0);
   TextView headline=label(name,16,INK,true);headline.setMaxLines(2);labels.addView(headline);
-  labels.addView(label("● RADIO ONLINE • DOTKNIJ, BY SŁUCHAĆ",11,MUTED,false));
+  labels.addView(label("Radio internetowe • dotknij, aby słuchać",11,MUTED,false));
   card.addView(labels,new LinearLayout.LayoutParams(0,-2,1));
   Button star=button(favorite(url)?"★":"☆",false);star.setTextSize(19);star.setTextColor(RED);
   card.addView(star,new LinearLayout.LayoutParams(dp(50),dp(47)));
   star.setOnClickListener(v->toggle(name,url));
-  card.setOnClickListener(v->play(name,url));
+  card.setOnClickListener(v->play(name,url));PA6Premium.touch(card);
   card.setContentDescription("Słuchaj "+name);
   LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(78));lp.setMargins(0,dp(3),0,dp(5));dest.addView(card,lp);
  }
@@ -129,7 +129,7 @@ public final class PA6RadioActivity extends Activity {
   final String group=category;
   new Thread(()->{
    ArrayList<String[]> stations=new ArrayList<>();String failure=null;
-   String params="countrycode=PL&hidebroken=true&order=clickcount&reverse=true&limit=160";
+   String params="countrycode=PL&hidebroken=true&order=clickcount&reverse=true&limit=50";
    if(!query.isEmpty())params+="&name="+encode(query);
    if(group.equals("Rock"))params+="&tag=rock";
    if(group.equals("Pop"))params+="&tag=pop";
@@ -153,7 +153,7 @@ public final class PA6RadioActivity extends Activity {
      }
      JSONArray arr=new JSONArray(bytes.toString("UTF-8"));
      HashSet<String> urls=new HashSet<>();
-     for(int n=0;n<arr.length()&&stations.size()<95;n++){
+     for(int n=0;n<arr.length()&&stations.size()<40;n++){
       JSONObject o=arr.optJSONObject(n);if(o==null)continue;
       String name=o.optString("name","").trim(),url=o.optString("url_resolved",o.optString("url","")).trim();
       String codec=o.optString("codec","").toUpperCase(Locale.ROOT);

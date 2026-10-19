@@ -8,9 +8,9 @@ activity=$pkg/com.ispina.lokalnie.PA6TubeActivity
 trap 'adb logcat -d -v time > results/logcat.txt || true' EXIT
 adb root
 adb wait-for-device
-adb install pa6/Pomocnik-Alfa-6-2.4.1-TEST.apk
+adb install pa6/Pomocnik-Alfa-6-2.4.2-Premium-Preview.apk
 # Installing the very same signed build over itself must retain data.
-adb install -r pa6/Pomocnik-Alfa-6-2.4.1-TEST.apk
+adb install -r pa6/Pomocnik-Alfa-6-2.4.2-Premium-Preview.apk
 adb shell pm grant "$pkg" android.permission.WRITE_EXTERNAL_STORAGE
 adb shell pm grant "$pkg" android.permission.READ_EXTERNAL_STORAGE
 adb logcat -c
@@ -121,7 +121,7 @@ import xml.etree.ElementTree as ET
 assert any(n.get('text')=='240p' and n.get('checked')=='true' for n in ET.parse('results/quality-selected.xml').iter('node')), '240p selection did not persist'
 PYCODE
 adb shell am force-stop "$pkg"
-adb install -r pa6/Pomocnik-Alfa-6-2.4.1-TEST.apk
+adb install -r pa6/Pomocnik-Alfa-6-2.4.2-Premium-Preview.apk
 adb shell am start -n "$activity" --ez verify_quality_menu true
 sleep 2
 adb shell uiautomator dump /sdcard/after-update.xml

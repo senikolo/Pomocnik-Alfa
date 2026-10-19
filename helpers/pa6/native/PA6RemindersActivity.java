@@ -11,31 +11,31 @@ import java.text.*;
 import java.util.*;
 
 /** Time picker, list and cancel for native reminders. */
-public final class PA6RemindersActivity extends Activity {
+public final class PA6RemindersActivity extends PA6BaseActivity {
  private LinearLayout rows;
  private EditText note;
  private TextView chosen;
  private Calendar calendar=Calendar.getInstance(TimeZone.getTimeZone("Europe/Warsaw"));
  private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+.5f);}
- private Button button(String label){Button b=new Button(this);b.setText(label);b.setAllCaps(false);b.setTextColor(0xff6845a2);b.setTextSize(16);b.setMinHeight(dp(56));return b;}
- private TextView label(String value,int size){TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setTextColor(0xff443265);t.setPadding(dp(4),dp(8),dp(4),dp(8));return t;}
+ private Button button(String label){Button b=new Button(this);b.setText(label);b.setAllCaps(false);b.setTextColor(PA6Premium.BLUE);b.setTextSize(16);b.setMinHeight(dp(56));return b;}
+ private TextView label(String value,int size){TextView t=new TextView(this);t.setText(value);t.setTextSize(size);t.setTextColor(PA6Premium.INK);t.setPadding(dp(4),dp(8),dp(4),dp(8));return t;}
  private String format(long when){return new SimpleDateFormat("dd.MM.yyyy HH:mm",new Locale("pl","PL")).format(new Date(when));}
  @Override public void onCreate(Bundle b){
   super.onCreate(b);
-  ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(0xfff6f3fa);
+  ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(PA6Premium.BG);
   LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(17),dp(12),dp(17),dp(24));scroll.addView(root);setContentView(scroll);
-  root.addView(label("🔔  Przypomnienia Alfa",25));
+  root.addView(label("Przypomnienia",25));
   root.addView(label("Ustaw termin. Powiadomienie działa bez internetu, ale oszczędzanie baterii może je opóźnić.",14));
   note=new EditText(this);note.setSingleLine(false);note.setMinLines(2);note.setHint("O czym mam przypomnieć?");
   root.addView(note,new LinearLayout.LayoutParams(-1,dp(86)));
   calendar.add(Calendar.HOUR_OF_DAY,1);
   calendar.set(Calendar.MINUTE,0);
   chosen=label("Termin: "+format(calendar.getTimeInMillis()),16);root.addView(chosen);
-  Button date=button("📅  Wybierz datę");root.addView(date);
+  Button date=button("Wybierz datę");root.addView(date);
   date.setOnClickListener(v->new DatePickerDialog(this,(view,y,m,d)->{
    calendar.set(Calendar.YEAR,y);calendar.set(Calendar.MONTH,m);calendar.set(Calendar.DAY_OF_MONTH,d);chosen.setText("Termin: "+format(calendar.getTimeInMillis()));
   },calendar.get(Calendar.YEAR),calendar.get(Calendar.MONTH),calendar.get(Calendar.DAY_OF_MONTH)).show());
-  Button time=button("🕒  Wybierz godzinę");root.addView(time);
+  Button time=button("Wybierz godzinę");root.addView(time);
   time.setOnClickListener(v->new TimePickerDialog(this,(view,h,m)->{
    calendar.set(Calendar.HOUR_OF_DAY,h);calendar.set(Calendar.MINUTE,m);calendar.set(Calendar.SECOND,0);chosen.setText("Termin: "+format(calendar.getTimeInMillis()));
   },calendar.get(Calendar.HOUR_OF_DAY),calendar.get(Calendar.MINUTE),true).show());
@@ -45,6 +45,7 @@ public final class PA6RemindersActivity extends Activity {
    if(t.isEmpty()||t.length()>200){Toast.makeText(this,"Wpisz krótką treść przypomnienia",Toast.LENGTH_SHORT).show();return;}
    if(calendar.getTimeInMillis()<=System.currentTimeMillis()){Toast.makeText(this,"Wybierz przyszłą datę",Toast.LENGTH_SHORT).show();return;}
    boolean ok=PA6ReminderStore.saveAndSchedule(this,UUID.randomUUID().toString(),t,t,calendar.getTimeInMillis(),"once");
+   PA6Haptics.emit(this,ok?"success":"error");
    Toast.makeText(this,ok?"Przypomnienie zapisane":"Nie udało się zapisać",Toast.LENGTH_LONG).show();
    if(ok){note.setText("");refresh();}
   });

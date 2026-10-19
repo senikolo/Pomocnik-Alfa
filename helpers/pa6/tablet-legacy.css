@@ -2,29 +2,29 @@
    Legacy fallback colors precede modern CSS property overrides.
    No remote fonts. Touch targets 52px for the 10.1-inch panel. */
 html{font-family:Roboto,"Noto Sans",Arial,sans-serif;-webkit-text-size-adjust:100%}
-body{margin:0;background:#f5f2fa;color:#2c2737;font-size:16px;line-height:1.47}
+body{margin:0;background:#f6f7f9;color:#182e4b;font-size:16px;line-height:1.47}
 main{box-sizing:border-box;margin:0 auto;max-width:960px;padding:12px 18px 110px}
-header{background:#593d89;color:#fff;min-height:60px}
+header{background:#183652;color:#fff;min-height:60px}
 header h1,header h2,header p{color:#fff}
 h2{font-size:24px;line-height:1.28}
-.card,.trip,.bubble,.board-extra{background:#fff;color:#2c2737;border:1px solid #e4dced;border-radius:17px;box-shadow:0 4px 13px rgba(58,36,90,.06)}
+.card,.trip,.bubble,.board-extra{background:#fff;color:#182e4b;border:1px solid #dce6ef;border-radius:17px;box-shadow:0 4px 13px rgba(58,36,90,.06)}
 .card{padding:15px;margin:12px 0}
 .panel{display:none}.panel.active{display:block}
 button,.btn,select,input,textarea{font-family:inherit;box-sizing:border-box;font-size:15px}
 button,.btn,select,input{min-height:51px}
-.btn{border:1px solid #d5cbe6;border-radius:13px;background:#fff;color:#4e347d;padding:10px 13px}
-.btn.primary{background:#6846a4;color:#fff;border-color:#6846a4}
-input,select,textarea{background:#fff;color:#2c2737;border:1px solid #c6b8d8;border-radius:12px;padding:10px}
-.small,.footnote{color:#665d75;font-size:13px}
-nav{background:#fff;position:fixed;bottom:0;left:0;right:0;border-top:1px solid #e2d9eb;z-index:15}
+.btn{border:1px solid #d4e1ec;border-radius:13px;background:#fff;color:#24597e;padding:10px 13px}
+.btn.primary{background:#367cad;color:#fff;border-color:#367cad}
+input,select,textarea{background:#fff;color:#182e4b;border:1px solid #d4e1ec;border-radius:12px;padding:10px}
+.small,.footnote{color:#61748b;font-size:13px}
+nav{background:#fff;position:fixed;bottom:0;left:0;right:0;border-top:1px solid #dce6ef;z-index:15}
 nav .nav-inner{max-width:960px;margin:auto;display:-webkit-box;display:flex;display:-ms-flexbox}
-nav button{-webkit-box-flex:1;flex:1;border:0;background:transparent;color:#6b607b;font-size:14px;min-height:69px}
-nav button.active{color:#553583;background:#efe8fa;border-radius:13px}
+nav button{-webkit-box-flex:1;flex:1;border:0;background:transparent;color:#61748b;font-size:14px;min-height:69px}
+nav button.active{color:#24597e;background:#eaf2f8;border-radius:13px}
 #planner .trip-time,#homeStopRows .board-time{font-size:27px;font-weight:bold}
 #stopBoard #homeStopRows{display:block;min-height:65px}
 #assistant .chat-shell{min-height:300px}
 #assistant .bubble{display:block;max-width:91%;margin:7px 0;padding:12px}
-#assistant .bubble.user{background:#65479a;color:#fff;margin-left:auto}
+#assistant .bubble.user{background:#31658f;color:#fff;margin-left:auto}
 #liveBus .osm-viewport{height:330px}
 #homeStopMap .osm-viewport{height:250px}
 .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
@@ -32,8 +32,8 @@ nav button.active{color:#553583;background:#efe8fa;border-radius:13px}
 .wrap{flex-wrap:wrap}
 .full{width:100%}
 .hidden{display:none!important}
-.eyebrow{color:#6846a4;font-size:12px;font-weight:bold}
-#pa6-indicator{margin:5px auto 0;max-width:950px;padding:6px 18px;font-size:12px;color:#eee5ff;background:#51347f}
+.eyebrow{color:#367cad;font-size:12px;font-weight:bold}
+#pa6-indicator{margin:5px auto 0;max-width:950px;padding:6px 18px;font-size:12px;color:#d7e6f3;background:#24496b}
 @media(max-width:660px){
  main{padding:10px 12px 108px}
  .grid2{grid-template-columns:minmax(0,1fr)}
@@ -49,5 +49,10 @@ nav button.active{color:#553583;background:#efe8fa;border-radius:13px}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 .pa6-media{max-width:960px;margin:8px auto;display:-webkit-box;display:flex;padding:2px 14px;gap:10px;box-sizing:border-box}
-.pa6-tile{-webkit-box-flex:1;flex:1;border:1px solid #d8c6ec;border-radius:14px;background:#fff;color:#50327e;font-size:19px;font-weight:700;min-height:64px;box-shadow:0 3px 12px rgba(57,35,90,.09)}
-.pa6-tile:active{background:#e8dff4}
+.pa6-tile{-webkit-box-flex:1;flex:1;border:1px solid #dce6ef;border-radius:14px;background:#fff;color:#24597e;font-size:19px;font-weight:700;min-height:64px;box-shadow:0 3px 12px rgba(57,35,90,.09)}
+.pa6-tile:active{background:#eaf2f8}
+
+/* Premium: calm native palette, compact shadows and comfortable touch targets. */
+.card{border-radius:22px;box-shadow:0 3px 9px rgba(24,46,75,.05)}
+.btn,input,select,textarea{border-radius:16px}
+button:active,.btn:active{background:#eaf2f8;color:#182e4b}

@@ -11,8 +11,8 @@ import android.view.*;
 import android.widget.*;
 
 /** Modern studio-inspired home screen; native Android API23, no WebView on dashboard. */
-public final class PA6DashboardActivity extends Activity {
- private static final int BG=0xfff6f8fc,WHITE=Color.WHITE,INK=0xff182338,MUTED=0xff647287,RED=0xffed283d;
+public final class PA6DashboardActivity extends PA6BaseActivity {
+ private static final int BG=PA6Premium.BG,WHITE=Color.WHITE,INK=PA6Premium.INK,MUTED=PA6Premium.MUTED,RED=PA6Premium.BLUE;
  private LinearLayout root;private boolean senior;
  private String displayMode(){
   return getSharedPreferences("pa6_display",MODE_PRIVATE).getString("ui_mode","Automatyczny");
@@ -33,25 +33,25 @@ public final class PA6DashboardActivity extends Activity {
   GradientDrawable g=new GradientDrawable();g.setColor(fill);g.setStroke(dp(1),stroke);g.setCornerRadius(dp(radius));return g;
  }
  private TextView text(String s,int size,boolean bold,int color){
-  TextView t=new TextView(this);t.setText(s);t.setTextSize(size+(senior?2:0));t.setTextColor(color);
-  if(bold)t.setTypeface(Typeface.DEFAULT,Typeface.BOLD);return t;
+  TextView t=new TextView(this);t.setText(s);t.setTextSize(size+(senior?2:0));t.setTextColor(color);t.setLineSpacing(dp(2),1f);
+  if(bold)t.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));return t;
  }
  private LinearLayout col(){LinearLayout l=new LinearLayout(this);l.setOrientation(1);return l;}
  private LinearLayout row(){LinearLayout l=new LinearLayout(this);l.setGravity(Gravity.CENTER_VERTICAL);return l;}
  private void gap(LinearLayout x,int h){x.addView(new View(this),new LinearLayout.LayoutParams(1,dp(h)));}
  private View tile(String type,String label,String desc,String key,int tint){
   LinearLayout card=col();card.setGravity(Gravity.CENTER);card.setPadding(dp(12),dp(8),dp(12),dp(8));
-  card.setBackground(shape(WHITE,0xffdfe6ee,18));
+  card.setBackground(shape(PA6Premium.SURFACE,0xffe2e8ef,22));card.setElevation(dp(2));
   LinearLayout badge=row();badge.setGravity(Gravity.CENTER);
-  badge.setBackground(shape(0xfff3f5fa,0xffe8edf3,12));
-  PA6GlyphView glyph=new PA6GlyphView(this,type,tint);
+  badge.setBackground(shape(0xffeaf2f8,0xffeaf2f8,18));
+  PA6GlyphView glyph=new PA6GlyphView(this,type,PA6Premium.BLUE);
   badge.addView(glyph,new LinearLayout.LayoutParams(dp(40),dp(40)));
   card.addView(badge,new LinearLayout.LayoutParams(dp(58),dp(56)));
   gap(card,12);
   TextView caption=text(label,15,true,INK);caption.setGravity(Gravity.CENTER);caption.setMaxLines(2);card.addView(caption);
   TextView sub=text(desc,12,false,MUTED);sub.setGravity(Gravity.CENTER);sub.setMaxLines(2);card.addView(sub);
   card.setContentDescription(label+". "+desc);
-  card.setOnClickListener(v->open(key));
+  card.setOnClickListener(v->open(key));PA6Premium.touch(card);
   return card;
  }
  private void category(String title,String sub,String[][] options){
@@ -60,7 +60,7 @@ public final class PA6DashboardActivity extends Activity {
   TextView hint=text(sub,13,false,MUTED);hint.setPadding(dp(5),0,0,dp(11));root.addView(hint);
   DisplayMetrics dm=getResources().getDisplayMetrics();
   int width=(int)(dm.widthPixels/dm.density);
-  int cols="Smartfon".equals(displayMode())?2:width>=840?4:width>=550?3:2;
+  int cols="Smartfon".equals(displayMode())?2:width>=840?4:width>=600?3:2;
   for(int pos=0;pos<options.length;pos+=cols){
    LinearLayout line=row();line.setGravity(Gravity.TOP);root.addView(line);
    for(int j=0;j<cols;j++){
@@ -74,7 +74,7 @@ public final class PA6DashboardActivity extends Activity {
  }
  private void quick(LinearLayout row,String key,String type,String title,String desc,int tint){
   LinearLayout card=row();card.setPadding(dp(13),dp(11),dp(11),dp(11));
-  card.setBackground(shape(0xff172c48,0xff172c48,15));
+  card.setBackground(shape(0xff294f77,0xff3a5f84,18));
   PA6GlyphView icon=new PA6GlyphView(this,type,tint);
   card.addView(icon,new LinearLayout.LayoutParams(dp(41),dp(41)));
   LinearLayout column=col();column.setPadding(dp(9),0,0,0);
@@ -85,8 +85,8 @@ public final class PA6DashboardActivity extends Activity {
   LinearLayout.LayoutParams params=stacked?
    new LinearLayout.LayoutParams(-1,dp(senior?81:75)):
    new LinearLayout.LayoutParams(0,dp(senior?81:75),1);
-  params.setMargins(dp(4),0,dp(4),0);row.addView(card,params);
-  card.setOnClickListener(v->open(key));
+  params.setMargins(dp(4),dp(4),dp(4),dp(4));row.addView(card,params);
+  card.setOnClickListener(v->open(key));PA6Premium.touch(card);
  }
  private void open(String key){
   try{
@@ -139,37 +139,39 @@ public final class PA6DashboardActivity extends Activity {
   FrameLayout holder=new FrameLayout(this);
   sc.addView(holder,new ScrollView.LayoutParams(-1,-2));
   float widthDp=getResources().getDisplayMetrics().widthPixels/getResources().getDisplayMetrics().density;
-  int contentWidth="Smartfon".equals(displayMode())?(int)Math.min(widthDp,480):-1;
+  int contentWidth=(int)Math.min(widthDp,"Smartfon".equals(displayMode())?480:1200);
   holder.addView(root,new FrameLayout.LayoutParams(contentWidth<0?-1:dp(contentWidth),-2,Gravity.TOP|Gravity.CENTER_HORIZONTAL));
   setContentView(sc);
   LinearLayout brand=row();brand.setPadding(dp(12),dp(11),dp(12),dp(11));
-  brand.setBackground(shape(WHITE,0xffe3e8f0,16));
+  brand.setBackground(shape(PA6Premium.SURFACE,0xffe3e8f0,20));
   ImageView cat=new ImageView(this);
   cat.setImageResource(getResources().getIdentifier("ic_cat","drawable",getPackageName()));
   cat.setScaleType(ImageView.ScaleType.FIT_CENTER);
   brand.addView(cat,new LinearLayout.LayoutParams(dp(59),dp(59)));
   LinearLayout caption=col();caption.setPadding(dp(12),0,0,0);
-  caption.addView(text("POMOCNIK ALFA",23,true,INK));
-  caption.addView(text("UltraSmart • Android 6 • "+displayMode(),12,false,MUTED));
+  caption.addView(text("Pomocnik Alfa",22,true,INK));
+  caption.addView(text("Twój dzień. W dobrym rytmie.",12,false,MUTED));
   brand.addView(caption,new LinearLayout.LayoutParams(0,-2,1));
-  Button switchLayout=new Button(this);switchLayout.setText("Układ");
+  Button switchLayout=new Button(this);switchLayout.setText("Ustawienia");
   switchLayout.setAllCaps(false);switchLayout.setTextSize(12);
   switchLayout.setTextColor(INK);switchLayout.setBackground(shape(0xfff1f4f8,0xffdfe6ef,11));
-  brand.addView(switchLayout,new LinearLayout.LayoutParams(dp(75),dp(45)));
-  switchLayout.setOnClickListener(v->chooseDisplayMode());
+  brand.addView(switchLayout,new LinearLayout.LayoutParams(dp(104),dp(50)));
+  switchLayout.setOnClickListener(v->startActivity(new Intent(this,PA6SettingsActivity.class)));
   root.addView(brand);gap(root,15);
   LinearLayout highlight=col();highlight.setPadding(dp(18),dp(16),dp(18),dp(17));
-  highlight.setBackground(shape(0xffeaf0fb,0xffdce5f5,19));
-  highlight.addView(text("Wszystko w jednym miejscu",23,true,INK));
+  highlight.setBackground(PA6Premium.gradient(this,0xff183652,0xff31658f,26));
+  TextView edition=text("ALFA  /  PREMIUM",11,true,0xffb8d9ef);edition.setLetterSpacing(.14f);highlight.addView(edition);gap(highlight,9);
+  int hour=java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
+  highlight.addView(text(hour<18?"Dzień dobry, co dziś wybierasz?":"Dobry wieczór. Czas dla Ciebie.",26,true,WHITE));
   gap(highlight,6);
-  highlight.addView(text("Włącz telewizję, posłuchaj radia, obejrzyj film lub zaplanuj podróż.",14,false,0xff4b627e));
+  highlight.addView(text("Ulubione filmy, dźwięki i codzienne sprawy. Wszystko pod ręką.",14,false,0xffd7e6f3));
   gap(highlight,15);
   boolean phone="Smartfon".equals(displayMode())||
    ("Automatyczny".equals(displayMode())&&widthDp<520);
   LinearLayout shortcuts=phone?col():row();
-  quick(shortcuts,"tv","tv","ALFA TV","PL + rosyjskojęzyczne",0xff65f1d8);
+  quick(shortcuts,"tv","tv","ALFA TV","Na żywo • Twoje stacje",0xff65f1d8);
   quick(shortcuts,"tube","tube","ALFA TUBE","Filmy i muzyka",0xffff939e);
-  quick(shortcuts,"radio","radio","RADIO","Polskie stacje",0xffffc783);
+  quick(shortcuts,"radio","radio","RADIO","Muzyka i wiadomości",0xffb9d8ed);
   highlight.addView(shortcuts);root.addView(highlight);
   multimedia();
   String previous=getPreferences(0).getString("last","");
@@ -179,8 +181,8 @@ public final class PA6DashboardActivity extends Activity {
    recent.setOnClickListener(v->open(previous));
   }
   category("Multimedia","Oglądaj i słuchaj bez przełączania do innych programów",new String[][]{
-   {"tv","Telewizja","Kanały w okienku","tv","ffe13349"},
-   {"tube","Alfa Tube","Wyszukuj filmy","tube","ffee283d"},
+   {"tv","Telewizja","Świat na żywo","tv","ffe13349"},
+   {"tube","Alfa Tube","Filmy po Twojemu","tube","ffee283d"},
    {"radio","Radio","Stacje i ulubione","radio","ffbf6a37"},
    {"sounds","Dźwięki spokoju","Relaks offline","sounds","ff5872bd"},
    {"kids","Tube Kids","Filmy dla dzieci","kids","ffb85d96"}
@@ -201,14 +203,14 @@ public final class PA6DashboardActivity extends Activity {
   Button size=new Button(this);size.setAllCaps(false);size.setTextSize(15);
   size.setText(senior?"Standardowe kafelki":"Powiększ kafelki");
   size.setTextColor(RED);size.setBackground(shape(WHITE,0xffe1e6ed,13));
-  root.addView(size,new LinearLayout.LayoutParams(-1,dp(52)));
+  PA6Premium.touch(size);root.addView(size,new LinearLayout.LayoutParams(-1,dp(52)));
   size.setOnClickListener(v->{senior=!senior;getPreferences(0).edit().putBoolean("senior",senior).apply();render();});
   gap(root,13);
-  TextView footer=text("Pomocnik Alfa 6 • 2.4.1 TEST • kompilacja 2004001",12,false,MUTED);
+  TextView footer=text("Alfa 6 • 2.4.2 Premium Preview • 2004002",12,false,MUTED);
   footer.setGravity(Gravity.CENTER);root.addView(footer);
  }
  @Override public void onCreate(Bundle b){
   super.onCreate(b);senior=getPreferences(0).getBoolean("senior",false);
-  getWindow().setStatusBarColor(BG);getWindow().setNavigationBarColor(INK);render();
+  getWindow().setStatusBarColor(INK);getWindow().setNavigationBarColor(INK);render();
  }
 }

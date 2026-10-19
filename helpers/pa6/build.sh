@@ -12,6 +12,7 @@ npm install --no-audit --no-fund --prefix build/pa6-node @babel/core@7 @babel/pr
 NODE_PATH="$PWD/build/pa6-node/node_modules" node helpers/pa6/transpile.cjs helpers/pa2 build/pa6-assets/pa_regions
 python3 helpers/pa6/prepare_tablet.py build/pa6-data build/pa6-assets/pa_regions
 python3 helpers/pa6/compat_patch.py build/pa6-java
+python3 helpers/pa6/probe_tv.py
 # NewPipeExtractor runs inside Alfa Tube on the tablet (GPLv3), not via a public API.
 mkdir -p build/pa6-newpipe
 mvn -B -q -f helpers/pa6/newpipe-pom.xml dependency:copy-dependencies \
@@ -93,5 +94,5 @@ grep -q "sdkVersion:'23'" output/badging.txt
 grep -q "package: name='${PA6_APP_ID:-com.senikolo.pa6.stable}'" output/badging.txt
 # Signing happens with the preserved PA certificate after downloading this build.
 # Never generate an ephemeral replacement key or publish an unsigned APK.
-cp output/aligned.apk output/PA6-2.4.1-unsigned.apk
-sha256sum output/PA6-2.4.1-unsigned.apk > output/SHA256SUMS.txt
+cp output/aligned.apk output/PA6-2.4.2-unsigned.apk
+sha256sum output/PA6-2.4.2-unsigned.apk > output/SHA256SUMS.txt

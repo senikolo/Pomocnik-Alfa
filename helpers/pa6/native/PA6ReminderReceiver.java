@@ -24,7 +24,8 @@ public final class PA6ReminderReceiver extends BroadcastReceiver {
    .setSmallIcon(android.R.drawable.ic_dialog_info)
    .setContentTitle("🔔 Pomocnik Alfa")
    .setContentText(found.optString("title","Przypomnienie"))
-   .setAutoCancel(true).setDefaults(Notification.DEFAULT_ALL)
+   .setAutoCancel(true).setDefaults(Notification.DEFAULT_SOUND|Notification.DEFAULT_LIGHTS)
+   .setVibrate(PA6Haptics.reminder(ctx))
    .setContentIntent(tap).build();
   NotificationManager nm=(NotificationManager)ctx.getSystemService(Context.NOTIFICATION_SERVICE);
   nm.notify(id.hashCode()&0x7fffffff,n);

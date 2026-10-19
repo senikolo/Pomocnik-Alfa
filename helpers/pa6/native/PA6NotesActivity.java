@@ -9,18 +9,18 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
 
 /** Same native_notes key as the PA transport assistant. */
-public final class PA6NotesActivity extends Activity {
+public final class PA6NotesActivity extends PA6BaseActivity {
  private EditText editor;
  private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+.5f);}
  private Button button(String title){
-  Button b=new Button(this);b.setText(title);b.setTextSize(17);b.setAllCaps(false);b.setTextColor(0xff63449b);b.setMinHeight(dp(56));return b;
+  Button b=new Button(this);b.setText(title);b.setTextSize(17);b.setAllCaps(false);b.setTextColor(PA6Premium.BLUE);b.setMinHeight(dp(56));return b;
  }
  @Override public void onCreate(Bundle saved){
   super.onCreate(saved);
-  ScrollView sc=new ScrollView(this);sc.setBackgroundColor(0xfff6f3fa);
+  ScrollView sc=new ScrollView(this);sc.setBackgroundColor(PA6Premium.BG);
   LinearLayout root=new LinearLayout(this);root.setPadding(dp(18),dp(17),dp(18),dp(26));root.setOrientation(1);
   sc.addView(root);setContentView(sc);
-  TextView heading=new TextView(this);heading.setText("📝  Notatnik Alfa");heading.setTextSize(25);heading.setTextColor(0xff493078);
+  TextView heading=new TextView(this);heading.setText("Notatnik");heading.setTextSize(25);heading.setTextColor(PA6Premium.INK);
   root.addView(heading);
   TextView hint=new TextView(this);hint.setText("Notatki zapisują się w pamięci tabletu. Ten sam notatnik jest dostępny dla Asystenta Alfa.");
   hint.setTextSize(15);hint.setPadding(0,dp(10),0,dp(8));root.addView(hint);
@@ -41,6 +41,7 @@ public final class PA6NotesActivity extends Activity {
   String value=editor.getText().toString();
   if(value.length()>180000){Toast.makeText(this,"Notatka jest zbyt długa. Zrób kopię i skróć tekst.",Toast.LENGTH_LONG).show();return;}
   boolean ok=getSharedPreferences("native_notes",0).edit().putString("note",value).commit();
+  PA6Haptics.emit(this,ok?"success":"error");
   Toast.makeText(this,ok?"Notatka zapisana":"Nie udało się zapisać notatki",Toast.LENGTH_SHORT).show();
  }
  @Override public void onBackPressed(){save();super.onBackPressed();}

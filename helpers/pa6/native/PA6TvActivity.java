@@ -15,7 +15,7 @@ import java.util.*;
  * Only freely available public broadcaster/community streams are listed.
  * No paid, tokenized, DRM or unauthorized retransmissions.
  */
-public final class PA6TvActivity extends Activity {
+public final class PA6TvActivity extends PA6BaseActivity {
  private final PA6Fullscreen fullscreen=new PA6Fullscreen();
  private static String countryFor(String name){
   if(name.startsWith("Rossija 1")||name.equals("Univer TV"))return "Rosja";
@@ -36,7 +36,7 @@ public final class PA6TvActivity extends Activity {
    canvas.restore();paint.setColor(0xffcbd5e1);paint.setStyle(android.graphics.Paint.Style.STROKE);paint.setStrokeWidth(dp(1));canvas.drawRoundRect(new android.graphics.RectF(.5f,.5f,w-.5f,h-.5f),dp(2),dp(2),paint);paint.setStyle(android.graphics.Paint.Style.FILL);
   }
  }
- private static final int WHITE=0xfff8fafc,INK=0xff182135,MUTED=0xff596675,RED=0xffd92d48;
+ private static final int WHITE=PA6Premium.BG,INK=PA6Premium.INK,MUTED=PA6Premium.MUTED,RED=PA6Premium.BLUE;
  private static final class Channel {
   final String name,kind,desc,url,country;
   final String[] backup;
@@ -88,7 +88,7 @@ public final class PA6TvActivity extends Activity {
   Button b=new Button(this);b.setAllCaps(false);b.setText(value);b.setTextSize(14);
   b.setMinHeight(dp(48));b.setMinWidth(0);b.setMinimumWidth(0);b.setMaxLines(2);
   b.setTextColor(red?Color.WHITE:INK);b.setBackground(box(red?RED:WHITE,red?RED:0xffdde3eb,12));
-  return b;
+  b.setMinHeight(dp(50));b.setStateListAnimator(null);PA6Premium.touch(b);return b;
  }
  private LinearLayout row(){LinearLayout l=new LinearLayout(this);l.setGravity(Gravity.CENTER_VERTICAL);return l;}
  private LinearLayout col(){LinearLayout l=new LinearLayout(this);l.setOrientation(1);return l;}
@@ -183,24 +183,30 @@ public final class PA6TvActivity extends Activity {
    none.setPadding(dp(11),dp(20),dp(11),dp(20));results.addView(none);
   }
  }
+ private String verification(Channel channel){
+  long played=getPreferences(0).getLong("verified_"+channel.url,0);
+  if(played>0)return "Odtwarzano na tym urządzeniu • "+android.text.format.DateFormat.format("dd.MM HH:mm",played);
+  return PA6TvAudit.label(this,channel.name);
+ }
  private void channelRow(Channel channel){
   LinearLayout l=row();l.setPadding(dp(11),dp(10),dp(9),dp(10));
   l.setBackground(box(WHITE,0xffe0e6ee,15));
   TextView logo=text(channel.name.substring(0,Math.min(2,channel.name.length())).toUpperCase(Locale.ROOT),16,RED,true);
-  logo.setGravity(Gravity.CENTER);logo.setBackground(box(0xffffeef0,0xffffdee2,12));
+  logo.setGravity(Gravity.CENTER);logo.setBackground(box(0xffeaf2f8,0xffdbe9f4,12));
   l.addView(logo,new LinearLayout.LayoutParams(dp(57),dp(57)));
   LinearLayout texts=col();texts.setPadding(dp(11),0,0,0);
   LinearLayout channelTitle=row();
   channelTitle.addView(new FlagView(channel.country),new LinearLayout.LayoutParams(dp(24),dp(16)));
   TextView n=text(channel.name,16,INK,true);n.setPadding(dp(8),0,0,0);channelTitle.addView(n,new LinearLayout.LayoutParams(0,-2,1));texts.addView(channelTitle);
   TextView label=text(channel.kind+" • "+channel.desc,12,MUTED,false);label.setMaxLines(2);texts.addView(label);
+  TextView verified=text(verification(channel),11,MUTED,false);verified.setPadding(0,dp(4),0,0);texts.addView(verified);
   l.addView(texts,new LinearLayout.LayoutParams(0,-2,1));
   Button star=action(favorite(channel.url)?"★":"☆",false);
   star.setTextColor(favorite(channel.url)?RED:MUTED);
-  l.addView(star,new LinearLayout.LayoutParams(dp(50),dp(45)));
+  l.addView(star,new LinearLayout.LayoutParams(dp(50),dp(48)));
   star.setOnClickListener(v->toggle(channel));
   l.setContentDescription(channel.name+" • "+channel.kind);
-  l.setOnClickListener(v->play(channel));
+  l.setOnClickListener(v->play(channel));PA6Premium.touch(l);
   LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,dp(4),0,dp(5));results.addView(l,p);
  }
  @Override public void onCreate(Bundle saved){
@@ -217,7 +223,7 @@ public final class PA6TvActivity extends Activity {
   // Tablet landscape: fixed 16:9-ish player on the left and scrollable channel library on the right.
   // Portrait: the same screens stack, and the player is NEVER inside a ScrollView.
   float widthDp=getResources().getDisplayMetrics().widthPixels/getResources().getDisplayMetrics().density;
-  boolean wide=widthDp>=660f;
+  boolean wide=PA6Premium.wide(this);
   LinearLayout panes=col();panes.setOrientation(wide?LinearLayout.HORIZONTAL:LinearLayout.VERTICAL);
   page.addView(panes,new LinearLayout.LayoutParams(-1,0,1));
   LinearLayout playerPane=col(),catalogPane=col();
@@ -226,12 +232,13 @@ public final class PA6TvActivity extends Activity {
    left.setMargins(0,0,dp(12),0);ScrollView playerScroll=new ScrollView(this);playerScroll.addView(playerPane);panes.addView(playerScroll,left);
    panes.addView(catalogPane,new LinearLayout.LayoutParams(0,-1,4));
   }else{
-   panes.addView(playerPane,new LinearLayout.LayoutParams(-1,-2));
-   panes.addView(catalogPane,new LinearLayout.LayoutParams(-1,0,1));
+   LinearLayout stack=col();ScrollView all=new ScrollView(this);all.setFillViewport(true);all.addView(stack);
+   FrameLayout phone=new FrameLayout(this);int max=dp((int)Math.min(widthDp-24,480));phone.addView(all,new FrameLayout.LayoutParams(max,-1,Gravity.TOP|Gravity.CENTER_HORIZONTAL));
+   panes.addView(phone,new LinearLayout.LayoutParams(-1,-1));stack.addView(playerPane,new LinearLayout.LayoutParams(-1,-2));stack.addView(catalogPane,new LinearLayout.LayoutParams(-1,dp(720)));
   }
   player=new PA6EmbeddedPlayer(this);player.setFullscreenListener(()->fullscreen.toggle(this,player));
   player.setPlaybackErrorListener(()->onChannelPlaybackError());
-  player.setPlaybackStartListener(()->{cancelTuneWatchdog();if(currentChannel!=null)status.setText("Na żywo • "+currentChannel.name);});
+  player.setPlaybackStartListener(()->{cancelTuneWatchdog();if(currentChannel!=null)getPreferences(0).edit().putLong("verified_"+currentChannel.url,System.currentTimeMillis()).apply();if(currentChannel!=null)status.setText("Na żywo • "+currentChannel.name);});
   playerPane.addView(player,new LinearLayout.LayoutParams(-1,-2));
   if(getIntent().getBooleanExtra("verify_libvlc",false)&&!player.verifyNative())
    throw new IllegalStateException("PA6 native player unavailable");
@@ -240,11 +247,12 @@ public final class PA6TvActivity extends Activity {
   status=text("Odtwarzacz w okienku • obraz i dźwięk wewnątrz Pomocnika Alfa.",13,MUTED,false);
   status.setPadding(dp(6),dp(2),dp(6),dp(8));playerPane.addView(status);
   LinearLayout tools=row();
-  Button last=action("↻  Ostatnio",false);tools.addView(last,new LinearLayout.LayoutParams(0,dp(46),1));last.setOnClickListener(v->replay());
-  Button stop=action("■  Stop",false);LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(0,dp(46),1);
+  Button last=action("↻  Ostatnio",false);tools.addView(last,new LinearLayout.LayoutParams(0,dp(50),1));last.setOnClickListener(v->replay());
+  Button stop=action("■  Stop",false);LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(0,dp(50),1);
   sp.setMargins(dp(7),0,0,0);tools.addView(stop,sp);stop.setOnClickListener(v->player.stop());
   playerPane.addView(tools);space(playerPane,10);
-  Button hide=action("Zwiń / rozwiń katalog",false);page.addView(hide,1,new LinearLayout.LayoutParams(-1,dp(46)));hide.setOnClickListener(v->catalogPane.setVisibility(catalogPane.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE));
+  Button mini=action("▣  Małe okienko",false);playerPane.addView(mini);mini.setOnClickListener(v->fullscreen.mini(this,player));
+  Button hide=action("Zwiń / rozwiń katalog",false);page.addView(hide,1,new LinearLayout.LayoutParams(-1,dp(50)));hide.setOnClickListener(v->catalogPane.setVisibility(catalogPane.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE));
   ScrollView scroll=new ScrollView(this);catalogPane.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
   LinearLayout content=col();scroll.addView(content);
   TextView sect=text("Kanały telewizyjne",20,INK,true);

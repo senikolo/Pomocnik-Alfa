@@ -11,25 +11,25 @@ import java.net.*;
 import java.util.*;
 
 /** Simple non-tracking weather view backed by Open-Meteo. */
-public final class PA6WeatherActivity extends Activity {
+public final class PA6WeatherActivity extends PA6BaseActivity {
  private LinearLayout details;
  private EditText city;
  private TextView info;
  private int request=0;
  private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+.5f);}
  private TextView label(String text,int size){
-  TextView t=new TextView(this);t.setText(text);t.setTextSize(size);t.setTextColor(0xff463365);t.setPadding(dp(5),dp(7),dp(5),dp(7));return t;
+  TextView t=new TextView(this);t.setText(text);t.setTextSize(size);t.setTextColor(PA6Premium.INK);t.setPadding(dp(5),dp(7),dp(5),dp(7));return t;
  }
  @Override public void onCreate(Bundle b){
-  super.onCreate(b);
-  ScrollView sc=new ScrollView(this);sc.setBackgroundColor(0xfff7f4fa);
+  super.onCreate(b);PA6ModernTls.install(this);
+  ScrollView sc=new ScrollView(this);sc.setBackgroundColor(PA6Premium.BG);
   LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(15),dp(13),dp(15),dp(26));sc.addView(root);setContentView(sc);
-  root.addView(label("🌤  Pogoda z Alfą",25));
+  root.addView(label("Pogoda",25));
   root.addView(label("Podaj miejscowość. Nie zakładam, gdzie jesteś; lokalizacja GPS nie jest wymagana.",15));
   city=new EditText(this);city.setSingleLine(true);city.setHint("Np. Warszawa, Kraków, Ispina");
   city.setText(getPreferences(0).getString("city",""));
   root.addView(city,new LinearLayout.LayoutParams(-1,dp(57)));
-  Button go=new Button(this);go.setText("Pokaż prognozę");go.setTextColor(0xff634299);
+  Button go=new Button(this);go.setText("Pokaż prognozę");go.setTextColor(PA6Premium.BLUE);
   go.setAllCaps(false);go.setTextSize(17);root.addView(go,new LinearLayout.LayoutParams(-1,dp(56)));
   go.setOnClickListener(v->lookup(city.getText().toString().trim()));
   info=label("Prognoza 3 dni • Open-Meteo",14);root.addView(info);
@@ -39,7 +39,7 @@ public final class PA6WeatherActivity extends Activity {
  private static String load(String address)throws Exception{
   HttpURLConnection c=null;
   try{
-   c=(HttpURLConnection)new URL(address).openConnection();c.setConnectTimeout(12000);c.setReadTimeout(16000);
+   c=PA6ModernTls.open(address);c.setConnectTimeout(12000);c.setReadTimeout(16000);
    c.setRequestProperty("User-Agent","PA6Tablet/1.0");
    if(c.getResponseCode()!=200)throw new IOException("Serwis pogody nie odpowiedział ("+c.getResponseCode()+")");
    ByteArrayOutputStream out=new ByteArrayOutputStream();try(InputStream in=c.getInputStream()){
@@ -77,7 +77,7 @@ public final class PA6WeatherActivity extends Activity {
     if(message!=null){info.setText(message);return;}
     info.setText("Prognoza: "+foundCity+" • Open-Meteo");
     for(String row:forecast){
-     TextView t=label(row,18);t.setBackgroundColor(Color.WHITE);
+     TextView t=label(row,18);t.setBackground(PA6Premium.shape(this,PA6Premium.SURFACE,0xffe0e8ef,20));t.setPadding(dp(18),dp(18),dp(18),dp(18));
      LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.setMargins(0,dp(5),0,dp(5));
      details.addView(t,p);
     }

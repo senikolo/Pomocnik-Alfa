@@ -11,7 +11,7 @@ import android.widget.*;
 import java.io.*;
 
 /** Offline PDF/TXT reader with one rendered page in memory at a time. */
-public final class PA6ReaderActivity extends Activity {
+public final class PA6ReaderActivity extends PA6BaseActivity {
  private static final int OPEN=645;
  private ImageView pageImage;
  private TextView textPage,status;
@@ -20,16 +20,16 @@ public final class PA6ReaderActivity extends Activity {
  private Bitmap bitmap;
  private int page=0,request=0;
  private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+.5f);}
- private TextView label(String s,int size){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(0xff503b70);t.setPadding(dp(6),dp(8),dp(6),dp(8));return t;}
- private Button button(String s){Button b=new Button(this);b.setAllCaps(false);b.setText(s);b.setTextColor(0xff68499e);b.setTextSize(16);b.setMinHeight(dp(55));return b;}
+ private TextView label(String s,int size){TextView t=new TextView(this);t.setText(s);t.setTextSize(size);t.setTextColor(PA6Premium.INK);t.setPadding(dp(6),dp(8),dp(6),dp(8));return t;}
+ private Button button(String s){Button b=new Button(this);b.setAllCaps(false);b.setText(s);b.setTextColor(PA6Premium.BLUE);b.setTextSize(16);b.setMinHeight(dp(55));return b;}
  @Override public void onCreate(Bundle b){
   super.onCreate(b);
-  ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(0xfff7f4fa);
+  ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(PA6Premium.BG);
   LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(dp(13),dp(12),dp(13),dp(30));
   scroll.addView(root);setContentView(scroll);
-  root.addView(label("📖  Czytnik Alfa",26));
+  root.addView(label("Czytnik",26));
   root.addView(label("Otwieraj dokumenty PDF i TXT z pamięci tabletu. PDF wyświetla tylko jedną stronę naraz, by nie przeciążać 2 GB RAM.",14));
-  Button open=button("📂  Wybierz plik PDF lub TXT");root.addView(open);
+  Button open=button("Wybierz plik PDF lub TXT");root.addView(open);
   open.setOnClickListener(v->{
    Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.setType("*/*");i.addCategory(Intent.CATEGORY_OPENABLE);
    i.putExtra(Intent.EXTRA_MIME_TYPES,new String[]{"application/pdf","text/plain"});

@@ -23,9 +23,9 @@ import java.util.concurrent.*;
  * Direct NewPipe search/metadata + bundled LibVLC. Piped/Invidious are backups.
  * No DRM bypass, user login or scraping in WebView.
  */
-public final class PA6TubeActivity extends Activity {
+public final class PA6TubeActivity extends PA6BaseActivity {
  private static final int PICK_FILE=791, STORAGE_PERMISSION=792;
- private static final int WHITE=0xfff6f8fc,INK=0xff172036,MUTED=0xff596574,RED=0xffd92d48,PALE=0xffeef2f7;
+ private static final int WHITE=PA6Premium.BG,INK=PA6Premium.INK,MUTED=PA6Premium.MUTED,RED=PA6Premium.BLUE,PALE=0xffeef2f7;
  private final Handler main=new Handler(Looper.getMainLooper());
  private final ExecutorService io=Executors.newFixedThreadPool(2);
  private final ThreadPoolExecutor thumbnailIo=(ThreadPoolExecutor)Executors.newFixedThreadPool(2);
@@ -88,7 +88,7 @@ public final class PA6TubeActivity extends Activity {
  private Button button(String value,int color,boolean emphasized){
   Button b=new Button(this);b.setAllCaps(false);b.setText(value);b.setTextSize(14);b.setMinWidth(0);b.setMinimumWidth(0);b.setMaxLines(2);
   b.setTextColor(emphasized?WHITE:INK);b.setMinHeight(dp(48));b.setPadding(dp(8),dp(6),dp(8),dp(6));
-  b.setBackground(panel(emphasized?color:WHITE,emphasized?color:0xffdce2ed,12));return b;
+  b.setBackground(panel(emphasized?color:WHITE,emphasized?color:0xffdce2ed,12));b.setMinHeight(dp(50));b.setStateListAnimator(null);PA6Premium.touch(b);return b;
  }
  private void pad(View v,int x,int y){v.setPadding(dp(x),dp(y),dp(x),dp(y));}
  private void gap(LinearLayout l,int h){l.addView(new View(this),new LinearLayout.LayoutParams(1,dp(h)));}
@@ -263,7 +263,7 @@ public final class PA6TubeActivity extends Activity {
  }
  private void resolveAndPlay(final String id,final int seq){
   playbackPending=true;
-  feedback(playbackAttempts==0?"Sprawdzam film bezpośrednio przez NewPipe Extractor…":
+  feedback(playbackAttempts==0?"Przygotowuję film do odtworzenia…":
     "Bezpośredni strumień nie działa. Sprawdzam serwer zapasowy ("+playbackAttempts+"/3)…");
   final HashSet<String> ignored=new HashSet<>(failedProviders);
   cancelPlay();final PA6NewPipeClient.Work work=new PA6NewPipeClient.Work();playWork=work;
@@ -430,7 +430,7 @@ public final class PA6TubeActivity extends Activity {
  private void showSearchResults(final PA6PipedClient.Response<List<PA6PipedClient.Result>> response,final int seq){
   if(closed||seq!=searchGeneration)return;
   results.removeAllViews();clearThumbnails();
-  provider.setText("Wyniki filmów • "+response.server.replace("https://",""));
+  provider.setText("Filmy i muzyka • wybierz coś dla siebie");
   feedback(response.data.isEmpty()?"Brak wyników. Spróbuj innego hasła.":"Znaleziono filmów: "+response.data.size()+" • dotknij filmu, aby oglądać.");
   appendResults(response.data,0,seq);
  }
@@ -528,7 +528,7 @@ public final class PA6TubeActivity extends Activity {
   FrameLayout imageFrame=new FrameLayout(this);
   imageFrame.addView(poster,new FrameLayout.LayoutParams(-1,-1));
   TextView playBadge=text("▶",23,WHITE,true);
-  playBadge.setGravity(Gravity.CENTER);playBadge.setBackground(panel(0xcced263b,0xcced263b,24));
+  playBadge.setGravity(Gravity.CENTER);playBadge.setBackground(panel(0xcc285d85,0xcc285d85,24));
   FrameLayout.LayoutParams badgeParams=new FrameLayout.LayoutParams(dp(39),dp(39),Gravity.CENTER);
   imageFrame.addView(playBadge,badgeParams);
   float screenDp=getResources().getDisplayMetrics().widthPixels/getResources().getDisplayMetrics().density;
@@ -543,7 +543,7 @@ public final class PA6TubeActivity extends Activity {
   LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.setMargins(0,dp(4),0,dp(6));
   results.addView(card,lp);
   card.setContentDescription(video.title+", "+video.channel);
-  card.setOnClickListener(v->playVideo(video.id));
+  card.setOnClickListener(v->playVideo(video.id));PA6Premium.touch(card);
  }
  private void history(){savedFilms("recent_ids","Ostatnio oglądane");}
  private void savedFilms(String key,String caption){
@@ -576,7 +576,7 @@ public final class PA6TubeActivity extends Activity {
   LinearLayout page=column();page.setBackgroundColor(WHITE);pad(page,16,12);setContentView(page);
   LinearLayout heading=line();
   TextView logo=text("▶",20,WHITE,true);logo.setGravity(Gravity.CENTER);
-  logo.setBackground(panel(RED,RED,11));heading.addView(logo,new LinearLayout.LayoutParams(dp(47),-2));
+  logo.setBackground(panel(RED,RED,11));heading.addView(logo,new LinearLayout.LayoutParams(dp(48),dp(48)));
   LinearLayout brand=column();brand.setPadding(dp(12),0,dp(8),0);
   TextView name=text(kids?"Tube Kids":"Alfa Tube",24,INK,true);brand.addView(name);
   TextView tagline=text("Filmy i muzyka • po Twojemu",12,MUTED,false);brand.addView(tagline);
@@ -586,9 +586,10 @@ public final class PA6TubeActivity extends Activity {
   settings.setOnClickListener(v->showTubeSettings());
   page.addView(heading);gap(page,12);
   LinearLayout searchBar=line();
-  search=new EditText(this);search.setSingleLine(true);search.setHint("Szukaj filmów i muzyki…");
+  search=new EditText(this);search.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH);search.setSingleLine(true);search.setHint("Szukaj filmów i muzyki…");
   search.setTextSize(15);search.setBackground(panel(PALE,0xffe1e5ec,11));pad(search,13,4);
   searchBar.addView(search,new LinearLayout.LayoutParams(0,-2,1));
+  search.setOnEditorActionListener((v,action,event)->{if(action==android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH){searchVideos(search.getText().toString().trim());return true;}return false;});
   Button go=button("Szukaj",RED,true);go.setOnClickListener(v->searchVideos(search.getText().toString().trim()));
   LinearLayout.LayoutParams gb=new LinearLayout.LayoutParams(dp(92),-2);gb.setMargins(dp(8),0,0,0);searchBar.addView(go,gb);
   page.addView(searchBar);gap(page,9);
@@ -649,6 +650,7 @@ public final class PA6TubeActivity extends Activity {
   favorites.setOnClickListener(v->{if(activeId.isEmpty()){feedback("Najpierw wybierz film.");return;}String all=getPreferences(0).getString("favorite_ids","");String token=activeId+",";boolean had=all.contains(token);all=all.replace(token,"");if(!had)all=token+all;if(all.length()>360)all=all.substring(0,360);getPreferences(0).edit().putString("favorite_ids",all).putString("recent_title_"+activeId,activeTitle).apply();feedback(had?"Usunięto z ulubionych.":"Dodano do ulubionych.");});
   playerPane.addView(links);
   LinearLayout saved=line();Button stars=button("★ Ulubione",RED,false);saved.addView(stars,new LinearLayout.LayoutParams(0,-2,1));stars.setOnClickListener(v->savedFilms("favorite_ids","Ulubione filmy"));Button downloads=button("↓ Pobrane",RED,false);saved.addView(downloads,new LinearLayout.LayoutParams(0,-2,1));downloads.setOnClickListener(v->startActivity(new Intent(this,PA6DownloadsActivity.class)));playerPane.addView(saved);
+  Button mini=button("▣  Odtwarzaj w małym okienku",RED,false);playerPane.addView(mini);mini.setOnClickListener(v->fullscreen.mini(this,player));
   Button catalog=button("Zwiń / rozwiń listę filmów",RED,false);playerPane.addView(catalog);catalog.setOnClickListener(v->feedPane.setVisibility(feedPane.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE));
   compatiblePlayerButton=button("▶ Otwórz w NewPipe / SkyTube (osobna aplikacja)",RED,false);
   compatiblePlayerButton.setVisibility(View.GONE);
@@ -703,7 +705,7 @@ public final class PA6TubeActivity extends Activity {
    }else feedback("Wpisz poprawny adres serwera HTTPS.");
   });
   gap(tools,18);
-  TextView foot=text("Wewnętrzny VLC nadal działa w PA. Jeśli YouTube zablokuje strumień, możesz świadomie otworzyć film w osobno zainstalowanym NewPipe lub SkyTube. To tryb zgodności, nie odtwarzanie wewnątrz PA.",12,MUTED,false);pad(foot,9,12);tools.addView(foot);
+  TextView foot=text("Twoje pliki i linki otwierają się w Pomocniku Alfa. Gdy film jest niedostępny, wybierz inny materiał lub spróbuj później.",12,MUTED,false);pad(foot,9,12);tools.addView(foot);
   updateQualityButton();
   page.setFocusableInTouchMode(true);page.requestFocus();
   if(getIntent().getBooleanExtra("verify_libvlc",false)&&!player.verifyNative())
@@ -746,15 +748,24 @@ public final class PA6TubeActivity extends Activity {
     if(!getPreferences(0).getString("recent_ids","").isEmpty())savedFilms("recent_ids","Ostatnio oglądane");
     else {
      feedback("Alfa Tube gotowe. Wpisz tytuł lub wybierz kategorię, aby wyszukać filmy.");
-     TextView welcome=text("Odkrywaj filmy i muzykę\n\nWpisz tytuł, wykonawcę lub wybierz kategorię u góry. Możesz też otwierać pliki wideo zapisane na tablecie bez połączenia z internetem.",16,MUTED,false);
-     welcome.setBackground(panel(0xffffffff,0xffe3e9f2,16));pad(welcome,16,20);
-     results.addView(welcome,new LinearLayout.LayoutParams(-1,-2));
+     showDiscovery();
     }
    }
   if(getIntent().getBooleanExtra("verify_controls",false)){useLocalVideo();player.setAudioOnly(false);player.playUri("Test sterowania",Uri.fromFile(new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),"pa6-av.mp4")));}
   String shortcut=getIntent().getStringExtra("play_id");if(shortcut!=null&&shortcut.matches("[A-Za-z0-9_-]{11}"))playVideo(shortcut);
   String offline=getIntent().getStringExtra("offline_path");if(offline!=null)try{File f=new File(offline).getCanonicalFile();File offlineFolder=Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getCanonicalFile();if(f.isFile()&&f.getParentFile().equals(offlineFolder)&&f.getName().endsWith(".mp4")){useLocalVideo();stopService(new Intent(this,PA6AudioService.class));player.setAudioOnly(false);player.playUri(f.getName(),Uri.fromFile(f));title.setText(f.getName());subtitle.setText("Plik z pamięci • offline");}}catch(Exception e){feedback("Nie można otworzyć pliku.");}
  }
+ private void showDiscovery(){
+  LinearLayout intro=column();pad(intro,20,22);intro.setBackground(PA6Premium.gradient(this,0xffe5f0f8,0xfff8fbfd,22));
+  PA6GlyphView icon=new PA6GlyphView(this,kids?"kids":"tube",RED);intro.addView(icon,new LinearLayout.LayoutParams(dp(52),dp(52)));
+  gap(intro,12);intro.addView(text(kids?"Małe odkrycia. Wielka ciekawość.":"Daj się zainspirować",24,INK,true));gap(intro,8);
+  intro.addView(text("Wyszukaj ulubiony tytuł lub wybierz temat. Twoja historia i ulubione filmy będą zawsze blisko.",14,MUTED,false));
+  results.addView(intro);gap(results,12);
+  String[][] picks=kids?new String[][]{{"Bajki na dobry dzień","bajki dla dzieci"},{"Śpiewaj razem z nami","piosenki dla dzieci"},{"Poznaj świat zwierząt","zwierzęta dla dzieci"}}:new String[][]{{"Muzyka na dobry dzień","muzyka na dobry dzień"},{"Odkrywaj nowe miejsca","podróże Polska"},{"Coś ciekawego do posłuchania","podcast nauka"}};
+  for(String[] pick:picks){Button b=PA6Premium.button(this,pick[0]+"  ›",false);b.setGravity(Gravity.LEFT|Gravity.CENTER_VERTICAL);LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,dp(56));lp.setMargins(0,0,0,dp(8));results.addView(b,lp);b.setOnClickListener(v->{search.setText(pick[1]);searchVideos(pick[1]);});}
+  Button offline=PA6Premium.button(this,"Twoje pobrane filmy",true);results.addView(offline,new LinearLayout.LayoutParams(-1,dp(52)));offline.setOnClickListener(v->startActivity(new Intent(this,PA6DownloadsActivity.class)));
+ }
+ @Override public void onTrimMemory(int level){super.onTrimMemory(level);if(level>=android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW){THUMBS.evictAll();SEARCHES.evictAll();clearThumbnails();}}
  private void verifyPerformance(){
   final long started=SystemClock.elapsedRealtime();
   ArrayList<PA6PipedClient.Result> first=new ArrayList<>(),second=new ArrayList<>();
