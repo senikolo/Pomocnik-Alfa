@@ -1,4 +1,4 @@
-name: PA6 Premium • final verification of exact signed APK
+name: PA6 Premium • remaining module diagnostics
 on:
   push:
     branches: ['work/pa6-242-premium-20261019']
@@ -41,7 +41,7 @@ jobs:
           adb shell pm grant "$pkg" android.permission.READ_EXTERNAL_STORAGE
           for f in pa6-av.mp4 pa6-silent.mp4 pa6-audio.m4a; do adb push "results/$f" "/sdcard/Download/$f"; done
           adb logcat -c
-          bash helpers/pa6/premium_smoke.sh
+          python3 helpers/pa6/remaining_module_test.py "$pkg"
           SH
       - name: Enable KVM
         run: |
@@ -60,11 +60,11 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: PA6-2.4.2-Final-Exact-APK-Verification
+          name: PA6-2.4.2-Remaining-Checks-Diagnostic
           path: results
           retention-days: 45
       - name: Publish the same verified signed APK
-        if: success()
+        if: false
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
