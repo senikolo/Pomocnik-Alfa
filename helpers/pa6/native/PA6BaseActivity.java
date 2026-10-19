@@ -25,7 +25,7 @@ public abstract class PA6BaseActivity extends Activity {
   LinearLayout bar=new LinearLayout(this);bar.setGravity(Gravity.CENTER_VERTICAL);bar.setPadding(PA6Premium.dp(this,12),PA6Premium.dp(this,5),PA6Premium.dp(this,12),PA6Premium.dp(this,5));
   Button back=PA6Premium.button(this,"‹  Główna",false);back.setContentDescription("Wróć do ekranu głównego");
   bar.addView(back,new LinearLayout.LayoutParams(PA6Premium.dp(this,114),PA6Premium.dp(this,48)));
-  back.setOnClickListener(v->finish());
+  back.setOnClickListener(v->{startActivity(new Intent(this,PA6DashboardActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP));finish();});
   TextView brand=PA6Premium.text(this,"ALFA",12,PA6Premium.MUTED,true);brand.setGravity(Gravity.CENTER);bar.addView(brand,new LinearLayout.LayoutParams(0,-2,1));
   if(!(this instanceof PA6SettingsActivity)){
    Button settings=PA6Premium.button(this,"Ustawienia",false);bar.addView(settings,new LinearLayout.LayoutParams(PA6Premium.dp(this,116),PA6Premium.dp(this,48)));
@@ -36,7 +36,7 @@ public abstract class PA6BaseActivity extends Activity {
   if(PA6Haptics.prefs(this).getBoolean("motion",true)){content.setAlpha(.85f);content.animate().alpha(1f).setDuration(160).start();}
  }
  private View clickable(View v,float x,float y){
-  if(v.getVisibility()!=View.VISIBLE)return null;
+  if(v.getVisibility()!=View.VISIBLE||v instanceof android.webkit.WebView)return null;
   int[] location=new int[2];v.getLocationOnScreen(location);
   if(x<location[0]||y<location[1]||x>=location[0]+v.getWidth()||y>=location[1]+v.getHeight())return null;
   if(v instanceof ViewGroup){ViewGroup g=(ViewGroup)v;for(int i=g.getChildCount()-1;i>=0;i--){View found=clickable(g.getChildAt(i),x,y);if(found!=null)return found;}}

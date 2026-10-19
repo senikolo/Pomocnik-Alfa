@@ -21,10 +21,15 @@
   return oldWindowScroll.call(window,Number(left)||0,Number(top)||0);
  };
  window.addEventListener("load",function(){
-  var b=document.getElementById("goDashboard");
-  if(b)b.addEventListener("click",function(e){
-   e.preventDefault();e.stopImmediatePropagation();
-   document.getElementById("tabPlanner").click();
-  },true);
+  try{document.body.setAttribute("data-pa-mode",window.PADevice.premiumMode());}catch(e){}
  });
+ document.addEventListener("click",function(e){
+  var node=e.target;
+  while(node&&node!==document.body){
+   if(node.tagName==="BUTTON"||node.tagName==="A"||node.getAttribute("role")==="button"){
+    try{window.PADevice.tap();}catch(ignore){}return;
+   }
+   node=node.parentElement;
+  }
+ },true);
 }());

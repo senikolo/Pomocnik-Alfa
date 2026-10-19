@@ -25,7 +25,7 @@ import java.util.*;
 public final class PA6NewPipeClient {
  /** Request-scoped cancellation never aborts a separate download or player task. */
  public static final class Work {
-  public volatile boolean cancelled;
+  public volatile boolean cancelled,completed;
   private final Set<okhttp3.Call> calls=new HashSet<>();
   public synchronized void cancel(){cancelled=true;for(okhttp3.Call call:calls)call.cancel();calls.clear();}
   synchronized void add(okhttp3.Call call)throws IOException{if(cancelled){call.cancel();throw new InterruptedIOException("Cancelled");}calls.add(call);}
@@ -47,8 +47,9 @@ public final class PA6NewPipeClient {
    // encodings and content negotiation required by modern YouTube.
    okhttp3.OkHttpClient.Builder builder=new okhttp3.OkHttpClient.Builder()
     .connectTimeout(9000,java.util.concurrent.TimeUnit.MILLISECONDS)
-    .readTimeout(30000,java.util.concurrent.TimeUnit.MILLISECONDS)
-    .followRedirects(true).retryOnConnectionFailure(true);
+    .readTimeout(15000,java.util.concurrent.TimeUnit.MILLISECONDS)
+    .callTimeout(20000,java.util.concurrent.TimeUnit.MILLISECONDS)
+    .followRedirects(true).retryOnConnectionFailure(false);
    builder.sslSocketFactory(PA6ModernTls.okHttpSocketFactory(),PA6ModernTls.okHttpTrustManager());
    httpClient=builder.build();
   }catch(Exception e){
@@ -80,8 +81,14 @@ public final class PA6NewPipeClient {
     Work work=currentWork.get();if(work!=null)work.add(call);
     try(okhttp3.Response http=call.execute()){
      okhttp3.ResponseBody payload=http.body();
-     String content=payload==null?"":payload.string();
-     if(content.length()>8000000)throw new IOException("YouTube response too large.");
+     String content="";
+     if(payload!=null){
+      if(payload.contentLength()>8000000)throw new IOException("YouTube response too large.");
+      java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();
+      try(java.io.InputStream in=payload.byteStream()){byte[] buffer=new byte[8192];int n;while((n=in.read(buffer))!=-1){checkWork();if(bytes.size()+n>8000000)throw new IOException("YouTube response too large.");bytes.write(buffer,0,n);}}
+      java.nio.charset.Charset charset=payload.contentType()==null?java.nio.charset.StandardCharsets.UTF_8:payload.contentType().charset(java.nio.charset.StandardCharsets.UTF_8);
+      content=new String(bytes.toByteArray(),charset);
+     }
      int code=http.code();
      if(code>=400)Log.w("PA6_NEWPIPE","Extractor HTTP "+code+" from "+http.request().url().host());
      return new Response(code,http.message(),http.headers().toMultimap(),

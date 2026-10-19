@@ -10,12 +10,12 @@ assets.mkdir(parents=True,exist_ok=True)
 html=(src/'app.html').read_text(encoding='utf-8')
 assert '</head>' in html and '<script src="/app.js"></script>' in html
 html=html.replace('</head>','<link rel="stylesheet" href="/tablet-legacy.css"></head>',1)
-html=html.replace('<body>','<body><div id="pa6-indicator" role="status">Pomocnik Alfa UltraSmart · Tablet Android 6 · Planer + Radio + Telewizja</div>',1)
+html=html.replace('<body>','<body><div id="pa6-indicator" role="status">ALFA PREMIUM · Twoja podróż zaczyna się tutaj</div>',1)
 html=html.replace('<header>','<div class="pa6-media" aria-label="Multimedia Pomocnika Alfa"><button id="pa6radio" type="button" class="pa6-tile">📻 Radio</button><button id="pa6tv" type="button" class="pa6-tile">📺 Telewizja</button></div><header>',1)
 assert 'id="pa6radio"' in html and 'id="pa6tv"' in html
 html=html.replace('Radio, telewizja, pogoda, notatnik i przypomnienia są już na głównym pulpicie. Tutaj zostają tylko zapisane trasy i przystanki.',
-                  'W wersji tabletowej dostępne są Planer, Pojazdy, Alfa i Ulubione. Radio i telewizja dostępne są z górnych przycisków. Pozostałe moduły PA wymagają oddzielnego dostosowania do Androida 6.')
-html=html.replace('Wróć do pulpitu PA','Wróć do Planera')
+                  'Planer, pojazdy i zapisane przystanki masz pod ręką. Radio, telewizję i pozostałe funkcje znajdziesz także na ekranie głównym.')
+html=html.replace('Wróć do pulpitu PA','Wróć do ekranu głównego')
 html=html.replace('</body>','<script src="/media-ui.js"></script></body>',1)
 html=html.replace('<script src="/transit-core.js"></script>',
                   '<script src="/tablet-compat.js"></script><script src="/transit-core.js"></script>')

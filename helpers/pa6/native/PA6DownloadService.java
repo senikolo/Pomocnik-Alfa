@@ -84,6 +84,7 @@ public final class PA6DownloadService extends Service {
    if(!partial.renameTo(target))throw new IOException("Nie można zapisać gotowego pliku. Sprawdź wolne miejsce.");
    MediaScannerConnection.scanFile(this,new String[]{target.getAbsolutePath()},new String[]{"video/mp4"},null);
    record.put("path",target.getAbsolutePath());save("complete","Pobieranie zakończone",100);
+   PA6Haptics.emit(this,"success");
    message="Pobieranie zakończone. Pobrane/"+target.getName();
   }catch(Throwable e){
    android.util.Log.w("PA6_DOWNLOAD","Download failed",e);

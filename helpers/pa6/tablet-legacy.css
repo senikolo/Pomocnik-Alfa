@@ -56,3 +56,7 @@ nav button.active{color:#24597e;background:#eaf2f8;border-radius:13px}
 .card{border-radius:22px;box-shadow:0 3px 9px rgba(24,46,75,.05)}
 .btn,input,select,textarea{border-radius:16px}
 button:active,.btn:active{background:#eaf2f8;color:#182e4b}
+
+body[data-pa-mode="Smartfon"] main,body[data-pa-mode="Smartfon"] nav .nav-inner{max-width:480px;margin-left:auto;margin-right:auto}
+body[data-pa-mode="Smartfon"] .grid2{display:block}
+body[data-pa-mode="Smartfon"] .grid2>*{margin-bottom:12px}

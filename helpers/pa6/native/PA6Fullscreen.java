@@ -4,8 +4,8 @@ import android.view.*;
 import android.widget.*;
 /** Same decoder and SurfaceView in full screen or a movable-in-layout in-app window. API23 has no system PiP. */
 final class PA6Fullscreen {
- private Dialog dialog;
- void toggle(Activity activity,PA6EmbeddedPlayer player){if(dialog!=null){dialog.dismiss();return;}show(activity,player,false);}
+ private Dialog dialog;private boolean small;
+ void toggle(Activity activity,PA6EmbeddedPlayer player){if(dialog!=null){boolean wasSmall=small;dialog.dismiss();if(!wasSmall)return;}show(activity,player,false);}
  void mini(Activity activity,PA6EmbeddedPlayer player){if(dialog!=null)dialog.dismiss();show(activity,player,true);}
  private void show(Activity activity,PA6EmbeddedPlayer player,boolean mini){
   if(!(player.getParent() instanceof ViewGroup)||activity.isFinishing())return;
@@ -14,7 +14,7 @@ final class PA6Fullscreen {
   Dialog d=new Dialog(activity,android.R.style.Theme_Material_NoActionBar_Fullscreen){
    private float x,y;
    @Override public boolean dispatchTouchEvent(MotionEvent e){if(e.getActionMasked()==MotionEvent.ACTION_DOWN){x=e.getX();y=e.getY();}if(e.getActionMasked()==MotionEvent.ACTION_UP&&Math.abs(e.getX()-x)<12&&Math.abs(e.getY()-y)<12)PA6Haptics.emit(activity,"tap");return super.dispatchTouchEvent(e);}
-  };dialog=d;
+  };dialog=d;small=mini;
   LinearLayout host=new LinearLayout(activity);host.setOrientation(1);host.setBackgroundColor(0xff101b31);
   if(mini){LinearLayout bar=new LinearLayout(activity);bar.setGravity(Gravity.CENTER_VERTICAL);TextView label=PA6Premium.text(activity,"  Odtwarzanie w okienku",12,0xffe8f2fa,true);bar.addView(label,new LinearLayout.LayoutParams(0,-2,1));Button close=PA6Premium.button(activity,"Wróć",false);bar.addView(close,new LinearLayout.LayoutParams(PA6Premium.dp(activity,80),PA6Premium.dp(activity,48)));close.setOnClickListener(v->d.dismiss());host.addView(bar);}
   host.addView(player,new LinearLayout.LayoutParams(-1,0,1));d.setContentView(host);

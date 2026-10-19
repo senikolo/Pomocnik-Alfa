@@ -31,6 +31,7 @@ public final class PA6TubeActivity extends PA6BaseActivity {
  private final ThreadPoolExecutor thumbnailIo=(ThreadPoolExecutor)Executors.newFixedThreadPool(2);
  private final ExecutorService searchIo=Executors.newSingleThreadExecutor();
  private Future<?> searchTask,playTask;
+ private Runnable searchDeadline,playDeadline;
  private PA6NewPipeClient.Work searchWork,playWork;
  private int searchGeneration=0;
  private volatile int thumbnailGeneration=0;
@@ -43,8 +44,8 @@ public final class PA6TubeActivity extends PA6BaseActivity {
   CachedSearch(PA6PipedClient.Response<List<PA6PipedClient.Result>> value){response=value;}
  }
  private static final android.util.LruCache<String,CachedSearch> SEARCHES=new android.util.LruCache<>(6);
- private void cancelSearch(){if(searchWork!=null)searchWork.cancel();if(searchTask!=null)searchTask.cancel(true);}
- private void cancelPlay(){if(playWork!=null)playWork.cancel();if(playTask!=null)playTask.cancel(true);}
+ private void cancelSearch(){if(searchDeadline!=null){main.removeCallbacks(searchDeadline);searchDeadline=null;}if(searchWork!=null)searchWork.cancel();if(searchTask!=null)searchTask.cancel(true);}
+ private void cancelPlay(){if(playDeadline!=null){main.removeCallbacks(playDeadline);playDeadline=null;}if(playWork!=null)playWork.cancel();if(playTask!=null)playTask.cancel(true);}
  private void clearThumbnails(){thumbnailGeneration++;thumbnailIo.getQueue().clear();}
 
  private final PA6Fullscreen fullscreen=new PA6Fullscreen();
@@ -267,6 +268,7 @@ public final class PA6TubeActivity extends PA6BaseActivity {
     "Bezpośredni strumień nie działa. Sprawdzam serwer zapasowy ("+playbackAttempts+"/3)…");
   final HashSet<String> ignored=new HashSet<>(failedProviders);
   cancelPlay();final PA6NewPipeClient.Work work=new PA6NewPipeClient.Work();playWork=work;
+  playDeadline=()->{if(closed||seq!=request||work.completed)return;work.cancel();if(playTask!=null)playTask.cancel(true);playbackPending=false;++request;PA6Haptics.emit(this,"error");feedback("Połączenie trwa zbyt długo. Sprawdź internet i spróbuj ponownie.");};main.postDelayed(playDeadline,45000);
   final boolean audio=audioOnly();
   final int preferredQuality=selectedQuality();final String preferredServer=server();
   playTask=io.submit(()->{
@@ -283,11 +285,11 @@ public final class PA6TubeActivity extends PA6BaseActivity {
       final String type=npe.getClass().getSimpleName();
       final String reason=type.contains("SignInConfirmNotBot")
           ?"YouTube odrzucił połączenie i żąda potwierdzenia, że użytkownik nie jest botem."
-          :"NewPipe nie pobrał strumienia ("+type+").";
+          :"Nie udało się pobrać filmu z pierwszego źródła.";
       main.post(()->{
        if(!closed&&seq==request){
         feedback(reason+" Sprawdzam źródła zapasowe…");
-        if(compatiblePlayerButton!=null)compatiblePlayerButton.setVisibility(View.VISIBLE);
+        if(compatiblePlayerButton!=null)compatiblePlayerButton.setVisibility(View.GONE);
        }
       });
      }
@@ -304,7 +306,7 @@ public final class PA6TubeActivity extends PA6BaseActivity {
      PA6PipedClient.Video v=selected.data;
      currentProvider=selected.server;
      activeTitle=v.title;title.setText(v.title);
-     subtitle.setText(v.channel+" • Faktyczny format: "+v.quality);
+     subtitle.setText(v.channel+" • Jakość: "+v.quality);
      provider.setText(audio?"Słuchasz bez pobierania obrazu":"Odtwarzanie wewnątrz Alfa Tube");
      player.setAudioOnly(audio);
      if(audio){cancelWatchdog();player.backgroundAudio(v.title);PA6AudioService.start(this,id,v.title,v.stream);}
@@ -326,10 +328,10 @@ public final class PA6TubeActivity extends PA6BaseActivity {
      if(closed||seq!=request)return;
      playbackPending=false;
      feedback(audio?"Nie udało się odtworzyć samego dźwięku. Wybierz Wideo lub spróbuj innego filmu.":
-      "Nie udało się uruchomić filmu. "+why);
+      "Ten film jest obecnie niedostępny. Wybierz inny lub spróbuj później.");
      if(officialButton!=null)officialButton.setVisibility(View.VISIBLE);
     });
-   }finally{PA6NewPipeClient.leaveWork();}
+   }finally{work.completed=true;PA6NewPipeClient.leaveWork();}
   });
  }
  /**
@@ -458,6 +460,7 @@ public final class PA6TubeActivity extends PA6BaseActivity {
   feedback("Wyszukiwanie: "+query+"…");
   final long started=SystemClock.elapsedRealtime();
   final PA6NewPipeClient.Work work=new PA6NewPipeClient.Work();searchWork=work;
+  searchDeadline=()->{if(closed||seq!=searchGeneration||work.completed)return;work.cancel();if(searchTask!=null)searchTask.cancel(true);++searchGeneration;PA6Haptics.emit(this,"error");feedback("Wyszukiwanie trwa zbyt długo. Sprawdź internet i spróbuj ponownie.");};main.postDelayed(searchDeadline,30000);
   searchTask=searchIo.submit(()->{
    PA6NewPipeClient.enterWork(work);
    try{
@@ -479,7 +482,7 @@ public final class PA6TubeActivity extends PA6BaseActivity {
     main.post(()->{if(closed||seq!=searchGeneration)return;
      feedback("Nie udało się wyszukać filmów. Sprawdź połączenie i spróbuj ponownie.");
     });
-   }finally{PA6NewPipeClient.leaveWork();}
+   }finally{work.completed=true;PA6NewPipeClient.leaveWork();}
   });
  }
  private void thumb(ImageView image,String suggested,String videoId){
@@ -751,6 +754,12 @@ public final class PA6TubeActivity extends PA6BaseActivity {
      showDiscovery();
     }
    }
+  if(getIntent().getBooleanExtra("verify_window_modes",false)){
+   useLocalVideo();player.playUri("Test okienek",Uri.fromFile(new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),"pa6-av.mp4")));
+   main.postDelayed(()->{fullscreen.mini(this,player);android.util.Log.i("PA6_WINDOW","MINI");},2000);
+   main.postDelayed(()->{fullscreen.toggle(this,player);android.util.Log.i("PA6_WINDOW","FULL");},5000);
+   main.postDelayed(()->{fullscreen.close();android.util.Log.i("PA6_WINDOW","EMBEDDED");},8000);
+  }
   if(getIntent().getBooleanExtra("verify_controls",false)){useLocalVideo();player.setAudioOnly(false);player.playUri("Test sterowania",Uri.fromFile(new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),"pa6-av.mp4")));}
   String shortcut=getIntent().getStringExtra("play_id");if(shortcut!=null&&shortcut.matches("[A-Za-z0-9_-]{11}"))playVideo(shortcut);
   String offline=getIntent().getStringExtra("offline_path");if(offline!=null)try{File f=new File(offline).getCanonicalFile();File offlineFolder=Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getCanonicalFile();if(f.isFile()&&f.getParentFile().equals(offlineFolder)&&f.getName().endsWith(".mp4")){useLocalVideo();stopService(new Intent(this,PA6AudioService.class));player.setAudioOnly(false);player.playUri(f.getName(),Uri.fromFile(f));title.setText(f.getName());subtitle.setText("Plik z pamięci • offline");}}catch(Exception e){feedback("Nie można otworzyć pliku.");}
@@ -813,7 +822,7 @@ public final class PA6TubeActivity extends PA6BaseActivity {
   super.onStop();
  }
  @Override protected void onDestroy(){
-  fullscreen.close();closed=true;main.removeCallbacks(downloadMonitor);cancelWatchdog();request++;io.shutdownNow();searchIo.shutdownNow();thumbnailIo.shutdownNow();
+  fullscreen.close();closed=true;main.removeCallbacksAndMessages(null);main.removeCallbacks(downloadMonitor);cancelWatchdog();request++;io.shutdownNow();searchIo.shutdownNow();thumbnailIo.shutdownNow();
   if(officialWeb!=null){officialWeb.stopLoading();officialWeb.destroy();officialWeb=null;}
   if(player!=null)player.release();
   super.onDestroy();

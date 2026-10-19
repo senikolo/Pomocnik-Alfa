@@ -15,6 +15,7 @@ for name in ('PARegionsActivity.java','PALive.java','PADataStore.java','PAOSMTil
     code=(src/name).read_text(encoding='utf-8')
     if name=='PARegionsActivity.java':
         code=code.replace('extends Activity', 'extends PA6BaseActivity')
+        code=code.replace('public final class Bridge {', 'public final class Bridge { @JavascriptInterface public void tap(){if(!destroyed)runOnUiThread(()->PA6Haptics.emit(PARegionsActivity.this,"tap"));} @JavascriptInterface public String premiumMode(){return PA6Premium.mode(PARegionsActivity.this);}')
         old='if(!nm.areNotificationsEnabled())'
         assert old in code
         code=code.replace(old,'if(Build.VERSION.SDK_INT>=24&&!nm.areNotificationsEnabled())')

@@ -15,12 +15,16 @@ public final class PA6RadioService extends Service implements AudioManager.OnAud
  private MediaPlayer player;
  private AudioManager audio;
  private int generation=0;
+ private final Handler main=new Handler(Looper.getMainLooper());
+ private Runnable timeout;
+ private void cancelTimeout(){if(timeout!=null){main.removeCallbacks(timeout);timeout=null;}}
  private String station="Radio";
  @Override public IBinder onBind(Intent intent){return null;}
  private boolean valid(String url){return url!=null&&url.length()<2000
     &&(url.startsWith("https://")||url.startsWith("http://"))
     &&!url.contains(" ")&&!url.contains("\n")&&!url.contains("\r");}
  private void report(String message){
+  android.util.Log.i("PA6_RADIO",message);
   Intent b=new Intent(ACTION_STATE);
   b.setPackage(getPackageName());
   b.putExtra("message",message);
@@ -47,7 +51,7 @@ public final class PA6RadioService extends Service implements AudioManager.OnAud
    player.setAudioStreamType(AudioManager.STREAM_MUSIC);
    player.setOnPreparedListener(p->{
     if(seq!=generation)return;
-    try{p.start();report("Teraz gra: "+station);showNotification(station,"Odtwarzanie");}
+    cancelTimeout();try{p.start();report("Teraz gra: "+station);showNotification(station,"Odtwarzanie");}
     catch(Exception ex){report("Nie udało się uruchomić dźwięku tej stacji.");stopSelf();}
    });
    player.setOnErrorListener((p,what,extra)->{
@@ -61,6 +65,7 @@ public final class PA6RadioService extends Service implements AudioManager.OnAud
    });
    player.setDataSource(this,Uri.parse(url));
    player.prepareAsync();
+   timeout=()->{if(seq!=generation)return;report("Stacja nie odpowiedziała. Wybierz inną lub spróbuj później.");stopSelf();};main.postDelayed(timeout,20000);
   }catch(Exception e){
    report("Nie można połączyć ze stacją. Sprawdź internet, godzinę systemową lub wybierz inną stację.");
    stopSelf();
@@ -78,6 +83,7 @@ public final class PA6RadioService extends Service implements AudioManager.OnAud
   startForeground(2306,n);
  }
  private void release(){
+  cancelTimeout();
   if(player!=null){try{player.reset();player.release();}catch(Exception ignored){}player=null;}
   if(audio!=null){audio.abandonAudioFocus(this);audio=null;}
  }
