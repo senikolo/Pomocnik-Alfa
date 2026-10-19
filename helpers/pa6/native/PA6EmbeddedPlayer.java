@@ -184,16 +184,16 @@ public final class PA6EmbeddedPlayer extends LinearLayout {
    if(event.type==MediaPlayer.Event.LengthChanged){cachedDuration=Math.max(0,event.getLengthChanged());return;}
    if(event.type==MediaPlayer.Event.Paused||event.type==MediaPlayer.Event.Stopped){cachedPlaying=false;return;}
    if(event.type==MediaPlayer.Event.Playing){
-    cachedPlaying=true;state.setText("Odtwarzanie • "+active);screen.setKeepScreenOn(!audioOnly);
+    cachedPlaying=true;ui.post(()->{if(current(seq)){state.setText("Odtwarzanie • "+active);screen.setKeepScreenOn(!audioOnly);}});
     android.util.Log.i("PA6_PLAYER","PLAYING "+active);
-   }else if(event.type==MediaPlayer.Event.Buffering&&event.getBuffering()<99f)state.setText("Buforowanie • "+active);
+   }else if(event.type==MediaPlayer.Event.Buffering&&event.getBuffering()<99f)ui.post(()->{if(current(seq))state.setText("Buforowanie • "+active);});
    else if(event.type==MediaPlayer.Event.EncounteredError){fail(seq,"Nie można odczytać transmisji. Spróbuj ponownie lub wybierz inny materiał.",null);}
-   else if(event.type==MediaPlayer.Event.EndReached){cachedPlaying=false;state.setText("Zakończono odtwarzanie.");placeholder.setVisibility(VISIBLE);screen.setKeepScreenOn(false);}
+   else if(event.type==MediaPlayer.Event.EndReached){cachedPlaying=false;if(playbackErrorListener!=null){fail(seq,"Transmisja zakończyła się przedwcześnie; próbuję następnego źródła.",null);}else ui.post(()->{if(current(seq)){state.setText("Zakończono odtwarzanie.");placeholder.setVisibility(VISIBLE);screen.setKeepScreenOn(false);}});return;}
    boolean videoReady=event.type==MediaPlayer.Event.Vout&&event.getVoutCount()>0;
    if(!announced[0]&&(videoReady||(audioOnly&&event.type==MediaPlayer.Event.Playing))){
-    announced[0]=true;if(!audioOnly)placeholder.setVisibility(GONE);
+    announced[0]=true;
     android.util.Log.i("PA6_PLAYER",videoReady?"VIDEO_OUTPUT_READY":"AUDIO_OUTPUT_READY");
-    if(playbackStartListener!=null)playbackStartListener.run();
+    ui.post(()->{if(!current(seq))return;if(!audioOnly)placeholder.setVisibility(GONE);if(playbackStartListener!=null)playbackStartListener.run();});
    }
   });
  }
