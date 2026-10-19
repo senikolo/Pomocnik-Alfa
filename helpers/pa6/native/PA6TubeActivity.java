@@ -416,7 +416,7 @@ public final class PA6TubeActivity extends Activity {
   cancelWatchdog();
   if(!currentProvider.isEmpty())failedProviders.add(currentProvider);
   if(++playbackAttempts>6){
-   feedback("Wewnętrzny odtwarzacz nie uruchomił filmu. Wybierz NewPipe lub SkyTube (osobna aplikacja).");
+   feedback("Źródła bezpośrednie nie działają. Użyj przycisku oficjalnego YouTube wewnątrz PA albo wybierz inny film.");
    if(officialButton!=null)officialButton.setVisibility(View.VISIBLE);
    return;
   }
@@ -673,7 +673,7 @@ public final class PA6TubeActivity extends Activity {
    useLocalVideo();player.play("Film kontrolny","https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8");
    feedback("Materiał testowy, nie YouTube. Odtwarzanie odbywa się wewnątrz PA.");
   });
-  officialButton=button("Awaryjnie: oglądaj w PA przez YouTube (możliwe reklamy)",RED,false);
+  officialButton=button("Odtwórz w PA przez oficjalny YouTube (możliwe reklamy)",RED,false);
   tools.addView(officialButton,new LinearLayout.LayoutParams(-1,-2));
   officialButton.setVisibility(View.GONE);
   officialButton.setOnClickListener(v->showOfficialEmbedded());
