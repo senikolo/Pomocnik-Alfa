@@ -259,7 +259,7 @@ public final class PA6TubeActivity extends Activity {
  private void resolveAndPlay(final String id,final int seq){
   playbackPending=true;
   feedback(playbackAttempts==0?"Sprawdzam film bezpośrednio przez NewPipe Extractor…":
-    "Pierwsze źródło nie odtworzyło filmu. Sprawdzam serwer zapasowy ("+playbackAttempts+"/6)…");
+    "Bezpośredni strumień nie działa. Sprawdzam serwer zapasowy ("+playbackAttempts+"/3)…");
   final HashSet<String> ignored=new HashSet<>(failedProviders);
   cancelPlay();final PA6NewPipeClient.Work work=new PA6NewPipeClient.Work();playWork=work;
   final boolean audio=audioOnly();
@@ -415,7 +415,7 @@ public final class PA6TubeActivity extends Activity {
   if(closed||activeId.isEmpty()||playbackPending)return;
   cancelWatchdog();
   if(!currentProvider.isEmpty())failedProviders.add(currentProvider);
-  if(++playbackAttempts>6){
+  if(++playbackAttempts>3){
    feedback("Źródła bezpośrednie nie działają. Użyj przycisku oficjalnego YouTube wewnątrz PA albo wybierz inny film.");
    if(officialButton!=null)officialButton.setVisibility(View.VISIBLE);
    return;
@@ -736,7 +736,11 @@ public final class PA6TubeActivity extends Activity {
    subtitle.setText("Test obrazu i dźwięku na Androidzie 6");
    useLocalVideo();player.play("Film kontrolny H.264","https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8");
    feedback("Sprawdzam odtwarzanie materiału kontrolnego…");
-  }else if(!PA6AudioService.active&&!getIntent().hasExtra("offline_path")&&!getIntent().hasExtra("play_id")&&!getIntent().getBooleanExtra("verify_controls",false)){search.setText(kids?"Bajki":"muzyka");searchVideos(kids?"Bajki":"muzyka");}
+  }else if(!PA6AudioService.active&&!getIntent().hasExtra("offline_path")&&!getIntent().hasExtra("play_id")&&!getIntent().getBooleanExtra("verify_controls",false)){
+    // No blocking network search on launch: show cached history instantly on 2 GB tablets.
+    if(!getPreferences(0).getString("recent_ids","").isEmpty())savedFilms("recent_ids","Ostatnio oglądane");
+    else feedback("Alfa Tube gotowe. Wpisz tytuł lub wybierz kategorię, aby wyszukać filmy.");
+   }
   if(getIntent().getBooleanExtra("verify_controls",false)){useLocalVideo();player.setAudioOnly(false);player.playUri("Test sterowania",Uri.fromFile(new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),"pa6-av.mp4")));}
   String shortcut=getIntent().getStringExtra("play_id");if(shortcut!=null&&shortcut.matches("[A-Za-z0-9_-]{11}"))playVideo(shortcut);
   String offline=getIntent().getStringExtra("offline_path");if(offline!=null)try{File f=new File(offline).getCanonicalFile();File offlineFolder=Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).getCanonicalFile();if(f.isFile()&&f.getParentFile().equals(offlineFolder)&&f.getName().endsWith(".mp4")){useLocalVideo();stopService(new Intent(this,PA6AudioService.class));player.setAudioOnly(false);player.playUri(f.getName(),Uri.fromFile(f));title.setText(f.getName());subtitle.setText("Plik z pamięci • offline");}}catch(Exception e){feedback("Nie można otworzyć pliku.");}
