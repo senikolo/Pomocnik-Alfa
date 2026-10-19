@@ -10,7 +10,7 @@ import android.widget.*;
 public abstract class PA6BaseActivity extends Activity {
  private String activeMode;
  private float downX,downY;private boolean moved;private View tapTarget;
- @Override protected void onCreate(Bundle b){super.onCreate(b);activeMode=PA6Premium.mode(this);getWindow().setStatusBarColor(PA6Premium.INK);getWindow().setNavigationBarColor(PA6Premium.INK);}
+ @Override protected void onCreate(Bundle b){super.onCreate(b);activeMode=PA6Premium.mode(this);getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN|WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);getWindow().setStatusBarColor(PA6Premium.INK);getWindow().setNavigationBarColor(PA6Premium.INK);}
  @Override protected void onResume(){super.onResume();getWindow().setStatusBarColor(PA6Premium.INK);getWindow().setNavigationBarColor(PA6Premium.INK);if(!(this instanceof PA6DashboardActivity)&&!(this instanceof PA6SettingsActivity)&&!PA6Premium.mode(this).equals(activeMode)){activeMode=PA6Premium.mode(this);recreate();}}
  @Override public void setContentView(View content){
   if(content instanceof ScrollView && !(this instanceof PA6DashboardActivity) && !(this instanceof PA6SettingsActivity)){

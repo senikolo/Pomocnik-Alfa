@@ -23,7 +23,7 @@ public final class PA6SettingsActivity extends PA6BaseActivity {
   s.setOnCheckedChangeListener((v,on)->{prefs.edit().putBoolean(key,on).apply();if(on)PA6Haptics.emit(this,"tap");});return s;
  }
  @Override public void onCreate(Bundle saved){
-  super.onCreate(saved);prefs=PA6Haptics.prefs(this);
+  super.onCreate(saved);prefs=PA6Haptics.prefs(this);if(getIntent().getBooleanExtra("verify_comfort",false))verifyComfort();
   ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.setBackgroundColor(PA6Premium.BG);
   android.widget.FrameLayout frame=new android.widget.FrameLayout(this);root=PA6Premium.column(this);root.setPadding(dp(20),dp(16),dp(20),dp(24));
   int width=(int)(getResources().getDisplayMetrics().widthPixels/getResources().getDisplayMetrics().density);
@@ -50,7 +50,6 @@ public final class PA6SettingsActivity extends PA6BaseActivity {
   signals.setEnabled(hardware&&enabled.isChecked());reminders.setEnabled(hardware&&enabled.isChecked());
   LinearLayout about=card("Pomocnik Alfa 6","2.4.2 Premium • Android 6 i nowszy\nFilmy, radio, telewizja i codzienne sprawy w jednym miejscu.");
   about.addView(PA6Premium.text(this,"Ustawienia zapisują się automatycznie.",13,PA6Premium.MUTED,false));
-  if(getIntent().getBooleanExtra("verify_comfort",false))verifyComfort();
  }
  private void verifyComfort(){
   for(int level=0;level<3;level++)for(String event:new String[]{"tap","success","error","reminder"}){
