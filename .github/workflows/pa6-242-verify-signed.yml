@@ -1,4 +1,4 @@
-name: PA6 Premium • remaining module diagnostics
+name: PA6 Premium • final verification and publication
 on:
   push:
     branches: ['work/pa6-242-premium-20261019']
@@ -12,17 +12,27 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+      - name: Wait for completed signed build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for attempt in {1..35}; do
+            state=$(gh api repos/$GITHUB_REPOSITORY/actions/runs/39206833794 --jq .status)
+            [[ "$state" == completed ]] && exit 0
+            sleep 20
+          done
+          exit 1
       - uses: actions/download-artifact@v4
         with:
           name: PA6-2.4.2-Android6-Signed-APK
           github-token: ${{ github.token }}
-          run-id: 39205434362
+          run-id: 39206833794
           path: signed
       - uses: actions/download-artifact@v4
         with:
           name: PA6-2.4.2-Android6-Test-Reports
           github-token: ${{ github.token }}
-          run-id: 39205434362
+          run-id: 39206833794
           path: results
       - name: Preserve exact APK and correct the test command argument
         run: |
@@ -41,7 +51,10 @@ jobs:
           adb shell pm grant "$pkg" android.permission.READ_EXTERNAL_STORAGE
           for f in pa6-av.mp4 pa6-silent.mp4 pa6-audio.m4a; do adb push "results/$f" "/sdcard/Download/$f"; done
           adb logcat -c
+          if [[ ! -f results/premium-interactions.txt || ! -f results/premium-reader-status.txt ]]; then python3 helpers/pa6/premium_interaction_test.py "$pkg"; fi
           python3 helpers/pa6/remaining_module_test.py "$pkg"
+          adb logcat -d -b crash > results/premium-crashes.txt
+          ! grep -q "Process: $pkg" results/premium-crashes.txt
           SH
       - name: Enable KVM
         run: |
@@ -60,14 +73,14 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: PA6-2.4.2-Remaining-Checks-Diagnostic
+          name: PA6-2.4.2-Final-Verified-Reports
           path: results
           retention-days: 45
       - name: Publish the same verified signed APK
-        if: false
+        if: success()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          source_sha=aa23153060b60de9d03ca3c89d63fab0f05a6c22
-          tag=pa6-2.4.2-premium-aa231530
+          source_sha=d5bbce06674eefa317e5e801d8ba5de5b5bd8b00
+          tag=pa6-2.4.2-premium-d5bbce06
           gh release create "$tag" --target "$source_sha" --prerelease --title 'Pomocnik Alfa 6 • 2.4.2 Premium Preview' --notes-file helpers/pa6/PREMIUM_RELEASE.md pa6/Pomocnik-Alfa-6-2.4.2-Premium-Preview.apk pa6/SHA256SUMS.txt pa6/signature.txt pa6/INSTALLATION-TYPE.txt signed/output/tv-source-audit.md
