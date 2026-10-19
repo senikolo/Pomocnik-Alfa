@@ -47,13 +47,13 @@ public final class PA6TvActivity extends PA6BaseActivity {
   }
  }
  private static final Channel[] CHANNELS={
-  new Channel("Das Erste","Rozrywka","ARD • telewizja publiczna","https://daserste-live.ard-mcdn.de/daserste/live/hls/int/master.m3u8"),
-  new Channel("BR Fernsehen","Regiony","Bawaria • program regionalny","https://mcdn.br.de/br/fs/bfs_sued/hls/de/master.m3u8"),
-  new Channel("KiKA","Dla dzieci","ARD i ZDF • program dla dzieci","https://kikahls.akamaized.net/hls/live/2022690/livetvkika_ww/master.m3u8"),
-  new Channel("NDR Fernsehen","Regiony","Północne Niemcy • wersja międzynarodowa","https://ndrint.akamaized.net/hls/live/2020766/ndr_int/index.m3u8"),
+  new Channel("Das Erste","Rozrywka","ARD • telewizja publiczna","https://daserste-live.ard-mcdn.de/daserste/live/hls/de/master.m3u8","https://daserste-live.ard-mcdn.de/daserste/live/hls/int/master.m3u8"),
+  new Channel("BR Fernsehen","Regiony","Bawaria • program regionalny","https://mcdn.br.de/br/fs/bfs_sued/hls/de/master.m3u8","https://mcdn.br.de/br/fs/bfs_nord/hls/de/master.m3u8"),
+  new Channel("KiKA","Dla dzieci","ARD i ZDF • program dla dzieci","https://kikahls.akamaized.net/hls/live/2022690/livetvkika_ww/master.m3u8","https://kikageohls.akamaized.net/hls/live/2022693/livetvkika_de/master.m3u8"),
+  new Channel("NDR Fernsehen","Regiony","Północne Niemcy • wersja międzynarodowa","https://ndrint.akamaized.net/hls/live/2020766/ndr_int/index.m3u8","https://mcdn.ndr.de/ndr/hls/ndr_fs/ndr_nds/master.m3u8"),
   new Channel("tagesschau24","Wiadomości","ARD • aktualności","https://tagesschau.akamaized.net/hls/live/2020115/tagesschau/tagesschau_1/master.m3u8"),
-  new Channel("WDR Fernsehen","Regiony","Nadrenia Północna-Westfalia","https://wdr-live.ard-mcdn.de/wdr/live/hls/de/master.m3u8"),
-  new Channel("hr-fernsehen","Regiony","Hesja • telewizja publiczna","https://hr-live.ard-mcdn.de/hr/live/hls/de/master.m3u8"),
+  new Channel("WDR Fernsehen","Regiony","Nadrenia Północna-Westfalia","https://wdr-live.ard-mcdn.de/wdr/live/hls/de/master.m3u8","https://mcdn.wdr.de/wdr/wdrfs/de/master.m3u8"),
+  new Channel("hr-fernsehen","Regiony","Hesja • telewizja publiczna","https://hr-live.ard-mcdn.de/hr/live/hls/de/master.m3u8","https://hrhls.akamaized.net/hls/live/2024525/hrhls/index.m3u8"),
   new Channel("ARD alpha","Kultura i nauka","Wiedza, nauka i edukacja","https://mcdn.br.de/br/fs/ard_alpha/hls/de/master.m3u8"),
   new Channel("SR Fernsehen","Regiony","Saara • telewizja publiczna","https://srfs.akamaized.net/hls/live/689649/srfsgeo/index.m3u8"),
   new Channel("ALEX Berlin","Kultura i nauka","Berlin • program społeczny i kulturalny","https://alex-stream.rosebud-media.de/bounce/alexlivetv50.smil/index.m3u8"),
@@ -134,6 +134,7 @@ public final class PA6TvActivity extends PA6BaseActivity {
   currentChannel=ch;currentSource=0;playChannelSource(ch,0);
  }
  private void playChannelSource(Channel ch,int index){
+  currentSource=index;
   cancelTuneWork();cancelTuneWatchdog();player.stop();playlist=null;quality.setEnabled(false);quality.setText("Jakość • sprawdzam…");onAir=ch.name;showChannels();
   final int attempt=++tuneRequest;
   player.recordError("");
@@ -144,14 +145,14 @@ public final class PA6TvActivity extends PA6BaseActivity {
   tuneTask=tuning.submit(()->{
    try{
     PA6HlsQuality.Playlist available=PA6HlsQuality.inspect(PA6TvSources.resolve(input));
-    int requested=getPreferences(0).getInt("tv_quality_"+ch.url,360);
+    int requested=getPreferences(0).getInt("tv_quality_"+ch.url,0);
     String url=available.selected(this,requested);
     runOnUiThread(()->{
      if(isFinishing()||attempt!=tuneRequest)return;
      playlist=available;selectedHeight=requested;
      updateQualityLabel();quality.setEnabled(true);
      if(url.startsWith("file:"))player.playUri(ch.name,android.net.Uri.parse(url));else player.play(ch.name,url);
-     tuneWatchdog=()->{if(attempt==tuneRequest&&currentChannel!=null)onChannelPlaybackError();};
+     tuneWatchdog=()->{if(attempt==tuneRequest&&currentChannel!=null){player.recordError("Upłynęło 18 sekund bez potwierdzenia obrazu i dźwięku: "+ch.name);onChannelPlaybackError();}};
      main.postDelayed(tuneWatchdog,18000);
      status.setText("Łączę z "+ch.name+" • "+(index==0?"źródło główne":"źródło zapasowe")+".");
     });
@@ -159,7 +160,8 @@ public final class PA6TvActivity extends PA6BaseActivity {
     runOnUiThread(()->{if(isFinishing()||attempt!=tuneRequest)return;
      // DNS, geo restrictions and invalid URLs must use backup streams too.
      // Never retry a channel that the viewer has already switched away from.
-     if(currentChannel==ch && currentSource<ch.backup.length){
+     player.recordError(error.getClass().getSimpleName()+": "+error.getMessage());
+      if(currentChannel==ch && currentSource<ch.backup.length){
       android.util.Log.w("PA6_TV","Primary stream failed, trying backup",error);
       onChannelPlaybackError();
      }else{
@@ -174,11 +176,14 @@ public final class PA6TvActivity extends PA6BaseActivity {
  private void onChannelPlaybackError(){
   cancelTuneWatchdog();
   if(currentChannel==null||isFinishing())return;
+   String failure=player.lastError();
+   if(failure==null||failure.trim().isEmpty())failure="Odtwarzacz zakończył próbę bez szczegółowego kodu błędu.";
+   android.util.Log.w("PA6_TV","Nieudane TV: "+currentChannel.name+" źródło="+currentSource+" przyczyna="+failure);
   if(currentSource<currentChannel.backup.length){
    ++currentSource;
    playChannelSource(currentChannel,currentSource);
   }else{
-   player.stop();player.showMessage("Nie udało się odebrać obrazu i dźwięku. Wybierz inny kanał lub spróbuj ponownie.");
+   player.stop();player.recordError(failure);player.showMessage("Nie udało się odebrać obrazu i dźwięku. Wybierz inny kanał lub spróbuj ponownie.");
    status.setText("Nie udało się uruchomić kanału „"+currentChannel.name+"”. Sprawdź połączenie lub wybierz inny.");
    currentChannel=null;quality.setEnabled(false);
   }
@@ -209,7 +214,7 @@ public final class PA6TvActivity extends PA6BaseActivity {
     player.stop();
     if(url.startsWith("file:"))player.playUri(channel.name,android.net.Uri.parse(url));else player.play(channel.name,url);
     status.setText("Zmieniam jakość • "+(selectedHeight<=0?"Auto":selectedHeight+"p"));
-    tuneWatchdog=()->{if(request==tuneRequest)onChannelPlaybackError();};main.postDelayed(tuneWatchdog,20000);
+    tuneWatchdog=()->{if(request==tuneRequest){player.recordError("Zmiana jakości nie uruchomiła obrazu w ciągu 20 sekund.");onChannelPlaybackError();}};main.postDelayed(tuneWatchdog,20000);
     });
    }catch(Exception e){runOnUiThread(()->{if(!isFinishing()&&request==tuneRequest)status.setText("Nie udało się zmienić jakości. Wybierz kanał ponownie.");});}});
   }).setNegativeButton("Anuluj",null).show();
@@ -308,8 +313,8 @@ public final class PA6TvActivity extends PA6BaseActivity {
    panes.addView(phone,new LinearLayout.LayoutParams(-1,-1));stack.addView(playerPane,new LinearLayout.LayoutParams(-1,-2));stack.addView(catalogPane,new LinearLayout.LayoutParams(-1,dp(720)));
   }
   player=new PA6EmbeddedPlayer(this);player.setFullscreenListener(()->fullscreen.toggle(this,player));
-  player.setPlaybackErrorListener(()->onChannelPlaybackError());
-  player.setPlaybackStartListener(()->{cancelTuneWatchdog();if(currentChannel!=null)getPreferences(0).edit().putLong("verified_"+currentChannel.url,System.currentTimeMillis()).apply();if(currentChannel!=null)status.setText("Na żywo • "+currentChannel.name);});
+  player.setPlaybackErrorListener(()->runOnUiThread(()->onChannelPlaybackError()));
+  player.setPlaybackStartListener(()->runOnUiThread(()->{cancelTuneWatchdog();if(currentChannel!=null)getPreferences(0).edit().putLong("verified_"+currentChannel.url,System.currentTimeMillis()).apply();if(currentChannel!=null)status.setText("Na żywo • "+currentChannel.name);}));
   playerPane.addView(player,new LinearLayout.LayoutParams(-1,-2));
   if(getIntent().getBooleanExtra("verify_libvlc",false)&&!player.verifyNative())
    throw new IllegalStateException("PA6 native player unavailable");
