@@ -32,12 +32,12 @@ public final class PA6DownloadService extends Service {
   if("CANCEL".equals(intent.getAction())){if(running&&key.equals(intent.getStringExtra("key"))){stopped=true;if(work!=null)work.cancel();if(call!=null)call.cancel();}else if(!running)stopSelf();return START_NOT_STICKY;}
   if(running){getSharedPreferences("pa6_download",0).edit().putString("status","Trwa inne pobieranie. Poczekaj lub anuluj je na liście Pobrane.").apply();return START_NOT_STICKY;}
   running=true;stopped=false;work=new PA6NewPipeClient.Work();key=Long.toString(System.currentTimeMillis());
-  record=new org.json.JSONObject();try{record.put("key",key);record.put("id",intent.getStringExtra("id"));record.put("quality",intent.getIntExtra("quality",0));record.put("wifi",intent.getBooleanExtra("wifi",true));record.put("title","Film "+intent.getStringExtra("id"));}catch(Exception ignored){}
+  record=new org.json.JSONObject();try{record.put("key",key);record.put("id",intent.getStringExtra("id"));record.put("quality",intent.getIntExtra("quality",0));record.put("wifi",intent.getBooleanExtra("wifi",false));record.put("title","Film "+intent.getStringExtra("id"));}catch(Exception ignored){}
   save("running","Przygotowuję pobieranie…",-1);
   startForeground(NOTICE,new Notification.Builder(this).setSmallIcon(android.R.drawable.stat_sys_download)
    .setContentTitle("Alfa Tube").setContentText("Przygotowuję pobieranie…").build());
   String id=intent.getStringExtra("id");int quality=intent.getIntExtra("quality",0);
-  boolean wifi=intent.getBooleanExtra("wifi",true);
+  boolean wifi=intent.getBooleanExtra("wifi",false);
   new Thread(()->transfer(id,quality,wifi),"PA6-MP4-download").start();
   return START_NOT_STICKY;
  }
