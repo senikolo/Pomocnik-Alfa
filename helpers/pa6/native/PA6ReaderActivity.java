@@ -77,7 +77,7 @@ public final class PA6ReaderActivity extends PA6BaseActivity {
     int width=Math.max(500,Math.min(1050,getResources().getDisplayMetrics().widthPixels));
     float ratio=(float)p.getHeight()/Math.max(1,p.getWidth());
     int height=Math.max(350,Math.min(1450,(int)(width*ratio)));
-    Bitmap newBmp=Bitmap.createBitmap(width,height,Bitmap.Config.RGB_565);
+    Bitmap newBmp=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
     newBmp.eraseColor(Color.WHITE);p.render(newBmp,null,null,PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
     pageImage.setImageBitmap(newBmp);
     // Reclaim the previous page after the ImageView has switched.

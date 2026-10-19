@@ -49,10 +49,10 @@ python3 -m http.server 8765 --directory results > results/radio-fixture-server.t
 server=$!
 trap 'kill "$server" || true' EXIT
 adb shell am force-stop "$pkg"
-adb shell am start -n "$pkg/com.ispina.lokalnie.PA6RadioActivity" --es station_url http://10.0.2.2:8765/pa6-audio.m4a --es station_name 'Radio kontrolne'
+adb shell am start -n "$pkg/com.ispina.lokalnie.PA6RadioActivity" --es station_url http://10.0.2.2:8765/pa6-audio.m4a --es station_name 'Radio_kontrolne'
 sleep 5
 adb logcat -d > results/premium-radio.txt
-grep -q 'PA6_RADIO.*Teraz gra: Radio kontrolne' results/premium-radio.txt
+grep -q 'PA6_RADIO.*Teraz gra: Radio_kontrolne' results/premium-radio.txt
 adb shell am force-stop "$pkg"
 python3 helpers/pa6/premium_interaction_test.py "$pkg"
 python3 helpers/pa6/remaining_module_test.py "$pkg"

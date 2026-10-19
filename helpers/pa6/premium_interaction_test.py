@@ -8,7 +8,8 @@ def start(name):
  adb('shell','am','force-stop',pkg);adb('shell','am','start','-n',pkg+'/com.ispina.lokalnie.'+name);time.sleep(2)
 def nodes():
  adb('shell','uiautomator','dump','/sdcard/interaction.xml')
- return list(ET.fromstring(adb('shell','cat','/sdcard/interaction.xml')).iter('node'))
+ xml=adb('shell','cat','/sdcard/interaction.xml');Path('results/latest-interaction.xml').write_text(xml)
+ return list(ET.fromstring(xml).iter('node'))
 def tap(n):
  x1,y1,x2,y2=map(int,re.findall(r'\d+',n.attrib['bounds']));adb('shell','input','tap',str((x1+x2)//2),str((y1+y2)//2))
 def field(value):
