@@ -2,7 +2,7 @@ name: PA6 2.4.1 reliability • Android 6 build and tests
 on:
   push:
     branches: ['work/pa6-241-reliability-20261019']
-    paths: ['.github/workflows/pa6-241-reliability.yml', 'helpers/pa6/smoke.sh']
+    paths: ['.github/workflows/pa6-241-reliability.yml', 'helpers/pa6/smoke.sh', 'helpers/pa6/native/**']
   workflow_dispatch:
 permissions:
   contents: read
