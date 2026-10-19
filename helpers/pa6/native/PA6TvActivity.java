@@ -102,6 +102,7 @@ public final class PA6TvActivity extends PA6BaseActivity {
  private int tuneRequest=0;
  private Channel currentChannel;
  private int currentSource=0;
+ private int qualityRetry=-1;
  private int dp(int n){return (int)(getResources().getDisplayMetrics().density*n+.5f);}
  private GradientDrawable box(int bg,int outline,int radius){
   GradientDrawable d=new GradientDrawable();d.setColor(bg);d.setCornerRadius(dp(radius));d.setStroke(dp(1),outline);return d;
@@ -134,7 +135,11 @@ public final class PA6TvActivity extends PA6BaseActivity {
   currentChannel=ch;currentSource=0;playChannelSource(ch,0);
  }
  private void playChannelSource(Channel ch,int index){
+  playChannelSource(ch,index,-1);
+ }
+ private void playChannelSource(Channel ch,int index,int retryHeight){
   currentSource=index;
+  qualityRetry=retryHeight;
   cancelTuneWork();cancelTuneWatchdog();player.stop();playlist=null;quality.setEnabled(false);quality.setText("Jakość • sprawdzam…");onAir=ch.name;showChannels();
   final int attempt=++tuneRequest;
   player.recordError("");
@@ -145,7 +150,7 @@ public final class PA6TvActivity extends PA6BaseActivity {
   tuneTask=tuning.submit(()->{
    try{
     PA6HlsQuality.Playlist available=PA6HlsQuality.inspect(PA6TvSources.resolve(input));
-    int requested=getPreferences(0).getInt("tv_quality_"+ch.url,"Das Erste".equals(ch.name)?360:0);
+    int requested=retryHeight>=0?retryHeight:getPreferences(0).getInt("tv_quality_"+ch.url,"Das Erste".equals(ch.name)?360:0);
     String url=available.selected(this,requested);
     runOnUiThread(()->{
      if(isFinishing()||attempt!=tuneRequest)return;
@@ -179,6 +184,16 @@ public final class PA6TvActivity extends PA6BaseActivity {
    String failure=player.lastError();
    if(failure==null||failure.trim().isEmpty())failure="Odtwarzacz zakończył próbę bez szczegółowego kodu błędu.";
    android.util.Log.w("PA6_TV","Nieudane TV: "+currentChannel.name+" źródło="+currentSource+" przyczyna="+failure);
+  // A broadcaster may serve a valid master whose chosen rendition cannot be
+  // decoded on this device. Try one alternate selection before changing URLs.
+  if("Niemcy".equals(currentChannel.country)&&!"tagesschau24".equals(currentChannel.name)
+      &&qualityRetry<0&&playlist!=null&&!playlist.variants.isEmpty()){
+   int alternate=selectedHeight<=0?360:0;
+   if(alternate==0||actualHeight()!=360){
+    playChannelSource(currentChannel,currentSource,alternate);
+    return;
+   }
+  }
   if(currentSource<currentChannel.backup.length){
    ++currentSource;
    playChannelSource(currentChannel,currentSource);
