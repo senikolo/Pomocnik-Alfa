@@ -8,6 +8,10 @@ data=Path(sys.argv[1])
 assets=Path(sys.argv[2])
 assets.mkdir(parents=True,exist_ok=True)
 html=(src/'app.html').read_text(encoding='utf-8')
+# Chromium 44 supports SVG <use> via xlink:href, not the SVG2 href spelling.
+html=html.replace('<svg ', '<svg xmlns:xlink="http://www.w3.org/1999/xlink" ')
+html=html.replace('<use href=', '<use xlink:href=')
+html=html.replace('vertical-align:middle">2.0</span>', 'vertical-align:middle">Premium</span>')
 assert '</head>' in html and '<script src="/app.js"></script>' in html
 html=html.replace('</head>','<link rel="stylesheet" href="/tablet-legacy.css"></head>',1)
 html=html.replace('<body>','<body><div id="pa6-indicator" role="status">ALFA PREMIUM · Twoja podróż zaczyna się tutaj</div>',1)

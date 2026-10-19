@@ -19,11 +19,11 @@ def click(nodes,text):
             adb('shell','input','tap',str((x1+x2)//2),str((y1+y2)//2));time.sleep(2);return
     raise AssertionError('Missing clickable '+text)
 adb('shell','am','force-stop',package)
-start('PARegionsActivity')
-nodes=dump('transport-planner')
-assert any('Dokąd dziś jedziemy' in n.get('text','') for n in nodes),'Transport WebView not rendered'
-for tab,key in [('Pojazdy','vehicles'),('Alfa','assistant'),('Ulubione','favorites')]:
-    click(nodes,tab);nodes=dump('transport-'+key)
+for tab,key in [('planner','planner'),('bus','liveBus'),('assistant','assistant'),('favorites','favorites')]:
+    start('PARegionsActivity','--es','pa_tab',tab,'--ez','verify_web','true')
+    dump('transport-'+key)
+    logs=adb('logcat','-d');Path('results/transport-log.txt').write_text(logs)
+    assert 'PA6_WEB_TEST' in logs and 'PASS active='+key+' bridge=ready' in logs,'Transport DOM/bridge '+key+' not confirmed'
 start('PA6TubeActivity','--ez','kids','true')
 nodes=dump('tube-kids')
 assert any('Tube Kids' in n.get('text','') for n in nodes),'Tube Kids header missing'

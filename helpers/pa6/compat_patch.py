@@ -36,6 +36,22 @@ for name in ('PARegionsActivity.java','PALive.java','PADataStore.java','PAOSMTil
     callback.invoke(origin,true,false);
    }
   });''')
+        # API23 UIAutomator cannot expose the DOM of older Chromium. Inspect the
+        # actual loaded page with a diagnostic-only evaluateJavascript callback.
+        web_client='web.setWebViewClient(new WebViewClient(){'
+        assert web_client in code
+        code=code.replace(web_client,web_client+'''
+   @Override public void onPageFinished(WebView v,String url){
+    if(!getIntent().getBooleanExtra("verify_web",false)||!local(Uri.parse(url)))return;
+    v.postDelayed(()->{if(destroyed)return;
+     final String tab=getIntent().getStringExtra("pa_tab");final String expected="bus".equals(tab)?"liveBus":"assistant".equals(tab)?"assistant":"favorites".equals(tab)?"favorites":"planner";
+     v.evaluateJavascript("(function(){var p=document.querySelector('.panel.active');return (p?p.id:'missing')+'|'+typeof window.PANativeReply;})()",value->{
+      if(value!=null&&value.contains(expected+"|function"))android.util.Log.i("PA6_WEB_TEST","PASS active="+expected+" bridge=ready");
+      else android.util.Log.e("PA6_WEB_TEST","FAIL expected="+expected+" result="+value);
+     });
+    },1500);
+   }
+''')
         # The same bridge and per-request allowlist as in the new PA.
         anchor='app\\\\.html|app\\\\.js'
         # The source's literal string contains two slashes to survive Java/regex:
