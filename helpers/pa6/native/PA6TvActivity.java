@@ -126,7 +126,15 @@ public final class PA6TvActivity extends Activity {
     });
    }catch(Exception error){
     runOnUiThread(()->{if(isFinishing()||attempt!=tuneRequest)return;
-     status.setText(error instanceof java.io.IOException?error.getMessage():"Nie udało się otworzyć transmisji. Spróbuj później.");
+     // DNS, geo restrictions and invalid URLs must use backup streams too.
+     // Never retry a channel that the viewer has already switched away from.
+     if(currentChannel==ch && currentSource<ch.backup.length){
+      android.util.Log.w("PA6_TV","Primary stream failed, trying backup",error);
+      onChannelPlaybackError();
+     }else{
+      status.setText(error instanceof java.io.IOException?error.getMessage():"Nie udało się otworzyć transmisji. Spróbuj później.");
+      if(currentChannel==ch)currentChannel=null;
+     }
     });
    }
   },"pa6-tv-quality").start();
