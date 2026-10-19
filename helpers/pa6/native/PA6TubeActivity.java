@@ -179,9 +179,9 @@ public final class PA6TubeActivity extends Activity {
   for(int i=0;i<QUALITY_VALUES.length;i++)if(QUALITY_VALUES[i]==selectedQuality())quality.setSelection(i);
   panel.addView(quality,new LinearLayout.LayoutParams(-1,-2));gap(panel,10);
   CheckBox wifi=new CheckBox(this);
-  wifi.setText("Pobieraj tylko przez Wi-Fi");
+  wifi.setText("Pobieraj tylko przez Wi-Fi (wyłączone pozwala użyć LTE)");
   wifi.setTextColor(INK);
-  wifi.setChecked(getPreferences(0).getBoolean("tube_wifi_only",true));
+  wifi.setChecked(getPreferences(0).getBoolean("tube_wifi_only",false));
   panel.addView(wifi);
   TextView hint=text("Pobrane filmy MP4 znajdziesz w folderze Pobrane. Pobieranie jest możliwe tylko, gdy źródło oferuje plik z obrazem i dźwiękiem bez zabezpieczeń.",12,MUTED,false);
   pad(hint,2,9);panel.addView(hint);gap(panel,12);
@@ -223,7 +223,7 @@ public final class PA6TubeActivity extends Activity {
  }
  private void startDownload(final String id){
   Intent job=new Intent(this,PA6DownloadService.class).putExtra("id",id)
-   .putExtra("quality",selectedQuality()).putExtra("wifi",getPreferences(0).getBoolean("tube_wifi_only",true));
+   .putExtra("quality",selectedQuality()).putExtra("wifi",getPreferences(0).getBoolean("tube_wifi_only",false));
   startService(job);
  }
  private TextView downloadStatus;
@@ -674,7 +674,8 @@ public final class PA6TubeActivity extends Activity {
    feedback("Materiał testowy, nie YouTube. Odtwarzanie odbywa się wewnątrz PA.");
   });
   officialButton=button("Odtwórz w PA przez oficjalny YouTube (możliwe reklamy)",RED,false);
-  tools.addView(officialButton,new LinearLayout.LayoutParams(-1,-2));
+  // Keep the in-app fallback visible even when advanced options are collapsed.
+  playerPane.addView(officialButton,Math.min(6,playerPane.getChildCount()),new LinearLayout.LayoutParams(-1,-2));
   officialButton.setVisibility(View.GONE);
   officialButton.setOnClickListener(v->showOfficialEmbedded());
   Button file=button("Wybierz film zapisany na tablecie",RED,false);tools.addView(file,new LinearLayout.LayoutParams(-1,-2));
