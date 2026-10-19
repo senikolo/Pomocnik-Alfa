@@ -151,10 +151,10 @@ final class PA6StreamRelay implements Closeable {
    if(line.startsWith("#EXT-X-MEDIA:TYPE=SUBTITLES"))continue;
    if(line.startsWith("#EXT-X-STREAM-INF:")){
     // Remove references to a non-existent subtitles group, preserving AUDIO.
-    line=line.replaceAll(",SUBTITLES=\\\"[^\\\"]*\\\"","")
-             .replaceAll("SUBTITLES=\\\"[^\\\"]*\\\",","");
+    line=line.replaceAll(",SUBTITLES=\"[^\"]*\"","")
+             .replaceAll("SUBTITLES=\"[^\"]*\",","");
    }
-   fixed.append(line).append('\\n');
+   fixed.append(line).append('\n');
   }
   return fixed.toString();
  }
