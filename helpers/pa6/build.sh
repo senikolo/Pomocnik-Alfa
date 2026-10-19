@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 mkdir -p feeds build/pa6-data build/pa6-node build/pa6-assets/pa_regions build/pa6-java build/pa6-res/drawable-nodpi build/pa6-classes build/pa6-dex output baseline
+mkdir -p build/pa6-relay-tests
+javac -source 8 -target 8 -encoding UTF-8 -d build/pa6-relay-tests helpers/pa6/native/PA6StreamRelay.java helpers/pa6/StreamRelayTest.java
+java -cp build/pa6-relay-tests com.ispina.lokalnie.StreamRelayTest | tee output/stream-relay-tests.txt
 SDK="$ANDROID_HOME"
 BT="$SDK/build-tools/35.0.0"
 python3 -m py_compile helpers/pa6/*.py
@@ -94,5 +97,5 @@ grep -q "sdkVersion:'23'" output/badging.txt
 grep -q "package: name='${PA6_APP_ID:-com.senikolo.pa6.stable}'" output/badging.txt
 # Signing happens with the preserved PA certificate after downloading this build.
 # Never generate an ephemeral replacement key or publish an unsigned APK.
-cp output/aligned.apk output/PA6-2.4.2-unsigned.apk
-sha256sum output/PA6-2.4.2-unsigned.apk > output/SHA256SUMS.txt
+cp output/aligned.apk output/PA6-2.4.5-unsigned.apk
+sha256sum output/PA6-2.4.5-unsigned.apk > output/SHA256SUMS.txt

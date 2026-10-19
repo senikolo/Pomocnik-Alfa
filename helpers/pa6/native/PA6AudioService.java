@@ -13,8 +13,12 @@ public final class PA6AudioService extends Service {
  static volatile boolean active,paused;
  static volatile String title="",videoId="",status="";
  static volatile long position,duration;
- private LibVLC vlc;private MediaPlayer player;private MediaSession session;
- private AudioManager audio;private PowerManager.WakeLock wake;private boolean focus,resume;
+ private LibVLC vlc;private volatile MediaPlayer player;
+ private volatile PA6StreamRelay relay;
+ private volatile boolean destroyed;private volatile int generation;
+ private final java.util.concurrent.ExecutorService decoder=java.util.concurrent.Executors.newSingleThreadExecutor(r->{Thread t=new Thread(r,"pa6-audio-decoder");t.setDaemon(true);return t;});
+ private void submit(Runnable r){if(!decoder.isShutdown())try{decoder.execute(r);}catch(java.util.concurrent.RejectedExecutionException ignored){}}private MediaSession session;
+ private AudioManager audio;private PowerManager.WakeLock wake;private volatile boolean focus,resume;
  private final Handler main=new Handler();
  private final BroadcastReceiver noisy=new BroadcastReceiver(){public void onReceive(Context c,Intent i){pause();}};
  private final AudioManager.OnAudioFocusChangeListener focusListener=change->{
@@ -47,35 +51,54 @@ public final class PA6AudioService extends Service {
    .setState(paused?PlaybackState.STATE_PAUSED:PlaybackState.STATE_PLAYING,position,paused?0:1).build());
   ((NotificationManager)getSystemService(NOTIFICATION_SERVICE)).notify(6202,notice());
  }
- private final Runnable tick=new Runnable(){public void run(){publish();if(active)main.postDelayed(this,1000);}};
+ private final Runnable tick=new Runnable(){public void run(){submit(()->publish());if(active)main.postDelayed(this,1000);}};
  private void acquire(){if(!wake.isHeld())wake.acquire();}
- private void pause(){if(player!=null){player.pause();paused=true;android.util.Log.i("PA6_AUDIO","PAUSED");status="Wstrzymano • samo audio";if(wake.isHeld())wake.release();publish();}}
- private void play(){if(player==null)return;if(!focus){focus=audio.requestAudioFocus(focusListener,AudioManager.STREAM_MUSIC,AudioManager.AUDIOFOCUS_GAIN)==AudioManager.AUDIOFOCUS_REQUEST_GRANTED;}if(!focus){status="Dźwięk zajmuje inna funkcja";publish();return;}paused=false;status="Słuchasz w tle • samo audio";acquire();player.play();publish();}
- private void seekTo(long t){if(player!=null&&player.isSeekable()&&player.getLength()>0){player.setTime(Math.max(0,Math.min(t,player.getLength()-1)));android.util.Log.i("PA6_AUDIO","SEEK_REQUEST="+t);}publish();}
+ private void pause(){submit(()->pauseNow());}
+ private void pauseNow(){if(destroyed||!active)return;if(player!=null){player.pause();paused=true;android.util.Log.i("PA6_AUDIO","PAUSED");status="Wstrzymano • samo audio";if(wake.isHeld())wake.release();publish();}}
+ private void play(){submit(()->playNow());}
+ private void playNow(){if(destroyed||!active||player==null)return;if(!focus){focus=audio.requestAudioFocus(focusListener,AudioManager.STREAM_MUSIC,AudioManager.AUDIOFOCUS_GAIN)==AudioManager.AUDIOFOCUS_REQUEST_GRANTED;}if(!focus){status="Dźwięk zajmuje inna funkcja";publish();return;}paused=false;status="Słuchasz w tle • samo audio";acquire();player.play();publish();}
+ private void seekTo(long t){submit(()->seekNow(t));}
+ private void seekNow(long t){if(destroyed||!active)return;if(player!=null&&player.isSeekable()&&player.getLength()>0){player.setTime(Math.max(0,Math.min(t,player.getLength()-1)));android.util.Log.i("PA6_AUDIO","SEEK_REQUEST="+t);}publish();}
  @Override public int onStartCommand(Intent i,int flags,int startId){
   if(i==null){stopSelf();return START_NOT_STICKY;}String a=i.getAction();
   if("STOP".equals(a)){stopSelf();return START_NOT_STICKY;}
   if("PLAY".equals(a)&&i.hasExtra("url")){
-   String url=i.getStringExtra("url");if(url==null||!(url.startsWith("https://")||url.startsWith("file://"))){stopSelf();return START_NOT_STICKY;}
+   String url=i.getStringExtra("url");if(url==null||!(url.startsWith("https://")||url.startsWith("http://")||url.startsWith("file://"))){stopSelf();return START_NOT_STICKY;}
    title=i.getStringExtra("title");videoId=i.getStringExtra("id");active=true;paused=false;status="Łączenie • samo audio";position=duration=0;
    session.setMetadata(new android.media.MediaMetadata.Builder().putString(android.media.MediaMetadata.METADATA_KEY_TITLE,title).putString(android.media.MediaMetadata.METADATA_KEY_ARTIST,"Alfa Tube").build());
    startForeground(6202,notice());
-   try{
-    if(player!=null){player.setEventListener(null);player.stop();player.release();vlc.release();}
-    vlc=new LibVLC(this,new ArrayList<String>());player=new MediaPlayer(vlc);
-    final MediaPlayer selected=player;player.setEventListener(e->main.post(()->{if(!active||player!=selected)return;
+   final int seq=++generation;
+   submit(()->{if(destroyed||seq!=generation)return;try{
+    PA6StreamRelay old=relay;relay=null;if(old!=null)old.close();
+    if(player!=null){player.setEventListener(null);player.stop();player.release();vlc.release();player=null;vlc=null;}
+    if(destroyed||seq!=generation)return;
+    ArrayList<String> options=new ArrayList<>();PA6ModernTls.configureVlc(this,options);
+    LibVLC created=new LibVLC(this,options);MediaPlayer fresh=new MediaPlayer(created);
+    if(destroyed||seq!=generation){fresh.release();created.release();return;}vlc=created;player=fresh;
+    final MediaPlayer selected=player;player.setEventListener(e->submit(()->{if(destroyed||!active||player!=selected||seq!=generation)return;
      if(e.type==MediaPlayer.Event.Playing){status="Słuchasz w tle • samo audio";android.util.Log.i("PA6_AUDIO","BACKGROUND_PLAYING");publish();}
-     else if(e.type==MediaPlayer.Event.EncounteredError){status="Nie można odtworzyć audio. Otwórz Alfa Tube i spróbuj ponownie.";pause();status="Błąd źródła audio • spróbuj ponownie";publish();}
+     else if(e.type==MediaPlayer.Event.EncounteredError){pauseNow();status="Błąd źródła audio • spróbuj ponownie";publish();}
      else if(e.type==MediaPlayer.Event.EndReached){stopSelf();}
     }));
-    Media m=new Media(vlc,android.net.Uri.parse(url));m.addOption(":no-video");m.addOption(":network-caching=1500");m.addOption(":http-reconnect=false");m.addOption(":avcodec-hw=none");player.setMedia(m);m.release();play();
+    String source=url;
+    if(url.startsWith("https://")||url.startsWith("http://")){PA6ModernTls.install(this);relay=new PA6StreamRelay(PA6ModernTls::open);source=relay.route(url);}
+    if(destroyed||seq!=generation){PA6StreamRelay cancelled=relay;relay=null;if(cancelled!=null)cancelled.close();return;}
+    Media m=new Media(vlc,android.net.Uri.parse(source));m.addOption(":no-video");m.addOption(":network-caching=1500");m.addOption(":http-reconnect=false");m.addOption(":avcodec-hw=none");player.setMedia(m);m.release();playNow();
     main.removeCallbacks(tick);main.post(tick);
-   }catch(Throwable e){android.util.Log.e("PA6_AUDIO","START_FAILED",e);stopSelf();}
+   }catch(Throwable e){android.util.Log.e("PA6_AUDIO","START_FAILED",e);stopSelf();}});
   }else if(!active){stopSelf();}
   else if("TOGGLE".equals(a)){if(paused)play();else pause();}
   else if("PAUSE".equals(a))pause();else if("RESUME".equals(a))play();else if("SEEK".equals(a))seekTo(i.getLongExtra("time",0));
   return START_NOT_STICKY;
  }
- @Override public void onDestroy(){unregisterReceiver(noisy);active=false;paused=false;videoId="";main.removeCallbacksAndMessages(null);if(player!=null){player.setEventListener(null);player.stop();player.release();player=null;}if(vlc!=null)vlc.release();if(focus)audio.abandonAudioFocus(focusListener);if(wake.isHeld())wake.release();session.release();stopForeground(true);super.onDestroy();}
+ @Override public void onDestroy(){
+  destroyed=true;++generation;unregisterReceiver(noisy);active=false;paused=false;videoId="";main.removeCallbacksAndMessages(null);
+  PA6StreamRelay stopped=relay;relay=null;if(stopped!=null)stopped.close();
+  submit(()->{try{if(player!=null){player.setEventListener(null);player.stop();player.release();player=null;}}catch(Throwable ignored){}try{if(vlc!=null){vlc.release();vlc=null;}}catch(Throwable ignored){}
+   // A start already running on the decoder may have acquired focus/wake after onDestroy began.
+   try{if(focus)audio.abandonAudioFocus(focusListener);if(wake.isHeld())wake.release();}catch(Throwable ignored){}
+  });
+  decoder.shutdown();if(focus)audio.abandonAudioFocus(focusListener);if(wake.isHeld())wake.release();session.release();stopForeground(true);super.onDestroy();
+ }
  @Override public IBinder onBind(Intent i){return null;}
 }

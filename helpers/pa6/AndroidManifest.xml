@@ -1,4 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.senikolo.pa6.stable" android:versionCode="2004002" android:versionName="2.4.2-premium">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.senikolo.pa6.stable" android:versionCode="2004005" android:versionName="2.4.5-stream-fix">
   <uses-sdk android:minSdkVersion="23" android:targetSdkVersion="23"/>
   <uses-permission android:name="android.permission.INTERNET"/>
   <uses-permission android:name="android.permission.VIBRATE"/>
@@ -9,7 +9,7 @@
   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-  <application android:label="Alfa 6 • Premium Preview" android:icon="@drawable/ic_cat" android:allowBackup="false" android:extractNativeLibs="true" android:usesCleartextTraffic="true" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:hardwareAccelerated="true" android:supportsRtl="true">
+  <application android:label="Alfa 6 • TV Premium" android:icon="@drawable/ic_cat" android:allowBackup="false" android:extractNativeLibs="true" android:usesCleartextTraffic="true" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:hardwareAccelerated="true" android:supportsRtl="true">
     <activity android:name="com.ispina.lokalnie.PA6DashboardActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
     <activity android:name="com.ispina.lokalnie.PA6SettingsActivity" android:exported="false"/>
     <service android:name="com.ispina.lokalnie.PA6AudioService" android:exported="false"/>

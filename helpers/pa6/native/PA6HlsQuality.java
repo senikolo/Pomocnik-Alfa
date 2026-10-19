@@ -1,72 +1,81 @@
 package com.ispina.lokalnie;
-
+import android.content.Context;
+import android.net.Uri;
 import java.io.*;
 import java.net.*;
 import java.util.*;
 import java.util.regex.*;
-
-/**
- * Android 6: select a modest H.264 rendition in simple HLS master playlists.
- * This is best-effort only. Keep the master manifest if it declares separate audio.
- * Never claim a channel exists solely because its URL appears in a catalog.
- */
+/** HLS renditions with original audio groups retained at every resolution. */
 public final class PA6HlsQuality {
  private static final Pattern HEIGHT=Pattern.compile("RESOLUTION=[0-9]+x([0-9]+)",Pattern.CASE_INSENSITIVE);
- private static final Pattern BANDWIDTH=Pattern.compile("BANDWIDTH=([0-9]+)",Pattern.CASE_INSENSITIVE);
+ private static final Pattern URI=Pattern.compile("URI=\"([^\"]+)\"");
+ public static final class Variant {
+  public final int height;final String metadata,url;
+  Variant(int h,String m,String u){height=h;metadata=m;url=u;}
+ }
+ public static final class Playlist {
+  public final String source;public final ArrayList<Variant> variants=new ArrayList<>();
+  final ArrayList<String> groups=new ArrayList<>();
+  Playlist(String s){source=s;}
+  public String[] labels(){
+   String[] labels=new String[variants.size()+1];labels[0]="Auto • dopasuj do łącza";
+   for(int i=0;i<variants.size();i++)labels[i+1]=variants.get(i).height+"p";
+   return labels;
+  }
+  public String selected(Context context,int preferred)throws IOException {
+   if(preferred<=0||variants.isEmpty())return source;
+   Variant choice=variants.get(0);
+   for(Variant v:variants)if(Math.abs(v.height-preferred)<Math.abs(choice.height-preferred))choice=v;
+   if(groups.isEmpty())return choice.url;
+   // Local master, remote video and audio; selecting video alone would mute ARD.
+   File file=File.createTempFile("pa6-tv-",".m3u8",context.getCacheDir());
+   try(Writer out=new OutputStreamWriter(new FileOutputStream(file),"UTF-8")){
+    out.write("#EXTM3U\n#EXT-X-VERSION:6\n#EXT-X-INDEPENDENT-SEGMENTS\n");
+    for(String line:groups)out.write(line+"\n");
+    out.write(choice.metadata+"\n"+choice.url+"\n");
+   }
+   return Uri.fromFile(file).toString();
+  }
+ }
  private PA6HlsQuality(){}
- private static int number(Pattern pattern,String line,int otherwise){
-  Matcher m=pattern.matcher(line);
-  if(!m.find())return otherwise;
-  try{return Integer.parseInt(m.group(1));}catch(Exception ex){return otherwise;}
+ private static String absolute(String base,String line)throws MalformedURLException{
+  Matcher m=URI.matcher(line);StringBuffer out=new StringBuffer();
+  while(m.find())m.appendReplacement(out,Matcher.quoteReplacement("URI=\""+new URL(new URL(base),m.group(1))+"\""));
+  m.appendTail(out);return out.toString();
  }
- public static String preferLow(String input){
-  if(input==null||!input.startsWith("https://")||!input.contains(".m3u8"))return input;
-  HttpURLConnection connection=null;
+ static Playlist parse(String source,String body)throws IOException{
+  Playlist p=new Playlist(source);
+  if(!body.trim().startsWith("#EXTM3U"))throw new IOException("Serwer nie udostępnił transmisji. Spróbuj później.");
+  String metadata="";TreeMap<Integer,Variant> unique=new TreeMap<>();
+  for(String raw:body.split("\\r?\\n")){
+   String line=raw.trim();
+   if(line.startsWith("#EXT-X-MEDIA:")){p.groups.add(absolute(source,line));continue;}
+   if(line.startsWith("#EXT-X-STREAM-INF:")){metadata=line;continue;}
+   if(line.isEmpty()||line.startsWith("#")||metadata.isEmpty())continue;
+   String info=metadata;metadata="";Matcher height=HEIGHT.matcher(info);
+   if(!height.find()||info.contains("hvc1")||info.contains("hev1")||info.contains("av01"))continue;
+   int h=Integer.parseInt(height.group(1));String u=new URL(new URL(source),line).toString();
+   if(h>0&&(u.startsWith("https://")||u.startsWith("http://")))unique.put(h,new Variant(h,info,u));
+  }
+  p.variants.addAll(unique.values());return p;
+ }
+ public static Playlist inspect(String source)throws Exception{
+  if(source==null||(!source.startsWith("https://")&&!source.startsWith("http://")))throw new IOException("Nieprawidłowy adres transmisji.");
+  if(source.matches("(?i).*\\.(mp4|mp3|m4a|webm|mkv|mpd)(\\?.*)?"))return new Playlist(source);
+  HttpURLConnection c=PA6ModernTls.open(source);
+  long deadline=System.nanoTime()+java.util.concurrent.TimeUnit.SECONDS.toNanos(14);
   try{
-   connection=PA6ModernTls.open(input);
-   connection.setConnectTimeout(3400);connection.setReadTimeout(4200);
-   connection.setRequestProperty("Accept","application/vnd.apple.mpegurl,application/x-mpegURL,*/*");
-   if(connection.getResponseCode()!=200)return input;
-   ByteArrayOutputStream bytes=new ByteArrayOutputStream(8000);
-   try(InputStream stream=connection.getInputStream()){
-    byte[] part=new byte[2048];int n;
-    while((n=stream.read(part))!=-1){
-     if(bytes.size()+n>100000)return input;
-     bytes.write(part,0,n);
-    }
+   c.setConnectTimeout(6000);c.setReadTimeout(7000);c.setRequestProperty("User-Agent","Mozilla/5.0");
+   int code=c.getResponseCode();
+   if(code==403||code==451)throw new IOException("Nadawca ograniczył dostęp w Twojej sieci lub kraju.");
+   if(code!=200)throw new IOException("Transmisja chwilowo niedostępna ("+code+").");
+   ByteArrayOutputStream bytes=new ByteArrayOutputStream();
+   try(InputStream in=c.getInputStream()){
+    byte[] b=new byte[8192];int n;
+    while((n=in.read(b))!=-1){if(Thread.currentThread().isInterrupted())throw new InterruptedIOException("Zmieniono kanał.");if(System.nanoTime()>deadline)throw new java.net.SocketTimeoutException("Sprawdzanie transmisji trwa zbyt długo.");if(bytes.size()+n>2000000)throw new IOException("Nieprawidłowa lista transmisji.");bytes.write(b,0,n);}
    }
-   String playlist=bytes.toString("UTF-8");
-   if(!playlist.startsWith("#EXTM3U")||!playlist.contains("#EXT-X-STREAM-INF"))return input;
-   // An audio group must be passed to LibVLC via the complete master playlist.
-   if(playlist.contains("#EXT-X-MEDIA:TYPE=AUDIO"))return input;
-   String[] lines=playlist.split("\\r?\\n");
-   String best="",candidateMeta="";
-   int bestScore=Integer.MAX_VALUE;
-   for(String raw:lines){
-    String line=raw.trim();
-    if(line.startsWith("#EXT-X-STREAM-INF:")){
-     candidateMeta=line;continue;
-    }
-    if(candidateMeta.isEmpty()||line.isEmpty()||line.startsWith("#"))continue;
-    String info=candidateMeta.toLowerCase(Locale.ROOT);
-    candidateMeta="";
-    if(info.contains("hev1")||info.contains("hvc1")||info.contains("av01")||info.contains("vp09"))continue;
-    int height=number(HEIGHT,info,0),bps=number(BANDWIDTH,info,2000000);
-    // Favor 360p and 480p H.264; avoid high-res CPU-heavy streams on 2GB tablets.
-    int score=(height>0&&height<=480?0:height==0?10000000:20000000)
-      +Math.abs((height==0?360:height)-360)*10000+Math.min(bps/1000,9999);
-    String resolved=new URL(new URL(input),line).toString();
-    if((resolved.startsWith("https://")||resolved.startsWith("http://"))&&score<bestScore){
-     best=resolved;bestScore=score;
-    }
-   }
-   if(!best.isEmpty()){
-    android.util.Log.i("PA6_HLS","Selected low-resolution HLS variant for Android 6");
-    return best;
-   }
-  }catch(Exception e){
-   android.util.Log.w("PA6_HLS","Cannot inspect master playlist, using original",e);
-  }finally{if(connection!=null)connection.disconnect();}
-  return input;
+   return parse(c.getURL().toString(),bytes.toString("UTF-8"));
+  }finally{c.disconnect();}
  }
+ public static String preferLow(String source){return source;}
 }

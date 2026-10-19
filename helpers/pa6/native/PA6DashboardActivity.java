@@ -43,8 +43,8 @@ public final class PA6DashboardActivity extends PA6BaseActivity {
   LinearLayout card=col();card.setGravity(Gravity.CENTER);card.setPadding(dp(12),dp(8),dp(12),dp(8));
   card.setBackground(shape(PA6Premium.SURFACE,0xffe2e8ef,22));card.setElevation(dp(2));
   LinearLayout badge=row();badge.setGravity(Gravity.CENTER);
-  badge.setBackground(shape(0xffeaf2f8,0xffeaf2f8,18));
-  PA6GlyphView glyph=new PA6GlyphView(this,type,PA6Premium.BLUE);
+  badge.setBackground(shape((tint&0x00ffffff)|0x18000000,0,18));
+  PA6GlyphView glyph=new PA6GlyphView(this,type,tint);
   badge.addView(glyph,new LinearLayout.LayoutParams(dp(40),dp(40)));
   card.addView(badge,new LinearLayout.LayoutParams(dp(58),dp(56)));
   gap(card,12);
@@ -150,7 +150,7 @@ public final class PA6DashboardActivity extends PA6BaseActivity {
   brand.addView(cat,new LinearLayout.LayoutParams(dp(59),dp(59)));
   LinearLayout caption=col();caption.setPadding(dp(12),0,0,0);
   caption.addView(text("Pomocnik Alfa",22,true,INK));
-  caption.addView(text("Twój dzień. W dobrym rytmie.",12,false,MUTED));
+  caption.addView(text("Twój świat. Bliżej Ciebie.",12,false,MUTED));
   brand.addView(caption,new LinearLayout.LayoutParams(0,-2,1));
   Button switchLayout=new Button(this);switchLayout.setText("Ustawienia");
   switchLayout.setAllCaps(false);switchLayout.setTextSize(12);
@@ -160,7 +160,7 @@ public final class PA6DashboardActivity extends PA6BaseActivity {
   root.addView(brand);gap(root,15);
   LinearLayout highlight=col();highlight.setPadding(dp(18),dp(16),dp(18),dp(17));
   highlight.setBackground(PA6Premium.gradient(this,0xff183652,0xff31658f,26));
-  TextView edition=text("ALFA  /  PREMIUM",11,true,0xffb8d9ef);edition.setLetterSpacing(.14f);highlight.addView(edition);gap(highlight,9);
+  TextView edition=text("ALFA  /  TV PREMIUM",11,true,0xffb8d9ef);edition.setLetterSpacing(.14f);highlight.addView(edition);gap(highlight,9);
   int hour=java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
   highlight.addView(text(hour<18?"Dzień dobry, co dziś wybierasz?":"Dobry wieczór. Czas dla Ciebie.",26,true,WHITE));
   gap(highlight,6);
@@ -169,7 +169,7 @@ public final class PA6DashboardActivity extends PA6BaseActivity {
   boolean phone="Smartfon".equals(displayMode())||
    ("Automatyczny".equals(displayMode())&&widthDp<520);
   LinearLayout shortcuts=phone?col():row();
-  quick(shortcuts,"tv","tv","ALFA TV","Na żywo • Twoje stacje",0xff65f1d8);
+  quick(shortcuts,"tv","tv","ALFA TV","10 DE + 10 RU • jakość",0xff65f1d8);
   quick(shortcuts,"tube","tube","ALFA TUBE","Filmy i muzyka",0xffff939e);
   quick(shortcuts,"radio","radio","RADIO","Muzyka i wiadomości",0xffb9d8ed);
   highlight.addView(shortcuts);root.addView(highlight);
@@ -181,7 +181,7 @@ public final class PA6DashboardActivity extends PA6BaseActivity {
    recent.setOnClickListener(v->open(previous));
   }
   category("Multimedia","Oglądaj i słuchaj bez przełączania do innych programów",new String[][]{
-   {"tv","Telewizja","Świat na żywo","tv","ffe13349"},
+   {"tv","Telewizja","Polska • Niemcy • Rosja","tv","ffe13349"},
    {"tube","Alfa Tube","Filmy po Twojemu","tube","ffee283d"},
    {"radio","Radio","Stacje i ulubione","radio","ffbf6a37"},
    {"sounds","Dźwięki spokoju","Relaks offline","sounds","ff5872bd"},
@@ -206,7 +206,7 @@ public final class PA6DashboardActivity extends PA6BaseActivity {
   PA6Premium.touch(size);root.addView(size,new LinearLayout.LayoutParams(-1,dp(52)));
   size.setOnClickListener(v->{senior=!senior;getPreferences(0).edit().putBoolean("senior",senior).apply();render();});
   gap(root,13);
-  TextView footer=text("Alfa 6 • 2.4.2 Premium Preview • 2004002",12,false,MUTED);
+  TextView footer=text("Alfa 6 • 2.4.5 • streamy i płynność • TEST",12,false,MUTED);
   footer.setGravity(Gravity.CENTER);root.addView(footer);
  }
  @Override public void onCreate(Bundle b){

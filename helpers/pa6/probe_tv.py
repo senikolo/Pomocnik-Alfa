@@ -32,7 +32,7 @@ def check(source):
 def main():
  code=Path('helpers/pa6/native/PA6TvActivity.java').read_text()
  channels=re.findall(r'new Channel\("([^"\n]+)","[^"\n]*","[^"\n]*","([^"\n]+)"',code)
- assert len(channels)==18,len(channels)
+ assert len(channels)==36,len(channels)
  results={}
  def probe(entry):
   name,url=entry;attempts=[check(url),check(url)]

@@ -83,6 +83,19 @@ public final class PA6ModernTls {
   factory();
   return validatedTrustManager;
  }
+ /** Supply the same maintained public CA roots to LibVLC's native GnuTLS. Runs on decoder worker. */
+ public static synchronized void configureVlc(Context app,ArrayList<String> options)throws IOException{
+  File directory=new File(app.getFilesDir(),"pa6-vlc-ca");
+  if(!directory.isDirectory()&&!directory.mkdirs())throw new IOException("Nie można przygotować certyfikatów odtwarzacza.");
+  File bundle=new File(directory,"mozilla.pem"),temporary=new File(directory,"mozilla.tmp");
+  try(InputStream input=app.getAssets().open("pa6-ca-bundle.pem");OutputStream output=new FileOutputStream(temporary)){
+   byte[] buffer=new byte[8192];int count;while((count=input.read(buffer))!=-1)output.write(buffer,0,count);
+  }
+  if(temporary.length()<40000){temporary.delete();throw new IOException("Brak certyfikatów odtwarzacza.");}
+  if(!temporary.renameTo(bundle)){temporary.delete();throw new IOException("Nie można zapisać certyfikatów odtwarzacza.");}
+  options.add("--gnutls-dir-trust="+directory.getAbsolutePath());
+  android.util.Log.i("PA6_TLS","NATIVE_CA_ROOTS_READY");
+ }
  public static HttpURLConnection open(String address)throws Exception{
   URL url=new URL(address);
   URLConnection conn=url.openConnection();

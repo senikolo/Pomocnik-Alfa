@@ -12,7 +12,7 @@ final class PA6TvAudit {
   }catch(Exception ignored){audit=new JSONObject();}
   JSONObject channels=audit.optJSONObject("channels"),row=channels==null?null:channels.optJSONObject(name);
   String date=audit.optString("date","");
-  if(row!=null&&row.optBoolean("media_accessible"))return "Źródło odpowiada • sprawdzono "+date;
+  if(row!=null&&row.optBoolean("media_accessible"))return "Obraz i dźwięk sprawdzono • "+date;
   return "Niezweryfikowany • dostęp może zależeć od regionu";
  }
 }

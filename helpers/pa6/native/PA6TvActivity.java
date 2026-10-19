@@ -18,7 +18,8 @@ import java.util.*;
 public final class PA6TvActivity extends PA6BaseActivity {
  private final PA6Fullscreen fullscreen=new PA6Fullscreen();
  private static String countryFor(String name){
-  if(name.startsWith("Rossija 1")||name.equals("Univer TV"))return "Rosja";
+  if(name.equals("Das Erste")||name.equals("BR Fernsehen")||name.equals("KiKA")||name.equals("NDR Fernsehen")||name.equals("tagesschau24")||name.equals("WDR Fernsehen")||name.equals("hr-fernsehen")||name.equals("ARD alpha")||name.equals("SR Fernsehen")||name.equals("ALEX Berlin"))return "Niemcy";
+  if(name.equals("Rossija 1 (Россия 1)")||name.equals("Rossija Kultura")||name.equals("Moskwa 24")||name.equals("Moskwa Dovierije")||name.equals("NTV")||name.equals("Prodvizhenie")||name.equals("Sankt-Peterburg")||name.equals("Univer TV")||name.equals("Spas")||name.equals("Nika TV"))return "Rosja";
   if(name.startsWith("World Fashion"))return "Międzynarodowe";
   return "Polska";
  }
@@ -31,6 +32,7 @@ public final class PA6TvActivity extends PA6BaseActivity {
    android.graphics.Path clip=new android.graphics.Path();clip.addRoundRect(new android.graphics.RectF(0,0,w,h),dp(2),dp(2),android.graphics.Path.Direction.CW);canvas.clipPath(clip);
    paint.setColor(0xffffffff);canvas.drawRect(0,0,w,h,paint);
    if(country.equals("Polska")){paint.setColor(0xffdc143c);canvas.drawRect(0,h/2,w,h,paint);}
+   else if(country.equals("Niemcy")){paint.setColor(0xff171b22);canvas.drawRect(0,0,w,h/3,paint);paint.setColor(0xffd83339);canvas.drawRect(0,h/3,w,2*h/3,paint);paint.setColor(0xffffce4b);canvas.drawRect(0,2*h/3,w,h,paint);}
    else if(country.equals("Rosja")){paint.setColor(0xff1456a0);canvas.drawRect(0,h/3,w,2*h/3,paint);paint.setColor(0xffd62d36);canvas.drawRect(0,2*h/3,w,h,paint);}
    else{paint.setColor(0xff276aa0);canvas.drawRect(0,0,w,h,paint);paint.setColor(0xffffffff);paint.setStyle(android.graphics.Paint.Style.STROKE);paint.setStrokeWidth(dp(1));canvas.drawCircle(w/2,h/2,h*.37f,paint);canvas.drawOval(new android.graphics.RectF(w/2-h*.18f,h*.13f,w/2+h*.18f,h*.87f),paint);canvas.drawLine(w/2-h*.37f,h/2,w/2+h*.37f,h/2,paint);paint.setStyle(android.graphics.Paint.Style.FILL);}
    canvas.restore();paint.setColor(0xffcbd5e1);paint.setStyle(android.graphics.Paint.Style.STROKE);paint.setStrokeWidth(dp(1));canvas.drawRoundRect(new android.graphics.RectF(.5f,.5f,w-.5f,h-.5f),dp(2),dp(2),paint);paint.setStyle(android.graphics.Paint.Style.FILL);
@@ -45,9 +47,28 @@ public final class PA6TvActivity extends PA6BaseActivity {
   }
  }
  private static final Channel[] CHANNELS={
+  new Channel("Das Erste","Rozrywka","ARD • telewizja publiczna","https://daserste-live.ard-mcdn.de/daserste/live/hls/int/master.m3u8"),
+  new Channel("BR Fernsehen","Regiony","Bawaria • program regionalny","https://mcdn.br.de/br/fs/bfs_sued/hls/de/master.m3u8"),
+  new Channel("KiKA","Dla dzieci","ARD i ZDF • program dla dzieci","https://kikahls.akamaized.net/hls/live/2022690/livetvkika_ww/master.m3u8"),
+  new Channel("NDR Fernsehen","Regiony","Północne Niemcy • wersja międzynarodowa","https://ndrint.akamaized.net/hls/live/2020766/ndr_int/index.m3u8"),
+  new Channel("tagesschau24","Wiadomości","ARD • aktualności","https://tagesschau.akamaized.net/hls/live/2020115/tagesschau/tagesschau_1/master.m3u8"),
+  new Channel("WDR Fernsehen","Regiony","Nadrenia Północna-Westfalia","https://wdr-live.ard-mcdn.de/wdr/live/hls/de/master.m3u8"),
+  new Channel("hr-fernsehen","Regiony","Hesja • telewizja publiczna","https://hr-live.ard-mcdn.de/hr/live/hls/de/master.m3u8"),
+  new Channel("ARD alpha","Kultura i nauka","Wiedza, nauka i edukacja","https://mcdn.br.de/br/fs/ard_alpha/hls/de/master.m3u8"),
+  new Channel("SR Fernsehen","Regiony","Saara • telewizja publiczna","https://srfs.akamaized.net/hls/live/689649/srfsgeo/index.m3u8"),
+  new Channel("ALEX Berlin","Kultura i nauka","Berlin • program społeczny i kulturalny","https://alex-stream.rosebud-media.de/bounce/alexlivetv50.smil/index.m3u8"),
+  new Channel("Rossija 1 (Россия 1)","Rozrywka","Smotrim • główny program","https://live.smotrim.ru/vgtrk/0/russia1-hd/index.m3u8"),
+  new Channel("Rossija Kultura","Kultura i nauka","Muzyka, sztuka, teatr i historia","https://live.smotrim.ru/vgtrk/0/kultura-hd/index.m3u8"),
+  new Channel("Moskwa 24","Wiadomości","Aktualności z Moskwy","https://stream.smotrim.ru/hls2/moscow_24/playlist_3.m3u8"),
+  new Channel("Moskwa Dovierije","Rozrywka","Filmy i programy miejskie","https://stream.smotrim.ru/hls2/doverie/playlist_3.m3u8"),
+  new Channel("NTV","Rozrywka","Informacje, reportaże i seriale","https://cdn-dvr.ntv.ru/ntv0_hd/index.m3u8"),
+  new Channel("Prodvizhenie","Rozrywka","Programy i reportaże","https://streaming.astrakhan.ru/proastrakhanhd/index.m3u8"),
+  new Channel("Sankt-Peterburg","Regiony","Telewizja Petersburga","https://stream.smotrim.ru/hls2/ext_spbtv/playlist_5.m3u8"),
+  new Channel("Univer TV","Kultura i nauka","Nauka, edukacja i kultura","https://cdn.universmotri.ru/live/smil:univer.smil/playlist.m3u8"),
+  new Channel("Spas","Kultura i nauka","Programy społeczne i religijne","https://tvspas.mediacdn.ru/cdn/spas/playlist.m3u8"),
+  new Channel("Nika TV","Regiony","Kaługa • program regionalny","https://live-nikatv.cdnvideo.ru/nikatv/nikatv.sdp/playlist.m3u8"),
   new Channel("TVP 1","Wiadomości","Oficjalny kanał TVP • dostęp w Polsce","tvp:399697"),
   new Channel("TVP3 Kraków","Regiony","Małopolska • oficjalna transmisja TVP","tvp:399746"),
-  new Channel("Rossija 1 (Россия 1)","Rosyjskojęzyczne","Russia 1 • oficjalna transmisja Smotrim","https://live.smotrim.ru/vgtrk/0/russia1-hd/index.m3u8"),
   new Channel("Euronews Polska","Wiadomości","Informacje międzynarodowe • PL","https://cdn-euronews.akamaized.net/live/eds/euronews-pl/26382/index.m3u8"),
   new Channel("W Polsce PL","Wiadomości","Publiczna transmisja internetowa","https://str.onnetwork.tv/hls/onnet-358726_hi/index.m3u8"),
   new Channel("4 Fun TV","Muzyka","Teledyski • muzyka","https://stream.4fun.tv:8888/hls/4f.m3u8"),
@@ -61,18 +82,22 @@ public final class PA6TvActivity extends PA6BaseActivity {
   new Channel("TV ASTA","Regiony","Informacje z regionu","https://5cce8c6f0e84c.streamlock.net/LiveCast/smil:PlayStream9.smil/playlist.m3u8"),
   new Channel("TVK Stella","Regiony","Telewizja lokalna","https://stream.tvkstella.pl/stella/stella.m3u8"),
   new Channel("Twoja.TV","Regiony","Telewizja internetowa","https://stream.twoja.tv/ttv_hls/live_720p/index.m3u8"),
-  new Channel("Telewizja Relax","Regiony","Telewizja lokalna","https://srv1.streamingo.pl/memfs/be50f17e-6579-4bdf-86b1-31207aec85b8.m3u8"),
-  new Channel("Univer TV","Rosyjskojęzyczne","Edukacja, uczelnie i nauka","https://cdn.universmotri.ru/live/smil:univer.smil/playlist.m3u8",
-     "https://cdn.universmotri.ru/live/smil:mbr.smil/playlist.m3u8")
+  new Channel("Telewizja Relax","Regiony","Telewizja lokalna","https://srv1.streamingo.pl/memfs/be50f17e-6579-4bdf-86b1-31207aec85b8.m3u8")
  };
  private PA6EmbeddedPlayer player;
  private TextView status,active,listingCount;
+ private Button quality;
+ private PA6HlsQuality.Playlist playlist;
+ private int selectedHeight=360;
  private LinearLayout results;
  private EditText search,custom;
  private final Map<String,View> countryTabs=new LinkedHashMap<>(),categoryTabs=new LinkedHashMap<>();
  private String filter="Wszystkie",countryFilter="Wszystkie",onAir="";
  private final android.os.Handler main=new android.os.Handler();
  private Runnable tuneWatchdog;
+ private final java.util.concurrent.ThreadPoolExecutor tuning=new java.util.concurrent.ThreadPoolExecutor(2,2,0,java.util.concurrent.TimeUnit.SECONDS,new java.util.concurrent.ArrayBlockingQueue<Runnable>(1),r->{Thread t=new Thread(r,"pa6-tv-connect");t.setDaemon(true);return t;});
+ private java.util.concurrent.Future<?> tuneTask;
+ private void cancelTuneWork(){if(tuneTask!=null){tuneTask.cancel(true);tuneTask=null;}tuning.purge();}
  private void cancelTuneWatchdog(){if(tuneWatchdog!=null){main.removeCallbacks(tuneWatchdog);tuneWatchdog=null;}}
  private int tuneRequest=0;
  private Channel currentChannel;
@@ -109,18 +134,23 @@ public final class PA6TvActivity extends PA6BaseActivity {
   currentChannel=ch;currentSource=0;playChannelSource(ch,0);
  }
  private void playChannelSource(Channel ch,int index){
-  cancelTuneWatchdog();onAir=ch.name;
+  cancelTuneWork();cancelTuneWatchdog();player.stop();playlist=null;quality.setEnabled(false);quality.setText("Jakość • sprawdzam…");onAir=ch.name;showChannels();
   final int attempt=++tuneRequest;
+  player.recordError("");
   final String input=index==0?ch.url:ch.backup[index-1];
   active.setText("▶  "+ch.name);
   status.setText(index==0?"Sprawdzam jakość transmisji…":"Pierwsza transmisja zawiodła. Łączę z zapasową…");
   getPreferences(0).edit().putString("tv_last",ch.url).putString("tv_name",ch.name).apply();
-  new Thread(()->{
+  tuneTask=tuning.submit(()->{
    try{
-    String url=PA6HlsQuality.preferLow(PA6TvSources.resolve(input));
+    PA6HlsQuality.Playlist available=PA6HlsQuality.inspect(PA6TvSources.resolve(input));
+    int requested=getPreferences(0).getInt("tv_quality_"+ch.url,360);
+    String url=available.selected(this,requested);
     runOnUiThread(()->{
      if(isFinishing()||attempt!=tuneRequest)return;
-     player.play(ch.name,url);
+     playlist=available;selectedHeight=requested;
+     updateQualityLabel();quality.setEnabled(true);
+     if(url.startsWith("file:"))player.playUri(ch.name,android.net.Uri.parse(url));else player.play(ch.name,url);
      tuneWatchdog=()->{if(attempt==tuneRequest&&currentChannel!=null)onChannelPlaybackError();};
      main.postDelayed(tuneWatchdog,18000);
      status.setText("Łączę z "+ch.name+" • "+(index==0?"źródło główne":"źródło zapasowe")+".");
@@ -133,12 +163,13 @@ public final class PA6TvActivity extends PA6BaseActivity {
       android.util.Log.w("PA6_TV","Primary stream failed, trying backup",error);
       onChannelPlaybackError();
      }else{
+      player.recordError(error.getClass().getSimpleName()+": "+error.getMessage());
       status.setText(error instanceof java.io.IOException?error.getMessage():"Nie udało się otworzyć transmisji. Spróbuj później.");
-      if(currentChannel==ch)currentChannel=null;
+      if(currentChannel==ch){currentChannel=null;quality.setEnabled(false);}
      }
     });
    }
-  },"pa6-tv-quality").start();
+  });
  }
  private void onChannelPlaybackError(){
   cancelTuneWatchdog();
@@ -147,9 +178,41 @@ public final class PA6TvActivity extends PA6BaseActivity {
    ++currentSource;
    playChannelSource(currentChannel,currentSource);
   }else{
-   status.setText("Kanał „"+currentChannel.name+"” obecnie nie nadaje pod dostępnym adresem. Wybierz inny.");
-   currentChannel=null;
+   player.stop();player.showMessage("Nie udało się odebrać obrazu i dźwięku. Wybierz inny kanał lub spróbuj ponownie.");
+   status.setText("Nie udało się uruchomić kanału „"+currentChannel.name+"”. Sprawdź połączenie lub wybierz inny.");
+   currentChannel=null;quality.setEnabled(false);
   }
+ }
+ private int actualHeight(){
+  if(playlist==null||playlist.variants.isEmpty()||selectedHeight<=0)return 0;
+  int best=playlist.variants.get(0).height;
+  for(PA6HlsQuality.Variant v:playlist.variants)if(Math.abs(v.height-selectedHeight)<Math.abs(best-selectedHeight))best=v.height;
+  return best;
+ }
+ private void updateQualityLabel(){
+  quality.setText(playlist==null?"Jakość obrazu":playlist.variants.isEmpty()?"Jakość • nadawca ustala":selectedHeight<=0?"Jakość • Auto":"Jakość • "+actualHeight()+"p");
+ }
+ private void chooseQuality(){
+  final PA6HlsQuality.Playlist available=playlist;final Channel channel=currentChannel;
+  if(available==null||channel==null)return;
+  if(available.variants.isEmpty()){
+   new AlertDialog.Builder(this).setTitle("Jakość obrazu").setMessage("Ten nadawca udostępnia jedną wersję transmisji. Jakości obrazu nie można zmienić.").setPositiveButton("Rozumiem",null).show();return;
+  }
+  int chosen=0;for(int i=0;i<available.variants.size();i++)if(available.variants.get(i).height==actualHeight()&&selectedHeight>0)chosen=i+1;
+  new AlertDialog.Builder(this).setTitle("Jakość • "+channel.name).setSingleChoiceItems(available.labels(),chosen,(d,which)->{
+   d.dismiss();selectedHeight=which==0?0:available.variants.get(which-1).height;
+   getPreferences(0).edit().putInt("tv_quality_"+channel.url,selectedHeight).apply();updateQualityLabel();
+   cancelTuneWork();cancelTuneWatchdog();final int request=++tuneRequest,preferred=selectedHeight;
+   tuneTask=tuning.submit(()->{try{
+    final String url=available.selected(this,preferred);
+    runOnUiThread(()->{if(isFinishing()||request!=tuneRequest)return;
+    player.stop();
+    if(url.startsWith("file:"))player.playUri(channel.name,android.net.Uri.parse(url));else player.play(channel.name,url);
+    status.setText("Zmieniam jakość • "+(selectedHeight<=0?"Auto":selectedHeight+"p"));
+    tuneWatchdog=()->{if(request==tuneRequest)onChannelPlaybackError();};main.postDelayed(tuneWatchdog,20000);
+    });
+   }catch(Exception e){runOnUiThread(()->{if(!isFinishing()&&request==tuneRequest)status.setText("Nie udało się zmienić jakości. Wybierz kanał ponownie.");});}});
+  }).setNegativeButton("Anuluj",null).show();
  }
  private void replay(){
   String last=getPreferences(0).getString("tv_last","");
@@ -164,7 +227,7 @@ public final class PA6TvActivity extends PA6BaseActivity {
   for(Map.Entry<String,View> tab:categoryTabs.entrySet())styleTab(tab.getValue(),filter.equals(tab.getKey()));
   String query=search.getText().toString().trim().toLowerCase(Locale.ROOT);
   int found=0;
-  for(String country:new String[]{"Polska","Rosja","Międzynarodowe"}){
+  for(String country:new String[]{"Polska","Niemcy","Rosja","Międzynarodowe"}){
    if(!countryFilter.equals("Wszystkie")&&!countryFilter.equals(country))continue;
    boolean heading=false;
    for(Channel ch:CHANNELS){
@@ -197,9 +260,9 @@ public final class PA6TvActivity extends PA6BaseActivity {
  }
  private void channelRow(Channel channel){
   LinearLayout l=row();l.setPadding(dp(11),dp(10),dp(9),dp(10));
-  l.setBackground(box(WHITE,0xffe0e6ee,15));
+  l.setBackground(box(onAir.equals(channel.name)?0xffe6f1f8:0xfffffefd,onAir.equals(channel.name)?RED:0xffe0e6ee,18));
   TextView logo=text(channel.name.substring(0,Math.min(2,channel.name.length())).toUpperCase(Locale.ROOT),16,RED,true);
-  logo.setGravity(Gravity.CENTER);logo.setBackground(box(0xffeaf2f8,0xffdbe9f4,12));
+  logo.setGravity(Gravity.CENTER);logo.setBackground(box(channel.country.equals("Niemcy")?0xfffff1cf:channel.country.equals("Rosja")?0xffe8eefa:0xffeaf2f8,0xffdbe9f4,16));
   l.addView(logo,new LinearLayout.LayoutParams(dp(57),dp(57)));
   LinearLayout texts=col();texts.setPadding(dp(11),0,0,0);
   LinearLayout channelTitle=row();
@@ -223,9 +286,10 @@ public final class PA6TvActivity extends PA6BaseActivity {
   LinearLayout page=col();page.setBackgroundColor(WHITE);
   page.setPadding(dp(12),dp(10),dp(12),dp(5));setContentView(page);
   LinearLayout header=row();
-  TextView red=text("●",28,RED,true);header.addView(red);
-  TextView head=text("  ALFA TV",23,INK,true);header.addView(head,new LinearLayout.LayoutParams(0,-2,1));
-  TextView live=text("NA ŻYWO",12,RED,true);header.addView(live);
+  header.setBackground(PA6Premium.gradient(this,0xff182e4b,0xff31658f,22));header.setPadding(dp(14),dp(10),dp(14),dp(10));
+  TextView red=text("●",20,0xff73dac1,true);header.addView(red);
+  TextView head=text("  Alfa TV",23,Color.WHITE,true);header.addView(head,new LinearLayout.LayoutParams(0,-2,1));
+  TextView live=text("10 DE  /  10 RU",12,0xffd7e6f3,true);header.addView(live);
   page.addView(header);space(page,6);
   // Tablet landscape: fixed 16:9-ish player on the left and scrollable channel library on the right.
   // Portrait: the same screens stack, and the player is NEVER inside a ScrollView.
@@ -256,10 +320,11 @@ public final class PA6TvActivity extends PA6BaseActivity {
   LinearLayout tools=row();
   Button last=action("↻  Ostatnio",false);tools.addView(last,new LinearLayout.LayoutParams(0,dp(50),1));last.setOnClickListener(v->replay());
   Button stop=action("■  Stop",false);LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(0,dp(50),1);
-  sp.setMargins(dp(7),0,0,0);tools.addView(stop,sp);stop.setOnClickListener(v->player.stop());
-  playerPane.addView(tools);space(playerPane,10);
+  sp.setMargins(dp(7),0,0,0);tools.addView(stop,sp);stop.setOnClickListener(v->{cancelTuneWork();cancelTuneWatchdog();++tuneRequest;currentChannel=null;playlist=null;quality.setEnabled(false);player.stop();onAir="";status.setText("Zatrzymano. Wybierz kanał, aby oglądać.");showChannels();});
+  playerPane.addView(tools);space(playerPane,8);
+  quality=action("Jakość • wybierz kanał",false);quality.setEnabled(false);playerPane.addView(quality,new LinearLayout.LayoutParams(-1,dp(50)));quality.setOnClickListener(v->chooseQuality());space(playerPane,8);
   Button mini=action("▣  Małe okienko",false);playerPane.addView(mini);mini.setOnClickListener(v->fullscreen.mini(this,player));
-  Button hide=action("Zwiń / rozwiń katalog",false);page.addView(hide,1,new LinearLayout.LayoutParams(-1,dp(50)));hide.setOnClickListener(v->catalogPane.setVisibility(catalogPane.getVisibility()==View.VISIBLE?View.GONE:View.VISIBLE));
+
   ScrollView scroll=new ScrollView(this);catalogPane.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
   LinearLayout content=col();scroll.addView(content);
   TextView sect=text("Kanały telewizyjne",20,INK,true);
@@ -276,7 +341,7 @@ public final class PA6TvActivity extends PA6BaseActivity {
   });
   space(content,9);
   LinearLayout countries=row();
-  for(String country:new String[]{"Wszystkie","Polska","Rosja","Międzynarodowe"}){
+  for(String country:new String[]{"Wszystkie","Polska","Niemcy","Rosja","Międzynarodowe"}){
    LinearLayout tab=row();tab.setPadding(dp(10),dp(8),dp(10),dp(8));tab.setMinimumHeight(dp(48));
    tab.setBackground(box(0xffeef2f7,0xffdce3ee,12));
    if(!country.equals("Wszystkie"))tab.addView(new FlagView(country),new LinearLayout.LayoutParams(dp(24),dp(16)));
@@ -287,7 +352,7 @@ public final class PA6TvActivity extends PA6BaseActivity {
   }
   HorizontalScrollView countryScroll=new HorizontalScrollView(this);countryScroll.setHorizontalScrollBarEnabled(false);countryScroll.addView(countries);content.addView(countryScroll);space(content,9);
   LinearLayout tabs=row();
-  for(String label:new String[]{"Wszystkie","Wiadomości","Muzyka","Regiony","Rozrywka","★"}){
+  for(String label:new String[]{"Wszystkie","Wiadomości","Muzyka","Regiony","Rozrywka","Kultura i nauka","Dla dzieci","★"}){
    Button tab=action(label.equals("★")?"★":label,false);tab.setTextSize(13);categoryTabs.put(label,tab);
    LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-2,dp(48));p.setMargins(0,0,dp(6),0);tabs.addView(tab,p);
    tab.setOnClickListener(v->{filter=label;showChannels();status.setText("Kategoria: "+(label.equals("★")?"Ulubione":label));});
@@ -315,9 +380,9 @@ public final class PA6TvActivity extends PA6BaseActivity {
   disclaimer.setPadding(0,dp(10),0,dp(20));content.addView(disclaimer);
   page.setFocusableInTouchMode(true);page.requestFocus();
   if(getIntent().getBooleanExtra("verify_ru_catalog",false))
-   filter="Rosyjskojęzyczne";
+   countryFilter="Rosja";
   String testCountry=getIntent().getStringExtra("verify_tv_country");
-  if("Polska".equals(testCountry)||"Rosja".equals(testCountry)||"Międzynarodowe".equals(testCountry))countryFilter=testCountry;
+  if("Niemcy".equals(testCountry)||"Polska".equals(testCountry)||"Rosja".equals(testCountry)||"Międzynarodowe".equals(testCountry))countryFilter=testCountry;
   showChannels();
   if(getIntent().getBooleanExtra("verify_tv_catalog",false)){
    try{
@@ -341,9 +406,9 @@ public final class PA6TvActivity extends PA6BaseActivity {
  @Override protected void onStart(){super.onStart();if(getIntent().getBooleanExtra("play_last",false)){getIntent().removeExtra("play_last");replay();}String shortcut=getIntent().getStringExtra("station_url");if(shortcut!=null){getIntent().removeExtra("station_url");for(Channel c:CHANNELS)if(c.url.equals(shortcut)){play(c);break;}}}
  @Override protected void onStop(){
   // Never leave hidden video decoding when the user switches to other PA modules.
-  cancelTuneWatchdog();++tuneRequest;currentChannel=null;
+  cancelTuneWork();cancelTuneWatchdog();++tuneRequest;currentChannel=null;if(quality!=null)quality.setEnabled(false);
   if(player!=null)player.stop();
   super.onStop();
  }
- @Override protected void onDestroy(){fullscreen.close();cancelTuneWatchdog();if(player!=null)player.release();super.onDestroy();}
+ @Override protected void onDestroy(){fullscreen.close();cancelTuneWork();tuning.shutdownNow();cancelTuneWatchdog();if(player!=null)player.release();java.io.File[] files=getCacheDir().listFiles();if(files!=null)for(java.io.File f:files)if(f.getName().startsWith("pa6-tv-"))f.delete();super.onDestroy();}
 }
