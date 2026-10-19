@@ -229,7 +229,12 @@ public final class PA6TubeActivity extends Activity {
  private TextView downloadStatus;
  private final Runnable downloadMonitor=new Runnable(){public void run(){
   if(closed)return;
-  if(downloadStatus!=null){String value=getSharedPreferences("pa6_download",0).getString("status","");
+  if(downloadStatus!=null){
+   android.content.SharedPreferences prefs=getSharedPreferences("pa6_download",0);
+   long timestamp=prefs.getLong("status_time",0),now=System.currentTimeMillis();
+   // Don't cover a playing video with an error from a previous transfer.
+   boolean recent=timestamp>0&&now>=timestamp&&now-timestamp<18000;
+   String value=recent?prefs.getString("status",""):"";
    if(!value.contentEquals(downloadStatus.getText()))downloadStatus.setText(value);
    downloadStatus.setVisibility(value.isEmpty()?View.GONE:View.VISIBLE);
   }
@@ -739,7 +744,12 @@ public final class PA6TubeActivity extends Activity {
   }else if(!PA6AudioService.active&&!getIntent().hasExtra("offline_path")&&!getIntent().hasExtra("play_id")&&!getIntent().getBooleanExtra("verify_controls",false)){
     // No blocking network search on launch: show cached history instantly on 2 GB tablets.
     if(!getPreferences(0).getString("recent_ids","").isEmpty())savedFilms("recent_ids","Ostatnio oglądane");
-    else feedback("Alfa Tube gotowe. Wpisz tytuł lub wybierz kategorię, aby wyszukać filmy.");
+    else {
+     feedback("Alfa Tube gotowe. Wpisz tytuł lub wybierz kategorię, aby wyszukać filmy.");
+     TextView welcome=text("Odkrywaj filmy i muzykę\n\nWpisz tytuł, wykonawcę lub wybierz kategorię u góry. Możesz też otwierać pliki wideo zapisane na tablecie bez połączenia z internetem.",16,MUTED,false);
+     welcome.setBackground(panel(0xffffffff,0xffe3e9f2,16));pad(welcome,16,20);
+     results.addView(welcome,new LinearLayout.LayoutParams(-1,-2));
+    }
    }
   if(getIntent().getBooleanExtra("verify_controls",false)){useLocalVideo();player.setAudioOnly(false);player.playUri("Test sterowania",Uri.fromFile(new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),"pa6-av.mp4")));}
   String shortcut=getIntent().getStringExtra("play_id");if(shortcut!=null&&shortcut.matches("[A-Za-z0-9_-]{11}"))playVideo(shortcut);
