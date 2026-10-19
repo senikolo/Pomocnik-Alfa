@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 mkdir -p results
-pkg=com.senikolo.pa6.stable
+pkg=$(sed -n "s/.*package: name='\([^']*\)'.*/\1/p" pa6/badging.txt | head -1)
+test -n "$pkg"
+echo "Testing package $pkg on API 23"
 activity=$pkg/com.ispina.lokalnie.PA6TubeActivity
 trap 'adb logcat -d -v time > results/logcat.txt || true' EXIT
 adb root
