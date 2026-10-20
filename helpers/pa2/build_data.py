@@ -121,8 +121,10 @@ def build(source,out,today):
     if a is not None and b is not None:transfers.append([a,b,int(t.get('transfer_type') or 0),int(t.get('min_transfer_time') or 0)])
    attrs=list(rows(z,'attributions.txt'));sources.append({'id':provider,'url':url,'credit':credit,'license':license_url,'attributions':attrs,'downloaded':dt.datetime.fromtimestamp(path.stat().st_mtime,ZoneInfo('Europe/Warsaw')).isoformat(),'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),'covered':valid})
    summary[provider]={'routes':len(rr),'stops':len(si),'trips':runs,'stop_times':n,'covered':valid};print(provider,summary[provider],flush=True)
+ from municipal import add_municipal
+ add_municipal(out,days,stops,routes,sources,stop_routes,covered,summary)
  for i,s in enumerate(stops):s[5]=sorted(stop_routes[i])
- index={'schema':2,'transportRevision':10,'source':'all','generated':today.isoformat(),'days':[d.isoformat() for d in days],'covered':covered,'stops':stops,'routes':routes,'sources':sources,'transfers':transfers,'notice':'Rozkład planowy GTFS. Dane rzeczywiste wymagają zgodnego kursu i świeżego pomiaru.'}
+ index={'schema':2,'transportRevision':11,'source':'all','generated':today.isoformat(),'days':[d.isoformat() for d in days],'covered':covered,'stops':stops,'routes':routes,'sources':sources,'transfers':transfers,'notice':'Rozkład planowy GTFS. Dane rzeczywiste wymagają zgodnego kursu i świeżego pomiaru.'}
  dump(out/'index_all.json',index);dump(out/'summary.json',summary)
  files=[]
  for p in sorted(out.glob('*.json')):
