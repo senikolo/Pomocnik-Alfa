@@ -76,7 +76,7 @@ def add_municipal(out,days,stops,routes,sources,stop_routes,covered,summary):
   sid=len(stops)
   ids[item["id"]]=sid
   # Opublikowana nazwa z IL, lokalizacja z oryginalnego GTFS.
-  stops.append(["gminna:"+item["id"],item["name"],"",base[3],base[4],[],"gminna",""])
+  stops.append(["gminna:"+item["id"],"Ispina Most" if item["id"]=="ispina_ii" else base[1],"",base[3],base[4],[],"gminna",""])
   stop_routes.append(set([rid]))
  patterns=[]
  entries=[]
