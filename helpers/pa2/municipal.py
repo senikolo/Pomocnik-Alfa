@@ -29,6 +29,8 @@ ALIASES={
  "wawrzenczyce iv":"wawrzenczyce zabudowanie",
  "wawrzenczyce v":"wawrzenczyce granica",
  "zielona":"zielona dw965",
+ "igolomia i":"igolomia cmentarz",
+ "igolomia ii":"igolomia osp",
 }
 
 def key(value):
@@ -79,7 +81,7 @@ def add_municipal(out,days,stops,routes,sources,stop_routes,covered,summary):
   sid=len(stops)
   ids[item["id"]]=sid
   # Opublikowana nazwa z IL, lokalizacja z oryginalnego GTFS.
-  stops.append(["gminna:"+item["id"],"Ispina Most" if item["id"]=="ispina_ii" else base[1],"",base[3],base[4],[],"gminna",""])
+  stops.append(["gminna:"+item["id"],item["name"] if item["id"] in ("ispina_ii","ispina_iii","ispina_iv") else base[1],"",base[3],base[4],[],"gminna",""])
   stop_routes.append(set([rid]))
  patterns=[]
  entries=[]
