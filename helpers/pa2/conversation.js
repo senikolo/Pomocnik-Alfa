@@ -71,7 +71,7 @@ class Assistant{
   if(t.explicit||!s.when)s.when=t.when;
   if(model&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(model.when)&&!t.explicit)s.when=model.when;
   const oldFrom=s.from;
-  const lm=n.match(/\b(?:linia|linie|linii|autobus|autobusu|tramwaj|tramwaju|numer|nr)\s*(a\d{1,3}|n\d{1,3}|m[12]|s\d{1,2}|\d{1,3})\b/)||n.match(/\b(a\d{1,3}|n\d{1,3}|m[12]|s\d{1,2})\b/);
+  const lm=n.match(/\b(?:linia|linie|linii|autobus|autobusu|tramwaj|tramwaju|numer|nr)\s*(a\d{1,3}|n\d{1,3}|m[12]|s\d{1,2}|gminna|\d{1,3})\b/)||n.match(/\b(a\d{1,3}|n\d{1,3}|m[12]|s\d{1,2}|gminna)\b/);
   if(lm){const line=lm[1].toUpperCase();if(s.line&&s.line!==line)s.direction=null;s.line=line}
   else if(model&&model.line){const line=String(model.line).slice(0,16);if(s.line&&s.line!==line)s.direction=null;s.line=line}
   const op=/\bkm[lł]\b|kolej\w* malopolsk/.test(n)?'KMŁ':/\bkm\b|kolej\w* mazowieck/.test(n)?'KM':/\bskm\b/.test(n)?'SKM Warszawa':/\bmld\b/.test(n)?'MLD':null;if(op)s.operator=op;
@@ -85,7 +85,7 @@ class Assistant{
   for(const which of ['from','to'])if(loc[which]){const r=this.engine.resolve(loc[which]);if(['bochnia','warszawa','krakow'].includes(canonical(loc[which]))&&this.engine.match(loc[which],20).length>1){r.group=null;r.candidates=this.engine.match(loc[which],8)}s[which]=r.group;s[which+'Hint']=loc[which];s[which+'Candidates']=r.candidates;if(r.correction)s.correction='Sprawdź pisownię nazwy. Wybierz właściwy przystanek z podpowiedzi.'}
   if(s.from&&oldFrom&&s.from.key!==oldFrom.key){if(!direction)s.direction=null;if(!op&&s.operator&&![...s.from.routes].some(id=>(this.engine.idx.routes[id][6]||this.engine.idx.routes[id][4])===s.operator))s.operator=null;if(!lm&&s.line&&![...s.from.routes].some(id=>norm(this.engine.idx.routes[id][1])===norm(s.line)))s.line=null;}
   if(!loc.from&&!loc.to&&isAnswer){
-   if(s.asked==='line'){const line=n.match(/\b(a\d{1,3}|n\d{1,3}|m[12]|s\d{1,2}|\d{1,3})\b/);if(line)s.line=line[1].toUpperCase()}
+   if(s.asked==='line'){const line=n.match(/\b(a\d{1,3}|n\d{1,3}|m[12]|s\d{1,2}|gminna|\d{1,3})\b/);if(line)s.line=line[1].toUpperCase()}
    else if(s.asked==='direction')s.direction=q;
    else{const r=this.engine.resolve(q);if(r.group){s[s.asked]=r.group;s.asked=''}else{s[s.asked+'Candidates']=r.candidates;return this.pending(s.asked,r.candidates)}}
   }
