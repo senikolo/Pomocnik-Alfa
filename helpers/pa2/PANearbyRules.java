@@ -12,7 +12,9 @@ public final class PANearbyRules {
  public static boolean same(Stop a,Stop b){
   if(a.id.equals(b.id))return true;
   double dist=meters(a.lat,a.lon,b.lat,b.lon);
-  return a.name.equalsIgnoreCase(b.name)&&a.platform.equalsIgnoreCase(b.platform)&&dist<=(a.platform.isEmpty()?2:8);
+  String an=a.name.equalsIgnoreCase("Ispina")?"Ispina Most":a.name;
+  String bn=b.name.equalsIgnoreCase("Ispina")?"Ispina Most":b.name;
+  return an.equalsIgnoreCase(bn)&&a.platform.equalsIgnoreCase(b.platform)&&dist<=(a.platform.isEmpty()?2:8);
  }
  public static List<Stop> choose(List<Stop> input,double lat,double lon){
   if(!valid(lat,lon))return Collections.emptyList();

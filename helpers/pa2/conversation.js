@@ -41,7 +41,7 @@ class Assistant{
   return{type:'clarify',message:message+(s.when&&['from','to'].includes(which)?' Datę i godzinę mam: '+s.when.replace('T',' ')+'.':''),options:options.map(x=>typeof x==='string'?x:x.name)}
  }
  parse(q,model=null){
-  q=String(q||'').trim().slice(0,2000);const n=norm(q),s=this.state;
+  q=String(q||'').trim().slice(0,2000).replace(/gminnej|gminną/gi,'gminna');const n=norm(q),s=this.state;
   if(!q)return{type:'answer',message:'Napisz, w czym mogę pomóc.'};
   if(/\b(wyczysc rozmowe|od nowa|nowa trasa)\b/.test(n)){this.reset();return{type:'answer',message:'Zaczynamy nową trasę. Skąd i dokąd chcesz jechać?'}}
   if(/^(hej|czesc|dzien dobry|dobry wieczor|witaj)$/.test(n))return{type:'answer',message:'Cześć! Dokąd się wybierasz? Mogę też sprawdzić pogodę, wyszukać informacje albo zapisać notatkę.'};
@@ -78,7 +78,7 @@ class Assistant{
   const vehicle=/\bgdzie\b.*\b(autobus|bus|tramwaj|pociag)\b|\bgps\b/.test(n)||model?.intent==='vehicle';
   const departure=/\b(kiedy|nastepn\w*|odjazd\w*|najblizsz\w*)\b/.test(n)&&!loc.to||model?.intent==='departure';
   if(vehicle||departure){const previous=s.to;s.intent=vehicle?'vehicle':'departure';s.to=null;if(!s.direction&&previous)s.direction=previous.name.split(' ')[0];}
-  const direction=q.match(/(?:w kierunku|kierunek|w stronę|w strone)\s+(.+?)(?=\s+(?:jutro|dzisiaj|po \d|o \d)|[?!]|$)/i);if(direction)s.direction=direction[1].trim();
+  const direction=q.match(/(?:w kierunku|kierunek|w stronę|w strone)\s+(.+?)(?=\s+(?:jutro|dzisiaj|20\d{2}-|po \d|o \d)|[?!]|$)/i);if(direction)s.direction=direction[1].trim();
   // 'A do Nowodworów?' after checking a vehicle is a new route, not another LIVE lookup.
   // A route's old line and direction are not constraints on a newly selected destination.
   if(loc.to&&!vehicle&&!departure){if(s.intent!=='route'||(s.to&&canonical(s.to.name)!==canonical(loc.to))){if(!lm&&!model?.line)s.line=null;s.direction=null}s.intent='route'}

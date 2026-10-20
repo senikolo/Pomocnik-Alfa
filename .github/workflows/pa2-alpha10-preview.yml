@@ -4,6 +4,8 @@ on:
   push:
     branches: ['work/pa11-gminna-il-ultrasmart-20261020']
     paths: ['.github/workflows/pa2-alpha10-preview.yml', 'helpers/pa2/**']
+env:
+  PA_TRIAL_ID: com.senikolo.pomocniknowy.pa11gminnatest.r${{ github.run_id }}
 defaults:
   run:
     shell: bash
@@ -66,9 +68,10 @@ jobs:
           p=Path('decoded/AndroidManifest.xml')
           text=p.read_text()
           original='com.senikolo.pomocniknowy.pa2preview'
-          trial='com.senikolo.pomocniknowy.pa11gminnatest'
+          import os
+          trial=os.environ['PA_TRIAL_ID']
           assert f'package="{original}"' in text, 'Unexpected base app identity'
-          text=text.replace(original,trial).replace('Pomocnik Alfa ULTRASMART 10','Alfa Kolej TEST 10')
+          text=text.replace(original,trial).replace('Pomocnik Alfa ULTRASMART 10','Pomocnik Alfa 11 Gminna TEST')
           assert f'package="{trial}"' in text and original not in text
           p.write_text(text)
           PY
@@ -102,8 +105,8 @@ jobs:
           cp helpers/pa2/PAProbe.java.test testsrc/PAProbe.java
           cp helpers/pa2/PABoardsProbe.java.test testsrc/PABoardsProbe.java
           cp helpers/pa2/test-manifest.xml testsrc/AndroidManifest.xml
-          sed -i 's/com\.senikolo\.pomocniknowy\.pa2preview/com.senikolo.pomocniknowy.pa11gminnatest/g' testsrc/AndroidManifest.xml
-          grep -q 'android:targetPackage="com.senikolo.pomocniknowy.pa11gminnatest"' testsrc/AndroidManifest.xml
+          sed -i "s/com\.senikolo\.pomocniknowy\.pa2preview/$PA_TRIAL_ID/g" testsrc/AndroidManifest.xml
+          grep -q "android:targetPackage=\"$PA_TRIAL_ID\"" testsrc/AndroidManifest.xml
           javac -source 8 -target 8 -cp "classes:$ANDROID_HOME/platforms/android-35/android.jar" -d testclasses testsrc/*.java
           find testclasses -name '*.class' -print0 | xargs -0 "$ANDROID_HOME/build-tools/35.0.0/d8" --min-api 29 --lib "$ANDROID_HOME/platforms/android-35/android.jar" --output testdex
           "$ANDROID_HOME/build-tools/35.0.0/aapt" package -f -M testsrc/AndroidManifest.xml -I "$ANDROID_HOME/platforms/android-35/android.jar" -F output/test-raw.apk
@@ -119,7 +122,7 @@ jobs:
           cp -r native decoded/pa2-native-dex
           (cd decoded && zip -q -r ../output/PA2-Reconstructed-Project.zip . -x 'build/*' 'dist/*')
           (cd build/data && zip -q -r ../../output/pa2-data.zip .)
-      - name: Sign one-off rail test APK with an isolated temporary key
+      - name: Sign isolated municipal test APK
         run: |
           set -euo pipefail
           umask 077
@@ -130,7 +133,7 @@ jobs:
           "$BT/apksigner" sign --ks "$RUNNER_TEMP/pa11gminnatest.p12" --ks-type PKCS12 --ks-key-alias pa2-rail-trial --ks-pass env:TRIAL_PASS --key-pass env:TRIAL_PASS --out "$APK" output/PA2-aligned-unsigned.apk
           "$BT/apksigner" verify --verbose --print-certs "$APK" > output/signature.txt
           "$BT/aapt" dump badging "$APK" > output/badging.txt
-          grep -q "package: name='com.senikolo.pomocniknowy.pa11gminnatest'" output/badging.txt
+          grep -q "package: name='$PA_TRIAL_ID'" output/badging.txt
           ! grep -q "package: name='com.senikolo.pomocniknowy.pa2preview'" output/badging.txt
           "$BT/apksigner" sign --ks "$RUNNER_TEMP/pa11gminnatest.p12" --ks-type PKCS12 --ks-key-alias pa2-rail-trial --ks-pass env:TRIAL_PASS --key-pass env:TRIAL_PASS --out output/PA2-instrumentation.apk output/PA2-instrumentation-unsigned.apk
           "$BT/apksigner" verify output/PA2-instrumentation.apk
@@ -150,6 +153,10 @@ jobs:
             output/*tests.txt
           retention-days: 60
   android:
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [30, 33]
     needs: build
     env:
       GH_TOKEN: ${{ github.token }}
@@ -170,7 +177,7 @@ jobs:
           cat > pa2-smoke.sh <<'BASH'
           set -euo pipefail
           mkdir -p results
-          trap 'adb logcat -d -b crash > results/final-crash-buffer.txt; adb logcat -d -v time -s PA2Premium:W > results/premium-icon-logcat.txt || true; adb pull /data/user/0/com.senikolo.pomocniknowy.pa11gminnatest/files/pa2-tests results/last-state || true' EXIT
+          trap 'adb logcat -d -b crash > results/final-crash-buffer.txt; adb logcat -d -v time -s PA2Premium:W > results/premium-icon-logcat.txt || true; adb pull /data/user/0/$PA_TRIAL_ID/files/pa2-tests results/last-state || true' EXIT
           adb root
           adb wait-for-device
           adb install build/Pomocnik-Alfa-PA11-Linia-Gminna-UltraSmart-TEST.apk
@@ -180,19 +187,19 @@ jobs:
           grep -q 'TOTAL PASS system installation' results/instrumentation.txt
           adb logcat -d -b crash > results/crash-buffer.txt
           ! grep -q 'FATAL EXCEPTION' results/crash-buffer.txt
-          adb pull /data/user/0/com.senikolo.pomocniknowy.pa11gminnatest/files/pa2-tests results/screenshots
-          adb shell am force-stop com.senikolo.pomocniknowy.pa11gminnatest
-          adb shell pm revoke com.senikolo.pomocniknowy.pa11gminnatest android.permission.ACCESS_FINE_LOCATION
-          adb shell pm revoke com.senikolo.pomocniknowy.pa11gminnatest android.permission.ACCESS_COARSE_LOCATION
+          adb pull /data/user/0/$PA_TRIAL_ID/files/pa2-tests results/screenshots
+          adb shell am force-stop "$PA_TRIAL_ID"
+          adb shell pm revoke "$PA_TRIAL_ID" android.permission.ACCESS_FINE_LOCATION
+          adb shell pm revoke "$PA_TRIAL_ID" android.permission.ACCESS_COARSE_LOCATION
           adb shell settings put system font_scale 1.3
           adb shell wm size 720x1280
           adb shell wm density 320
           timeout 300s adb shell am instrument -w -e boardsOnly true com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/large-font.txt
           grep -q 'TOTAL PASS system large-font' results/large-font.txt
-          adb pull /data/user/0/com.senikolo.pomocniknowy.pa11gminnatest/files/pa2-tests results/large-font-screenshots
-          adb shell am force-stop com.senikolo.pomocniknowy.pa11gminnatest
-          adb shell pm revoke com.senikolo.pomocniknowy.pa11gminnatest android.permission.ACCESS_FINE_LOCATION
-          adb shell pm revoke com.senikolo.pomocniknowy.pa11gminnatest android.permission.ACCESS_COARSE_LOCATION
+          adb pull /data/user/0/$PA_TRIAL_ID/files/pa2-tests results/large-font-screenshots
+          adb shell am force-stop "$PA_TRIAL_ID"
+          adb shell pm revoke "$PA_TRIAL_ID" android.permission.ACCESS_FINE_LOCATION
+          adb shell pm revoke "$PA_TRIAL_ID" android.permission.ACCESS_COARSE_LOCATION
           timeout 120s adb shell am instrument -w -e verifyGpsRestart true com.senikolo.pa2test/com.senikolo.pa2test.PAProbe | tee results/gps-restart.txt
           grep -q 'TOTAL PASS GPS tab process restart' results/gps-restart.txt
           adb shell settings put system font_scale 1.0
@@ -200,7 +207,7 @@ jobs:
       - name: Verify isolated Android 11 installation, stop boards and preserved modules
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
+          api-level: ${{ matrix.api }}
           arch: x86_64
           target: google_apis
           profile: pixel_2
@@ -210,7 +217,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: PA2-Android-30-test-results
+          name: PA11-Android-${{ matrix.api }}-test-results
           path: results
           retention-days: 60
   release:
@@ -227,4 +234,4 @@ jobs:
         run: |
           set -euo pipefail
           tag="pa11-gminna-il-$(echo "$GITHUB_SHA" | cut -c1-8)"
-          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title 'Pomocnik Alfa 11 – linia gminna jak IL UltraSmart (osobny TEST)' --notes 'PA11: linia gminna Mikluszowice–Ispina–Kraków, dwa kierunki; przystanki Ispina Wiślisko, Dom Ludowy i Most. Ten APK testowy instaluje się osobno (pakiet pa11gminnatest), nie usuwa istniejącego Pomocnika Alfa ani jego danych. Godziny szacunkowe są oznaczone. Rozkłady rozkładowe, nie LIVE. Wydanie wyłącznie po testach Android API 30.' release/Pomocnik-Alfa-PA11-Linia-Gminna-UltraSmart-TEST.apk release/SHA256SUMS.txt release/signature.txt
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title 'Pomocnik Alfa 11 – linia gminna jak IL UltraSmart (osobny TEST)' --notes 'PA11: linia gminna Mikluszowice–Ispina–Kraków, dwa kierunki; przystanki Ispina Wiślisko, Dom Ludowy i Most. Ten APK testowy instaluje się osobno (pakiet pa11gminnatest), nie usuwa istniejącego Pomocnika Alfa ani jego danych. Godziny szacunkowe są oznaczone. Rozkłady rozkładowe, nie LIVE. Wydanie po testach instalacji i interfejsu na Androidzie 11 i 13 (API 30 i 33).' release/Pomocnik-Alfa-PA11-Linia-Gminna-UltraSmart-TEST.apk release/SHA256SUMS.txt release/signature.txt

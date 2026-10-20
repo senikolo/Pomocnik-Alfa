@@ -4,7 +4,7 @@ import org.json.*;import java.util.*;
 final class PANearbyData {
  interface Reader {JSONObject route(int id)throws Exception;}
  static final class Departure {
-  String line,headsign,source,trip,day,stopId,operator,train;int mode,pickup,seconds,headway;long planned,frequencyEnd;JSONObject live;
+  String line,headsign,source,trip,day,stopId,operator,train;int mode,pickup,seconds,headway;long planned,frequencyEnd;boolean estimated;JSONObject live;
   JSONObject query()throws Exception{return new JSONObject().put("source",source).put("trip",trip).put("serviceDay",day).put("stopId",stopId).put("plannedEpoch",planned).put("dep",seconds).put("line",line).put("headsign",headsign);}
   String key(){return source+"|"+trip+"|"+day+"|"+stopId;}
  }
@@ -31,7 +31,7 @@ final class PANearbyData {
      for(int di=0;di<days.length();di++){if((run.getInt(0)&(1<<di))==0)continue;String day=days.getString(di);long base=PANearbyRules.epoch(day,run.getInt(3));
       if(base>now+86400||base+172800<now-1800)continue;
       for(int pi=0;pi<pattern.length();pi++){JSONArray point=pattern.getJSONArray(pi);int sid=point.getInt(0),pickup=point.getInt(3);if(!members.contains(sid)||pickup==1)continue;long planned=base+point.getInt(1);int headway=run.optInt(6);long frequencyEnd=headway>0?PANearbyRules.epoch(day,run.optInt(7)+point.getInt(1)):0;if(headway>0&&frequencyEnd<now)continue;if(headway==0&&planned<now-1800||planned>now+86400)continue;
-       Departure d=new Departure();d.line=meta.optString(1);d.operator=meta.optString(6,meta.optString(4));d.train=run.optString(5);d.mode=meta.optInt(3);d.source=meta.optString(5);d.headsign=run.optString(1);d.trip=run.optString(4);d.day=day;d.stopId=rows.getJSONArray(sid).getString(0);d.seconds=run.getInt(3)+point.getInt(1);d.planned=planned;d.headway=headway;d.frequencyEnd=frequencyEnd;d.pickup=pickup;
+       Departure d=new Departure();d.line=meta.optString(1);d.operator=meta.optString(6,meta.optString(4));d.train=run.optString(5);d.mode=meta.optInt(3);d.source=meta.optString(5);d.headsign=run.optString(1);d.trip=run.optString(4);d.day=day;d.stopId=rows.getJSONArray(sid).getString(0);d.seconds=run.getInt(3)+point.getInt(1);d.planned=planned;d.headway=headway;d.frequencyEnd=frequencyEnd;d.pickup=pickup;d.estimated=point.optInt(5)==1;
        if(seen.add(d.key()))b.departures.add(d);
       }
      }
