@@ -20,7 +20,6 @@ import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.util.TypedValue;
 import android.widget.BaseAdapter;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -35,8 +34,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.text.Normalizer;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Set;
 
 /** Searchable Polish station catalogue and editable on-device station list. */
 public final class PARadioCatalogActivity extends Activity {
@@ -49,12 +49,15 @@ public final class PARadioCatalogActivity extends Activity {
     private final ArrayList<Station> catalog = new ArrayList<>();
     private final ArrayList<Station> mine = new ArrayList<>();
     private final ArrayList<Station> visible = new ArrayList<>();
+    private final Set<String> favorites = new HashSet<>();
     private final Handler handler = new Handler();
-    private boolean showingCatalog = false;
+    private int selectedTab = 0;
     private EditText search;
     private TextView mineTab;
+    private TextView favoritesTab;
     private TextView catalogTab;
     private TextView listHeading;
+    private TextView emptyState;
     private TextView playerStatus;
     private TextView trackInfo;
     private TextView programInfo;
@@ -74,6 +77,7 @@ public final class PARadioCatalogActivity extends Activity {
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         loadCatalog();
         loadMyStations();
+        loadFavorites();
         buildScreen();
         updateList();
         refreshPlayerInfo();
@@ -147,109 +151,142 @@ public final class PARadioCatalogActivity extends Activity {
         getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString("my_stations", rows.toString()).apply();
     }
 
+    private void loadFavorites() {
+        Set<String> saved = getSharedPreferences(PREFS, MODE_PRIVATE).getStringSet("favorites", null);
+        if (saved != null) favorites.addAll(saved);
+    }
+
+    private void saveFavorites() {
+        getSharedPreferences(PREFS, MODE_PRIVATE).edit()
+                .putStringSet("favorites", new HashSet<>(favorites)).apply();
+    }
+
     private void buildScreen() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(themeColor(android.R.attr.colorBackground, Color.WHITE));
-        root.setPadding(dp(12), dp(8), dp(12), dp(10));
+        root.setBackgroundColor(Color.rgb(246, 249, 247));
+        root.setPadding(dp(16), dp(8), dp(16), dp(12));
 
         LinearLayout header = new LinearLayout(this);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        Button back = button("‹");
-        back.setTextSize(26f);
-        header.addView(back, new LinearLayout.LayoutParams(dp(48), dp(46)));
+        TextView back = actionButton("‹", Color.WHITE, accentColor(), true);
+        back.setTextSize(28f);
+        header.addView(back, new LinearLayout.LayoutParams(dp(44), dp(44)));
         back.setOnClickListener(v -> finish());
-        TextView title = text("Radio", 22f, true);
-        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(0, -2, 1f);
-        titleLp.leftMargin = dp(8);
-        header.addView(title, titleLp);
+        LinearLayout titleBlock = new LinearLayout(this);
+        titleBlock.setOrientation(LinearLayout.VERTICAL);
+        titleBlock.setPadding(dp(12), 0, 0, 0);
+        titleBlock.addView(text("POMOCNIK ALFA", 10f, true, accentColor()));
+        titleBlock.addView(text("Radio", 25f, true));
+        header.addView(titleBlock, new LinearLayout.LayoutParams(0, -2, 1f));
         root.addView(header);
 
         LinearLayout playerCard = card();
-        playerStatus = text("Radio nie gra", 15f, true);
-        trackInfo = text("", 14f, false);
-        programInfo = text("", 14f, false);
-        infoSource = text("Metadane utworu i audycji zależą od tego, co udostępnia stacja.", 12f, false);
-        infoSource.setTextColor(themeColor(android.R.attr.textColorSecondary, Color.DKGRAY));
+        playerCard.setPadding(dp(17), dp(15), dp(17), dp(14));
+        playerCard.setBackground(playerBackground());
+        TextView nowPlaying = text("♫   TERAZ W RADIU", 11f, true, Color.WHITE);
+        playerCard.addView(nowPlaying);
+        addGap(playerCard, 7);
+        playerStatus = text("Wybierz stację, by rozpocząć", 18f, true, Color.WHITE);
+        trackInfo = text("", 14f, false, Color.WHITE);
+        programInfo = text("", 13f, true, Color.WHITE);
+        infoSource = text("Włącz ulubioną stację i ciesz się muzyką.", 11f, false, Color.WHITE);
+        infoSource.setAlpha(0.82f);
         playerCard.addView(playerStatus);
-        addGap(playerCard, 4);
+        addGap(playerCard, 3);
         playerCard.addView(trackInfo);
         playerCard.addView(programInfo);
         addGap(playerCard, 3);
         playerCard.addView(infoSource);
         LinearLayout controls = new LinearLayout(this);
         controls.setGravity(Gravity.CENTER_VERTICAL);
-        Button toggle = button("Pauza / Wznów");
-        Button stop = button("Stop");
-        LinearLayout.LayoutParams controlLp = new LinearLayout.LayoutParams(0, dp(42), 1f);
+        TextView toggle = actionButton("Ⅱ   Pauza / Wznów", blend(Color.WHITE, 0.17f), Color.WHITE, false);
+        TextView stop = actionButton("■   Zatrzymaj", blend(Color.WHITE, 0.17f), Color.WHITE, false);
+        LinearLayout.LayoutParams controlLp = new LinearLayout.LayoutParams(0, dp(40), 1f);
         controlLp.rightMargin = dp(6);
         controls.addView(toggle, controlLp);
-        controls.addView(stop, new LinearLayout.LayoutParams(0, dp(42), 1f));
+        controls.addView(stop, new LinearLayout.LayoutParams(0, dp(40), 1f));
         toggle.setOnClickListener(v -> sendCommand(ACTION_TOGGLE, null));
         stop.setOnClickListener(v -> sendCommand(ACTION_STOP, null));
         LinearLayout.LayoutParams controlsLp = new LinearLayout.LayoutParams(-1, -2);
-        controlsLp.topMargin = dp(8);
+        controlsLp.topMargin = dp(12);
         playerCard.addView(controls, controlsLp);
         LinearLayout.LayoutParams playerLp = new LinearLayout.LayoutParams(-1, -2);
-        playerLp.topMargin = dp(5);
-        playerLp.bottomMargin = dp(8);
+        playerLp.topMargin = dp(12);
+        playerLp.bottomMargin = dp(12);
         root.addView(playerCard, playerLp);
 
         LinearLayout tabs = new LinearLayout(this);
         tabs.setGravity(Gravity.CENTER);
-        mineTab = tab("Lista główna");
-        catalogTab = tab("Repozytorium 200");
-        LinearLayout.LayoutParams tabLp = new LinearLayout.LayoutParams(0, dp(44), 1f);
+        mineTab = tab("Moje stacje");
+        favoritesTab = tab("♡ Ulubione");
+        catalogTab = tab("Katalog 200");
+        LinearLayout.LayoutParams tabLp = new LinearLayout.LayoutParams(0, dp(42), 1f);
         tabLp.rightMargin = dp(5);
-        tabs.addView(mineTab, tabLp);
-        tabs.addView(catalogTab, new LinearLayout.LayoutParams(0, dp(44), 1f));
-        mineTab.setOnClickListener(v -> setTab(false));
-        catalogTab.setOnClickListener(v -> setTab(true));
+        tabs.addView(mineTab, new LinearLayout.LayoutParams(tabLp));
+        tabs.addView(favoritesTab, new LinearLayout.LayoutParams(tabLp));
+        tabs.addView(catalogTab, new LinearLayout.LayoutParams(0, dp(42), 1f));
+        mineTab.setOnClickListener(v -> setTab(0));
+        favoritesTab.setOnClickListener(v -> setTab(1));
+        catalogTab.setOnClickListener(v -> setTab(2));
         root.addView(tabs);
 
-        TextView note = text("Repozytorium 200 stacji według głosów Radio Browser, stan na 27.10.2026. Lista główna jest edytowalna, a zmiany zapisują się na tym urządzeniu.", 12f, false);
-        note.setTextColor(themeColor(android.R.attr.textColorSecondary, Color.DKGRAY));
-        LinearLayout.LayoutParams noteLp = new LinearLayout.LayoutParams(-1, -2);
-        noteLp.topMargin = dp(5);
-        noteLp.bottomMargin = dp(5);
-        root.addView(note, noteLp);
+        TextView helper = text("Wybierz stację na dobry nastrój", 12f, false);
+        helper.setTextColor(Color.rgb(104, 119, 111));
+        LinearLayout.LayoutParams helperLp = new LinearLayout.LayoutParams(-1, -2);
+        helperLp.topMargin = dp(12);
+        helperLp.bottomMargin = dp(6);
+        root.addView(helper, helperLp);
 
         LinearLayout searchRow = new LinearLayout(this);
         searchRow.setGravity(Gravity.CENTER_VERTICAL);
         search = new EditText(this);
         search.setSingleLine(true);
-        search.setTextSize(15f);
-        search.setHint("Wpisz nazwę stacji");
+        search.setTextSize(14f);
+        search.setHint("Szukaj stacji radiowej");
         search.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
         search.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
-        search.setPadding(dp(10), 0, dp(8), 0);
+        search.setPadding(dp(13), 0, dp(10), 0);
+        search.setBackground(rounded(Color.WHITE, Color.rgb(225, 234, 228), 15));
+        search.setTextColor(Color.rgb(39, 54, 46));
+        search.setHintTextColor(Color.rgb(132, 145, 137));
         LinearLayout.LayoutParams searchLp = new LinearLayout.LayoutParams(0, dp(48), 1f);
         searchLp.rightMargin = dp(6);
         searchRow.addView(search, searchLp);
-        Button add = button("Dodaj");
+        TextView add = actionButton("+ Dodaj", accentColor(), Color.WHITE, false);
         searchRow.addView(add, new LinearLayout.LayoutParams(dp(82), dp(46)));
         add.setOnClickListener(v -> addTypedStation());
         root.addView(searchRow);
 
-        Button custom = button("Dodaj własną stację z adresem strumienia");
-        LinearLayout.LayoutParams customLp = new LinearLayout.LayoutParams(-1, dp(42));
-        customLp.topMargin = dp(4);
-        customLp.bottomMargin = dp(5);
+        TextView custom = actionButton("＋   Dodaj własną stację", blend(accentColor(), 0.11f), accentColor(), false);
+        custom.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
+        custom.setPadding(dp(14), 0, dp(14), 0);
+        LinearLayout.LayoutParams customLp = new LinearLayout.LayoutParams(-1, dp(40));
+        customLp.topMargin = dp(5);
+        customLp.bottomMargin = dp(9);
         root.addView(custom, customLp);
         custom.setOnClickListener(v -> showCustomStationDialog(search.getText().toString().trim()));
 
-        listHeading = text("Moje stacje", 16f, true);
+        listHeading = text("Moje stacje", 17f, true);
         LinearLayout.LayoutParams headingLp = new LinearLayout.LayoutParams(-1, -2);
-        headingLp.topMargin = dp(2);
-        headingLp.bottomMargin = dp(4);
+        headingLp.bottomMargin = dp(7);
         root.addView(listHeading, headingLp);
 
         stationList = new ListView(this);
-        stationList.setDividerHeight(dp(5));
+        stationList.setDividerHeight(dp(8));
         stationList.setCacheColorHint(Color.TRANSPARENT);
         stationList.setBackgroundColor(Color.TRANSPARENT);
+        stationList.setSelector(android.R.color.transparent);
+        stationList.setClipToPadding(false);
+        stationList.setPadding(0, 0, 0, dp(4));
         adapter = new StationAdapter();
         stationList.setAdapter(adapter);
+        emptyState = text("", 14f, false);
+        emptyState.setGravity(Gravity.CENTER);
+        emptyState.setPadding(dp(20), dp(18), dp(20), dp(18));
+        emptyState.setBackground(rounded(Color.WHITE, Color.rgb(230, 237, 232), 18));
+        stationList.setEmptyView(emptyState);
+        root.addView(emptyState, new LinearLayout.LayoutParams(-1, -2));
         root.addView(stationList, new LinearLayout.LayoutParams(-1, 0, 1f));
 
         search.addTextChangedListener(new TextWatcher() {
@@ -265,35 +302,50 @@ public final class PARadioCatalogActivity extends Activity {
             return false;
         });
 
-        setTab(false);
+        setTab(0);
         setContentView(root);
     }
 
-    private void setTab(boolean catalogTabSelected) {
-        showingCatalog = catalogTabSelected;
-        mineTab.setTextColor(themeColor(android.R.attr.textColorPrimary, Color.BLACK));
-        catalogTab.setTextColor(themeColor(android.R.attr.textColorPrimary, Color.BLACK));
-        mineTab.setBackground(tabBackground(!showingCatalog));
-        catalogTab.setBackground(tabBackground(showingCatalog));
+    private void setTab(boolean catalogTabSelected) { setTab(catalogTabSelected ? 2 : 0); }
+
+    private void setTab(int tab) {
+        selectedTab = tab;
+        styleTab(mineTab, selectedTab == 0);
+        styleTab(favoritesTab, selectedTab == 1);
+        styleTab(catalogTab, selectedTab == 2);
         updateList();
     }
 
     private void updateList() {
         if (adapter == null) return;
         String query = search == null ? "" : normalize(search.getText().toString().trim());
-        ArrayList<Station> source = showingCatalog ? catalog : mine;
+        ArrayList<Station> source = selectedTab == 2 ? catalog : selectedTab == 1 ? favoriteStations() : mine;
         visible.clear();
         for (Station station : source) {
             if (query.isEmpty() || normalize(station.name).contains(query) || normalize(station.tags).contains(query)) visible.add(station);
         }
         if (listHeading != null) {
-            listHeading.setText(showingCatalog
-                    ? "Repozytorium · " + catalog.size() + " stacji polskich"
-                    : "Lista główna · " + mine.size());
+            if (selectedTab == 2) listHeading.setText("Odkryj 200 polskich stacji");
+            else if (selectedTab == 1) listHeading.setText("Twoje ulubione · " + favoriteStations().size());
+            else listHeading.setText("Twoje stacje · " + mine.size());
         }
-        if (mineTab != null) mineTab.setText("Lista główna (" + mine.size() + ")");
-        if (catalogTab != null) catalogTab.setText("Repozytorium (" + catalog.size() + ")");
+        if (mineTab != null) mineTab.setText("Moje stacje");
+        if (favoritesTab != null) favoritesTab.setText("♡ Ulubione");
+        if (catalogTab != null) catalogTab.setText("Katalog 200");
+        if (emptyState != null) {
+            if (selectedTab == 1) emptyState.setText("Tu pojawią się Twoje ulubione stacje.\nDotknij serduszka przy wybranej stacji.");
+            else if (selectedTab == 0) emptyState.setText("Twoja lista jest pusta.\nDodaj stacje z katalogu albo wyszukaj nazwę.");
+            else emptyState.setText("Nie znaleźliśmy takiej stacji.\nSpróbuj wpisać inną nazwę.");
+        }
         adapter.notifyDataSetChanged();
+    }
+
+    private ArrayList<Station> favoriteStations() {
+        ArrayList<Station> result = new ArrayList<>();
+        Set<String> added = new HashSet<>();
+        for (Station station : catalog) if (favorites.contains(station.id) && added.add(station.id)) result.add(station);
+        for (Station station : mine) if (favorites.contains(station.id) && added.add(station.id)) result.add(station);
+        return result;
     }
 
     private void addTypedStation() {
@@ -339,8 +391,24 @@ public final class PARadioCatalogActivity extends Activity {
                 break;
             }
         }
+        if (station.custom) favorites.remove(station.id);
         saveMyStations();
+        saveFavorites();
         updateList();
+    }
+
+    private void toggleFavorite(Station station) {
+        boolean added;
+        if (favorites.contains(station.id)) {
+            favorites.remove(station.id);
+            added = false;
+        } else {
+            favorites.add(station.id);
+            added = true;
+        }
+        saveFavorites();
+        updateList();
+        Toast.makeText(this, added ? "Dodano do ulubionych ♥" : "Usunięto z ulubionych", Toast.LENGTH_SHORT).show();
     }
 
     private void showCustomStationDialog(String suggestedName) {
@@ -423,7 +491,7 @@ public final class PARadioCatalogActivity extends Activity {
         boolean infoPlus = state.getBoolean("info_plus", false);
 
         if (!error.trim().isEmpty()) playerStatus.setText("Problem z transmisją: " + error.trim());
-        else if (name.trim().isEmpty()) playerStatus.setText("Radio nie gra");
+        else if (name.trim().isEmpty()) playerStatus.setText("Wybierz stację, by rozpocząć");
         else playerStatus.setText((playing ? "Teraz gra: " : "Wybrano: ") + name);
 
         String trackText = "";
@@ -470,40 +538,63 @@ public final class PARadioCatalogActivity extends Activity {
     }
 
     private GradientDrawable cardBackground() {
-        GradientDrawable drawable = new GradientDrawable();
-        drawable.setColor(themeColor(android.R.attr.colorBackground, Color.WHITE));
-        drawable.setCornerRadius(dp(12));
-        drawable.setStroke(dp(1), blend(themeColor(android.R.attr.textColorPrimary, Color.BLACK), 0.18f));
+        return rounded(Color.WHITE, Color.rgb(230, 237, 232), 18);
+    }
+
+    private GradientDrawable playerBackground() {
+        int brand = accentColor();
+        GradientDrawable drawable = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{darken(brand, 0.04f), darken(brand, 0.34f)});
+        drawable.setCornerRadius(dp(22));
         return drawable;
     }
 
-    private GradientDrawable tabBackground(boolean selected) {
+    private GradientDrawable rounded(int color, int stroke, int radiusDp) {
         GradientDrawable drawable = new GradientDrawable();
-        drawable.setCornerRadius(dp(12));
-        drawable.setColor(selected ? blend(themeColor(android.R.attr.colorAccent, Color.rgb(24, 105, 90)), 0.18f) : Color.TRANSPARENT);
-        drawable.setStroke(dp(1), selected ? themeColor(android.R.attr.colorAccent, Color.rgb(24, 105, 90)) : blend(themeColor(android.R.attr.textColorPrimary, Color.BLACK), 0.2f));
+        drawable.setColor(color);
+        drawable.setCornerRadius(dp(radiusDp));
+        if (stroke != 0) drawable.setStroke(dp(1), stroke);
         return drawable;
     }
 
-    private Button tab(String label) {
-        Button view = button(label);
-        view.setAllCaps(false);
+    private TextView tab(String label) {
+        TextView view = actionButton(label, Color.WHITE, Color.rgb(83, 99, 90), true);
+        view.setTextSize(11.5f);
+        view.setMaxLines(1);
+        view.setPadding(dp(2), 0, dp(2), 0);
         return view;
     }
 
-    private Button button(String label) {
-        Button view = new Button(this);
+    private TextView actionButton(String label, int background, int foreground, boolean outlined) {
+        TextView view = new TextView(this);
         view.setText(label);
-        view.setAllCaps(false);
-        view.setTextSize(13f);
+        view.setGravity(Gravity.CENTER);
+        view.setTextColor(foreground);
+        view.setTextSize(12f);
+        view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        view.setBackground(rounded(background, outlined ? Color.rgb(227, 234, 229) : 0, 14));
+        view.setClickable(true);
+        view.setFocusable(true);
         return view;
+    }
+
+    private void styleTab(TextView view, boolean selected) {
+        if (view == null) return;
+        view.setTextColor(selected ? Color.WHITE : Color.rgb(83, 99, 90));
+        view.setBackground(rounded(selected ? accentColor() : Color.WHITE,
+                selected ? 0 : Color.rgb(230, 237, 232), 14));
+        view.setElevation(selected ? dp(2) : 0);
     }
 
     private TextView text(String value, float size, boolean bold) {
+        return text(value, size, bold, themeColor(android.R.attr.textColorPrimary, Color.rgb(40, 53, 45)));
+    }
+
+    private TextView text(String value, float size, boolean bold, int color) {
         TextView view = new TextView(this);
         view.setText(value);
         view.setTextSize(size);
-        view.setTextColor(themeColor(android.R.attr.textColorPrimary, Color.BLACK));
+        view.setTextColor(color);
         if (bold) view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         return view;
     }
@@ -527,6 +618,15 @@ public final class PARadioCatalogActivity extends Activity {
         return Color.argb((int) (255 * alpha), Color.red(color), Color.green(color), Color.blue(color));
     }
 
+    private int accentColor() {
+        return themeColor(android.R.attr.colorAccent, Color.rgb(24, 125, 93));
+    }
+
+    private int darken(int color, float amount) {
+        float factor = 1f - amount;
+        return Color.rgb((int) (Color.red(color) * factor), (int) (Color.green(color) * factor), (int) (Color.blue(color) * factor));
+    }
+
     private int dp(float value) {
         return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
     }
@@ -541,47 +641,88 @@ public final class PARadioCatalogActivity extends Activity {
             LinearLayout row;
             TextView title;
             TextView details;
-            Button play;
-            Button action;
+            TextView play;
+            TextView action;
+            TextView favorite;
+            TextView badge;
             if (convertView == null) {
                 row = new LinearLayout(PARadioCatalogActivity.this);
                 row.setOrientation(LinearLayout.VERTICAL);
-                row.setPadding(dp(11), dp(8), dp(11), dp(8));
+                row.setPadding(dp(13), dp(12), dp(13), dp(11));
                 row.setBackground(cardBackground());
+
+                LinearLayout top = new LinearLayout(PARadioCatalogActivity.this);
+                top.setGravity(Gravity.CENTER_VERTICAL);
+                badge = text("", 18f, true, accentColor());
+                badge.setGravity(Gravity.CENTER);
+                badge.setBackground(rounded(blend(accentColor(), 0.12f), 0, 14));
+                top.addView(badge, new LinearLayout.LayoutParams(dp(42), dp(42)));
+
+                LinearLayout labels = new LinearLayout(PARadioCatalogActivity.this);
+                labels.setOrientation(LinearLayout.VERTICAL);
+                labels.setPadding(dp(10), 0, dp(4), 0);
                 title = text("", 15f, true);
-                row.addView(title, new LinearLayout.LayoutParams(-1, -2));
+                title.setMaxLines(1);
+                title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                details = text("", 11.5f, false, Color.rgb(119, 132, 124));
+                details.setPadding(0, dp(3), 0, 0);
+                labels.addView(title, new LinearLayout.LayoutParams(-1, -2));
+                labels.addView(details, new LinearLayout.LayoutParams(-1, -2));
+                top.addView(labels, new LinearLayout.LayoutParams(0, -2, 1f));
+
+                favorite = actionButton("♡", Color.WHITE, Color.rgb(128, 143, 132), true);
+                favorite.setTextSize(21f);
+                top.addView(favorite, new LinearLayout.LayoutParams(dp(42), dp(40)));
+                row.addView(top);
+
                 LinearLayout buttons = new LinearLayout(PARadioCatalogActivity.this);
                 buttons.setGravity(Gravity.CENTER_VERTICAL);
-                details = text("", 11f, false);
-                details.setTextColor(themeColor(android.R.attr.textColorSecondary, Color.DKGRAY));
-                buttons.addView(details, new LinearLayout.LayoutParams(0, dp(42), 1f));
-                play = button("Odtwórz");
-                buttons.addView(play, new LinearLayout.LayoutParams(dp(92), dp(42)));
-                action = button("");
-                LinearLayout.LayoutParams actionLp = new LinearLayout.LayoutParams(dp(92), dp(38));
-                actionLp.gravity = Gravity.RIGHT;
-                actionLp.topMargin = dp(3);
-                row.addView(buttons);
-                row.addView(action, actionLp);
-                row.setTag(new View[]{title, details, play, action});
+                play = actionButton("▶   Słuchaj", accentColor(), Color.WHITE, false);
+                LinearLayout.LayoutParams playLp = new LinearLayout.LayoutParams(0, dp(38), 1f);
+                playLp.rightMargin = dp(7);
+                buttons.addView(play, playLp);
+                action = actionButton("", blend(accentColor(), 0.11f), accentColor(), false);
+                buttons.addView(action, new LinearLayout.LayoutParams(dp(103), dp(38)));
+                LinearLayout.LayoutParams buttonsLp = new LinearLayout.LayoutParams(-1, -2);
+                buttonsLp.topMargin = dp(10);
+                row.addView(buttons, buttonsLp);
+                row.setTag(new View[]{title, details, play, action, favorite, badge});
             } else {
                 row = (LinearLayout) convertView;
                 View[] parts = (View[]) row.getTag();
                 title = (TextView) parts[0];
                 details = (TextView) parts[1];
-                play = (Button) parts[2];
-                action = (Button) parts[3];
+                play = (TextView) parts[2];
+                action = (TextView) parts[3];
+                favorite = (TextView) parts[4];
+                badge = (TextView) parts[5];
             }
             title.setText(station.name);
             details.setText(station.details());
+            badge.setText(station.name.isEmpty() ? "♫" : station.name.substring(0, 1).toUpperCase(Locale.ROOT));
+            boolean isFavorite = favorites.contains(station.id);
+            favorite.setText(isFavorite ? "♥" : "♡");
+            favorite.setTextColor(isFavorite ? Color.rgb(222, 86, 105) : Color.rgb(128, 143, 132));
+            favorite.setContentDescription(isFavorite ? "Usuń z ulubionych" : "Dodaj do ulubionych");
+            favorite.setOnClickListener(v -> toggleFavorite(station));
             play.setOnClickListener(v -> playStation(station));
-            if (showingCatalog) {
-                boolean added = containsId(station.id);
-                action.setText(added ? "Dodana" : "+ Dodaj");
+            boolean added = containsId(station.id);
+            if (selectedTab == 2) {
+                action.setText(added ? "✓ Na liście" : "+ Do listy");
+                action.setTextColor(added ? Color.rgb(114, 128, 118) : accentColor());
                 action.setEnabled(!added);
                 action.setOnClickListener(v -> addToMine(station));
+            } else if (selectedTab == 1) {
+                action.setText(added ? "Usuń z listy" : "+ Do listy");
+                action.setTextColor(accentColor());
+                action.setEnabled(true);
+                action.setOnClickListener(v -> {
+                    if (containsId(station.id)) removeFromMine(station);
+                    else addToMine(station);
+                });
             } else {
                 action.setText("Usuń");
+                action.setTextColor(Color.rgb(166, 84, 82));
                 action.setEnabled(true);
                 action.setOnClickListener(v -> removeFromMine(station));
             }
@@ -622,21 +763,7 @@ public final class PARadioCatalogActivity extends Activity {
         }
 
         String details() {
-            ArrayList<String> parts = new ArrayList<>();
-            if (!codec.isEmpty()) parts.add(codec);
-            if (bitrate > 0) parts.add(bitrate + " kb/s");
-            if (votes > 0) parts.add(votes + " głosów");
-            if (custom) parts.add("własna stacja");
-            return parts.isEmpty() ? "Radio internetowe" : join(parts, " · ");
-        }
-
-        private static String join(ArrayList<String> values, String delimiter) {
-            StringBuilder out = new StringBuilder();
-            for (String value : values) {
-                if (out.length() > 0) out.append(delimiter);
-                out.append(value);
-            }
-            return out.toString();
+            return custom ? "Twoja stacja internetowa" : "Polska stacja radiowa";
         }
     }
 }
