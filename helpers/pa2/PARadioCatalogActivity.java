@@ -236,7 +236,7 @@ public final class PARadioCatalogActivity extends Activity {
         tabs.setGravity(Gravity.CENTER);
         mineTab = tab("Moje stacje");
         favoritesTab = tab("♡ Ulubione");
-        catalogTab = tab("Katalog 200");
+        catalogTab = tab("Katalog");
         LinearLayout.LayoutParams tabLp = new LinearLayout.LayoutParams(0, dp(42), 1f);
         tabLp.rightMargin = dp(5);
         tabs.addView(mineTab, new LinearLayout.LayoutParams(tabLp));
@@ -341,13 +341,13 @@ public final class PARadioCatalogActivity extends Activity {
             if (query.isEmpty() || normalize(station.name).contains(query) || normalize(station.tags).contains(query)) visible.add(station);
         }
         if (listHeading != null) {
-            if (selectedTab == 2) listHeading.setText("Odkryj 200 polskich stacji");
+            if (selectedTab == 2) listHeading.setText("Polskie i zagraniczne stacje");
             else if (selectedTab == 1) listHeading.setText("Twoje ulubione · " + favoriteStations().size());
             else listHeading.setText("Twoje stacje · " + mine.size());
         }
         if (mineTab != null) mineTab.setText("Moje stacje");
         if (favoritesTab != null) favoritesTab.setText("♡ Ulubione");
-        if (catalogTab != null) catalogTab.setText("Katalog 200");
+        if (catalogTab != null) catalogTab.setText("Katalog " + catalog.size());
         if (emptyState != null) {
             if (selectedTab == 1) emptyState.setText("Tu pojawią się Twoje ulubione stacje.\nDotknij serduszka przy wybranej stacji.");
             else if (selectedTab == 0) emptyState.setText("Twoja lista jest pusta.\nDodaj stacje z katalogu albo wyszukaj nazwę.");
@@ -458,7 +458,7 @@ public final class PARadioCatalogActivity extends Activity {
                 urlField.setError("Wpisz adres strumienia HTTPS");
                 return;
             }
-            Station station = new Station("custom:" + System.nanoTime(), name, url, "", 0, "", 0, "", "", true);
+            Station station = new Station("custom:" + System.nanoTime(), name, url, "", 0, "", 0, "", "", "", true);
             if (containsName(name)) {
                 urlField.setError("Ta nazwa jest już na liście");
                 return;
@@ -829,11 +829,11 @@ public final class PARadioCatalogActivity extends Activity {
     }
 
     private static final class Station {
-        final String id, name, url, homepage, codec, tags, favicon;
+        final String id, name, url, homepage, codec, tags, countryCode, favicon;
         final int votes, bitrate;
         final boolean custom;
 
-        Station(String id, String name, String url, String homepage, int votes, String codec, int bitrate, String tags, String favicon, boolean custom) {
+        Station(String id, String name, String url, String homepage, int votes, String codec, int bitrate, String tags, String countryCode, String favicon, boolean custom) {
             this.id = id == null ? "" : id;
             this.name = name == null ? "" : name;
             this.url = url == null ? "" : url;
@@ -842,27 +842,33 @@ public final class PARadioCatalogActivity extends Activity {
             this.codec = codec == null ? "" : codec;
             this.bitrate = bitrate;
             this.tags = tags == null ? "" : tags;
+            this.countryCode = countryCode == null ? "" : countryCode;
             this.favicon = favicon == null ? "" : favicon;
             this.custom = custom;
         }
 
         static Station fromJson(JSONObject row) {
-            return new Station(row.optString("id", row.optString("stationuuid", "")), row.optString("name", ""), row.optString("url", ""), row.optString("homepage", ""), row.optInt("votes"), row.optString("codec", ""), row.optInt("bitrate"), row.optString("tags", ""), row.optString("favicon", ""), row.optBoolean("custom", false));
+            return new Station(row.optString("id", row.optString("stationuuid", "")), row.optString("name", ""), row.optString("url", ""), row.optString("homepage", ""), row.optInt("votes"), row.optString("codec", ""), row.optInt("bitrate"), row.optString("tags", ""), row.optString("countryCode", row.optString("countrycode", "")), row.optString("favicon", ""), row.optBoolean("custom", false));
         }
 
-        Station copy() { return new Station(id, name, url, homepage, votes, codec, bitrate, tags, favicon, custom); }
+        Station copy() { return new Station(id, name, url, homepage, votes, codec, bitrate, tags, countryCode, favicon, custom); }
 
         JSONObject toJson() {
             JSONObject row = new JSONObject();
             try {
                 row.put("id", id); row.put("name", name); row.put("url", url); row.put("homepage", homepage);
-                row.put("votes", votes); row.put("codec", codec); row.put("bitrate", bitrate); row.put("tags", tags); row.put("favicon", favicon); row.put("custom", custom);
+                row.put("votes", votes); row.put("codec", codec); row.put("bitrate", bitrate); row.put("tags", tags); row.put("countryCode", countryCode); row.put("favicon", favicon); row.put("custom", custom);
             } catch (Exception ignored) { }
             return row;
         }
 
         String details() {
-            return custom ? "Twoja stacja internetowa" : "Polska stacja radiowa";
+            if (custom) return "Twoja stacja internetowa";
+            String country = "PL".equalsIgnoreCase(countryCode) ? "🇵🇱 Polska"
+                    : "DE".equalsIgnoreCase(countryCode) ? "🇩🇪 Niemcy"
+                    : "RU".equalsIgnoreCase(countryCode) ? "🇷🇺 Rosja"
+                    : "";
+            return country.isEmpty() ? "Radio internetowe" : country + " · Radio internetowe";
         }
     }
 }
