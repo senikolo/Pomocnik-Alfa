@@ -53,7 +53,7 @@ m=re.sub(r'android:icon="[^"]+"','android:icon="@mipmap/ic_launcher"',m,count=1)
 m=re.sub(r'android:roundIcon="[^"]+"','android:roundIcon="@mipmap/ic_launcher_round"',m,count=1)
 m=re.sub(r'android:label="(?:Pomocnik Alfa ULTRASMART 10|Pomocnik Alfa 1\\.7\\.66|Pomocnik PA Regiony TEST)"','android:label="Pomocnik Alfa ULTRASMART 10"',m)
 p.write_text(m)
-p=root/'apktool.yml';s=p.read_text();s=re.sub(r'versionCode:.*',"versionCode: '20010'",s,count=1);s=re.sub(r'versionName:.*','versionName: 2.0.0-alpha.10-ultrasmart',s,count=1);p.write_text(s)
+p=root/'apktool.yml';s=p.read_text();s=re.sub(r'versionCode:.*',"versionCode: '20014'",s,count=1);s=re.sub(r'versionName:.*','versionName: 2.0.0-alpha.14-economy-search',s,count=1);p.write_text(s)
 # Install professional vector drawables into the ORIGINAL Android application's resources.
 # No network is required at build time; sources are vendored with ISC attribution.
 import subprocess
