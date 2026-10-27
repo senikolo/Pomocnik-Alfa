@@ -7,7 +7,7 @@ assets=root/'assets'/'pa_regions'
 if assets.exists():shutil.rmtree(assets)
 assets.mkdir(parents=True)
 for p in data.glob('*.json'):shutil.copyfile(p,assets/p.name)
-for name in ('app.html','app.js','transit-core.js','conversation.js','osm-map.js','live-state.js'):shutil.copyfile(here/name,assets/name)
+for name in ('app.html','app.js','transit-core.js','conversation.js','osm-map.js','live-state.js','radio_catalog.json'):shutil.copyfile(here/name,assets/name)
 for folder in root.glob('smali*'):
  for p in (folder/'com/ispina/lokalnie').glob('PARegions*.smali'):p.unlink()
  if not list(folder.rglob('*.smali')):shutil.rmtree(folder)

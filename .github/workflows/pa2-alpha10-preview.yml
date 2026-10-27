@@ -63,6 +63,7 @@ jobs:
           java -Xmx4g -jar tools/apktool_2.12.1.jar d -f -o decoded baseline.apk
           python3 helpers/pa2/patch_antyradio.py decoded
           python3 helpers/pa2/patch_project.py decoded build/data
+          python3 helpers/pa2/patch_radio_catalog.py decoded
           # Install beside alpha.9: a different signer MUST also use a different app ID.
           python3 - <<'PY'
           from pathlib import Path
@@ -235,4 +236,4 @@ jobs:
         run: |
           set -euo pipefail
           tag="pa11-gminna-il-$(echo "$GITHUB_SHA" | cut -c1-8)"
-          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title 'Pomocnik Alfa 11 – linia gminna jak IL UltraSmart (osobny TEST)' --notes 'PA11: linia gminna Mikluszowice–Ispina–Kraków, dwa kierunki; przystanki Ispina Wiślisko, Dom Ludowy i Most. Ten APK testowy instaluje się osobno (pakiet pa11gminnatest), nie usuwa istniejącego Pomocnika Alfa ani jego danych. Godziny szacunkowe są oznaczone. Rozkłady rozkładowe, nie LIVE. Wydanie po testach instalacji i interfejsu na Androidzie 11 i 13 (API 30 i 33).' release/Pomocnik-Alfa-PA11-Linia-Gminna-UltraSmart-TEST.apk release/SHA256SUMS.txt release/signature.txt
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --prerelease --title 'Pomocnik Alfa 11 – linia gminna jak IL UltraSmart (osobny TEST)' --notes 'PA11: linia gminna Mikluszowice–Ispina–Kraków, dwa kierunki; przystanki Ispina Wiślisko, Dom Ludowy i Most. Radio: repozytorium 200 polskich stacji, edytowalna lista główna i informacje o utworze/audycji, gdy nadaje je stacja. Ten APK testowy instaluje się osobno (pakiet pa11gminnatest), nie usuwa istniejącego Pomocnika Alfa ani jego danych. Godziny szacunkowe są oznaczone. Rozkłady rozkładowe, nie LIVE. Wydanie po testach instalacji i interfejsu na Androidzie 11 i 13 (API 30 i 33).' release/Pomocnik-Alfa-PA11-Linia-Gminna-UltraSmart-TEST.apk release/SHA256SUMS.txt release/signature.txt
