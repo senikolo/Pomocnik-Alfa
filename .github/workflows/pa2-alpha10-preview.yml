@@ -61,6 +61,7 @@ jobs:
       - name: Rebuild existing project and new native module
         run: |
           java -Xmx4g -jar tools/apktool_2.12.1.jar d -f -o decoded baseline.apk
+          python3 helpers/pa2/patch_antyradio.py decoded
           python3 helpers/pa2/patch_project.py decoded build/data
           # Install beside alpha.9: a different signer MUST also use a different app ID.
           python3 - <<'PY'
