@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -21,22 +23,30 @@ import android.view.inputmethod.EditorInfo;
 import android.util.TypedValue;
 import android.widget.BaseAdapter;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.util.LruCache;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /** Searchable Polish station catalogue and editable on-device station list. */
 public final class PARadioCatalogActivity extends Activity {
@@ -50,7 +60,12 @@ public final class PARadioCatalogActivity extends Activity {
     private final ArrayList<Station> mine = new ArrayList<>();
     private final ArrayList<Station> visible = new ArrayList<>();
     private final Set<String> favorites = new HashSet<>();
+    private final Set<String> logoRequests = new HashSet<>();
     private final Handler handler = new Handler();
+    private final ExecutorService logoExecutor = Executors.newFixedThreadPool(3);
+    private final LruCache<String, Bitmap> logoCache = new LruCache<String, Bitmap>(4 * 1024 * 1024) {
+        @Override protected int sizeOf(String key, Bitmap value) { return value.getByteCount(); }
+    };
     private int selectedTab = 0;
     private EditText search;
     private TextView mineTab;
@@ -96,6 +111,7 @@ public final class PARadioCatalogActivity extends Activity {
 
     @Override protected void onDestroy() {
         handler.removeCallbacks(metadataTicker);
+        logoExecutor.shutdownNow();
         super.onDestroy();
     }
 
@@ -442,7 +458,7 @@ public final class PARadioCatalogActivity extends Activity {
                 urlField.setError("Wpisz adres strumienia HTTPS");
                 return;
             }
-            Station station = new Station("custom:" + System.nanoTime(), name, url, "", 0, "", 0, "", true);
+            Station station = new Station("custom:" + System.nanoTime(), name, url, "", 0, "", 0, "", "", true);
             if (containsName(name)) {
                 urlField.setError("Ta nazwa jest już na liście");
                 return;
@@ -509,6 +525,75 @@ public final class PARadioCatalogActivity extends Activity {
             infoSource.setText(detail);
         } else {
             infoSource.setText("Ta stacja nie udostępnia teraz informacji o utworze ani audycji.");
+        }
+    }
+
+    private void loadStationLogo(Station station, ImageView image, TextView fallback) {
+        image.setTag(station.id);
+        image.setImageDrawable(null);
+        image.setVisibility(View.GONE);
+        fallback.setVisibility(View.VISIBLE);
+        String source = station.favicon.trim();
+        if (source.startsWith("http://")) source = "https://" + source.substring(7);
+        if (!source.startsWith("https://")) return;
+
+        Bitmap cached = logoCache.get(source);
+        if (cached != null) {
+            image.setImageBitmap(cached);
+            image.setVisibility(View.VISIBLE);
+            fallback.setVisibility(View.GONE);
+            return;
+        }
+        if (!logoRequests.add(source)) return;
+        final String requestedUrl = source;
+        logoExecutor.execute(() -> {
+            Bitmap bitmap = fetchStationLogo(requestedUrl);
+            if (bitmap == null) return;
+            logoCache.put(requestedUrl, bitmap);
+            handler.post(() -> {
+                if (isFinishing() || isDestroyed() || !station.id.equals(image.getTag())) return;
+                image.setImageBitmap(bitmap);
+                image.setVisibility(View.VISIBLE);
+                fallback.setVisibility(View.GONE);
+            });
+        });
+    }
+
+    private Bitmap fetchStationLogo(String source) {
+        HttpURLConnection connection = null;
+        try {
+            connection = (HttpURLConnection) new URL(source).openConnection();
+            connection.setConnectTimeout(3500);
+            connection.setReadTimeout(4500);
+            connection.setInstanceFollowRedirects(true);
+            connection.setRequestProperty("User-Agent", "PomocnikAlfa/2.0 Radio");
+            int status = connection.getResponseCode();
+            if (status < 200 || status >= 300 || !"https".equalsIgnoreCase(connection.getURL().getProtocol())) return null;
+            int length = connection.getContentLength();
+            if (length > 1024 * 1024) return null;
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream(Math.max(4096, length));
+            InputStream input = connection.getInputStream();
+            byte[] chunk = new byte[8192];
+            int total = 0;
+            int read;
+            while ((read = input.read(chunk)) != -1) {
+                total += read;
+                if (total > 1024 * 1024) return null;
+                bytes.write(chunk, 0, read);
+            }
+            input.close();
+            byte[] data = bytes.toByteArray();
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(data, 0, data.length, bounds);
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inSampleSize = Math.max(1, Math.max(bounds.outWidth, bounds.outHeight) / 128);
+            return BitmapFactory.decodeByteArray(data, 0, data.length, options);
+        } catch (Exception ignored) {
+            return null;
+        } finally {
+            if (connection != null) connection.disconnect();
         }
     }
 
@@ -645,6 +730,7 @@ public final class PARadioCatalogActivity extends Activity {
             TextView action;
             TextView favorite;
             TextView badge;
+            ImageView logo;
             if (convertView == null) {
                 row = new LinearLayout(PARadioCatalogActivity.this);
                 row.setOrientation(LinearLayout.VERTICAL);
@@ -653,10 +739,18 @@ public final class PARadioCatalogActivity extends Activity {
 
                 LinearLayout top = new LinearLayout(PARadioCatalogActivity.this);
                 top.setGravity(Gravity.CENTER_VERTICAL);
+                FrameLayout logoFrame = new FrameLayout(PARadioCatalogActivity.this);
+                logoFrame.setBackground(rounded(blend(accentColor(), 0.12f), 0, 14));
                 badge = text("", 18f, true, accentColor());
                 badge.setGravity(Gravity.CENTER);
-                badge.setBackground(rounded(blend(accentColor(), 0.12f), 0, 14));
-                top.addView(badge, new LinearLayout.LayoutParams(dp(42), dp(42)));
+                logoFrame.addView(badge, new FrameLayout.LayoutParams(-1, -1));
+                logo = new ImageView(PARadioCatalogActivity.this);
+                logo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                logo.setPadding(dp(4), dp(4), dp(4), dp(4));
+                logo.setBackground(rounded(Color.WHITE, Color.rgb(235, 239, 236), 14));
+                logo.setVisibility(View.GONE);
+                logoFrame.addView(logo, new FrameLayout.LayoutParams(-1, -1));
+                top.addView(logoFrame, new LinearLayout.LayoutParams(dp(42), dp(42)));
 
                 LinearLayout labels = new LinearLayout(PARadioCatalogActivity.this);
                 labels.setOrientation(LinearLayout.VERTICAL);
@@ -686,7 +780,7 @@ public final class PARadioCatalogActivity extends Activity {
                 LinearLayout.LayoutParams buttonsLp = new LinearLayout.LayoutParams(-1, -2);
                 buttonsLp.topMargin = dp(10);
                 row.addView(buttons, buttonsLp);
-                row.setTag(new View[]{title, details, play, action, favorite, badge});
+                row.setTag(new View[]{title, details, play, action, favorite, badge, logo});
             } else {
                 row = (LinearLayout) convertView;
                 View[] parts = (View[]) row.getTag();
@@ -696,10 +790,14 @@ public final class PARadioCatalogActivity extends Activity {
                 action = (TextView) parts[3];
                 favorite = (TextView) parts[4];
                 badge = (TextView) parts[5];
+                logo = (ImageView) parts[6];
             }
             title.setText(station.name);
             details.setText(station.details());
             badge.setText(station.name.isEmpty() ? "♫" : station.name.substring(0, 1).toUpperCase(Locale.ROOT));
+            badge.setContentDescription("Znak stacji: " + station.name);
+            logo.setContentDescription("Logo stacji: " + station.name);
+            loadStationLogo(station, logo, badge);
             boolean isFavorite = favorites.contains(station.id);
             favorite.setText(isFavorite ? "♥" : "♡");
             favorite.setTextColor(isFavorite ? Color.rgb(222, 86, 105) : Color.rgb(128, 143, 132));
@@ -731,11 +829,11 @@ public final class PARadioCatalogActivity extends Activity {
     }
 
     private static final class Station {
-        final String id, name, url, homepage, codec, tags;
+        final String id, name, url, homepage, codec, tags, favicon;
         final int votes, bitrate;
         final boolean custom;
 
-        Station(String id, String name, String url, String homepage, int votes, String codec, int bitrate, String tags, boolean custom) {
+        Station(String id, String name, String url, String homepage, int votes, String codec, int bitrate, String tags, String favicon, boolean custom) {
             this.id = id == null ? "" : id;
             this.name = name == null ? "" : name;
             this.url = url == null ? "" : url;
@@ -744,20 +842,21 @@ public final class PARadioCatalogActivity extends Activity {
             this.codec = codec == null ? "" : codec;
             this.bitrate = bitrate;
             this.tags = tags == null ? "" : tags;
+            this.favicon = favicon == null ? "" : favicon;
             this.custom = custom;
         }
 
         static Station fromJson(JSONObject row) {
-            return new Station(row.optString("id", row.optString("stationuuid", "")), row.optString("name", ""), row.optString("url", ""), row.optString("homepage", ""), row.optInt("votes"), row.optString("codec", ""), row.optInt("bitrate"), row.optString("tags", ""), row.optBoolean("custom", false));
+            return new Station(row.optString("id", row.optString("stationuuid", "")), row.optString("name", ""), row.optString("url", ""), row.optString("homepage", ""), row.optInt("votes"), row.optString("codec", ""), row.optInt("bitrate"), row.optString("tags", ""), row.optString("favicon", ""), row.optBoolean("custom", false));
         }
 
-        Station copy() { return new Station(id, name, url, homepage, votes, codec, bitrate, tags, custom); }
+        Station copy() { return new Station(id, name, url, homepage, votes, codec, bitrate, tags, favicon, custom); }
 
         JSONObject toJson() {
             JSONObject row = new JSONObject();
             try {
                 row.put("id", id); row.put("name", name); row.put("url", url); row.put("homepage", homepage);
-                row.put("votes", votes); row.put("codec", codec); row.put("bitrate", bitrate); row.put("tags", tags); row.put("custom", custom);
+                row.put("votes", votes); row.put("codec", codec); row.put("bitrate", bitrate); row.put("tags", tags); row.put("favicon", favicon); row.put("custom", custom);
             } catch (Exception ignored) { }
             return row;
         }
