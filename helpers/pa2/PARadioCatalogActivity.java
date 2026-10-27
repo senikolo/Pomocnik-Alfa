@@ -24,6 +24,7 @@ import android.util.TypedValue;
 import android.widget.BaseAdapter;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -71,6 +72,12 @@ public final class PARadioCatalogActivity extends Activity {
     private TextView mineTab;
     private TextView favoritesTab;
     private TextView catalogTab;
+    private HorizontalScrollView countryFilterScroll;
+    private LinearLayout countryFilters;
+    private TextView allCountriesTab;
+    private TextView polishTab;
+    private TextView germanyTab;
+    private TextView russiaTab;
     private TextView listHeading;
     private TextView emptyState;
     private TextView playerStatus;
@@ -79,6 +86,7 @@ public final class PARadioCatalogActivity extends Activity {
     private TextView infoSource;
     private ListView stationList;
     private StationAdapter adapter;
+    private String selectedCountry = "";
 
     private final Runnable metadataTicker = new Runnable() {
         @Override public void run() {
@@ -247,6 +255,22 @@ public final class PARadioCatalogActivity extends Activity {
         catalogTab.setOnClickListener(v -> setTab(2));
         root.addView(tabs);
 
+        countryFilterScroll = new HorizontalScrollView(this);
+        countryFilterScroll.setHorizontalScrollBarEnabled(false);
+        countryFilters = new LinearLayout(this);
+        countryFilters.setGravity(Gravity.CENTER_VERTICAL);
+        countryFilters.setPadding(0, dp(9), 0, 0);
+        allCountriesTab = countryTab("Wszystkie");
+        polishTab = countryTab("🇵🇱 Polska");
+        germanyTab = countryTab("🇩🇪 Niemcy");
+        russiaTab = countryTab("🇷🇺 Rosja");
+        addCountryTab(allCountriesTab, "");
+        addCountryTab(polishTab, "PL");
+        addCountryTab(germanyTab, "DE");
+        addCountryTab(russiaTab, "RU");
+        countryFilterScroll.addView(countryFilters);
+        root.addView(countryFilterScroll);
+
         TextView helper = text("Wybierz stację na dobry nastrój", 12f, false);
         helper.setTextColor(Color.rgb(104, 119, 111));
         LinearLayout.LayoutParams helperLp = new LinearLayout.LayoutParams(-1, -2);
@@ -329,6 +353,7 @@ public final class PARadioCatalogActivity extends Activity {
         styleTab(mineTab, selectedTab == 0);
         styleTab(favoritesTab, selectedTab == 1);
         styleTab(catalogTab, selectedTab == 2);
+        if (countryFilterScroll != null) countryFilterScroll.setVisibility(selectedTab == 2 ? View.VISIBLE : View.GONE);
         updateList();
     }
 
@@ -338,16 +363,21 @@ public final class PARadioCatalogActivity extends Activity {
         ArrayList<Station> source = selectedTab == 2 ? catalog : selectedTab == 1 ? favoriteStations() : mine;
         visible.clear();
         for (Station station : source) {
+            if (selectedTab == 2 && !selectedCountry.isEmpty() && !selectedCountry.equalsIgnoreCase(station.countryCode)) continue;
             if (query.isEmpty() || normalize(station.name).contains(query) || normalize(station.tags).contains(query)) visible.add(station);
         }
         if (listHeading != null) {
-            if (selectedTab == 2) listHeading.setText("Polskie i zagraniczne stacje");
+            if (selectedTab == 2) listHeading.setText(countryLabel(selectedCountry) + " · " + visible.size() + " stacji");
             else if (selectedTab == 1) listHeading.setText("Twoje ulubione · " + favoriteStations().size());
             else listHeading.setText("Twoje stacje · " + mine.size());
         }
         if (mineTab != null) mineTab.setText("Moje stacje");
         if (favoritesTab != null) favoritesTab.setText("♡ Ulubione");
         if (catalogTab != null) catalogTab.setText("Katalog " + catalog.size());
+        styleCountryTab(allCountriesTab, selectedCountry.isEmpty());
+        styleCountryTab(polishTab, "PL".equals(selectedCountry));
+        styleCountryTab(germanyTab, "DE".equals(selectedCountry));
+        styleCountryTab(russiaTab, "RU".equals(selectedCountry));
         if (emptyState != null) {
             if (selectedTab == 1) emptyState.setText("Tu pojawią się Twoje ulubione stacje.\nDotknij serduszka przy wybranej stacji.");
             else if (selectedTab == 0) emptyState.setText("Twoja lista jest pusta.\nDodaj stacje z katalogu albo wyszukaj nazwę.");
@@ -362,6 +392,37 @@ public final class PARadioCatalogActivity extends Activity {
         for (Station station : catalog) if (favorites.contains(station.id) && added.add(station.id)) result.add(station);
         for (Station station : mine) if (favorites.contains(station.id) && added.add(station.id)) result.add(station);
         return result;
+    }
+
+    private void addCountryTab(TextView tab, String countryCode) {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, dp(34));
+        lp.rightMargin = dp(6);
+        countryFilters.addView(tab, lp);
+        tab.setOnClickListener(v -> {
+            selectedCountry = countryCode;
+            updateList();
+        });
+    }
+
+    private TextView countryTab(String label) {
+        TextView tab = actionButton(label, Color.WHITE, Color.rgb(83, 99, 90), true);
+        tab.setTextSize(11f);
+        tab.setPadding(dp(11), 0, dp(11), 0);
+        return tab;
+    }
+
+    private void styleCountryTab(TextView tab, boolean selected) {
+        if (tab == null) return;
+        tab.setTextColor(selected ? Color.WHITE : Color.rgb(83, 99, 90));
+        tab.setBackground(rounded(selected ? accentColor() : Color.WHITE,
+                selected ? 0 : Color.rgb(230, 237, 232), 13));
+    }
+
+    private String countryLabel(String countryCode) {
+        if ("PL".equals(countryCode)) return "🇵🇱 Polska";
+        if ("DE".equals(countryCode)) return "🇩🇪 Niemcy";
+        if ("RU".equals(countryCode)) return "🇷🇺 Rosja";
+        return "Wszystkie kraje";
     }
 
     private void addTypedStation() {
