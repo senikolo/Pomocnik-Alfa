@@ -42,4 +42,6 @@ jobs:
       source_run_id: ${{ github.run_id }}
       artifact_name: IL-1.83.21-WIDEO-UNSIGNED
       output_name: Ispina-Lokalnie-Live-1.83.21-WIDEO.apk
-    secrets: inherit
+    secrets:
+      IL_STABLE_KEYSTORE_B64: ${{ secrets.IL_STABLE_KEYSTORE_B64 }}
+      IL_STABLE_KEYSTORE_PASS: ${{ secrets.IL_STABLE_KEYSTORE_PASS }}
