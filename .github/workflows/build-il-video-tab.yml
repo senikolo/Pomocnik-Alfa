@@ -1,0 +1,45 @@
+name: Build IL 1.83.21 Wideo Tab
+
+on:
+  push:
+    branches:
+      - codex/il-video-tab-1.83.21-20261028
+    paths:
+      - helpers/il-video-tab/**
+      - triggers/build-il-video-tab.txt
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download stable Ispina Lokalnie 1.83.20
+        run: |
+          set -euxo pipefail
+          curl -L --fail --retry 3 --retry-delay 2 \
+            'https://github.com/senikolo/Ispina-Lokalnie-/releases/download/v1.83.20/Ispina-Lokalnie-Live-1.83.20.apk' \
+            -o base.apk
+          test -s base.apk
+      - name: Add the in-app Wideo tab
+        run: |
+          set -euxo pipefail
+          python3 helpers/il-video-tab/patch_il_video_tab.py base.apk Ispina-Lokalnie-Live-1.83.21-WIDEO-UNSIGNED.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IL-1.83.21-WIDEO-UNSIGNED
+          path: Ispina-Lokalnie-Live-1.83.21-WIDEO-UNSIGNED.apk
+          retention-days: 7
+
+  sign:
+    needs: patch
+    uses: ./.github/workflows/stable-sign-il.yml
+    with:
+      source_run_id: ${{ github.run_id }}
+      artifact_name: IL-1.83.21-WIDEO-UNSIGNED
+      output_name: Ispina-Lokalnie-Live-1.83.21-WIDEO.apk
+    secrets: inherit
