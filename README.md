@@ -1,19 +1,18 @@
-# Pomocnik Alfa
+# Pomocnik Alfa 15: telewizja testowa
 
-Wersja testowa PA15 rozszerza sekcję „Telewizja” o polskie kanały internetowe.
+Wydanie testowe dodaje do sekcji „Telewizja”, w kraju Polska, dwa kanały:
 
-## Polskie kanały
+- TV Republika
+- wPolsce24
 
-Przycisk „Polskie kanały online” otwiera oficjalne strony:
+Każdy kanał otwiera oficjalną stronę transmisji w dużym oknie wewnątrz Pomocnika Alfa. Odtwarzanie pełnoekranowe działa, jeśli udostępnia je strona nadawcy.
 
-- Telewizja Republika – transmisja na żywo
-- wPolsce24 – transmisja na żywo
-- Polsat Box Go – przewodnik kanałów obejmujący m.in. Polsat, Polsat 2, Super Polsat, Polsat News, Polsat News Polityka, Polsat Play, Polsat Cafe oraz kanały sportowe
+Do listy nie dodano Polsat Box Go ani kanałów Polsatu. Pozostałe istniejące stacje nie są zmieniane.
 
-Dostępność kanałów Polsatu zależy od pakietu i zalogowania w serwisie Polsat Box Go.
-
-## Wydanie testowe
+## Informacje o instalacji
 
 - Wersja: 2.0.0-alpha.15-tv-channels
-- Android: bazowe minimum Android 10 (minSdk 29)
-- Kompilacja tworzy odizolowany pakiet testowy, który można zainstalować obok wersji stabilnej.
+- Minimalny system: Android 10 (API 29)
+- Wydanie jest odizolowane od wersji stabilnej i instaluje się jako osobna aplikacja testowa.
+- Każdy build ma osobny identyfikator pakietu i testowy podpis. Nie zastępuje stabilnej aplikacji ani poprzedniego builda testowego.
+
