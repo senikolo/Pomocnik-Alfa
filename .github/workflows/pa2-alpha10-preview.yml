@@ -88,6 +88,16 @@ jobs:
           ! grep -q "package: name='com.senikolo.pomocniknowy.pa2preview'" output/badging.txt
           sha256sum "$APK" > output/SHA256SUMS.txt
           rm -f "$RUNNER_TEMP/pa15tvtest.p12"
+      - name: Export TV layout source for channel placement
+        run: |
+          set -euxo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          paths = list(Path('decoded').glob('smali*/com/ispina/lokalnie/TvActivity.smali'))
+          if len(paths) != 1:
+              raise SystemExit(f'Expected one TV activity, found {len(paths)}')
+          Path('output/TvActivity-smali.txt').write_text(paths[0].read_text(encoding='utf-8'), encoding='utf-8')
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -97,4 +107,5 @@ jobs:
             output/SHA256SUMS.txt
             output/signature.txt
             output/badging.txt
+            output/TvActivity-smali.txt
           retention-days: 60
