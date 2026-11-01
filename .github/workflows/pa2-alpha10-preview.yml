@@ -1,11 +1,11 @@
-name: PA14 ekonomia i niemiecki TEST
+name: PA15 telewizja TEST
 on:
   workflow_dispatch:
   push:
-    branches: ['work/pa14-economy-search-20261027']
+    branches: ['work/pa14-economy-search-20261027', 'work/pa15-tv-channels-20261101']
     paths: ['.github/workflows/pa2-alpha10-preview.yml', 'helpers/pa2/**']
 env:
-  PA_TRIAL_ID: com.senikolo.pomocniknowy.pa14economysearchtest.r${{ github.run_id }}
+  PA_TRIAL_ID: com.senikolo.pomocniknowy.pa15tvtest.r${{ github.run_id }}
 defaults:
   run:
     shell: bash
@@ -47,6 +47,8 @@ jobs:
       - name: Rebuild the full app with the economy and German modules
         run: |
           java -Xmx4g -jar tools/apktool_2.12.1.jar d -f -o decoded baseline.apk
+          mkdir -p output/tv-inspect
+          find decoded -type f -path '*/com/ispina/lokalnie/TvActivity*.smali' -print -exec cp --parents '{}' output/tv-inspect/ \;
           python3 helpers/pa2/patch_antyradio.py decoded
           python3 helpers/pa2/patch_project.py decoded build/data
           python3 helpers/pa2/patch_economy.py decoded
@@ -90,10 +92,11 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: PA14-economy-search-isolated-signed-apk
+          name: PA15-tv-channels-source-inspect
           path: |
             output/Pomocnik-Alfa-PA14-Ekonomia-i-Niemiecki-TEST.apk
             output/SHA256SUMS.txt
             output/signature.txt
             output/badging.txt
+            output/tv-inspect/**
           retention-days: 60
