@@ -1,13 +1,9 @@
 package com.ispina.lokalnie;
 
 import android.app.AlertDialog;
-import android.content.ActivityNotFoundException;
 import android.content.Context;
-import android.content.DialogInterface;
-import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
-import android.net.Uri;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -22,54 +18,21 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
-/** Opens official Polish channel sources, keeping live pages inside the app. */
+/** Opens one official channel page inside the TV app window. */
 public final class TvDirectoryClick implements View.OnClickListener {
-    private static final String REPUBLIKA_URL = "https://tvrepublika.pl/live";
-    private static final String WPOLSCE24_URL = "https://wpolsce24.tv/video";
     private final Context context;
+    private final String title;
+    private final String url;
 
-    public TvDirectoryClick(Context context) {
+    public TvDirectoryClick(Context context, String title, String url) {
         this.context = context;
+        this.title = title;
+        this.url = url;
     }
 
     @Override
     public void onClick(View view) {
-        new AlertDialog.Builder(context)
-            .setTitle("Polskie kanały online")
-            .setMessage("TV Republika i wPolsce24 otworzą się w oknie Pomocnika Alfa. Polsat Box Go prowadzi do oficjalnego serwisu. Dostępność może zależeć od pakietu i logowania.")
-            .setPositiveButton("Republika", new OpenUrl(context, REPUBLIKA_URL))
-            .setNeutralButton("wPolsce24", new OpenUrl(context, WPOLSCE24_URL))
-            .setNegativeButton("Polsat Box Go", new OpenUrl(context, "https://polsatboxgo.pl/kanaly-tv?epg=true"))
-            .show();
-    }
-
-    private static final class OpenUrl implements DialogInterface.OnClickListener {
-        private final Context context;
-        private final String url;
-
-        OpenUrl(Context context, String url) {
-            this.context = context;
-            this.url = url;
-        }
-
-        @Override
-        public void onClick(DialogInterface dialog, int which) {
-            if (REPUBLIKA_URL.equals(url)) {
-                openInAppWindow(context, "TV Republika · na żywo", url);
-                return;
-            }
-            if (WPOLSCE24_URL.equals(url)) {
-                openInAppWindow(context, "wPolsce24 · na żywo", url);
-                return;
-            }
-            try {
-                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                context.startActivity(intent);
-            } catch (ActivityNotFoundException e) {
-                Toast.makeText(context, "Nie znaleziono przeglądarki internetowej.", Toast.LENGTH_LONG).show();
-            }
-        }
+        openInAppWindow(context, title, url);
     }
 
     private static void openInAppWindow(Context context, String title, String url) {
@@ -138,7 +101,7 @@ public final class TvDirectoryClick implements View.OnClickListener {
         });
 
         AlertDialog player = new AlertDialog.Builder(context)
-            .setTitle(title)
+            .setTitle(title + " · na żywo")
             .setView(container)
             .setPositiveButton("Zamknij", null)
             .create();

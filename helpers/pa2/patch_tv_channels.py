@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Add an official Polish TV directory button to the existing TV screen."""
+"""Add only TV Republika and wPolsce24 inside the Poland channel card."""
 import sys
 from pathlib import Path
 
@@ -8,30 +8,55 @@ matches = list(root.glob("smali*/com/ispina/lokalnie/TvActivity.smali"))
 assert len(matches) == 1, f"Expected one TvActivity.smali, found {len(matches)}"
 path = matches[0]
 source = path.read_text(encoding="utf-8")
-anchor = """    invoke-virtual {v11, v0}, Landroid/widget/LinearLayout;->addView(Landroid/view/View;)V
 
-    .line 141
-    invoke-direct/range {p0 .. p0}, Lcom/ispina/lokalnie/TvActivity;->card()Landroid/widget/LinearLayout;"""
-assert source.count(anchor) == 1, "Unexpected TV screen layout; refusing an unsafe patch"
-replacement = """    invoke-virtual {v11, v0}, Landroid/widget/LinearLayout;->addView(Landroid/view/View;)V
+marker = r'    const-string v2, "\u25b6  TVP Polonia"'
+assert source.count(marker) == 1, "Expected the TVP Polonia row in the Poland card"
+call = "    invoke-direct/range {v0 .. v5}, Lcom/ispina/lokalnie/TvActivity;->addStation(Landroid/widget/LinearLayout;Ljava/lang/String;Ljava/lang/String;ZLandroid/view/View$OnClickListener;)V"
+start = source.index(marker)
+call_at = source.find(call, start)
+assert call_at >= 0, "Could not find the TVP Polonia row callback"
+line_end = source.find("\n", call_at)
+assert line_end >= 0, "Malformed TVP Polonia row"
 
-    const-string v0, "Polskie kana\\u0142y online"
+rows = r'''
+    new-instance v5, Lcom/ispina/lokalnie/TvDirectoryClick;
 
-    const/4 v1, 0x1
+    const-string v2, "TV Republika"
 
-    invoke-direct {v7, v0, v1}, Lcom/ispina/lokalnie/TvActivity;->button(Ljava/lang/String;Z)Landroid/widget/Button;
+    const-string v3, "wiadomo\u015bci \u2022 Polska"
 
-    move-result-object v0
+    const-string v4, "https://tvrepublika.pl/live"
 
-    new-instance v1, Lcom/ispina/lokalnie/TvDirectoryClick;
+    invoke-direct {v5, v7, v2, v4}, Lcom/ispina/lokalnie/TvDirectoryClick;-><init>(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)V
 
-    invoke-direct {v1, v7}, Lcom/ispina/lokalnie/TvDirectoryClick;-><init>(Landroid/content/Context;)V
+    const/4 v4, 0x0
 
-    invoke-virtual {v0, v1}, Landroid/widget/Button;->setOnClickListener(Landroid/view/View$OnClickListener;)V
+    const-string v2, "\u25b6  TV Republika"
 
-    invoke-virtual {v11, v0}, Landroid/widget/LinearLayout;->addView(Landroid/view/View;)V
+    invoke-direct/range {v0 .. v5}, Lcom/ispina/lokalnie/TvActivity;->addStation(Landroid/widget/LinearLayout;Ljava/lang/String;Ljava/lang/String;ZLandroid/view/View$OnClickListener;)V
 
-    .line 141
-    invoke-direct/range {p0 .. p0}, Lcom/ispina/lokalnie/TvActivity;->card()Landroid/widget/LinearLayout;"""
-path.write_text(source.replace(anchor, replacement), encoding="utf-8")
-print("PASS: added Polish online channels button to the TV screen")
+    new-instance v5, Lcom/ispina/lokalnie/TvDirectoryClick;
+
+    const-string v2, "wPolsce24"
+
+    const-string v3, "na \u017cywo \u2022 Polska"
+
+    const-string v4, "https://wpolsce24.tv/video"
+
+    invoke-direct {v5, v7, v2, v4}, Lcom/ispina/lokalnie/TvDirectoryClick;-><init>(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)V
+
+    const/4 v4, 0x0
+
+    const-string v2, "\u25b6  wPolsce24"
+
+    invoke-direct/range {v0 .. v5}, Lcom/ispina/lokalnie/TvActivity;->addStation(Landroid/widget/LinearLayout;Ljava/lang/String;Ljava/lang/String;ZLandroid/view/View$OnClickListener;)V
+'''
+source = source[:line_end + 1] + rows + source[line_end + 1:]
+
+old_note = r'    const-string v0, "Kana\u0142y TVP uruchamiane s\u0105 przez aktualny oficjalny adres transmisji pobierany przy ka\u017cdym starcie."'
+new_note = r'    const-string v0, "TVP korzysta z oficjalnych transmisji; Republika i wPolsce24 otwieraj\u0105 si\u0119 w oknie aplikacji."'
+assert source.count(old_note) == 1, "Unexpected Poland card description"
+source = source.replace(old_note, new_note)
+
+path.write_text(source, encoding="utf-8")
+print("PASS: added TV Republika and wPolsce24 directly to the Poland card")
