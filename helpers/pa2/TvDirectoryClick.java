@@ -22,9 +22,10 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
-/** Opens official Polish channel sources, keeping TV Republika inside the app. */
+/** Opens official Polish channel sources, keeping live pages inside the app. */
 public final class TvDirectoryClick implements View.OnClickListener {
     private static final String REPUBLIKA_URL = "https://tvrepublika.pl/live";
+    private static final String WPOLSCE24_URL = "https://wpolsce24.tv/video";
     private final Context context;
 
     public TvDirectoryClick(Context context) {
@@ -35,9 +36,9 @@ public final class TvDirectoryClick implements View.OnClickListener {
     public void onClick(View view) {
         new AlertDialog.Builder(context)
             .setTitle("Polskie kanały online")
-            .setMessage("TV Republika otworzy się w oknie Pomocnika Alfa. wPolsce24 i Polsat Box Go prowadzą do oficjalnych serwisów. Dostępność może zależeć od pakietu i logowania.")
+            .setMessage("TV Republika i wPolsce24 otworzą się w oknie Pomocnika Alfa. Polsat Box Go prowadzi do oficjalnego serwisu. Dostępność może zależeć od pakietu i logowania.")
             .setPositiveButton("Republika", new OpenUrl(context, REPUBLIKA_URL))
-            .setNeutralButton("wPolsce24", new OpenUrl(context, "https://wpolsce24.tv/video"))
+            .setNeutralButton("wPolsce24", new OpenUrl(context, WPOLSCE24_URL))
             .setNegativeButton("Polsat Box Go", new OpenUrl(context, "https://polsatboxgo.pl/kanaly-tv?epg=true"))
             .show();
     }
@@ -54,7 +55,11 @@ public final class TvDirectoryClick implements View.OnClickListener {
         @Override
         public void onClick(DialogInterface dialog, int which) {
             if (REPUBLIKA_URL.equals(url)) {
-                openRepublikaWindow(context);
+                openInAppWindow(context, "TV Republika · na żywo", url);
+                return;
+            }
+            if (WPOLSCE24_URL.equals(url)) {
+                openInAppWindow(context, "wPolsce24 · na żywo", url);
                 return;
             }
             try {
@@ -67,7 +72,7 @@ public final class TvDirectoryClick implements View.OnClickListener {
         }
     }
 
-    private static void openRepublikaWindow(Context context) {
+    private static void openInAppWindow(Context context, String title, String url) {
         WebView webView = new WebView(context);
         webView.setBackgroundColor(Color.BLACK);
 
@@ -133,7 +138,7 @@ public final class TvDirectoryClick implements View.OnClickListener {
         });
 
         AlertDialog player = new AlertDialog.Builder(context)
-            .setTitle("TV Republika · na żywo")
+            .setTitle(title)
             .setView(container)
             .setPositiveButton("Zamknij", null)
             .create();
@@ -165,6 +170,6 @@ public final class TvDirectoryClick implements View.OnClickListener {
             window.setBackgroundDrawable(new ColorDrawable(Color.BLACK));
             window.setLayout((int) (screenWidth * 0.96f), (int) (screenHeight * 0.86f));
         }
-        webView.loadUrl(REPUBLIKA_URL);
+        webView.loadUrl(url);
     }
 }
