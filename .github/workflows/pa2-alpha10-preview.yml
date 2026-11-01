@@ -78,22 +78,22 @@ jobs:
           set -euo pipefail
           umask 077
           export TRIAL_PASS="$(openssl rand -hex 24)"
-          keytool -genkeypair -noprompt -keyalg RSA -keysize 3072 -sigalg SHA256withRSA -validity 3650 -alias pa15-tv-trial -dname 'CN=PA14 economy test, O=PA testing' -storetype PKCS12 -keystore "$RUNNER_TEMP/pa14economytest.p12" -storepass:env TRIAL_PASS -keypass:env TRIAL_PASS >/dev/null 2>&1
+          keytool -genkeypair -noprompt -keyalg RSA -keysize 3072 -sigalg SHA256withRSA -validity 3650 -alias pa15-tv-trial -dname 'CN=PA14 economy test, O=PA testing' -storetype PKCS12 -keystore "$RUNNER_TEMP/pa15tvtest.p12" -storepass:env TRIAL_PASS -keypass:env TRIAL_PASS >/dev/null 2>&1
           BT="$ANDROID_HOME/build-tools/35.0.0"
           APK=output/Pomocnik-Alfa-PA15-TV-TEST.apk
-          "$BT/apksigner" sign --ks "$RUNNER_TEMP/pa14economytest.p12" --ks-type PKCS12 --ks-key-alias pa14-economy-trial --ks-pass env:TRIAL_PASS --key-pass env:TRIAL_PASS --out "$APK" output/aligned.apk
+          "$BT/apksigner" sign --ks "$RUNNER_TEMP/pa15tvtest.p12" --ks-type PKCS12 --ks-key-alias pa15-tv-trial --ks-pass env:TRIAL_PASS --key-pass env:TRIAL_PASS --out "$APK" output/aligned.apk
           "$BT/apksigner" verify --verbose --print-certs "$APK" > output/signature.txt
           "$BT/aapt" dump badging "$APK" > output/badging.txt
           grep -q "package: name='$PA_TRIAL_ID'" output/badging.txt
           ! grep -q "package: name='com.senikolo.pomocniknowy.pa2preview'" output/badging.txt
           sha256sum "$APK" > output/SHA256SUMS.txt
-          rm -f "$RUNNER_TEMP/pa14economytest.p12"
+          rm -f "$RUNNER_TEMP/pa15tvtest.p12"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: PA15-tv-channels-isolated-signed-apk
           path: |
-            output/Pomocnik-Alfa-PA14-Ekonomia-i-Niemiecki-TEST.apk
+            output/Pomocnik-Alfa-PA15-TV-TEST.apk
             output/SHA256SUMS.txt
             output/signature.txt
             output/badging.txt
