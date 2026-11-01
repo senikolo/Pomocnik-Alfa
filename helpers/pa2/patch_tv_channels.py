@@ -58,5 +58,19 @@ new_note = r'    const-string v0, "TVP korzysta z oficjalnych transmisji; Republ
 assert source.count(old_note) == 1, "Unexpected Poland card description"
 source = source.replace(old_note, new_note)
 
+# Keep the official pages in the existing inline TV player frame and restore
+# the native PlayerView as soon as the user selects another station or leaves TV.
+for signature in (
+    ".method private startDirect(Ljava/lang/String;Ljava/lang/String;)V",
+    ".method private startBroadcast(Ljava/lang/String;Ljava/lang/String;Z)V",
+    ".method private startDirectFallback(Ljava/lang/String;[Ljava/lang/String;)V",
+    ".method protected onDestroy()V",
+):
+    assert source.count(signature) == 1, f"Expected one method: {signature}"
+    method_start = source.index(signature)
+    locals_start = source.index("\n    .locals ", method_start)
+    locals_end = source.index("\n", locals_start + 1) + 1
+    source = source[:locals_end] + "    invoke-static {p0}, Lcom/ispina/lokalnie/TvDirectoryClick;->clearInlinePlayer(Landroid/content/Context;)V\n" + source[locals_end:]
+
 path.write_text(source, encoding="utf-8")
-print("PASS: added TV Republika and wPolsce24 directly to the Poland card")
+print("PASS: added TV Republika and wPolsce24 in the Poland card's shared inline player")
