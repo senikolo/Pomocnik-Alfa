@@ -29,7 +29,7 @@ catalog = root / "assets" / "pa_regions" / "radio_catalog.json"
 assert catalog.is_file(), f"Missing bundled station repository: {catalog}"
 data = json.loads(catalog.read_text(encoding="utf-8"))
 stations = data.get("stations", [])
-assert len(stations) == 216, "Radio catalogue must contain 200 Polish plus 16 German and Russian stations"
-assert sum(row.get("countryCode") == "PL" for row in stations) == 200, "Radio catalogue must preserve all 200 Polish stations"
+assert len(stations) == 221, "Radio catalogue must contain 205 Polish plus 16 German and Russian stations"
+assert sum(row.get("countryCode") == "PL" for row in stations) == 205, "Radio catalogue must preserve all 205 Polish stations"
 assert all(row.get("url", "").startswith("https://") for row in stations), "Radio catalogue must use HTTPS streams"
-print("PASS: Radio menu opens the editable catalogue with 200 Polish and 16 German/Russian stations")
+print("PASS: Radio menu opens the editable catalogue with 205 Polish and 16 German/Russian stations")

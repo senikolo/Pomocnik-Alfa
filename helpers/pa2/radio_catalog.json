@@ -2204,6 +2204,61 @@
       "countryCode": "PL"
     },
     {
+      "id": "regional-pl-krakow",
+      "name": "Radio Kraków",
+      "url": "https://stream3.nadaje.com:9117/radiokrakow",
+      "homepage": "https://radiokrakow.pl/",
+      "votes": 0,
+      "codec": "MP3",
+      "bitrate": 256,
+      "tags": "@PL@public radio,regional radio",
+      "countryCode": "PL"
+    },
+    {
+      "id": "regional-pl-katowice",
+      "name": "Radio Katowice",
+      "url": "https://stream4.nadaje.com:9213/radiokatowice",
+      "homepage": "https://radio.katowice.pl/",
+      "votes": 0,
+      "codec": "MP3",
+      "bitrate": 0,
+      "tags": "@PL@public radio,regional radio",
+      "countryCode": "PL"
+    },
+    {
+      "id": "regional-pl-poznan",
+      "name": "Radio Poznań",
+      "url": "https://stream4.nadaje.com:8579/poznan",
+      "homepage": "https://radiopoznan.fm/",
+      "votes": 0,
+      "codec": "MP3",
+      "bitrate": 96,
+      "tags": "@PL@public radio,regional radio",
+      "countryCode": "PL"
+    },
+    {
+      "id": "regional-pl-szczecin",
+      "name": "Radio Szczecin",
+      "url": "https://stream4.nadaje.com:11987/prs",
+      "homepage": "https://radioszczecin.pl/",
+      "votes": 0,
+      "codec": "MP3",
+      "bitrate": 0,
+      "tags": "@PL@public radio,regional radio",
+      "countryCode": "PL"
+    },
+    {
+      "id": "regional-pl-wroclaw",
+      "name": "Radio Wrocław",
+      "url": "https://stream4.nadaje.com:9241/prw",
+      "homepage": "https://radiowroclaw.pl/",
+      "votes": 0,
+      "codec": "MP3",
+      "bitrate": 128,
+      "tags": "@PL@public radio,regional radio",
+      "countryCode": "PL"
+    },
+    {
       "id": "legacy-de-arabella",
       "name": "Radio Arabella München",
       "url": "https://edge21.stream.radioarabella.de/radioarabella-muenchen/stream/mp3",
