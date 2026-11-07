@@ -173,6 +173,10 @@ public final class PARadioCatalogActivity extends Activity {
             if (item == null) continue;
             Station row = Station.fromJson(item);
             if (row.name.trim().isEmpty() || !row.url.startsWith("https://")) continue;
+            // Znad Wilii stream /zw128 returned HTTP 403 to the user on 2026-11-07,
+            // and the alternative tested on Radijas.eu failed to load. Do not
+            // advertise a known inaccessible stream as playable.
+            if (row.url.toLowerCase(Locale.ROOT).contains("plays.zw.lt/zw128")) continue;
             Station existing = all.get(row.id);
             if (existing == null && knownUrls.contains(row.url)) continue;
             if (existing != null) knownUrls.remove(existing.url);
