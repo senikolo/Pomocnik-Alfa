@@ -44,6 +44,7 @@ import java.net.URL;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -58,12 +59,14 @@ public final class PARadioCatalogActivity extends Activity {
     private static final String ACTION_STOP = "com.ispina.lokalnie.radio.STOP";
 
     private final ArrayList<Station> catalog = new ArrayList<>();
+    private final ArrayList<Station> bundledCatalog = new ArrayList<>();
     private final ArrayList<Station> mine = new ArrayList<>();
     private final ArrayList<Station> visible = new ArrayList<>();
     private final Set<String> favorites = new HashSet<>();
     private final Set<String> logoRequests = new HashSet<>();
     private final Handler handler = new Handler();
     private final ExecutorService logoExecutor = Executors.newFixedThreadPool(3);
+    private final ExecutorService directoryExecutor = Executors.newSingleThreadExecutor();
     private final LruCache<String, Bitmap> logoCache = new LruCache<String, Bitmap>(4 * 1024 * 1024) {
         @Override protected int sizeOf(String key, Bitmap value) { return value.getByteCount(); }
     };
@@ -78,6 +81,11 @@ public final class PARadioCatalogActivity extends Activity {
     private TextView polishTab;
     private TextView germanyTab;
     private TextView russiaTab;
+    private TextView poloniaTab;
+    private LinearLayout directoryRefreshRow;
+    private TextView directoryRefreshButton;
+    private TextView directoryStatus;
+    private boolean directoryLoading;
     private TextView listHeading;
     private TextView emptyState;
     private TextView playerStatus;
@@ -99,11 +107,15 @@ public final class PARadioCatalogActivity extends Activity {
         super.onCreate(state);
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         loadCatalog();
+        // Preserve the original first-install selection before loading thousands of
+        // searchable directory entries; existing user lists stay untouched.
         loadMyStations();
         loadFavorites();
+        mergeDirectory(PARadioDirectory.readCached(this));
         buildScreen();
         updateList();
         refreshPlayerInfo();
+        refreshOnlineDirectory(false);
     }
 
     @Override protected void onResume() {
@@ -120,6 +132,7 @@ public final class PARadioCatalogActivity extends Activity {
     @Override protected void onDestroy() {
         handler.removeCallbacks(metadataTicker);
         logoExecutor.shutdownNow();
+        directoryExecutor.shutdownNow();
         super.onDestroy();
     }
 
@@ -144,6 +157,72 @@ public final class PARadioCatalogActivity extends Activity {
         } catch (Exception e) {
             Toast.makeText(this, "Nie udało się wczytać katalogu stacji.", Toast.LENGTH_LONG).show();
         }
+        bundledCatalog.addAll(catalog);
+    }
+
+    /** Merge fresh online rows with the bundled fallback, retaining older foreign stations. */
+    private void mergeDirectory(JSONArray rows) {
+        LinkedHashMap<String, Station> all = new LinkedHashMap<>();
+        Set<String> knownUrls = new HashSet<>();
+        for (Station row : bundledCatalog) {
+            all.put(row.id, row);
+            knownUrls.add(row.url);
+        }
+        for (int i = 0; rows != null && i < rows.length(); i++) {
+            JSONObject item = rows.optJSONObject(i);
+            if (item == null) continue;
+            Station row = Station.fromJson(item);
+            if (row.name.trim().isEmpty() || !row.url.startsWith("https://")) continue;
+            Station existing = all.get(row.id);
+            if (existing == null && knownUrls.contains(row.url)) continue;
+            if (existing != null) knownUrls.remove(existing.url);
+            all.put(row.id, row);
+            knownUrls.add(row.url);
+        }
+        catalog.clear();
+        catalog.addAll(all.values());
+        updateList();
+    }
+
+    private void refreshOnlineDirectory(boolean forced) {
+        if (directoryLoading) {
+            if (forced) Toast.makeText(this, "Katalog już się aktualizuje.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (!forced && System.currentTimeMillis() - PARadioDirectory.lastRefresh(this)
+                < PARadioDirectory.REFRESH_INTERVAL_MS) {
+            if (directoryStatus != null) directoryStatus.setText("Katalog aktualny · dostępny także bez internetu");
+            return;
+        }
+        directoryLoading = true;
+        if (directoryStatus != null) directoryStatus.setText("Pobieram stacje z Polski i polskojęzyczne z zagranicy…");
+        if (directoryRefreshButton != null) directoryRefreshButton.setEnabled(false);
+        directoryExecutor.execute(() -> {
+            JSONArray remote = null;
+            String error = "";
+            try {
+                remote = PARadioDirectory.fetchDirectory();
+                PARadioDirectory.writeCached(getApplicationContext(), remote);
+            } catch (Exception ex) {
+                error = ex.getMessage() == null ? "Brak połączenia" : ex.getMessage();
+            }
+            final JSONArray result = remote;
+            final String failure = error;
+            handler.post(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                directoryLoading = false;
+                if (directoryRefreshButton != null) directoryRefreshButton.setEnabled(true);
+                if (result != null) {
+                    mergeDirectory(result);
+                    if (directoryStatus != null) directoryStatus.setText(
+                            "Zaktualizowano · " + catalog.size() + " stacji · dostępne offline");
+                    if (forced) Toast.makeText(this, "Katalog został zaktualizowany.", Toast.LENGTH_SHORT).show();
+                } else {
+                    if (directoryStatus != null) directoryStatus.setText("Nie udało się odświeżyć. Używam zapisanej listy.");
+                    if (forced) Toast.makeText(this, failure, Toast.LENGTH_LONG).show();
+                }
+            });
+        });
     }
 
     private void loadMyStations() {
@@ -264,12 +343,24 @@ public final class PARadioCatalogActivity extends Activity {
         polishTab = countryTab("🇵🇱 Polska");
         germanyTab = countryTab("🇩🇪 Niemcy");
         russiaTab = countryTab("🇷🇺 Rosja");
+        poloniaTab = countryTab("🌍 Polskie za granicą");
         addCountryTab(allCountriesTab, "");
         addCountryTab(polishTab, "PL");
+        addCountryTab(poloniaTab, "POLONIA");
         addCountryTab(germanyTab, "DE");
         addCountryTab(russiaTab, "RU");
         countryFilterScroll.addView(countryFilters);
         root.addView(countryFilterScroll);
+
+        directoryRefreshRow = new LinearLayout(this);
+        directoryRefreshRow.setGravity(Gravity.CENTER_VERTICAL);
+        directoryRefreshButton = actionButton("⟳ Odśwież katalog", blend(accentColor(), 0.11f), accentColor(), false);
+        directoryRefreshRow.addView(directoryRefreshButton, new LinearLayout.LayoutParams(dp(140), dp(38)));
+        directoryStatus = text("Katalog radiowy · internet i pamięć telefonu", 11f, false, Color.rgb(104, 119, 111));
+        directoryStatus.setPadding(dp(9), 0, 0, 0);
+        directoryRefreshRow.addView(directoryStatus, new LinearLayout.LayoutParams(0, -2, 1f));
+        root.addView(directoryRefreshRow);
+        directoryRefreshButton.setOnClickListener(v -> refreshOnlineDirectory(true));
 
         TextView helper = text("Wybierz stację na dobry nastrój", 12f, false);
         helper.setTextColor(Color.rgb(104, 119, 111));
@@ -354,6 +445,7 @@ public final class PARadioCatalogActivity extends Activity {
         styleTab(favoritesTab, selectedTab == 1);
         styleTab(catalogTab, selectedTab == 2);
         if (countryFilterScroll != null) countryFilterScroll.setVisibility(selectedTab == 2 ? View.VISIBLE : View.GONE);
+        if (directoryRefreshRow != null) directoryRefreshRow.setVisibility(selectedTab == 2 ? View.VISIBLE : View.GONE);
         updateList();
     }
 
@@ -363,7 +455,11 @@ public final class PARadioCatalogActivity extends Activity {
         ArrayList<Station> source = selectedTab == 2 ? catalog : selectedTab == 1 ? favoriteStations() : mine;
         visible.clear();
         for (Station station : source) {
-            if (selectedTab == 2 && !selectedCountry.isEmpty() && !selectedCountry.equalsIgnoreCase(station.countryCode)) continue;
+            if (selectedTab == 2 && !selectedCountry.isEmpty()) {
+                if ("POLONIA".equals(selectedCountry)) {
+                    if (!station.polishAbroad) continue;
+                } else if (!selectedCountry.equalsIgnoreCase(station.countryCode)) continue;
+            }
             if (query.isEmpty() || normalize(station.name).contains(query) || normalize(station.tags).contains(query)) visible.add(station);
         }
         if (listHeading != null) {
@@ -378,6 +474,7 @@ public final class PARadioCatalogActivity extends Activity {
         styleCountryTab(polishTab, "PL".equals(selectedCountry));
         styleCountryTab(germanyTab, "DE".equals(selectedCountry));
         styleCountryTab(russiaTab, "RU".equals(selectedCountry));
+        styleCountryTab(poloniaTab, "POLONIA".equals(selectedCountry));
         if (emptyState != null) {
             if (selectedTab == 1) emptyState.setText("Tu pojawią się Twoje ulubione stacje.\nDotknij serduszka przy wybranej stacji.");
             else if (selectedTab == 0) emptyState.setText("Twoja lista jest pusta.\nDodaj stacje z katalogu albo wyszukaj nazwę.");
@@ -419,6 +516,7 @@ public final class PARadioCatalogActivity extends Activity {
     }
 
     private String countryLabel(String countryCode) {
+        if ("POLONIA".equals(countryCode)) return "🌍 Polskie za granicą";
         if ("PL".equals(countryCode)) return "🇵🇱 Polska";
         if ("DE".equals(countryCode)) return "🇩🇪 Niemcy";
         if ("RU".equals(countryCode)) return "🇷🇺 Rosja";
@@ -519,7 +617,7 @@ public final class PARadioCatalogActivity extends Activity {
                 urlField.setError("Wpisz adres strumienia HTTPS");
                 return;
             }
-            Station station = new Station("custom:" + System.nanoTime(), name, url, "", 0, "", 0, "", "", "", true);
+            Station station = new Station("custom:" + System.nanoTime(), name, url, "", 0, "", 0, "", "", "", true, false);
             if (containsName(name)) {
                 urlField.setError("Ta nazwa jest już na liście");
                 return;
@@ -893,8 +991,9 @@ public final class PARadioCatalogActivity extends Activity {
         final String id, name, url, homepage, codec, tags, countryCode, favicon;
         final int votes, bitrate;
         final boolean custom;
+        final boolean polishAbroad;
 
-        Station(String id, String name, String url, String homepage, int votes, String codec, int bitrate, String tags, String countryCode, String favicon, boolean custom) {
+        Station(String id, String name, String url, String homepage, int votes, String codec, int bitrate, String tags, String countryCode, String favicon, boolean custom, boolean polishAbroad) {
             this.id = id == null ? "" : id;
             this.name = name == null ? "" : name;
             this.url = url == null ? "" : url;
@@ -906,25 +1005,27 @@ public final class PARadioCatalogActivity extends Activity {
             this.countryCode = countryCode == null ? "" : countryCode;
             this.favicon = favicon == null ? "" : favicon;
             this.custom = custom;
+            this.polishAbroad = polishAbroad;
         }
 
         static Station fromJson(JSONObject row) {
-            return new Station(row.optString("id", row.optString("stationuuid", "")), row.optString("name", ""), row.optString("url", ""), row.optString("homepage", ""), row.optInt("votes"), row.optString("codec", ""), row.optInt("bitrate"), row.optString("tags", ""), row.optString("countryCode", row.optString("countrycode", "")), row.optString("favicon", ""), row.optBoolean("custom", false));
+            return new Station(row.optString("id", row.optString("stationuuid", "")), row.optString("name", ""), row.optString("url", ""), row.optString("homepage", ""), row.optInt("votes"), row.optString("codec", ""), row.optInt("bitrate"), row.optString("tags", ""), row.optString("countryCode", row.optString("countrycode", "")), row.optString("favicon", ""), row.optBoolean("custom", false), row.optBoolean("polishAbroad", false));
         }
 
-        Station copy() { return new Station(id, name, url, homepage, votes, codec, bitrate, tags, countryCode, favicon, custom); }
+        Station copy() { return new Station(id, name, url, homepage, votes, codec, bitrate, tags, countryCode, favicon, custom, polishAbroad); }
 
         JSONObject toJson() {
             JSONObject row = new JSONObject();
             try {
                 row.put("id", id); row.put("name", name); row.put("url", url); row.put("homepage", homepage);
-                row.put("votes", votes); row.put("codec", codec); row.put("bitrate", bitrate); row.put("tags", tags); row.put("countryCode", countryCode); row.put("favicon", favicon); row.put("custom", custom);
+                row.put("votes", votes); row.put("codec", codec); row.put("bitrate", bitrate); row.put("tags", tags); row.put("countryCode", countryCode); row.put("favicon", favicon); row.put("custom", custom); row.put("polishAbroad", polishAbroad);
             } catch (Exception ignored) { }
             return row;
         }
 
         String details() {
             if (custom) return "Twoja stacja internetowa";
+            if (polishAbroad) return "🌍 Polskie za granicą · " + countryCode + " · Radio internetowe";
             String country = "PL".equalsIgnoreCase(countryCode) ? "🇵🇱 Polska"
                     : "DE".equalsIgnoreCase(countryCode) ? "🇩🇪 Niemcy"
                     : "RU".equalsIgnoreCase(countryCode) ? "🇷🇺 Rosja"
