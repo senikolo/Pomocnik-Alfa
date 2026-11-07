@@ -1,8 +1,21 @@
 {
-  "updated": "2026-10-27",
-  "source": "Radio Browser",
+  "updated": "2026-11-07",
+  "source": "Radio Browser + curated verified radio websites",
   "ranking": "votes",
   "stations": [
+    {
+      "id": "curated:radio-znad-wilii-lt",
+      "name": "Radio Znad Wilii (Wilno)",
+      "url": "https://plays.zw.lt/zw128",
+      "homepage": "https://zw.lt/",
+      "votes": 0,
+      "codec": "MP3",
+      "bitrate": 128,
+      "tags": "polski,polonia,wilno,litwa,wiadomosci,muzyka",
+      "countryCode": "LT",
+      "polishAbroad": true,
+      "favicon": ""
+    },
     {
       "id": "9617d67b-0601-11e8-ae97-52543be04c81",
       "name": "Antyradio",
