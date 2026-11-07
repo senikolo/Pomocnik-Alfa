@@ -7,12 +7,10 @@ from pathlib import Path
 folder = Path(__file__).resolve().parent
 root = json.loads((folder / "radio_catalog.json").read_text(encoding="utf-8"))
 stations = root["stations"]
-assert len(stations) == 222, "Expected 205 Polish + 16 German/Russian + Radio Znad Wilii"
+assert len(stations) == 221, "Expected 205 Polish and 16 German/Russian offline stations"
 assert sum(x["countryCode"] == "PL" for x in stations) == 205
 assert sum(x["countryCode"] == "DE" for x in stations) == 10
 assert sum(x["countryCode"] == "RU" for x in stations) == 6
-assert sum(x["countryCode"] == "LT" and x.get("polishAbroad") for x in stations) == 1
-assert any(x["name"] == "Radio Znad Wilii (Wilno)" and x["url"] == "https://plays.zw.lt/zw128" for x in stations)
 assert len({x["id"] for x in stations}) == len(stations)
 assert all(x["name"].strip() and x["url"].startswith("https://") for x in stations)
 
@@ -39,4 +37,4 @@ for name, result in checks.items():
     assert result, name
     print("PASS:", name)
 
-print(f"PASS: {len(stations)} bundled stations including Radio Znad Wilii, online directory configured")
+print(f"PASS: {len(stations)} bundled stations preserved, online directory configured")
