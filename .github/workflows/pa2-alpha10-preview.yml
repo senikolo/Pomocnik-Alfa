@@ -65,12 +65,17 @@ jobs:
           trial=os.environ['PA_TRIAL_ID']
           assert f'package="{original}"' in text, 'Unexpected base app identity'
           text=text.replace(original,trial).replace('Pomocnik Alfa ULTRASMART 10','Pomocnik Alfa 16 TEST - Radio')
-          assert 'android:versionCode="20015"' in text, 'Unexpected PA15 base versionCode'
-          assert 'android:versionName="2.0.0-alpha.15-tv-channels"' in text, 'Unexpected PA15 base versionName'
-          text=text.replace('android:versionCode="20015"', 'android:versionCode="20016"', 1)
-          text=text.replace('android:versionName="2.0.0-alpha.15-tv-channels"', 'android:versionName="2.0.0-alpha.16-radio-pl-polonia"', 1)
           assert f'package="{trial}"' in text and original not in text
           p.write_text(text)
+          # Apktool writes version information from apktool.yml, not decoded manifest.
+          config=Path('decoded/apktool.yml')
+          metadata=config.read_text()
+          old_code="versionCode: '20015'"
+          old_name='versionName: 2.0.0-alpha.15-tv-channels'
+          assert old_code in metadata and old_name in metadata, 'Unexpected PA15 Apktool version'
+          metadata=metadata.replace(old_code, "versionCode: '20016'", 1)
+          metadata=metadata.replace(old_name, 'versionName: 2.0.0-alpha.16-radio-pl-polonia', 1)
+          config.write_text(metadata)
           PY
           node helpers/pa2/prepare_js.cjs decoded/assets/pa_regions
           SDK="$ANDROID_HOME"
