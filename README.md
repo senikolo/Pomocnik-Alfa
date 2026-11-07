@@ -5,12 +5,12 @@ Wersja testowa rozszerza sekcję **Radio**, zachowując telewizję i pozostałe 
 ## Stacje radiowe
 
 - **Polska**: pobieranie stacji zarejestrowanych w Polsce, także tych działających wyłącznie przez internet, z publicznego katalogu Radio Browser.
-- **Polskie za granicą**: osobna zakładka z rozgłośniami spoza Polski, których katalogowy język zawiera „polish” lub „polski”. Radio Znad Wilii (Wilno, Litwa) jest również wpisane na stałe i dostępne bez aktualizacji.
+- **Polskie za granicą**: osobna zakładka z rozgłośniami spoza Polski, których katalogowy język zawiera „polish” lub „polski”. Radio Znad Wilii (Wilno, Litwa) nie jest obecnie oferowane jako działający strumień, ponieważ wykorzystywany adres `https://plays.zw.lt/zw128` zwrócił 403 użytkownikowi, a alternatywny player Radijas.eu nie uruchomił transmisji. Adres jest pomijany do czasu potwierdzenia działającego źródła.
 - **Inne kraje**: zachowane 10 niemieckich i 6 rosyjskich stacji z wcześniejszego wydania.
 - **Wszystkie**: wspólna wyszukiwarka po nazwach i tagach.
 - **Moje stacje, Ulubione, Dodaj własną stację**: dotychczasowe opcje nadal działają. Aktualizacja katalogu nie usuwa własnych stacji ani ulubionych.
 
-Katalog pobierany jest stronicami z dwóch zapasowych serwerów API Radio Browser. Aktualizuje się przy uruchomieniu aplikacji, jeśli minęła doba, albo po naciśnięciu przycisku **Odśwież katalog**. Zawartość trafia do prywatnej pamięci telefonu. Przy braku połączenia aplikacja korzysta z ostatnio pobranego katalogu i z fabrycznej listy 222 stacji (205 PL, 10 DE, 6 RU, 1 LT: Radio Znad Wilii).
+Katalog pobierany jest stronicami z dwóch zapasowych serwerów API Radio Browser. Aktualizuje się przy uruchomieniu aplikacji, jeśli minęła doba, albo po naciśnięciu przycisku **Odśwież katalog**. Zawartość trafia do prywatnej pamięci telefonu. Przy braku połączenia aplikacja korzysta z ostatnio pobranego katalogu i z fabrycznej listy 221 stacji (205 PL, 10 DE, 6 RU).
 
 Dla odtwarzacza zachowano wyłącznie strumienie HTTPS; źródła HTTP bez dostępnego odpowiednika HTTPS nie pojawią się na liście automatycznej.
 
