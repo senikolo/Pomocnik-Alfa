@@ -25,7 +25,9 @@ final class PAStreamRecorder {
     private static final int TV_BITRATE = 1_600_000;
 
     interface Destination {
-        OutputStream open(String extension, String mime) throws IOException;
+        OutputStream open(String extension, String mime, boolean segmented) throws IOException;
+
+        default void segmentWritten(long milliseconds) {}
     }
 
     private final String referer;
@@ -103,7 +105,7 @@ final class PAStreamRecorder {
         } else {
             throw unsupported("Stacja nie udostępnia obsługiwanego strumienia audio.");
         }
-        try (OutputStream output = destination.open(extension, type)) {
+        try (OutputStream output = destination.open(extension, type, false)) {
             byte[] buffer = new byte[8192];
             while (!stopped.getAsBoolean()) {
                 int size = response.input.read(buffer);
@@ -145,10 +147,11 @@ final class PAStreamRecorder {
                             ? (television ? "video/mp4" : "audio/mp4") : "video/mp2t";
                         ByteArrayOutputStream header = initialization != null ? fetchSegment(initialization) : null;
                         if (stopped.getAsBoolean()) return;
-                        output = destination.open(extension, type);
+                        output = destination.open(extension, type, true);
                         if (header != null) header.writeTo(output);
                     }
                     data.writeTo(output);
+                    destination.segmentWritten(segment.durationMillis);
                     next++;
                     lastSegment = System.nanoTime();
                 }
@@ -257,7 +260,7 @@ final class PAStreamRecorder {
         if (!lines[0].trim().equals("#EXTM3U")) throw unsupported("Odpowiedź nadawcy nie jest playlistą HLS.");
         Playlist result = new Playlist();
         String variant = null;
-        boolean duration = false;
+        long durationMillis = -1;
         boolean discontinuity = false;
         boolean encrypted = false;
         boolean range = false;
@@ -284,7 +287,14 @@ final class PAStreamRecorder {
                 map = new URL(url, address);
                 mapRange = !attribute(line, "BYTERANGE").isEmpty();
             } else if (line.startsWith("#EXTINF:")) {
-                duration = true;
+                String seconds = line.substring(8).split(",", 2)[0].trim();
+                try {
+                    double value = Double.parseDouble(seconds);
+                    if (!Double.isFinite(value) || value <= 0) throw new NumberFormatException();
+                    durationMillis = Math.max(1, Math.round(value * 1000));
+                } catch (NumberFormatException error) {
+                    throw unsupported("Playlista zawiera nieprawidłowy czas fragmentu.");
+                }
             } else if (line.startsWith("#EXT-X-BYTERANGE:")) {
                 range = true;
             } else if (line.equals("#EXT-X-DISCONTINUITY")) {
@@ -299,13 +309,13 @@ final class PAStreamRecorder {
                         number(attribute(variant, "BANDWIDTH"), 0));
                     result.variants.add(new Variant(new URL(url, line), bitrate, attribute(variant, "AUDIO")));
                     variant = null;
-                } else if (duration) {
+                } else if (durationMillis >= 0) {
                     String issue = null;
                     if (encrypted) issue = "Szyfrowana transmisja nie jest obsługiwana.";
                     else if (range || mapRange) issue = "Kanał korzysta z nieobsługiwanego formatu fragmentów.";
                     else if (gap) issue = "Nadawca zgłosił brak fragmentu transmisji.";
-                    result.segments.add(new Segment(new URL(url, line), map, discontinuity, issue));
-                    duration = false;
+                    result.segments.add(new Segment(new URL(url, line), map, discontinuity, issue, durationMillis));
+                    durationMillis = -1;
                     discontinuity = false;
                     range = false;
                     gap = false;
@@ -386,12 +396,14 @@ final class PAStreamRecorder {
         final URL map;
         final boolean discontinuity;
         final String unsupported;
+        final long durationMillis;
 
-        Segment(URL url, URL map, boolean discontinuity, String unsupported) {
+        Segment(URL url, URL map, boolean discontinuity, String unsupported, long durationMillis) {
             this.url = url;
             this.map = map;
             this.discontinuity = discontinuity;
             this.unsupported = unsupported;
+            this.durationMillis = durationMillis;
         }
     }
 }

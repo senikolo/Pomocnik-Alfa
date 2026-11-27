@@ -100,7 +100,7 @@ public final class TvDirectoryClick implements View.OnClickListener {
             @Override public void run() {
                 try {
                     clearInlinePlayerNow(activity);
-                    PARecordingButton.onWebChannel(activity);
+                    PARecordingControls.onWebChannel(activity);
                     final FrameLayout frame = (FrameLayout) readField(activity, "inlineFrame");
                     final View playerView = (View) readField(activity, "playerView");
                     if (frame == null || playerView == null) throw new IllegalStateException("Brak okna odtwarzacza");

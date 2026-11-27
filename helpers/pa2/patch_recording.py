@@ -7,8 +7,9 @@ root = Path(sys.argv[1])
 [tv] = root.glob("smali*/com/ispina/lokalnie/TvActivity.smali")
 source = tv.read_text(encoding="utf-8")
 owner = "Lcom/ispina/lokalnie/TvActivity;"
-button = "Lcom/ispina/lokalnie/PARecordingButton;"
+button = "Lcom/ispina/lokalnie/PARecordingControls;"
 activity = "Landroid/app/Activity;"
+clear_source = f"{button}->clearTvSource({activity})V"
 set_source = f"{button}->setTvSource({activity}Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V"
 
 
@@ -28,19 +29,22 @@ current_url = f"    iput-object p2, p0, {owner}->currentUrl:Ljava/lang/String;"
 method_start = source.index(".method private playResolved(Ljava/lang/String;Ljava/lang/String;Z)V")
 method_end = source.index("\n.end method", method_start)
 method = source[method_start:method_end]
+# Keep the original registers alive. In particular v0 still supplies false
+# to setStatus in the original exception handler when playback fails.
+method = replace_once(method, "    .locals 3\n", "    .locals 6\n")
 method = replace_once(method, current_url, current_url + f"""
 
-    const/4 v1, 0x0
-    const-string v2, "broadcast"
-    iget-object v0, p0, {owner}->currentMode:Ljava/lang/String;
-    invoke-virtual {{v2, v0}}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
-    move-result v0
-    if-eqz v0, :pa_recording_source
-    iget-object v0, p0, {owner}->currentCode:Ljava/lang/String;
-    invoke-static {{v0}}, {owner}->broadcastReferer(Ljava/lang/String;)Ljava/lang/String;
-    move-result-object v1
+    const/4 v3, 0x0
+    const-string v4, "broadcast"
+    iget-object v5, p0, {owner}->currentMode:Ljava/lang/String;
+    invoke-virtual {{v4, v5}}, Ljava/lang/String;->equals(Ljava/lang/Object;)Z
+    move-result v4
+    if-eqz v4, :pa_recording_source
+    iget-object v5, p0, {owner}->currentCode:Ljava/lang/String;
+    invoke-static {{v5}}, {owner}->broadcastReferer(Ljava/lang/String;)Ljava/lang/String;
+    move-result-object v3
     :pa_recording_source
-    invoke-static {{p0, p1, p2, v1}}, {set_source}""")
+    invoke-static {{p0, p1, p2, v3}}, {set_source}""")
 source = source[:method_start] + method + source[method_end:]
 
 for signature in (
@@ -53,12 +57,7 @@ for signature in (
     start = source.index(".method private " + signature)
     locals_at = source.index("\n    .locals ", start)
     line_end = source.index("\n", locals_at + 1)
-    assert int(source[locals_at:line_end].split()[-1]) >= 1, signature
-    source = source[:line_end] + f"""
-
-    const/4 v0, 0x0
-    invoke-static {{p0, v0, v0, v0}}, {set_source}
-""" + source[line_end:]
+    source = source[:line_end] + f"\n    invoke-static {{p0}}, {clear_source}\n" + source[line_end:]
 tv.write_text(source, encoding="utf-8")
 
 manifest = root / "AndroidManifest.xml"

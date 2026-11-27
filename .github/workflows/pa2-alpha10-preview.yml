@@ -1,31 +1,138 @@
-name: PA18 Android 11 TV diagnostics
+name: PA18 Telewizja i postęp nagrywania TEST
 on:
+  workflow_dispatch:
   push:
     branches: ['work/pa18-tv-recording-progress-20261127']
-    paths: ['.github/workflows/pa2-alpha10-preview.yml']
+    paths: ['.github/workflows/pa2-alpha10-preview.yml', 'helpers/pa2/**']
+env:
+  PA_TRIAL_ID: com.senikolo.pomocniknowy.pa18recordingtest.r${{ github.run_id }}
+defaults:
+  run:
+    shell: bash
 permissions:
   contents: read
   actions: read
 jobs:
-  reproduce:
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 50
     env:
       GH_TOKEN: ${{ github.token }}
-      PA17_PACKAGE: com.senikolo.pomocniknowy.pa17recordingtest.r46053183073
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch the signed PA17 release
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Restore existing full PA base
         run: |
-          mkdir -p old results
-          gh run download 46053183073 -n PA17-recordings-isolated-signed-apk -D old
+          mkdir -p baseline tools output
+          if gh release download pa2-source-base -p pa-base.zip -D baseline; then
+            unzip -q baseline/pa-base.zip -d baseline
+          else
+            gh run download 37921731880 -n Pomocnik-Alfa-1.7.66-A10-AUDIT-FIXES-UNSIGNED -D baseline
+          fi
+          find baseline -name '*.apk' -print -quit | xargs -I{} cp '{}' baseline.apk
+          test -s baseline.apk
+          sha256sum baseline.apk > output/base-sha256.txt
+          gh release download v2.12.1 -R iBotPeaches/Apktool -p apktool_2.12.1.jar -D tools
+      - name: Validate radio catalogue and recording progress
+        run: |
+          python3 helpers/pa2/test_radio_directory.py
+          python3 -m py_compile helpers/pa2/*.py
+          mkdir -p recording-test/classes
+          cp helpers/pa2/PAStreamRecorderTest.java.test recording-test/PAStreamRecorderTest.java
+          javac -encoding UTF-8 -d recording-test/classes helpers/pa2/PAStreamRecorder.java helpers/pa2/PARecordingProgress.java recording-test/PAStreamRecorderTest.java
+          java -cp recording-test/classes com.ispina.lokalnie.PAStreamRecorderTest
+      - name: Prepare app data and local assets
+        run: |
+          python3 helpers/pa2/fetch_data.py feeds
+          python3 helpers/pa2/build_data.py feeds build/data
+          python3 helpers/pa2/enrich_radio_catalog.py helpers/pa2/radio_catalog.json
+      - name: Rebuild Pomocnik Alfa with corrected TV and recording progress
+        run: |
+          java -Xmx4g -jar tools/apktool_2.12.1.jar d -f -o decoded baseline.apk
+          python3 helpers/pa2/patch_antyradio.py decoded
+          python3 helpers/pa2/patch_project.py decoded build/data
+          python3 helpers/pa2/patch_economy.py decoded
+          python3 helpers/pa2/patch_radio_catalog.py decoded
+          python3 helpers/pa2/patch_tv_channels.py decoded
+          python3 helpers/pa2/patch_recording.py decoded
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('decoded/AndroidManifest.xml')
+          text=p.read_text()
+          original='com.senikolo.pomocniknowy.pa2preview'
+          import os
+          trial=os.environ['PA_TRIAL_ID']
+          assert f'package="{original}"' in text, 'Unexpected base app identity'
+          text=text.replace(original,trial).replace('Pomocnik Alfa ULTRASMART 10','Pomocnik Alfa 18 TEST - Nagrywanie')
+          assert f'package="{trial}"' in text and original not in text
+          p.write_text(text)
+          # Apktool writes version information from apktool.yml, not decoded manifest.
+          config=Path('decoded/apktool.yml')
+          metadata=config.read_text()
+          old_code="versionCode: '20015'"
+          old_name='versionName: 2.0.0-alpha.15-tv-channels'
+          assert old_code in metadata and old_name in metadata, 'Unexpected PA15 Apktool version'
+          metadata=metadata.replace(old_code, "versionCode: '20018'", 1)
+          metadata=metadata.replace(old_name, 'versionName: 2.0.0-alpha.18-recording-progress', 1)
+          config.write_text(metadata)
+          PY
+          node helpers/pa2/prepare_js.cjs decoded/assets/pa_regions
+          SDK="$ANDROID_HOME"
+          mkdir -p classes native
+          javac -source 8 -target 8 -encoding UTF-8 -cp "$SDK/platforms/android-35/android.jar" -d classes helpers/pa2/*.java
+          find classes -name '*.class' -print0 | xargs -0 "$SDK/build-tools/35.0.0/d8" --min-api 29 --lib "$SDK/platforms/android-35/android.jar" --output native
+          java -Xmx4g -jar tools/apktool_2.12.1.jar b decoded -o output/rebuilt.apk
+          cp native/classes.dex output/classes5.dex
+          (cd output && zip -q -0 rebuilt.apk classes5.dex)
+          "$SDK/build-tools/35.0.0/zipalign" -p -f 4 output/rebuilt.apk output/aligned.apk
+      - name: Sign APK and verify package metadata
+        run: |
+          set -euo pipefail
+          umask 077
+          export TRIAL_PASS="$(openssl rand -hex 24)"
+          keytool -genkeypair -noprompt -keyalg RSA -keysize 3072 -sigalg SHA256withRSA -validity 3650 -alias pa18-recording-trial -dname 'CN=PA18 recording test, O=PA testing' -storetype PKCS12 -keystore "$RUNNER_TEMP/pa18recordingtest.p12" -storepass:env TRIAL_PASS -keypass:env TRIAL_PASS >/dev/null 2>&1
+          BT="$ANDROID_HOME/build-tools/35.0.0"
+          APK=output/Pomocnik-Alfa-PA18-TELEWIZJA-NAGRYWANIE-TEST.apk
+          "$BT/apksigner" sign --ks "$RUNNER_TEMP/pa18recordingtest.p12" --ks-type PKCS12 --ks-key-alias pa18-recording-trial --ks-pass env:TRIAL_PASS --key-pass env:TRIAL_PASS --out "$APK" output/aligned.apk
+          "$BT/apksigner" verify --verbose --print-certs "$APK" > output/signature.txt
+          "$BT/aapt" dump badging "$APK" > output/badging.txt
+          grep -q "package: name='$PA_TRIAL_ID'" output/badging.txt
+          ! grep -q "package: name='com.senikolo.pomocniknowy.pa2preview'" output/badging.txt
+          sha256sum "$APK" > output/SHA256SUMS.txt
+          rm -f "$RUNNER_TEMP/pa18recordingtest.p12"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PA18-recording-progress-signed-apk
+          path: |
+            output/Pomocnik-Alfa-PA18-TELEWIZJA-NAGRYWANIE-TEST.apk
+            output/SHA256SUMS.txt
+            output/signature.txt
+            output/badging.txt
+          retention-days: 60
+
+  android-11:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: PA18-recording-progress-signed-apk
+          path: output
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-          ls -l /dev/kvm
-      - name: Reproduce PA17 TV crash
+      - name: Check TV navigation and both recording formats on Android 11
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
@@ -34,20 +141,9 @@ jobs:
           profile: pixel_2
           disable-animations: true
           emulator-boot-timeout: 360
-          script: |
-            adb root
-            adb wait-for-device
-            adb install -r old/Pomocnik-Alfa-PA17-NAGRYWANIE-TEST.apk
-            adb shell input keyevent 82
-            adb logcat -c
-            adb shell am start -W -n "$PA17_PACKAGE/com.ispina.lokalnie.TvActivity" | tee results/launch.txt
-            sleep 8
-            adb logcat -d -b crash | tee results/crash.txt
-            adb logcat -d -s AndroidRuntime ActivityTaskManager art | tail -250 > results/runtime.txt
-            adb shell uiautomator dump /data/local/tmp/pa-tv.xml
-            adb pull /data/local/tmp/pa-tv.xml results/pa-tv.xml
+          script: python3 helpers/pa2/test_media_android.py output/Pomocnik-Alfa-PA18-TELEWIZJA-NAGRYWANIE-TEST.apk
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: PA17-TV-diagnosis
-          path: results
+          name: PA18-Android11-recording-test
+          path: android-test

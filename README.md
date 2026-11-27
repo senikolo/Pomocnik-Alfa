@@ -1,11 +1,12 @@
-# Pomocnik Alfa 17 TEST: nagrywanie radia i telewizji
+# Pomocnik Alfa 18 TEST: telewizja i postęp nagrywania
 
 ## Nagrywanie na żywo
 
 1. Włącz stację w zakładce **Radio** lub kanał w zakładce **Telewizja**.
 2. Naciśnij **Nagraj radio** lub **Nagraj telewizję**. Nagrywanie może trwać w tle.
-3. Naciśnij **Zakończ nagranie** w aplikacji albo w powiadomieniu, jeśli powiadomienia są włączone.
-4. Plik znajdziesz w folderze **Pobrane / Pomocnik Alfa**.
+3. Panel **Nagrywanie** i powiadomienie pokazują czas, rozmiar i aktualny format pliku. W HLS czas sumuje zapisane fragmenty. Dla strumieni radia zapisywanych bezpośrednio czas jest mierzony od rozpoczęcia zapisu.
+4. Naciśnij **Zakończ nagranie** w aplikacji albo w powiadomieniu, jeśli powiadomienia są włączone.
+5. Plik znajdziesz w folderze **Pobrane / Pomocnik Alfa**.
 
 Obsługiwane są bezpośrednie strumienie radia (MP3, AAC, Ogg, FLAC) i nieszyfrowane
 transmisje HLS, w których obraz i dźwięk są razem w segmentach MPEG-TS lub fMP4.
@@ -29,9 +30,9 @@ Dla odtwarzacza zachowano wyłącznie strumienie HTTPS; źródła HTTP bez dost�
 
 ## Kompatybilność i bezpieczeństwo
 
-- Baza: **Pomocnik Alfa 16**, wraz z katalogiem radia i telewizją PA15.
+- Baza: **Pomocnik Alfa 17 TEST**, z poprawką otwierania ekranu Telewizja.
 - Kompilacja: Java 8 / DEX, minSdk 29 (**Android 10 lub nowszy**).
-- Wydanie PA17 ma odrębny identyfikator pakietu i tymczasowy podpis testowy; instaluje się obok wcześniejszych wersji, nie nadpisuje wersji stabilnej.
+- Wydanie PA18 ma odrębny identyfikator pakietu i tymczasowy podpis testowy; instaluje się obok wcześniejszych wersji, nie nadpisuje wersji stabilnej.
 - Dane katalogu są pobierane w tle; przy błędzie nie nadpisują istniejącego zapisu.
 - Nie wymagamy konta, klucza API ani płatnego serwera.
 
@@ -39,4 +40,4 @@ Dla odtwarzacza zachowano wyłącznie strumienie HTTPS; źródła HTTP bez dost�
 
 Workflow: `.github/workflows/pa2-alpha10-preview.yml`. Źródła: `helpers/pa2/PARadioCatalogActivity.java`, `helpers/pa2/PARadioDirectory.java`. Test kontraktowy: `python3 helpers/pa2/test_radio_directory.py`.
 
-Plik APK, po pomyślnym przebiegu GitHub Actions, pojawi się jako artefakt **PA17-recordings-isolated-signed-apk**. Odtwarzanie poszczególnych transmisji wymaga sprawdzenia na rzeczywistym telefonie.
+Plik APK, po pomyślnym przebiegu GitHub Actions, pojawi się jako artefakt **PA18-recording-progress-signed-apk**. Odtwarzanie poszczególnych transmisji wymaga sprawdzenia na rzeczywistym telefonie.

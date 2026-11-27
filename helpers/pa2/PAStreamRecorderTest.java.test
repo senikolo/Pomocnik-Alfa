@@ -15,6 +15,7 @@ public final class PAStreamRecorderTest {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         AtomicInteger polls = new AtomicInteger();
         AtomicInteger retries = new AtomicInteger();
+        AtomicInteger mediaMilliseconds = new AtomicInteger();
         server.createContext("/radio", exchange -> send(exchange, "audio/mpeg", "ID3-test-audio"));
         server.createContext("/fake.mp3", exchange -> send(exchange, "text/html", "<html>Unavailable</html>"));
         server.createContext("/master", exchange -> {
@@ -31,8 +32,8 @@ public final class PAStreamRecorderTest {
             boolean first = polls.getAndIncrement() == 0;
             send(exchange, "application/vnd.apple.mpegurl",
                 "#EXTM3U\n#EXT-X-TARGETDURATION:1\n#EXT-X-MEDIA-SEQUENCE:" + (first ? "7" : "8")
-                + "\n#EXTINF:1,\n" + (first ? "past.ts" : "current.ts")
-                + "\n#EXTINF:1,\n" + (first ? "current.ts\n" : "next.ts\n#EXT-X-ENDLIST\n"));
+                + "\n#EXTINF:1.75,\n" + (first ? "past.ts" : "current.ts")
+                + "\n#EXTINF:" + (first ? "1.75" : "1.50") + ",\n" + (first ? "current.ts\n" : "next.ts\n#EXT-X-ENDLIST\n"));
         });
         server.createContext("/streams/current.ts", exchange -> send(exchange, "video/mp2t", "current"));
         server.createContext("/streams/next.ts", exchange -> {
@@ -48,13 +49,29 @@ public final class PAStreamRecorderTest {
             String base = "http://127.0.0.1:" + server.getAddress().getPort();
             PAStreamRecorder recorder = new PAStreamRecorder(null, () -> false);
             check(record(recorder, base + "/radio", false, "mp3").equals("ID3-test-audio"), "direct audio differs");
-            check(record(recorder, base + "/master", true, "ts").equals("currentnext"),
+            ByteArrayOutputStream hls = new ByteArrayOutputStream();
+            recorder.record(base + "/master", true, new PAStreamRecorder.Destination() {
+                @Override public OutputStream open(String extension, String mime, boolean segmented) {
+                    check(extension.equals("ts") && segmented, "wrong HLS output");
+                    return hls;
+                }
+
+                @Override public void segmentWritten(long milliseconds) {
+                    mediaMilliseconds.addAndGet((int) milliseconds);
+                }
+            });
+            check(hls.toString(StandardCharsets.UTF_8.name()).equals("currentnext"),
                 "overlap, retry or relative URI handling failed");
+            check(mediaMilliseconds.get() == 3250, "media time must include only successfully written segments");
+            check(new PARecordingProgress(65_000, 1_234_000, "mp3").details().equals("01:05  ·  1,2 MB  ·  MP3"),
+                "incorrect recording status details");
+            check(new PARecordingProgress(3_661_000, 512, "ts").details().equals("1:01:01  ·  512 B  ·  TS"),
+                "incorrect details for recordings over an hour");
             check(polls.get() == 2 && retries.get() == 2, "unexpected manifest or fragment request count");
             rejects(recorder, base + "/fake.mp3", false);
             rejects(recorder, base + "/secure", true);
             PAStreamRecorder stopped = new PAStreamRecorder(null, () -> true);
-            stopped.record(base + "/radio", false, (extension, mime) -> {
+            stopped.record(base + "/radio", false, (extension, mime, segmented) -> {
                 throw new AssertionError("Cancelled recording created a file");
             });
             System.out.println("PASS: MP3, rolling HLS, gzip, retry, cancellation, HTML and encrypted HLS");
@@ -65,7 +82,7 @@ public final class PAStreamRecorderTest {
 
     private static String record(PAStreamRecorder recorder, String address, boolean tv, String expected) throws IOException {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        recorder.record(address, tv, (extension, mime) -> {
+        recorder.record(address, tv, (extension, mime, segmented) -> {
             check(extension.equals(expected), "wrong recording extension");
             return output;
         });
@@ -74,7 +91,7 @@ public final class PAStreamRecorderTest {
 
     private static void rejects(PAStreamRecorder recorder, String address, boolean tv) throws IOException {
         try {
-            recorder.record(address, tv, (extension, mime) -> {
+            recorder.record(address, tv, (extension, mime, segmented) -> {
                 throw new AssertionError("Unsupported stream created a file");
             });
             throw new AssertionError("Unsupported stream was accepted");
