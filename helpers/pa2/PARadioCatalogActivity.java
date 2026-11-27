@@ -670,26 +670,30 @@ public final class PARadioCatalogActivity extends Activity {
         String source = state.getString("info_source", "");
         boolean infoPlus = state.getBoolean("info_plus", false);
 
-        if (!error.trim().isEmpty()) playerStatus.setText("Problem z transmisją: " + error.trim());
-        else if (name.trim().isEmpty()) playerStatus.setText("Wybierz stację, by rozpocząć");
-        else playerStatus.setText((playing ? "Teraz gra: " : "Wybrano: ") + name);
+        if (!error.trim().isEmpty()) updatePlayerText(playerStatus, "Problem z transmisją: " + error.trim());
+        else if (name.trim().isEmpty()) updatePlayerText(playerStatus, "Wybierz stację, by rozpocząć");
+        else updatePlayerText(playerStatus, (playing ? "Teraz gra: " : "Wybrano: ") + name);
 
         String trackText = "";
         if (!track.trim().isEmpty()) trackText = "Utwór: " + track.trim();
         if (!artist.trim().isEmpty()) trackText = trackText.isEmpty() ? "Wykonawca: " + artist.trim() : "Wykonawca: " + artist.trim() + " · " + trackText;
-        trackInfo.setText(trackText);
+        updatePlayerText(trackInfo, trackText);
         trackInfo.setVisibility(trackText.isEmpty() ? View.GONE : View.VISIBLE);
 
         String programText = program.trim().isEmpty() ? "" : "Audycja: " + program.trim();
-        programInfo.setText(programText);
+        updatePlayerText(programInfo, programText);
         programInfo.setVisibility(programText.isEmpty() ? View.GONE : View.VISIBLE);
 
         if (!trackText.isEmpty() || !programText.isEmpty()) {
             String detail = infoPlus && !source.trim().isEmpty() ? "Źródło informacji: " + source.trim() : "Metadane ze strumienia stacji";
-            infoSource.setText(detail);
+            updatePlayerText(infoSource, detail);
         } else {
-            infoSource.setText("Ta stacja nie udostępnia teraz informacji o utworze ani audycji.");
+            updatePlayerText(infoSource, "Ta stacja nie udostępnia teraz informacji o utworze ani audycji.");
         }
+    }
+
+    private static void updatePlayerText(TextView view, String text) {
+        if (!text.contentEquals(view.getText())) view.setText(text);
     }
 
     private void loadStationLogo(Station station, ImageView image, TextView fallback) {

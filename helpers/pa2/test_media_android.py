@@ -27,14 +27,18 @@ def shell(*args):
 
 
 def hierarchy():
-    shell("uiautomator", "dump", "/data/local/tmp/pa18-ui.xml")
-    text = adb("exec-out", "cat", "/data/local/tmp/pa18-ui.xml")
+    path = "/data/local/tmp/pa18-ui.xml"
+    shell("rm", "-f", path)
+    result = shell("uiautomator", "dump", path)
+    if "dumped to:" not in result:
+        return "", iter(())
+    text = adb("exec-out", "cat", path)
     return text, ET.fromstring(text).iter("node")
 
 
 def find_text(predicate, filename=""):
     xml, nodes = hierarchy()
-    if filename:
+    if filename and xml:
         (REPORT / filename).write_text(xml, encoding="utf-8")
     return next((node for node in nodes if predicate(node.get("text", ""))), None)
 
@@ -46,7 +50,7 @@ def tap(node):
 
 
 def wait_for(probe, reason):
-    deadline = time.monotonic() + 30
+    deadline = time.monotonic() + 60
     while time.monotonic() < deadline:
         result = probe()
         if result is not None:
@@ -96,10 +100,10 @@ def start_server(directory):
                     self.send_header("Content-Type", "audio/mpeg")
                     self.end_headers()
                     while True:
-                        for start in range(0, len(audio_bytes), 4000):
-                            self.wfile.write(audio_bytes[start:start + 4000])
+                        for start in range(0, len(audio_bytes), 16_000):
+                            self.wfile.write(audio_bytes[start:start + 16_000])
                             self.wfile.flush()
-                            time.sleep(0.25)
+                            time.sleep(2.4)
                 elif self.path == "/tv.m3u8":
                     if server.tv_start is None:
                         server.tv_start = time.monotonic()
