@@ -178,7 +178,8 @@ public final class PARecordingService extends Service {
                 values.put(MediaStore.Downloads.MIME_TYPE, mime);
                 values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/" + FOLDER);
                 values.put(MediaStore.Downloads.IS_PENDING, 1);
-                uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                Uri downloads = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
+                uri = resolver.insert(downloads, values);
                 if (uri == null) throw new IOException("Nie udało się utworzyć pliku.");
                 OutputStream stream = resolver.openOutputStream(uri);
                 if (stream == null) throw new IOException("Nie udało się otworzyć pliku.");
