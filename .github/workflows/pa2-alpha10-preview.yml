@@ -1,11 +1,11 @@
-name: PA16 Radio Polska i Polonia TEST
+name: PA17 Nagrywanie Radia i Telewizji TEST
 on:
   workflow_dispatch:
   push:
-    branches: ['work/pa16-radio-pl-world-20261107']
+    branches: ['work/pa17-recordings-20261127']
     paths: ['.github/workflows/pa2-alpha10-preview.yml', 'helpers/pa2/**']
 env:
-  PA_TRIAL_ID: com.senikolo.pomocniknowy.pa16radiotest.r${{ github.run_id }}
+  PA_TRIAL_ID: com.senikolo.pomocniknowy.pa17recordingtest.r${{ github.run_id }}
 defaults:
   run:
     shell: bash
@@ -43,12 +43,16 @@ jobs:
         run: |
           python3 helpers/pa2/test_radio_directory.py
           python3 -m py_compile helpers/pa2/*.py
+          mkdir -p recording-test/classes
+          cp helpers/pa2/PAStreamRecorderTest.java.test recording-test/PAStreamRecorderTest.java
+          javac -encoding UTF-8 -d recording-test/classes helpers/pa2/PAStreamRecorder.java recording-test/PAStreamRecorderTest.java
+          java -cp recording-test/classes com.ispina.lokalnie.PAStreamRecorderTest
       - name: Prepare app data and local assets
         run: |
           python3 helpers/pa2/fetch_data.py feeds
           python3 helpers/pa2/build_data.py feeds build/data
           python3 helpers/pa2/enrich_radio_catalog.py helpers/pa2/radio_catalog.json
-      - name: Rebuild the full app with PA15 television and refreshed Polish radio directory
+      - name: Rebuild PA16 with live recording controls
         run: |
           java -Xmx4g -jar tools/apktool_2.12.1.jar d -f -o decoded baseline.apk
           python3 helpers/pa2/patch_antyradio.py decoded
@@ -56,6 +60,7 @@ jobs:
           python3 helpers/pa2/patch_economy.py decoded
           python3 helpers/pa2/patch_radio_catalog.py decoded
           python3 helpers/pa2/patch_tv_channels.py decoded
+          python3 helpers/pa2/patch_recording.py decoded
           python3 - <<'PY'
           from pathlib import Path
           p=Path('decoded/AndroidManifest.xml')
@@ -64,7 +69,7 @@ jobs:
           import os
           trial=os.environ['PA_TRIAL_ID']
           assert f'package="{original}"' in text, 'Unexpected base app identity'
-          text=text.replace(original,trial).replace('Pomocnik Alfa ULTRASMART 10','Pomocnik Alfa 16 TEST - Radio')
+          text=text.replace(original,trial).replace('Pomocnik Alfa ULTRASMART 10','Pomocnik Alfa 17 TEST - Nagrywanie')
           assert f'package="{trial}"' in text and original not in text
           p.write_text(text)
           # Apktool writes version information from apktool.yml, not decoded manifest.
@@ -73,8 +78,8 @@ jobs:
           old_code="versionCode: '20015'"
           old_name='versionName: 2.0.0-alpha.15-tv-channels'
           assert old_code in metadata and old_name in metadata, 'Unexpected PA15 Apktool version'
-          metadata=metadata.replace(old_code, "versionCode: '20016'", 1)
-          metadata=metadata.replace(old_name, 'versionName: 2.0.0-alpha.16-radio-pl-polonia', 1)
+          metadata=metadata.replace(old_code, "versionCode: '20017'", 1)
+          metadata=metadata.replace(old_name, 'versionName: 2.0.0-alpha.17-recordings', 1)
           config.write_text(metadata)
           PY
           node helpers/pa2/prepare_js.cjs decoded/assets/pa_regions
@@ -91,22 +96,22 @@ jobs:
           set -euo pipefail
           umask 077
           export TRIAL_PASS="$(openssl rand -hex 24)"
-          keytool -genkeypair -noprompt -keyalg RSA -keysize 3072 -sigalg SHA256withRSA -validity 3650 -alias pa16-radio-trial -dname 'CN=PA16 radio test, O=PA testing' -storetype PKCS12 -keystore "$RUNNER_TEMP/pa16radiotest.p12" -storepass:env TRIAL_PASS -keypass:env TRIAL_PASS >/dev/null 2>&1
+          keytool -genkeypair -noprompt -keyalg RSA -keysize 3072 -sigalg SHA256withRSA -validity 3650 -alias pa17-recording-trial -dname 'CN=PA17 recording test, O=PA testing' -storetype PKCS12 -keystore "$RUNNER_TEMP/pa17recordingtest.p12" -storepass:env TRIAL_PASS -keypass:env TRIAL_PASS >/dev/null 2>&1
           BT="$ANDROID_HOME/build-tools/35.0.0"
-          APK=output/Pomocnik-Alfa-PA16-RADIO-TEST.apk
-          "$BT/apksigner" sign --ks "$RUNNER_TEMP/pa16radiotest.p12" --ks-type PKCS12 --ks-key-alias pa16-radio-trial --ks-pass env:TRIAL_PASS --key-pass env:TRIAL_PASS --out "$APK" output/aligned.apk
+          APK=output/Pomocnik-Alfa-PA17-NAGRYWANIE-TEST.apk
+          "$BT/apksigner" sign --ks "$RUNNER_TEMP/pa17recordingtest.p12" --ks-type PKCS12 --ks-key-alias pa17-recording-trial --ks-pass env:TRIAL_PASS --key-pass env:TRIAL_PASS --out "$APK" output/aligned.apk
           "$BT/apksigner" verify --verbose --print-certs "$APK" > output/signature.txt
           "$BT/aapt" dump badging "$APK" > output/badging.txt
           grep -q "package: name='$PA_TRIAL_ID'" output/badging.txt
           ! grep -q "package: name='com.senikolo.pomocniknowy.pa2preview'" output/badging.txt
           sha256sum "$APK" > output/SHA256SUMS.txt
-          rm -f "$RUNNER_TEMP/pa16radiotest.p12"
+          rm -f "$RUNNER_TEMP/pa17recordingtest.p12"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: PA16-radio-pl-polonia-isolated-signed-apk
+          name: PA17-recordings-isolated-signed-apk
           path: |
-            output/Pomocnik-Alfa-PA16-RADIO-TEST.apk
+            output/Pomocnik-Alfa-PA17-NAGRYWANIE-TEST.apk
             output/SHA256SUMS.txt
             output/signature.txt
             output/badging.txt

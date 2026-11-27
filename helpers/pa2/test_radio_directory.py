@@ -31,7 +31,7 @@ checks = {
     "paginated directory": "MAX_ROWS_PER_QUERY" in directory and "offset=" in directory,
     "preserved TV changes": "python3 helpers/pa2/patch_tv_channels.py decoded" in workflow,
     "native compilation": "javac -source 8" in workflow,
-    "separate test package": "pa16radiotest" in workflow,
+    "separate test package": "pa17recordingtest" in workflow,
 }
 for name, result in checks.items():
     assert result, name

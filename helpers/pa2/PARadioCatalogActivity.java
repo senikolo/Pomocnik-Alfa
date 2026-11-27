@@ -318,6 +318,7 @@ public final class PARadioCatalogActivity extends Activity {
         LinearLayout.LayoutParams controlsLp = new LinearLayout.LayoutParams(-1, -2);
         controlsLp.topMargin = dp(12);
         playerCard.addView(controls, controlsLp);
+        playerCard.addView(new PARecordingButton(this, false));
         LinearLayout.LayoutParams playerLp = new LinearLayout.LayoutParams(-1, -2);
         playerLp.topMargin = dp(12);
         playerLp.bottomMargin = dp(12);

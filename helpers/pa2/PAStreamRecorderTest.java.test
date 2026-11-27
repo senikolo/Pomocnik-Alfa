@@ -1,0 +1,101 @@
+package com.ispina.lokalnie;
+
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.zip.GZIPOutputStream;
+
+public final class PAStreamRecorderTest {
+    public static void main(String[] args) throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        AtomicInteger polls = new AtomicInteger();
+        AtomicInteger retries = new AtomicInteger();
+        server.createContext("/radio", exchange -> send(exchange, "audio/mpeg", "ID3-test-audio"));
+        server.createContext("/fake.mp3", exchange -> send(exchange, "text/html", "<html>Unavailable</html>"));
+        server.createContext("/master", exchange -> {
+            String master = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=400000\nstreams/list.m3u8\n"
+                + "#EXT-X-STREAM-INF:BANDWIDTH=4700000\nwrong.m3u8\n";
+            ByteArrayOutputStream compressed = new ByteArrayOutputStream();
+            try (GZIPOutputStream gzip = new GZIPOutputStream(compressed)) {
+                gzip.write(master.getBytes(StandardCharsets.UTF_8));
+            }
+            exchange.getResponseHeaders().set("Content-Encoding", "gzip");
+            send(exchange, "application/vnd.apple.mpegurl", compressed.toByteArray());
+        });
+        server.createContext("/streams/list.m3u8", exchange -> {
+            boolean first = polls.getAndIncrement() == 0;
+            send(exchange, "application/vnd.apple.mpegurl",
+                "#EXTM3U\n#EXT-X-TARGETDURATION:1\n#EXT-X-MEDIA-SEQUENCE:" + (first ? "7" : "8")
+                + "\n#EXTINF:1,\n" + (first ? "past.ts" : "current.ts")
+                + "\n#EXTINF:1,\n" + (first ? "current.ts\n" : "next.ts\n#EXT-X-ENDLIST\n"));
+        });
+        server.createContext("/streams/current.ts", exchange -> send(exchange, "video/mp2t", "current"));
+        server.createContext("/streams/next.ts", exchange -> {
+            if (retries.getAndIncrement() == 0) {
+                exchange.sendResponseHeaders(502, -1);
+                exchange.close();
+            } else send(exchange, "video/mp2t", "next");
+        });
+        server.createContext("/secure", exchange -> send(exchange, "application/vnd.apple.mpegurl",
+            "#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI=\"key\"\n#EXTINF:4,\nsecure.ts\n"));
+        server.start();
+        try {
+            String base = "http://127.0.0.1:" + server.getAddress().getPort();
+            PAStreamRecorder recorder = new PAStreamRecorder(null, () -> false);
+            check(record(recorder, base + "/radio", false, "mp3").equals("ID3-test-audio"), "direct audio differs");
+            check(record(recorder, base + "/master", true, "ts").equals("currentnext"),
+                "overlap, retry or relative URI handling failed");
+            check(polls.get() == 2 && retries.get() == 2, "unexpected manifest or fragment request count");
+            rejects(recorder, base + "/fake.mp3", false);
+            rejects(recorder, base + "/secure", true);
+            PAStreamRecorder stopped = new PAStreamRecorder(null, () -> true);
+            stopped.record(base + "/radio", false, (extension, mime) -> {
+                throw new AssertionError("Cancelled recording created a file");
+            });
+            System.out.println("PASS: MP3, rolling HLS, gzip, retry, cancellation, HTML and encrypted HLS");
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    private static String record(PAStreamRecorder recorder, String address, boolean tv, String expected) throws IOException {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        recorder.record(address, tv, (extension, mime) -> {
+            check(extension.equals(expected), "wrong recording extension");
+            return output;
+        });
+        return output.toString(StandardCharsets.UTF_8.name());
+    }
+
+    private static void rejects(PAStreamRecorder recorder, String address, boolean tv) throws IOException {
+        try {
+            recorder.record(address, tv, (extension, mime) -> {
+                throw new AssertionError("Unsupported stream created a file");
+            });
+            throw new AssertionError("Unsupported stream was accepted");
+        } catch (PAStreamRecorder.UnsupportedStream expected) {
+            check(!expected.getMessage().isEmpty(), "missing error message");
+        }
+    }
+
+    private static void send(HttpExchange exchange, String type, String body) throws IOException {
+        send(exchange, type, body.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static void send(HttpExchange exchange, String type, byte[] body) throws IOException {
+        exchange.getResponseHeaders().set("Content-Type", type);
+        exchange.sendResponseHeaders(200, body.length);
+        try (OutputStream output = exchange.getResponseBody()) {
+            output.write(body);
+        }
+    }
+
+    private static void check(boolean passed, String message) {
+        if (!passed) throw new AssertionError(message);
+    }
+}
